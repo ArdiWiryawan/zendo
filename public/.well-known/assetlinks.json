@@ -1,0 +1,14 @@
+[
+  {
+    "relation": [
+      "delegate_permission/common.handle_all_urls"
+    ],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "app.vercel.zendo_focus.twa",
+      "sha256_cert_fingerprints": [
+        "64:0D:20:D2:D7:11:E0:07:74:C9:A8:11:09:1B:FA:1B:E1:CB:32:F1:31:4F:C1:6E:3C:C2:89:44:5A:51:1E:02"
+      ]
+    }
+  }
+]
