@@ -1,0 +1,68 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+:root {
+  --color-bg: #080908;
+  --color-bg-deep: #040504;
+  --color-surface: #111211;
+  --color-surface-soft: #171917;
+  --color-surface-raised: #1F221F;
+  --color-text: #E5E2DA;
+  --color-text-muted: #908C83;
+  --color-text-soft: #68655E;
+  --color-border: #1B1D1B;
+  --color-border-strong: #252825;
+  --color-accent: #A48B5E;
+  --color-accent-soft: #1C1914;
+  --color-success: #647B5E;
+  --color-success-soft: #171E15;
+  --color-warning: #9B7846;
+  --color-warning-soft: #201A12;
+  --color-danger: #9E5649;
+  --color-danger-soft: #221412;
+  --color-rest: #5A6772;
+  --color-rest-soft: #14171A;
+}
+html,
+body,
+#root {
+  min-height: 100%;
+  background: var(--color-bg);
+}
+
+body {
+  margin: 0;
+  color: var(--color-text);
+  overscroll-behavior: none;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+button,
+input,
+textarea,
+select {
+  font: inherit;
+}
+
+button {
+  -webkit-tap-highlight-color: transparent;
+}
+
+@layer base {
+  *:focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 3px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+  }
+}
