@@ -6,6 +6,20 @@ import {
   frictionActionsForHabit
 } from "../constants/defaultData";
 import {
+  FOCUS_PRESETS,
+  createFocusPhases,
+  getCurrentFocusPhase,
+  getTotalPlannedMinutes,
+  summarizeFocusSession
+} from "../constants/focusPresets";
+import { resolveDailyActivityStatus } from "../constants/dailyActivityStatus";
+import {
+  formatFocusSessionTimelineDescription,
+  normalizeFocusSessionRecord,
+  normalizeFocusTimelineEvents,
+  resolveFocusSessionStatus
+} from "../constants/focusSessionStatus";
+import {
   addDaysToDate,
   datesInRange,
   getCurrentWeekNumber,
@@ -34,6 +48,7 @@ import type {
   LearningSourceType,
   TimelineEvent,
   TimelineEventType,
+  FocusSessionPreset,
   MonkMVPState,
   OnboardingState,
   RelapseLog,
@@ -95,9 +110,10 @@ type MonkActions = {
   toggleTodayCompletion: () => void;
   updateTodayEnergy: (energyLevel: EnergyLevel) => void;
   completeTodayMainAction: () => void;
-  startFocusSession: (timerMode?: "deep_work" | "pomodoro") => FocusSession | undefined;
+  startFocusSession: (preset?: FocusSessionPreset, customMinutes?: number) => FocusSession | undefined;
   tickFocusSession: (sessionId: string, elapsedSeconds: number) => void;
-  startBreakSession: (sessionId: string) => void;
+  advanceFocusPhase: (sessionId: string) => void;
+  resetFocusSession: (sessionId: string) => void;
   pauseFocusSession: (sessionId: string) => void;
   resumeFocusSession: (sessionId: string) => void;
   completeFocusSession: (sessionId: string, completeMainAction?: boolean) => void;
@@ -153,28 +169,50 @@ function findTodayPlan(state: MonkMVPState) {
   );
 }
 
+function getFocusSessionsForDay(state: MonkMVPState, dayPlan: DayPlan) {
+  return state.focusSessions.filter(
+    (session) => session.dayPlanId === dayPlan.id && ["completed", "ended_early"].includes(session.status)
+  );
+}
+
+function getLearningSessionsForDay(state: MonkMVPState, dayPlan: DayPlan) {
+  return state.learningSessions.filter((session) => {
+    const sessionDate = (session.endedAt ?? session.startedAt).slice(0, 10);
+    const sameSeason = !session.seasonId || session.seasonId === dayPlan.seasonId;
+    return sessionDate === dayPlan.date && sameSeason && session.status === "completed";
+  });
+}
+
+function getLegacyLearningEntriesForDay(state: MonkMVPState, dayPlan: DayPlan) {
+  return state.learningEntries.filter((entry) => entry.dayPlanId === dayPlan.id);
+}
+
 function deriveTimelineStatus(state: MonkMVPState, dayPlan: DayPlan): TimelineStatus {
   const relapses = state.relapseLogs.filter((log) => log.dayPlanId === dayPlan.id);
   if (relapses.length > 0) return "relapse";
   if (dayPlan.dayType === "rest" && dayPlan.status === "completed") return "rest";
-  if (dayPlan.status === "completed") return "completed";
-  const hasFocus = state.focusSessions.some(
-    (session) => session.dayPlanId === dayPlan.id && session.status === "completed"
+  const focusSessions = getFocusSessionsForDay(state, dayPlan).filter(
+    (session) => resolveFocusSessionStatus(session) === "completed" || session.status === "ended_early"
   );
-  const hasLearning = state.learningEntries.some((entry) => entry.dayPlanId === dayPlan.id);
-  if (hasFocus || hasLearning || dayPlan.status === "active") return "partial";
+  const learningSessions = getLearningSessionsForDay(state, dayPlan);
+  const legacyLearningEntries = getLegacyLearningEntriesForDay(state, dayPlan);
+  const status = resolveDailyActivityStatus({
+    focusSessions,
+    learningSessions: learningSessions.length > 0 ? learningSessions : legacyLearningEntries.map((entry) => ({ id: entry.id }))
+  });
+  if (status !== "not_started") return status;
   if (dayPlan.status === "missed") return "missed";
   return "not_started";
 }
 
 function updatedTimelineDays(state: MonkMVPState, dayPlan: DayPlan): TimelineDay[] {
   const timestamp = nowIso();
-  const focusMinutes = state.focusSessions
-    .filter((session) => session.dayPlanId === dayPlan.id && session.status === "completed")
-    .reduce((sum, session) => sum + session.durationMinutes, 0);
-  const learningMinutes = state.learningEntries
-    .filter((entry) => entry.dayPlanId === dayPlan.id)
-    .reduce((sum, entry) => sum + (entry.durationMinutes ?? 0), 0);
+  const focusMinutes = getFocusSessionsForDay(state, dayPlan)
+    .reduce((sum, session) => sum + (session.focusDurationMinutes ?? session.durationMinutes), 0);
+  const learningMinutes = getLegacyLearningEntriesForDay(state, dayPlan)
+    .reduce((sum, entry) => sum + (entry.durationMinutes ?? 0), 0) +
+    getLearningSessionsForDay(state, dayPlan)
+      .reduce((sum, session) => sum + Math.round(session.actualDurationSeconds / 60), 0);
   const journalCompleted = state.journalEntries.some((entry) => entry.dayPlanId === dayPlan.id);
   const relapseCount = state.relapseLogs.filter((log) => log.dayPlanId === dayPlan.id).length;
   const existing = state.timelineDays.find(
@@ -296,7 +334,8 @@ export const useMonkStore = create<MonkStore>((set, get) => ({
   hydrate: () => {
     const stored = loadState();
     if (stored) {
-      let timelineEvents = stored.timelineEvents || [];
+      const focusSessions = (stored.focusSessions || []).map((session) => normalizeFocusSessionRecord(session));
+      let timelineEvents = normalizeFocusTimelineEvents(stored.timelineEvents || [], focusSessions);
       if (timelineEvents.length === 0) {
         if (stored.activeSeason) {
           timelineEvents.push({
@@ -335,8 +374,8 @@ export const useMonkStore = create<MonkStore>((set, get) => ({
             createdAt: j.createdAt || nowIso()
           });
         });
-        stored.focusSessions.forEach((s) => {
-          if (s.status === "completed") {
+        focusSessions.forEach((s) => {
+          if (resolveFocusSessionStatus(s) === "completed") {
             const goal = stored.goals.find((g) => g.id === s.goalId);
             timelineEvents.push({
               id: `legacy_focus_${s.id}`,
@@ -344,8 +383,8 @@ export const useMonkStore = create<MonkStore>((set, get) => ({
               seasonId: s.seasonId,
               relatedGoalId: s.goalId || null,
               sourceId: s.id,
-              title: `Focused for ${s.durationMinutes} minutes`,
-              description: goal ? `Moved forward: ${goal.title}` : undefined,
+              title: `${FOCUS_PRESETS[s.preset ?? s.timerMode ?? "deep_work"].shortLabel} completed`,
+              description: formatFocusSessionTimelineDescription(s, goal ? `Moved forward: ${goal.title}` : undefined),
               occurredAt: s.endTime || s.startTime,
               createdAt: s.createdAt || nowIso()
             });
@@ -353,9 +392,22 @@ export const useMonkStore = create<MonkStore>((set, get) => ({
         });
       }
 
+      const timelineDays = (stored.timelineDays || []).map((day) => {
+        const dayPlan = stored.dayPlans.find(
+          (plan) => plan.seasonId === day.seasonId && plan.date === day.date
+        );
+        if (!dayPlan) return day;
+        return {
+          ...day,
+          status: deriveTimelineStatus({ ...stored, focusSessions }, dayPlan)
+        };
+      });
+
       set({
         ...createInitialState(),
         ...stored,
+        focusSessions,
+        timelineDays,
         timelineEvents,
         appSettings: {
           ...createInitialState().appSettings,
@@ -822,11 +874,19 @@ export const useMonkStore = create<MonkStore>((set, get) => ({
     withPersist(set, get, next);
   },
 
-  startFocusSession: (timerMode = "deep_work") => {
+  startFocusSession: (preset = "deep_work", customMinutes = 50) => {
     const state = get();
     const plan = findTodayPlan(state);
     if (!plan || !state.activeSeason) return undefined;
     const timestamp = nowIso();
+    const safeCustomMinutes = Math.max(5, Math.round(customMinutes || 50));
+    const phases = createFocusPhases(preset, safeCustomMinutes);
+    const plannedDurationMinutes = getTotalPlannedMinutes(phases);
+    const focusDurationMinutes = phases
+      .filter((phase) => phase.type === "focus")
+      .reduce((sum, phase) => sum + phase.plannedMinutes, 0);
+    const totalFocusBlocks = phases.filter((phase) => phase.type === "focus").length;
+    const totalBreakBlocks = phases.filter((phase) => phase.type === "break").length;
     const session: FocusSession = {
       id: createId("focus"),
       seasonId: state.activeSeason.id,
@@ -834,17 +894,26 @@ export const useMonkStore = create<MonkStore>((set, get) => ({
       dayPlanId: plan.id,
       goalId: plan.goalId,
       startTime: timestamp,
-      durationMinutes: timerMode === "pomodoro" ? 25 : 50,
+      durationMinutes: focusDurationMinutes,
       status: "running",
-      timerMode,
-      timerState: "work",
+      timerMode: preset,
+      timerState: phases[0]?.type === "break" ? "break" : "work",
       elapsedSeconds: 0,
       createdAt: timestamp,
       updatedAt: timestamp,
-      // New schema properties
       startedAt: timestamp,
-      plannedDurationMinutes: timerMode === "pomodoro" ? 25 : 50,
-      actionId: plan.mainAction || null
+      plannedDurationMinutes,
+      actionId: plan.mainAction || null,
+      preset,
+      completedDurationMinutes: 0,
+      focusDurationMinutes: 0,
+      breakDurationMinutes: 0,
+      completedFocusBlocks: 0,
+      completedBreakBlocks: 0,
+      totalFocusBlocks,
+      totalBreakBlocks,
+      currentPhaseIndex: 0,
+      phases
     };
     const dayPlan = { ...plan, status: "active" as const, updatedAt: timestamp };
     withPersist(set, get, {
@@ -862,12 +931,82 @@ export const useMonkStore = create<MonkStore>((set, get) => ({
     }));
   },
 
-  startBreakSession: (sessionId) => {
+  resetFocusSession: (sessionId) => {
     const state = get();
+    const session = state.focusSessions.find((s) => s.id === sessionId);
+    if (!session) return;
+    const timestamp = nowIso();
+    const preset = session.preset ?? session.timerMode ?? "deep_work";
+    const phases = createFocusPhases(preset, session.durationMinutes);
+    const plannedDurationMinutes = getTotalPlannedMinutes(phases);
+    const totalFocusBlocks = phases.filter((phase) => phase.type === "focus").length;
+    const totalBreakBlocks = phases.filter((phase) => phase.type === "break").length;
+
+    withPersist(set, get, {
+      focusSessions: state.focusSessions.map((item) =>
+        item.id === sessionId
+          ? {
+              ...item,
+              status: "running" as const,
+              startTime: timestamp,
+              startedAt: timestamp,
+              endTime: undefined,
+              endedAt: undefined,
+              plannedDurationMinutes,
+              actualDurationSeconds: undefined,
+              timerState: phases[0]?.type === "break" ? "break" : "work",
+              elapsedSeconds: 0,
+              completedDurationMinutes: 0,
+              focusDurationMinutes: 0,
+              breakDurationMinutes: 0,
+              completedFocusBlocks: 0,
+              completedBreakBlocks: 0,
+              totalFocusBlocks,
+              totalBreakBlocks,
+              currentPhaseIndex: 0,
+              phases,
+              updatedAt: timestamp
+            }
+          : item
+      )
+    });
+  },
+
+  advanceFocusPhase: (sessionId) => {
+    const state = get();
+    const session = state.focusSessions.find((s) => s.id === sessionId);
+    if (!session) return;
+    const phases = session.phases?.length
+      ? session.phases
+      : createFocusPhases(session.preset ?? session.timerMode ?? "deep_work", session.durationMinutes);
+    const currentIndex = session.currentPhaseIndex ?? 0;
+    const nextIndex = currentIndex + 1;
+    const updatedPhases = phases.map((phase, index) => {
+      if (index === currentIndex) {
+        return { ...phase, completedMinutes: phase.plannedMinutes, status: "completed" as const };
+      }
+      if (index === nextIndex) {
+        return { ...phase, status: "running" as const };
+      }
+      return phase;
+    });
+    const currentPhase = updatedPhases[nextIndex];
+    const completedFocusBlocks = updatedPhases.filter((phase) => phase.type === "focus" && phase.status === "completed").length;
+    const completedBreakBlocks = updatedPhases.filter((phase) => phase.type === "break" && phase.status === "completed").length;
     withPersist(set, get, {
       focusSessions: state.focusSessions.map((session) =>
         session.id === sessionId
-          ? { ...session, timerState: "break", elapsedSeconds: 0, updatedAt: nowIso() }
+          ? {
+              ...session,
+              startTime: nowIso(),
+              timerState: currentPhase?.type === "break" ? "break" : "work",
+              elapsedSeconds: 0,
+              currentPhaseIndex: nextIndex,
+              phases: updatedPhases,
+              completedFocusBlocks,
+              completedBreakBlocks,
+              updatedAt: nowIso()
+            }
           : session
       )
     });
@@ -877,9 +1016,8 @@ export const useMonkStore = create<MonkStore>((set, get) => ({
     const state = get();
     const session = state.focusSessions.find((s) => s.id === sessionId);
     if (!session) return;
-    const targetSeconds = session.timerMode === "pomodoro"
-      ? (session.timerState === "break" ? 5 * 60 : 25 * 60)
-      : 50 * 60;
+    const currentPhase = getCurrentFocusPhase(session);
+    const targetSeconds = currentPhase.plannedMinutes * 60;
     const elapsed = Math.min(
       targetSeconds,
       Math.floor((Date.now() - new Date(session.startTime).getTime()) / 1000)
@@ -911,25 +1049,46 @@ export const useMonkStore = create<MonkStore>((set, get) => ({
     const state = get();
     const session = state.focusSessions.find((item) => item.id === sessionId);
     if (!session) return;
-    const end = new Date();
-    const durationMinutes = session.timerMode === "pomodoro"
-      ? 25
-      : (session.timerMode === "deep_work"
-          ? 50
-          : Math.max(1, Math.round((end.getTime() - new Date(session.startTime).getTime()) / 60000))
-        );
-    const actualDurationSeconds = session.elapsedSeconds || (durationMinutes * 60);
+    const endTimestamp = nowIso();
+    const phases = session.phases?.length
+      ? session.phases
+      : createFocusPhases(session.preset ?? session.timerMode ?? "deep_work", session.durationMinutes);
+    const completedPhases = phases.map((phase) => ({
+      ...phase,
+      completedMinutes: phase.plannedMinutes,
+      status: "completed" as const
+    }));
+    const completedSession = { ...session, phases: completedPhases, currentPhaseIndex: phases.length - 1 };
+    const summary = summarizeFocusSession(completedSession, endTimestamp, "completed");
+    const actualDurationSeconds = summary.completedDurationMinutes * 60;
 
     const focusSessions = state.focusSessions.map((item) =>
       item.id === sessionId
         ? {
             ...item,
             status: "completed" as const,
-            endTime: end.toISOString(),
-            endedAt: end.toISOString(),
-            durationMinutes,
+            endTime: endTimestamp,
+            endedAt: endTimestamp,
+            completedAt: endTimestamp,
+            durationMinutes: summary.focusDurationMinutes,
             actualDurationSeconds,
-            updatedAt: end.toISOString()
+            totalDurationSeconds: summary.totalDurationSeconds,
+            focusDurationSeconds: summary.focusDurationSeconds,
+            breakDurationSeconds: summary.breakDurationSeconds,
+            segmentsCompleted: summary.segmentsCompleted,
+            expectedTotalDurationSeconds: summary.expectedTotalDurationSeconds,
+            expectedFocusDurationSeconds: summary.expectedFocusDurationSeconds,
+            expectedBreakDurationSeconds: summary.expectedBreakDurationSeconds,
+            expectedSegmentsCompleted: summary.expectedSegmentsCompleted,
+            completedDurationMinutes: summary.completedDurationMinutes,
+            focusDurationMinutes: summary.focusDurationMinutes,
+            breakDurationMinutes: summary.breakDurationMinutes,
+            completedFocusBlocks: summary.completedFocusBlocks,
+            completedBreakBlocks: summary.completedBreakBlocks,
+            totalFocusBlocks: summary.totalFocusBlocks,
+            totalBreakBlocks: summary.totalBreakBlocks,
+            phases: summary.phases,
+            updatedAt: endTimestamp
           }
         : item
     );
@@ -941,10 +1100,11 @@ export const useMonkStore = create<MonkStore>((set, get) => ({
       seasonId: state.activeSeason?.id,
       relatedGoalId: session.goalId || null,
       sourceId: sessionId,
-      title: `Focused for ${durationMinutes} minutes`,
-      description: goal ? `Moved forward: ${goal.title}` : undefined,
-      occurredAt: end.toISOString(),
-      createdAt: end.toISOString()
+      title: `${FOCUS_PRESETS[summary.preset].shortLabel} completed`,
+      description: formatFocusSessionTimelineDescription(summary, goal ? `Moved forward: ${goal.title}` : undefined),
+      occurredAt: endTimestamp,
+      createdAt: endTimestamp,
+      focusSession: summary
     };
 
     const plan = state.dayPlans.find((day) => day.id === session.dayPlanId);
@@ -955,9 +1115,14 @@ export const useMonkStore = create<MonkStore>((set, get) => ({
       });
       return;
     }
+    const provisionalBase: MonkMVPState = {
+      ...snapshot(state),
+      focusSessions
+    };
+    const timelineStatus = deriveTimelineStatus(provisionalBase, plan);
     const dayPlan = {
       ...plan,
-      status: plan.status === "completed" ? ("completed" as const) : ("active" as const),
+      status: timelineStatus === "completed" ? ("completed" as const) : ("active" as const),
       updatedAt: nowIso()
     };
     const base: MonkMVPState = {
@@ -978,45 +1143,63 @@ export const useMonkStore = create<MonkStore>((set, get) => ({
     const session = state.focusSessions.find((s) => s.id === sessionId);
     if (!session) return;
 
-    const elapsedSeconds = session.elapsedSeconds || Math.floor((Date.now() - new Date(session.startTime).getTime()) / 1000);
+    const currentPhase = getCurrentFocusPhase(session);
+    const elapsedSeconds = Math.min(
+      currentPhase.plannedMinutes * 60,
+      session.elapsedSeconds || Math.floor((Date.now() - new Date(session.startTime).getTime()) / 1000)
+    );
     const endTimestamp = nowIso();
+    const summary = summarizeFocusSession(session, endTimestamp, "ended_early", elapsedSeconds);
+    const focusSessions = state.focusSessions.map((s) =>
+      s.id === sessionId
+        ? {
+            ...s,
+            status: "ended_early" as const,
+            endTime: endTimestamp,
+            endedAt: endTimestamp,
+            actualDurationSeconds: summary.completedDurationMinutes * 60,
+            totalDurationSeconds: summary.totalDurationSeconds,
+            focusDurationSeconds: summary.focusDurationSeconds,
+            breakDurationSeconds: summary.breakDurationSeconds,
+            segmentsCompleted: summary.segmentsCompleted,
+            expectedTotalDurationSeconds: summary.expectedTotalDurationSeconds,
+            expectedFocusDurationSeconds: summary.expectedFocusDurationSeconds,
+            expectedBreakDurationSeconds: summary.expectedBreakDurationSeconds,
+            expectedSegmentsCompleted: summary.expectedSegmentsCompleted,
+            durationMinutes: summary.focusDurationMinutes,
+            completedDurationMinutes: summary.completedDurationMinutes,
+            focusDurationMinutes: summary.focusDurationMinutes,
+            breakDurationMinutes: summary.breakDurationMinutes,
+            completedFocusBlocks: summary.completedFocusBlocks,
+            completedBreakBlocks: summary.completedBreakBlocks,
+            totalFocusBlocks: summary.totalFocusBlocks,
+            totalBreakBlocks: summary.totalBreakBlocks,
+            phases: summary.phases,
+            updatedAt: endTimestamp
+          }
+        : s
+    );
 
-    if (elapsedSeconds >= 60) {
-      const focusSessions = state.focusSessions.map((s) =>
-        s.id === sessionId
-          ? {
-              ...s,
-              status: "abandoned" as const,
-              endTime: endTimestamp,
-              endedAt: endTimestamp,
-              actualDurationSeconds: elapsedSeconds,
-              updatedAt: endTimestamp
-            }
-          : s
-      );
+    const event: TimelineEvent = {
+      id: createId("event"),
+      type: "focus_session",
+      seasonId: state.activeSeason?.id,
+      relatedGoalId: session.goalId || null,
+      sourceId: sessionId,
+      title: `${FOCUS_PRESETS[summary.preset].shortLabel} ended early`,
+      description: formatFocusSessionTimelineDescription(summary, "saved"),
+      occurredAt: endTimestamp,
+      createdAt: endTimestamp,
+      focusSession: summary
+    };
 
-      const event: TimelineEvent = {
-        id: createId("event"),
-        type: "focus_session",
-        seasonId: state.activeSeason?.id,
-        relatedGoalId: session.goalId || null,
-        sourceId: sessionId,
-        title: "Focus session ended early",
-        description: "You still showed up. Try again when ready.",
-        occurredAt: endTimestamp,
-        createdAt: endTimestamp
-      };
-
-      withPersist(set, get, {
-        focusSessions,
-        timelineEvents: [...state.timelineEvents, event]
-      });
-    } else {
-      // Discard sessions under 60 seconds
-      withPersist(set, get, {
-        focusSessions: state.focusSessions.filter((s) => s.id !== sessionId)
-      });
-    }
+    const plan = state.dayPlans.find((day) => day.id === session.dayPlanId);
+    const base: MonkMVPState = { ...snapshot(state), focusSessions };
+    withPersist(set, get, {
+      focusSessions,
+      timelineDays: plan ? updatedTimelineDays(base, plan) : state.timelineDays,
+      timelineEvents: [...state.timelineEvents, event]
+    });
   },
 
   saveLearningEntry: (input) => {
@@ -1157,6 +1340,11 @@ export const useMonkStore = create<MonkStore>((set, get) => ({
     const timestamp = nowIso();
     const goal = session.relatedGoalId ? state.goals.find((g) => g.id === session.relatedGoalId) : null;
     const durationMin = Math.round(session.actualDurationSeconds / 60);
+    const sessionDate = (session.endedAt ?? session.startedAt).slice(0, 10);
+    const plan = state.dayPlans.find(
+      (day) => day.seasonId === session.seasonId && day.date === sessionDate
+    );
+    const learningSessions = [...state.learningSessions, session];
 
     const event: TimelineEvent = {
       id: createId("event"),
@@ -1170,8 +1358,29 @@ export const useMonkStore = create<MonkStore>((set, get) => ({
       createdAt: timestamp
     };
 
+    if (plan) {
+      const base: MonkMVPState = { ...snapshot(state), learningSessions };
+      const timelineStatus = deriveTimelineStatus(base, plan);
+      const dayPlan = {
+        ...plan,
+        status: timelineStatus === "completed" ? ("completed" as const) : ("active" as const),
+        updatedAt: timestamp
+      };
+      const baseWithDayPlan: MonkMVPState = {
+        ...base,
+        dayPlans: state.dayPlans.map((day) => (day.id === dayPlan.id ? dayPlan : day))
+      };
+      withPersist(set, get, {
+        learningSessions,
+        dayPlans: baseWithDayPlan.dayPlans,
+        timelineDays: updatedTimelineDays(baseWithDayPlan, dayPlan),
+        timelineEvents: [...state.timelineEvents, event]
+      });
+      return;
+    }
+
     withPersist(set, get, {
-      learningSessions: [...state.learningSessions, session],
+      learningSessions,
       timelineEvents: [...state.timelineEvents, event]
     });
   },

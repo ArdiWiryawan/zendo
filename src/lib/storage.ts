@@ -1,4 +1,5 @@
 import type { MonkMVPState } from "../types/app";
+import { normalizeFocusSessionRecord, normalizeFocusTimelineEvents } from "../constants/focusSessionStatus";
 
 export const STORAGE_KEY = "monk_mode_pwa_state_v1";
 export const JOURNAL_DRAFT_KEY = "monk_journal_draft_v1";
@@ -49,6 +50,9 @@ export function loadState(): MonkMVPState | null {
     }
   }
 
+  state.focusSessions = (state.focusSessions ?? []).map((session) => normalizeFocusSessionRecord(session));
+  state.timelineEvents = normalizeFocusTimelineEvents(state.timelineEvents ?? [], state.focusSessions);
+
   return state;
 }
 
@@ -58,7 +62,7 @@ export function saveState(state: MonkMVPState): void {
 
   // Write to separate keys for Focus Sessions, Learning Sessions, and Timeline Events
   if (state.focusSessions) {
-    localStorage.setItem("focusSessions", JSON.stringify(state.focusSessions));
+    localStorage.setItem("focusSessions", JSON.stringify(state.focusSessions.map((session) => normalizeFocusSessionRecord(session))));
   }
   if (state.learningSessions) {
     localStorage.setItem("learningSessions", JSON.stringify(state.learningSessions));
@@ -66,7 +70,7 @@ export function saveState(state: MonkMVPState): void {
     localStorage.setItem("learningSessions", JSON.stringify([]));
   }
   if (state.timelineEvents) {
-    localStorage.setItem("timelineEvents", JSON.stringify(state.timelineEvents));
+    localStorage.setItem("timelineEvents", JSON.stringify(normalizeFocusTimelineEvents(state.timelineEvents, state.focusSessions)));
   } else {
     localStorage.setItem("timelineEvents", JSON.stringify([]));
   }

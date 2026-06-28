@@ -40,6 +40,14 @@ import {
   Textarea
 } from "../components/ui";
 import { habitOptions, learningTypes, defaultWeeklyTargets } from "../constants/defaultData";
+import { DAILY_STATUS_LABELS, getDailyStatusHelper, resolveDailyActivityStatus } from "../constants/dailyActivityStatus";
+import { FOCUS_PRESETS, getCompletedSeconds, getCurrentFocusPhase } from "../constants/focusPresets";
+import {
+  formatFocusSessionTimelineDescription,
+  getFocusSessionPreset,
+  normalizeFocusSessionRecord,
+  resolveFocusSessionStatus
+} from "../constants/focusSessionStatus";
 import { onboardingOrder, routes } from "../constants/routes";
 import {
   addDaysToDate,
@@ -67,7 +75,7 @@ import {
 } from "../lib/validation";
 import { selectActiveGoals, selectCurrentWeeklyPlan, selectTodayPlan, selectJournalEntryForToday } from "../store/selectors";
 import { useMonkStore } from "../store/useMonkStore";
-import type { EnergyLevel, JournalAnswers, LearningType, SeasonDurationPreset, TimelineStatus, LearningSourceType, LearningSession, TimelineEvent, TimelineEventType } from "../types/app";
+import type { EnergyLevel, FocusSession, FocusSessionPreset, JournalAnswers, JournalEntry, LearningType, SeasonDurationPreset, TimelineStatus, LearningSourceType, LearningSession, TimelineEvent, TimelineEventType, MonkMVPState } from "../types/app";
 import { playZenBell } from "../lib/audio";
 
 const promptsBig90Days = [
@@ -143,6 +151,24 @@ const promptsDailyJournal = [
   "Apa bukti kecil bahwa saya bergerak maju hari ini?"
 ];
 
+const JOURNAL_QUESTION_LABELS: Record<keyof JournalAnswers, string> = {
+  whatMovedToday: "What moved today?",
+  whatDistractedMe: "What distracted me?",
+  whatDidILearn: "What did I learn today?",
+  whatShouldBeEasierTomorrow: "What should be easier tomorrow?",
+  whatShouldBeHarderTomorrow: "What should be harder tomorrow?"
+};
+
+function getJournalAnswerItems(answers: JournalAnswers) {
+  return (Object.keys(JOURNAL_QUESTION_LABELS) as Array<keyof JournalAnswers>)
+    .map((key) => ({
+      id: key,
+      question: JOURNAL_QUESTION_LABELS[key],
+      answer: answers[key]?.trim()
+    }))
+    .filter((item): item is { id: keyof JournalAnswers; question: string; answer: string } => Boolean(item.answer));
+}
+
 const promptsClosing90Days = [
   "Apa perubahan terbesar dalam diri saya setelah 90 hari ini?",
   "Apa kebiasaan yang paling berdampak?",
@@ -162,7 +188,7 @@ export default function App() {
   const focusSessions = useMonkStore((state) => state.focusSessions);
   const tickFocusSession = useMonkStore((state) => state.tickFocusSession);
   const completeFocusSession = useMonkStore((state) => state.completeFocusSession);
-  const startBreakSession = useMonkStore((state) => state.startBreakSession);
+  const advanceFocusPhase = useMonkStore((state) => state.advanceFocusPhase);
 
   const activeSession = useMemo(() => {
     return focusSessions.find((session) => ["running", "paused"].includes(session.status));
@@ -177,16 +203,17 @@ export default function App() {
   useEffect(() => {
     if (!activeSession || activeSession.status !== "running") return;
     const startMs = new Date(activeSession.startTime).getTime();
-    const targetSeconds = activeSession.timerMode === "pomodoro"
-      ? (activeSession.timerState === "break" ? 5 * 60 : 25 * 60)
-      : 50 * 60;
+    const currentPhase = getCurrentFocusPhase(activeSession);
+    const targetSeconds = currentPhase.plannedMinutes * 60;
 
     const timer = window.setInterval(() => {
       const elapsed = Math.floor((Date.now() - startMs) / 1000);
 
       if (elapsed >= targetSeconds) {
-        if (activeSession.timerMode === "pomodoro" && activeSession.timerState === "work") {
-          startBreakSession(activeSession.id);
+        const phases = activeSession.phases ?? [];
+        const currentIndex = activeSession.currentPhaseIndex ?? 0;
+        if (currentIndex < phases.length - 1) {
+          advanceFocusPhase(activeSession.id);
           playZenBell();
           if ("vibrate" in navigator) navigator.vibrate([200, 100, 200]);
         } else {
@@ -199,7 +226,7 @@ export default function App() {
       }
     }, 1000);
     return () => window.clearInterval(timer);
-  }, [activeSession?.id, activeSession?.status, activeSession?.startTime, activeSession?.timerState, activeSession?.timerMode, tickFocusSession, completeFocusSession, startBreakSession]);
+  }, [activeSession?.id, activeSession?.status, activeSession?.startTime, activeSession?.currentPhaseIndex, activeSession?.phases, tickFocusSession, completeFocusSession, advanceFocusPhase]);
 
   if (!ready) {
     return (
@@ -277,6 +304,329 @@ function ProtectedMain({ children, allowEnded = false }: { children: JSX.Element
     return <Navigate to={routes.seasonEnd} replace />;
   }
   return <AppShell>{children}</AppShell>;
+}
+
+function getDailyActivity(store: MonkMVPState, date: string) {
+  const dayPlanIds = store.dayPlans.filter((plan) => plan.date === date).map((plan) => plan.id);
+  const focusSessions = store.focusSessions.filter((session) => {
+    const sessionDate = (session.endedAt ?? session.endTime ?? session.startedAt ?? session.startTime).slice(0, 10);
+    return (dayPlanIds.includes(session.dayPlanId) || sessionDate === date) && ["completed", "ended_early"].includes(session.status);
+  });
+  const learningSessions = store.learningSessions.filter(
+    (session) => (session.endedAt ?? session.startedAt).slice(0, 10) === date && session.status === "completed"
+  );
+  const legacyLearningEntries = store.learningEntries.filter((entry) => dayPlanIds.includes(entry.dayPlanId));
+  return { focusSessions, learningSessions, legacyLearningEntries };
+}
+
+function getDailyStatusForDate(store: MonkMVPState, date: string) {
+  const day = store.timelineDays.find((item) => item.date === date);
+  if (day?.status === "relapse" || day?.status === "rest") return day.status;
+  return getCoreDailyStatusForDate(store, date);
+}
+
+function getCoreDailyStatusForDate(store: MonkMVPState, date: string) {
+  const activity = getDailyActivity(store, date);
+  return resolveDailyActivityStatus({
+    focusSessions: activity.focusSessions,
+    learningSessions: activity.learningSessions.length > 0
+      ? activity.learningSessions
+      : activity.legacyLearningEntries.map((entry) => ({ id: entry.id }))
+  });
+}
+
+function getDailyHelperForDate(store: MonkMVPState, date: string) {
+  const activity = getDailyActivity(store, date);
+  return getDailyStatusHelper({
+    focusSessions: activity.focusSessions,
+    learningSessions: activity.learningSessions.length > 0
+      ? activity.learningSessions
+      : activity.legacyLearningEntries.map((entry) => ({ id: entry.id }))
+  });
+}
+
+function getFocusSummaryForDate(store: MonkMVPState, date: string) {
+  const session = getDailyActivity(store, date).focusSessions[0];
+  if (!session) return "Not done yet";
+  const preset = FOCUS_PRESETS[session.preset ?? session.timerMode ?? "deep_work"].shortLabel;
+  return `${formatFocusSessionTimelineDescription(normalizeFocusSessionRecord(session))} · ${preset}`;
+}
+
+function getLearningSummaryForDate(store: MonkMVPState, date: string) {
+  const activity = getDailyActivity(store, date);
+  const session = activity.learningSessions[0];
+  if (session) {
+    const minutes = Math.round(session.actualDurationSeconds / 60);
+    const sourceType = session.sourceType.replace("_", " ");
+    return `${minutes} min · ${sourceType} · ${session.sourceTitle || "External Source"}`;
+  }
+  const entry = activity.legacyLearningEntries[0];
+  if (entry) return `${entry.durationMinutes ?? 0} min · ${entry.title}`;
+  return "Not done yet";
+}
+
+function formatTimer(seconds: number) {
+  const safeSeconds = Math.max(0, seconds);
+  const minsStr = Math.floor(safeSeconds / 60).toString().padStart(2, "0");
+  const secsStr = (safeSeconds % 60).toString().padStart(2, "0");
+  return `${minsStr}:${secsStr}`;
+}
+
+function getSessionPhases(session: FocusSession) {
+  return session.phases?.length
+    ? session.phases
+    : FOCUS_PRESETS[session.preset ?? session.timerMode ?? "deep_work"].buildPhases(session.durationMinutes);
+}
+
+function getPhasePosition(session: FocusSession, type = getCurrentFocusPhase(session).type) {
+  const phases = getSessionPhases(session);
+  const currentIndex = session.currentPhaseIndex ?? 0;
+  const total = phases.filter((item) => item.type === type).length;
+  const current = phases.slice(0, currentIndex + 1).filter((item) => item.type === type).length;
+  return { current: Math.max(1, current), total: Math.max(1, total) };
+}
+
+function getPhaseRoundLabel(session: FocusSession) {
+  const phase = getCurrentFocusPhase(session);
+  const position = getPhasePosition(session, phase.type);
+  return `${phase.type === "break" ? "Break" : "Focus"} ${position.current} of ${position.total}`;
+}
+
+function getRemainingFocusBlocks(session: FocusSession) {
+  const phases = getSessionPhases(session);
+  const currentIndex = session.currentPhaseIndex ?? 0;
+  return phases.slice(currentIndex + 1).filter((item) => item.type === "focus").length;
+}
+
+function getSessionLeftTitle(session: FocusSession) {
+  return (session.preset ?? session.timerMode) === "pomodoro" ? "Sessions left" : "Session left";
+}
+
+function getSessionLeftLabel(session: FocusSession) {
+  const preset = session.preset ?? session.timerMode ?? "deep_work";
+  const remainingFocusBlocks = getRemainingFocusBlocks(session);
+  if (preset === "custom") return "Single focus block";
+  if (remainingFocusBlocks === 0) return "Final focus block";
+  if (preset === "pomodoro") {
+    return `${remainingFocusBlocks} ${remainingFocusBlocks === 1 ? "cycle" : "cycles"} after this`;
+  }
+  return `${remainingFocusBlocks} focus ${remainingFocusBlocks === 1 ? "block" : "blocks"} after this`;
+}
+
+function getBreakGuidance(session: FocusSession) {
+  const phase = getCurrentFocusPhase(session);
+  if (phase.plannedMinutes >= 10) {
+    return {
+      title: "10-minute recovery",
+      description: "Step away from your screen. Walk, stretch, refill water, and reset your desk before the next focus block."
+    };
+  }
+  return {
+    title: "5-minute reset",
+    description: "Stand up, drink water, stretch your shoulders, and rest your eyes."
+  };
+}
+
+function getNextFocusLabel(session: FocusSession) {
+  const phases = getSessionPhases(session);
+  const currentIndex = session.currentPhaseIndex ?? 0;
+  const nextFocusIndex = phases.findIndex((item, index) => index > currentIndex && item.type === "focus");
+  if (nextFocusIndex === -1) return "Next: Complete";
+  const totalFocusBlocks = phases.filter((item) => item.type === "focus").length;
+  const nextFocusPosition = phases.slice(0, nextFocusIndex + 1).filter((item) => item.type === "focus").length;
+  return `Next: Focus ${nextFocusPosition} of ${totalFocusBlocks}`;
+}
+
+function FocusSessionPanel({
+  session,
+  mainAction,
+  compact = false,
+  onOpenFocus
+}: {
+  session: FocusSession;
+  mainAction?: string;
+  compact?: boolean;
+  onOpenFocus?: () => void;
+}) {
+  const store = useMonkStore();
+  const phase = getCurrentFocusPhase(session);
+  const targetSeconds = phase.plannedMinutes * 60;
+  const remaining = Math.max(0, targetSeconds - (session.elapsedSeconds || 0));
+  const completedSeconds = getCompletedSeconds(session);
+  const plannedMinutes = session.plannedDurationMinutes ?? 0;
+  const progressPercent = plannedMinutes > 0 ? Math.min(100, (completedSeconds / (plannedMinutes * 60)) * 100) : 0;
+  const modeLabel = FOCUS_PRESETS[session.preset ?? session.timerMode ?? "deep_work"].shortLabel;
+  const blockLabel = getPhaseRoundLabel(session);
+  const segmentLabel = phase.type === "break" ? "break remaining" : "focus remaining";
+  const breakGuidance = getBreakGuidance(session);
+  const progressLabel = `${Math.round(progressPercent)}%`;
+
+  return (
+    <Card important className={`text-center bg-monk-soft border-monk-border-strong relative ${compact ? "p-6" : "p-8"}`}>
+      <p className="text-[10px] font-bold text-monk-accent uppercase tracking-widest">
+        {modeLabel}
+      </p>
+      <p className="mt-1 text-sm font-bold text-monk-text">
+        {blockLabel}
+      </p>
+
+      <div className={`${compact ? "my-6" : "my-10"} flex items-center justify-center`}>
+        <div className={`${compact ? "h-32 w-32" : "h-44 w-44"} relative rounded-full border-2 border-monk-border flex flex-col items-center justify-center bg-monk-bg shadow-inner`}>
+          <p className={`${compact ? "text-3xl" : "text-5xl"} font-mono font-bold leading-none text-monk-text`}>
+            {formatTimer(remaining)}
+          </p>
+          <p className="mt-2 text-[10px] uppercase font-bold text-monk-muted tracking-wider">
+            {segmentLabel}
+          </p>
+        </div>
+      </div>
+
+      {phase.type === "break" ? (
+        <div className={`${compact ? "px-2" : "max-w-sm mx-auto"} mb-5 text-left`}>
+          <div className="rounded-2xl border border-monk-border bg-monk-bg p-4">
+            <p className="text-[10px] font-bold uppercase tracking-wider text-monk-accent">{breakGuidance.title}</p>
+            <p className="mt-2 text-sm leading-6 text-monk-text">{breakGuidance.description}</p>
+            <p className="mt-3 text-xs font-semibold text-monk-muted">{getNextFocusLabel(session)}</p>
+          </div>
+        </div>
+      ) : (
+        <div className={`${compact ? "px-2" : "max-w-sm mx-auto"} mb-5 text-left`}>
+          <div className="rounded-2xl border border-monk-border bg-monk-bg p-4">
+            <p className="text-[10px] font-bold uppercase tracking-wider text-monk-muted">{getSessionLeftTitle(session)}:</p>
+            <p className="mt-1 text-sm font-bold text-monk-text">{getSessionLeftLabel(session)}</p>
+          </div>
+          <p className="mt-4 text-sm leading-6 text-monk-muted font-medium">
+            {mainAction ? `Current task: ${mainAction}` : "Stay with one task. If distractions appear, write them down and return to the work."}
+          </p>
+          {mainAction ? (
+            <p className="mt-1 text-xs leading-5 text-monk-muted">
+              Stay with one task. If distractions appear, write them down and return to the work.
+            </p>
+          ) : null}
+        </div>
+      )}
+
+      <div className="mb-5">
+        <div className="mb-2 flex items-center justify-between text-[10px] font-bold text-monk-muted uppercase tracking-wider">
+          <span>Session progress</span>
+          <span>{progressLabel}</span>
+        </div>
+        <div className="h-2 rounded-full bg-monk-border overflow-hidden">
+          <div className="h-full rounded-full bg-monk-accent" style={{ width: `${progressPercent}%` }} />
+        </div>
+      </div>
+
+      <div className="flex flex-wrap gap-2">
+        {session.status === "running" ? (
+          <SecondaryButton onClick={() => store.pauseFocusSession(session.id)} className="flex-1">
+            Pause
+          </SecondaryButton>
+        ) : (
+          <PrimaryButton onClick={() => store.resumeFocusSession(session.id)} className="flex-1">
+            Resume
+          </PrimaryButton>
+        )}
+        <button
+          type="button"
+          className="px-4 py-2 border border-monk-border rounded-xl text-xs font-semibold text-monk-muted hover:border-monk-accent hover:text-monk-accent active:scale-95 transition"
+          onClick={() => store.resetFocusSession(session.id)}
+        >
+          Reset
+        </button>
+        <button
+          type="button"
+          className="px-4 py-2 border border-monk-border rounded-xl text-xs font-semibold text-monk-danger hover:border-monk-danger active:scale-95 transition"
+          onClick={() => store.abandonFocusSession(session.id)}
+        >
+          End
+        </button>
+      </div>
+
+      {onOpenFocus ? (
+        <button
+          type="button"
+          className="mt-4 text-[10px] font-bold text-monk-muted hover:text-monk-accent flex items-center justify-center gap-1 mx-auto"
+          onClick={onOpenFocus}
+        >
+          Enter Distraction-Free Mode →
+        </button>
+      ) : null}
+    </Card>
+  );
+}
+
+function FocusSessionStarter({ compact = false }: { compact?: boolean }) {
+  const store = useMonkStore();
+  const [selectedPreset, setSelectedPreset] = useState<FocusSessionPreset>("deep_work");
+  const [customMinutes, setCustomMinutes] = useState(50);
+  const selected = FOCUS_PRESETS[selectedPreset];
+  const phases = selected.buildPhases(customMinutes);
+  const totalMinutes = phases.reduce((sum, phase) => sum + phase.plannedMinutes, 0);
+  const canStart = selectedPreset !== "custom" || customMinutes >= 5;
+
+  return (
+    <Card className="bg-monk-surface border-monk-border p-5">
+      <p className="font-bold text-sm">{compact ? "Focus Session" : "Focus Strategy"}</p>
+      <p className="mt-1 text-xs text-monk-muted mb-4">Choose how you want to move today.</p>
+      <div className="grid grid-cols-3 gap-2 mb-4">
+        {(["custom", "deep_work", "pomodoro"] as FocusSessionPreset[]).map((preset) => (
+          <button
+            key={preset}
+            type="button"
+            className={`min-h-11 rounded-xl border px-2 text-xs font-semibold transition active:scale-98 ${
+              selectedPreset === preset
+                ? "border-monk-accent bg-monk-accent-soft text-monk-accent"
+                : "border-monk-border bg-monk-soft text-monk-muted hover:border-monk-border-strong"
+            }`}
+            onClick={() => setSelectedPreset(preset)}
+          >
+            {FOCUS_PRESETS[preset].shortLabel}
+          </button>
+        ))}
+      </div>
+
+      {selectedPreset === "custom" ? (
+        <div className="mb-4">
+          <label className="text-[10px] font-bold uppercase tracking-wider text-monk-muted" htmlFor="custom-focus-minutes">
+            Duration minutes
+          </label>
+          <input
+            id="custom-focus-minutes"
+            type="number"
+            min={5}
+            max={180}
+            value={customMinutes}
+            onChange={(event) => setCustomMinutes(Number(event.target.value))}
+            className="mt-2 min-h-[48px] w-full rounded-[14px] border border-monk-border bg-monk-soft px-4 text-sm font-semibold text-monk-text focus:border-monk-accent focus:outline-none"
+          />
+          <p className="mt-2 text-xs text-monk-muted">Minimum 5 minutes. Recommended max 180 minutes.</p>
+        </div>
+      ) : null}
+
+      <div className="mb-4 rounded-2xl border border-monk-border bg-monk-soft p-4">
+        <p className="text-sm font-semibold text-monk-text">{selected.description}</p>
+        <p className="mt-1 text-xs text-monk-muted">{selected.summary}</p>
+        <div className="mt-3 flex flex-wrap gap-1.5">
+          {phases.map((phase) => (
+            <span
+              key={phase.label}
+              className={`rounded-full px-2 py-1 text-[10px] font-bold ${
+                phase.type === "focus" ? "bg-monk-accent-soft text-monk-accent" : "bg-monk-bg text-monk-muted"
+              }`}
+            >
+              {phase.label} · {phase.plannedMinutes}m
+            </span>
+          ))}
+        </div>
+      </div>
+
+      {!canStart ? <CalmAlert type="warning" title="Choose at least 5 minutes." /> : null}
+      <PrimaryButton disabled={!canStart} onClick={() => store.startFocusSession(selectedPreset, customMinutes)}>
+        Start {selected.shortLabel}
+        <span className="ml-1 text-xs opacity-80">({totalMinutes}m)</span>
+      </PrimaryButton>
+    </Card>
+  );
 }
 
 function OnboardingScreen({ path }: { path: string }) {
@@ -944,7 +1294,6 @@ function TodayScreen() {
   const season = store.activeSeason!;
   const todayPlan = selectTodayPlan(store);
   const activeGoals = selectActiveGoals(store);
-  const [selectedMode, setSelectedMode] = useState<"deep_work" | "pomodoro">("deep_work");
 
   const activeSession = store.focusSessions.find(
     (session) => session.dayPlanId === todayPlan?.id && ["running", "paused"].includes(session.status)
@@ -1104,116 +1453,14 @@ function TodayScreen() {
               <>
                 {todayPlan.status !== "completed" ? (
                   activeSession ? (
-                    // Active Focus Timer Card
-                    (() => {
-                      const targetSeconds = activeSession.timerMode === "pomodoro"
-                        ? (activeSession.timerState === "break" ? 5 * 60 : 25 * 60)
-                        : 50 * 60;
-                      const remaining = Math.max(0, targetSeconds - (activeSession.elapsedSeconds || 0));
-                      const minsStr = Math.floor(remaining / 60).toString().padStart(2, "0");
-                      const secsStr = (remaining % 60).toString().padStart(2, "0");
-                      
-                      return (
-                        <Card important className="text-center bg-monk-soft border-monk-border-strong relative p-6">
-                          <p className="text-[10px] font-bold text-monk-accent uppercase tracking-widest">
-                            {activeSession.timerState === "break" 
-                              ? "Quiet Break" 
-                              : (activeSession.timerMode === "pomodoro" ? "Pomodoro Focus" : "Deep Work Focus")}
-                          </p>
-                          
-                          <div className="my-6 flex items-center justify-center">
-                            <div className="relative h-32 w-32 rounded-full border-2 border-monk-border flex flex-col items-center justify-center bg-monk-bg shadow-inner">
-                              <p className="font-mono text-3xl font-bold leading-none text-monk-text">{minsStr}:{secsStr}</p>
-                              {activeSession.timerMode === "pomodoro" ? (
-                                <p className="text-[9px] uppercase font-bold text-monk-muted mt-1.5 tracking-wider">
-                                  {activeSession.timerState === "break" ? "Break" : "Work"}
-                                </p>
-                              ) : null}
-                            </div>
-                          </div>
-                          
-                          <p className="text-xs text-monk-muted mb-6 leading-relaxed px-4">
-                            {activeSession.timerState === "break"
-                              ? "Rest your eyes. Breathe deeply."
-                              : todayPlan.mainAction || "Stay with one thing."}
-                          </p>
-                          
-                          <div className="flex gap-2">
-                            {activeSession.status === "running" ? (
-                              <SecondaryButton onClick={() => store.pauseFocusSession(activeSession.id)} className="flex-1">
-                                Pause
-                              </SecondaryButton>
-                            ) : (
-                              <PrimaryButton onClick={() => store.resumeFocusSession(activeSession.id)} className="flex-1">
-                                Resume
-                              </PrimaryButton>
-                            )}
-                            <button
-                              type="button"
-                              className="px-4 py-2 border border-monk-border rounded-xl text-xs font-semibold text-monk-danger hover:border-monk-danger active:scale-95 transition"
-                              onClick={() => store.abandonFocusSession(activeSession.id)}
-                            >
-                              End Focus
-                            </button>
-                            {activeSession.timerState === "work" ? (
-                              <button
-                                type="button"
-                                className="px-4 py-2 border border-monk-border rounded-xl text-xs font-semibold text-monk-accent hover:border-monk-accent active:scale-95 transition"
-                                onClick={() => {
-                                  playZenBell();
-                                  store.completeFocusSession(activeSession.id, true);
-                                }}
-                              >
-                                Done
-                              </button>
-                            ) : null}
-                          </div>
-                          
-                          <div className="mt-4">
-                            <button
-                              type="button"
-                              className="text-[10px] font-bold text-monk-muted hover:text-monk-accent flex items-center justify-center gap-1 mx-auto"
-                              onClick={() => navigate(routes.focus)}
-                            >
-                              Enter Distraction-Free Mode →
-                            </button>
-                          </div>
-                        </Card>
-                      );
-                    })()
+                    <FocusSessionPanel
+                      session={activeSession}
+                      mainAction={todayPlan.mainAction}
+                      compact
+                      onOpenFocus={() => navigate(routes.focus)}
+                    />
                   ) : (
-                    // Focus Mode Picker
-                    <Card className="bg-monk-surface border-monk-border p-5">
-                      <p className="font-bold text-sm">Focus Session</p>
-                      <p className="mt-1 text-xs text-monk-muted mb-4">Work on one action that moves your goal forward.</p>
-                      <div className="flex gap-2 mb-4">
-                        <button
-                          type="button"
-                          className={`flex-1 min-h-10 rounded-xl border text-xs font-semibold transition active:scale-98 ${
-                            selectedMode === "deep_work"
-                              ? "border-monk-accent bg-monk-accent-soft text-monk-accent"
-                              : "border-monk-border bg-monk-soft text-monk-muted hover:border-monk-border-strong"
-                          }`}
-                          onClick={() => setSelectedMode("deep_work")}
-                        >
-                          Deep Work (50m)
-                        </button>
-                        <button
-                          type="button"
-                          className={`flex-1 min-h-10 rounded-xl border text-xs font-semibold transition active:scale-98 ${
-                            selectedMode === "pomodoro"
-                              ? "border-monk-accent bg-monk-accent-soft text-monk-accent"
-                              : "border-monk-border bg-monk-soft text-monk-muted hover:border-monk-border-strong"
-                          }`}
-                          onClick={() => setSelectedMode("pomodoro")}
-                        >
-                          Pomodoro (25m)
-                        </button>
-                      </div>
-                      <PrimaryButton onClick={() => store.startFocusSession(selectedMode)}>
-                        Start focus
-                      </PrimaryButton>
-                    </Card>
+                    <FocusSessionStarter compact />
                   )
                 ) : (
                   <div className="space-y-3">
@@ -1449,12 +1696,10 @@ function FocusScreen() {
   const store = useMonkStore();
   const plan = selectTodayPlan(store);
   const goal = plan?.goalId ? store.goals.find((item) => item.id === plan.goalId) : undefined;
-  
+
   const activeSession = store.focusSessions.find(
     (session) => session.dayPlanId === plan?.id && ["running", "paused"].includes(session.status)
   );
-
-  const [selectedMode, setSelectedMode] = useState<"deep_work" | "pomodoro">("deep_work");
 
   if (!plan) {
     return (
@@ -1469,112 +1714,16 @@ function FocusScreen() {
   return (
     <>
       <PageHeader title="Stay with one thing." subtitle={goal?.title ?? "Quiet recovery"} />
-      
       {activeSession ? (
-        (() => {
-          const targetSeconds = activeSession.timerMode === "pomodoro"
-            ? (activeSession.timerState === "break" ? 5 * 60 : 25 * 60)
-            : 50 * 60;
-          const remaining = Math.max(0, targetSeconds - (activeSession.elapsedSeconds || 0));
-          const minsStr = Math.floor(remaining / 60).toString().padStart(2, "0");
-          const secsStr = (remaining % 60).toString().padStart(2, "0");
-
-          return (
-            <div className="space-y-6">
-              <Card important className="text-center p-8 bg-monk-soft border-monk-border-strong relative">
-                <p className="text-[10px] font-bold text-monk-accent uppercase tracking-widest">
-                  {activeSession.timerState === "break" 
-                    ? "Quiet Break" 
-                    : (activeSession.timerMode === "pomodoro" ? "Pomodoro Focus" : "Deep Work Focus")}
-                </p>
-                
-                <div className="my-10 flex items-center justify-center">
-                  <div className="relative h-44 w-44 rounded-full border-2 border-monk-border flex flex-col items-center justify-center bg-monk-bg shadow-inner">
-                    <p className="font-mono text-5xl font-bold leading-none text-monk-text">{minsStr}:{secsStr}</p>
-                    {activeSession.timerMode === "pomodoro" ? (
-                      <p className="text-[10px] uppercase font-bold text-monk-muted mt-2.5 tracking-wider">
-                        {activeSession.timerState === "break" ? "Break" : "Work"}
-                      </p>
-                    ) : null}
-                  </div>
-                </div>
-
-                <p className="text-sm leading-6 text-monk-muted max-w-xs mx-auto mb-4 font-medium">
-                  {activeSession.timerState === "break"
-                    ? "Take a moment to breathe. Relax your attention."
-                    : plan.mainAction || "No switching. No noise. Just this."}
-                </p>
-              </Card>
-
-              <div className="space-y-3">
-                {activeSession.status === "running" ? (
-                  <SecondaryButton onClick={() => store.pauseFocusSession(activeSession.id)}>
-                    Pause
-                  </SecondaryButton>
-                ) : (
-                  <PrimaryButton onClick={() => store.resumeFocusSession(activeSession.id)}>
-                    Resume Focus
-                  </PrimaryButton>
-                )}
-                
-                {activeSession.timerState === "work" ? (
-                  <PrimaryButton
-                    onClick={() => {
-                      playZenBell();
-                      store.completeFocusSession(activeSession.id, true);
-                      navigate(routes.today);
-                    }}
-                  >
-                    Complete Today's Focus
-                  </PrimaryButton>
-                ) : null}
-
-                <GhostButton
-                  className="w-full text-monk-danger border-monk-border"
-                  onClick={() => {
-                    store.abandonFocusSession(activeSession.id);
-                    navigate(routes.today);
-                  }}
-                >
-                  End Focus Session
-                </GhostButton>
-              </div>
-            </div>
-          );
-        })()
+        <div className="space-y-6">
+          <FocusSessionPanel session={activeSession} mainAction={plan.mainAction} />
+          <GhostButton className="w-full" onClick={() => navigate(routes.today)}>
+            Return to Today
+          </GhostButton>
+        </div>
       ) : (
         <div className="space-y-5">
-          <Card className="bg-monk-surface border-monk-border p-5">
-            <p className="font-bold text-sm">Focus Strategy</p>
-            <p className="mt-1 text-xs text-monk-muted mb-4">Choose how you want to move today.</p>
-            <div className="flex gap-2 mb-4">
-              <button
-                type="button"
-                className={`flex-1 min-h-12 rounded-xl border text-xs font-semibold transition active:scale-98 ${
-                  selectedMode === "deep_work"
-                    ? "border-monk-accent bg-monk-accent-soft text-monk-accent"
-                    : "border-monk-border bg-monk-soft text-monk-muted hover:border-monk-border-strong"
-                }`}
-                onClick={() => setSelectedMode("deep_work")}
-              >
-                Deep Work (50m)
-              </button>
-              <button
-                type="button"
-                className={`flex-1 min-h-12 rounded-xl border text-xs font-semibold transition active:scale-98 ${
-                  selectedMode === "pomodoro"
-                    ? "border-monk-accent bg-monk-accent-soft text-monk-accent"
-                    : "border-monk-border bg-monk-soft text-monk-muted hover:border-monk-border-strong"
-                }`}
-                onClick={() => setSelectedMode("pomodoro")}
-              >
-                Pomodoro (25m)
-              </button>
-            </div>
-            <PrimaryButton onClick={() => store.startFocusSession(selectedMode)}>
-              Start Focus Session
-            </PrimaryButton>
-          </Card>
+          <FocusSessionStarter />
         </div>
       )}
     </>
@@ -1865,11 +2014,11 @@ function TimelineStats() {
   
   const totalFocusMinutes = Math.round(
     store.focusSessions
-      .filter((s) => s.status === "completed")
-      .reduce((sum, s) => sum + (s.actualDurationSeconds ?? (s.durationMinutes * 60)), 0) / 60
+      .filter((s) => ["completed", "ended_early"].includes(s.status))
+      .reduce((sum, s) => sum + (s.focusDurationMinutes ?? s.durationMinutes), 0)
   );
     
-  const totalFocusSessions = store.focusSessions.filter((s) => s.status === "completed").length;
+  const totalFocusSessions = store.focusSessions.filter((s) => ["completed", "ended_early"].includes(s.status)).length;
   
   const totalLearningMinutes = Math.round(
     store.learningSessions
@@ -1921,11 +2070,30 @@ function TimelineStats() {
 
 function TimelineEventRow({ event }: { event: TimelineEvent }) {
   const store = useMonkStore();
+  const focusRecord = event.type === "focus_session"
+    ? event.focusSession ?? store.focusSessions.find((session) => session.id === event.sourceId)
+    : undefined;
+  const normalizedFocusRecord = focusRecord ? normalizeFocusSessionRecord(focusRecord) : undefined;
+  const focusCompleted = normalizedFocusRecord ? resolveFocusSessionStatus(normalizedFocusRecord) === "completed" : false;
+  const focusPreset = normalizedFocusRecord ? getFocusSessionPreset(normalizedFocusRecord) : undefined;
+  const focusTitle = focusPreset
+    ? `${FOCUS_PRESETS[focusPreset].shortLabel} ${focusCompleted ? "completed" : "ended early"}`
+    : event.title;
+  const displayTitle = event.type === "focus_session" && normalizedFocusRecord ? focusTitle : event.title;
+  const journalRecord = event.type === "journal_entry"
+    ? store.journalEntries.find((entry) => entry.id === event.sourceId)
+    : undefined;
+  const journalItems = journalRecord ? getJournalAnswerItems(journalRecord.answers) : [];
+  const displayDescription = event.type === "focus_session" && normalizedFocusRecord
+    ? formatFocusSessionTimelineDescription(normalizedFocusRecord, focusCompleted ? undefined : "saved")
+    : event.type === "journal_entry" && journalItems.length > 0
+      ? undefined
+    : event.description;
   const icons: Record<TimelineEventType, JSX.Element> = {
     season_started: <Flag size={14} className="text-monk-accent" />,
     season_completed: <Trophy size={14} className="text-monk-success" />,
     goal_created: <Target size={14} className="text-monk-accent" />,
-    focus_session: event.title.includes("early") 
+    focus_session: !focusCompleted && displayTitle.includes("early") 
       ? <Flame size={14} className="text-monk-warning" /> 
       : <Timer size={14} className="text-monk-success" />,
     learning_session: <Lightbulb size={14} className="text-monk-accent" />,
@@ -1936,7 +2104,7 @@ function TimelineEventRow({ event }: { event: TimelineEvent }) {
     season_started: "bg-monk-accent-soft border-monk-accent/20",
     season_completed: "bg-monk-success-soft border-monk-success/20",
     goal_created: "bg-monk-accent-soft border-monk-accent/20",
-    focus_session: event.title.includes("early") 
+    focus_session: !focusCompleted && displayTitle.includes("early") 
       ? "bg-monk-warning-soft border-monk-warning/20" 
       : "bg-monk-success-soft border-monk-success/20",
     learning_session: "bg-monk-accent-soft border-monk-accent/20",
@@ -1956,12 +2124,22 @@ function TimelineEventRow({ event }: { event: TimelineEvent }) {
       <div className="flex-1 pb-4">
         <Card className="p-3 bg-monk-surface/40 hover:bg-monk-surface transition-colors border border-monk-border/40">
           <div className="flex justify-between items-start gap-2">
-            <h4 className="text-xs font-bold text-monk-text leading-tight">{event.title}</h4>
+            <h4 className="text-xs font-bold text-monk-text leading-tight">{displayTitle}</h4>
             <span className="text-[9px] font-bold text-monk-muted font-mono shrink-0">{timeLabel}</span>
           </div>
-          {event.description && (
-            <p className="mt-1 text-xs text-monk-muted leading-relaxed whitespace-pre-line">{event.description}</p>
+          {displayDescription && (
+            <p className="mt-1 text-xs text-monk-muted leading-relaxed whitespace-pre-line">{displayDescription}</p>
           )}
+          {journalItems.length > 0 ? (
+            <div className="mt-2 space-y-2">
+              {journalItems.map((item) => (
+                <div key={item.id}>
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-monk-muted">{item.question}</p>
+                  <p className="mt-0.5 text-xs font-medium leading-relaxed text-monk-text">{item.answer}</p>
+                </div>
+              ))}
+            </div>
+          ) : null}
         </Card>
       </div>
     </div>
@@ -2022,13 +2200,23 @@ function TimelineScreen() {
       <div className="space-y-5">
         <SeasonProgressCard />
         <TimelineStats />
+        <Card className="p-4 bg-monk-soft border-monk-border">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <p className="text-[10px] font-bold uppercase tracking-widest text-monk-muted">Today</p>
+              <p className="mt-1 text-sm font-semibold text-monk-text">{getDailyHelperForDate(store, getTodayDateString())}</p>
+            </div>
+            <span className="rounded-full border border-monk-border bg-monk-surface px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-monk-muted">
+              {DAILY_STATUS_LABELS[getCoreDailyStatusForDate(store, getTodayDateString())]}
+            </span>
+          </div>
+        </Card>
         <Card className="p-4 space-y-3">
           <p className="text-[10px] font-bold text-monk-muted uppercase tracking-widest border-b border-monk-border pb-2">Weekly Progress Rows</p>
           <div className="space-y-2">
             {chunks.map((weekDates, weekIdx) => {
               const completedInWeek = weekDates.filter(date => {
-                const dayPlan = store.dayPlans.find(dp => dp.date === date);
-                return dayPlan?.status === "completed";
+                return getDailyStatusForDate(store, date) === "completed";
               }).length;
               const rate = Math.round((completedInWeek / 7) * 100);
               
@@ -2037,12 +2225,14 @@ function TimelineScreen() {
                   <span className="text-[10px] font-mono font-bold text-monk-text-soft w-6 shrink-0 text-center">W{weekIdx + 1}</span>
                   <div className="flex-1 grid grid-cols-7 gap-1">
                     {weekDates.map((date) => {
-                       const status = store.timelineDays.find((day) => day.date === date)?.status ?? statusForDate(date);
+                      const status = getDailyStatusForDate(store, date);
+                      const helperText = getDailyHelperForDate(store, date);
                       return (
                         <CalendarCell
                           key={date}
                           date={date}
                           status={status}
+                          helperText={helperText}
                           active={date === getTodayDateString()}
                           onClick={() => {
                             setRetroDate(date);
@@ -2179,20 +2369,17 @@ function TimelineScreen() {
   );
 }
 
-function statusForDate(date: string): TimelineStatus {
-  if (date < getTodayDateString()) return "missed";
-  return "not_started";
-}
-
 function CalendarCell({ 
   date, 
   status, 
   active,
+  helperText,
   onClick 
 }: { 
   date: string; 
   status: TimelineStatus; 
   active?: boolean;
+  helperText?: string;
   onClick?: () => void;
 }) {
   const classes: Record<TimelineStatus, string> = {
@@ -2220,7 +2407,7 @@ function CalendarCell({
 
   return (
     <div 
-      title={date} 
+      title={`${date}${helperText ? ` · ${helperText}` : ""}`} 
       onClick={isEligible ? onClick : undefined}
       className={`aspect-square rounded-xl border flex items-center justify-center font-bold text-xs select-none ${classes[status]} ${
         active ? "ring-2 ring-monk-accent" : ""
@@ -2321,8 +2508,8 @@ function SettingsScreen() {
     if (!season) return;
     
     const totalFocusMinutes = store.focusSessions
-      .filter((s) => s.status === "completed")
-      .reduce((sum, s) => sum + s.durationMinutes, 0);
+      .filter((s) => ["completed", "ended_early"].includes(s.status))
+      .reduce((sum, s) => sum + (s.focusDurationMinutes ?? s.durationMinutes), 0);
       
     const completedDaysCount = store.dayPlans.filter(
       (day) => day.seasonId === season.id && day.status === "completed"
@@ -2471,7 +2658,7 @@ function LibraryScreen() {
 
   const filteredFocus = useMemo(() => {
     return store.focusSessions.filter((s) => {
-      if (s.status !== "completed") return false;
+      if (!["completed", "ended_early"].includes(s.status)) return false;
       const q = searchQuery.toLowerCase();
       const goal = store.goals.find((g) => g.id === s.goalId);
       return (
@@ -2544,26 +2731,43 @@ function LibraryScreen() {
             ) : (
               filteredReflections.map((j) => (
                 <Card key={j.id} className="p-4 bg-monk-surface/30">
-                  <div className="border-b border-monk-border/50 pb-2 mb-2">
-                    <p className="text-xs font-bold text-monk-accent">{formatHumanDate(j.date)}</p>
-                  </div>
-                  <div className="space-y-2">
-                    <div>
-                      <span className="text-[10px] font-bold text-monk-muted uppercase tracking-wider block">Moved today</span>
-                      <p className="text-xs font-semibold leading-relaxed mt-0.5 text-monk-text">{j.answers.whatMovedToday}</p>
+                  <div className="border-b border-monk-border/50 pb-3 mb-3">
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <p className="text-xs font-bold text-monk-accent">{formatHumanDate(j.date)}</p>
+                        <p className="mt-1 text-[10px] font-bold uppercase tracking-wider text-monk-muted">
+                          {getDailyHelperForDate(store, j.date)}
+                        </p>
+                      </div>
+                      <span className="rounded-full border border-monk-border bg-monk-soft px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-monk-muted">
+                        {DAILY_STATUS_LABELS[resolveDailyActivityStatus({
+                          focusSessions: getDailyActivity(store, j.date).focusSessions,
+                          learningSessions: getDailyActivity(store, j.date).learningSessions.length > 0
+                            ? getDailyActivity(store, j.date).learningSessions
+                            : getDailyActivity(store, j.date).legacyLearningEntries.map((entry) => ({ id: entry.id }))
+                        })]}
+                      </span>
                     </div>
-                    {j.answers.whatShouldBeEasierTomorrow && (
-                      <div>
-                        <span className="text-[10px] font-bold text-monk-muted uppercase tracking-wider block">Easier tomorrow</span>
-                        <p className="text-xs text-monk-text-soft mt-0.5">{j.answers.whatShouldBeEasierTomorrow}</p>
+                  </div>
+                  <div className="space-y-3">
+                    <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                      <div className="rounded-xl border border-monk-border bg-monk-bg p-3">
+                        <p className="text-[10px] font-bold uppercase tracking-wider text-monk-muted">Focus</p>
+                        <p className="mt-1 text-xs font-semibold leading-relaxed text-monk-text">{getFocusSummaryForDate(store, j.date)}</p>
                       </div>
-                    )}
-                    {j.answers.whatShouldBeHarderTomorrow && (
-                      <div>
-                        <span className="text-[10px] font-bold text-monk-muted uppercase tracking-wider block">Harder tomorrow</span>
-                        <p className="text-xs text-monk-text-soft mt-0.5">{j.answers.whatShouldBeHarderTomorrow}</p>
+                      <div className="rounded-xl border border-monk-border bg-monk-bg p-3">
+                        <p className="text-[10px] font-bold uppercase tracking-wider text-monk-muted">Learning</p>
+                        <p className="mt-1 text-xs font-semibold leading-relaxed text-monk-text">{getLearningSummaryForDate(store, j.date)}</p>
                       </div>
-                    )}
+                    </div>
+                    <div className="space-y-2">
+                      {getJournalAnswerItems(j.answers).map((item) => (
+                        <div key={item.id}>
+                          <span className="block text-[10px] font-bold uppercase tracking-wider text-monk-muted">{item.question}</span>
+                          <p className="mt-0.5 text-xs font-medium leading-relaxed text-monk-text">{item.answer}</p>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 </Card>
               ))
@@ -2714,12 +2918,13 @@ function LibraryScreen() {
                         <p className="text-xs font-bold text-monk-accent">{formatHumanDate(s.startTime.slice(0, 10))}</p>
                         <p className="text-sm font-semibold mt-1">{goal?.title || "Focus Session"}</p>
                         <p className="text-[10px] text-monk-muted mt-0.5 uppercase tracking-wider font-bold">
-                          {s.timerMode === "pomodoro" ? "Pomodoro" : "Deep Work"}
+                          {FOCUS_PRESETS[s.preset ?? s.timerMode ?? "deep_work"].shortLabel}
+                          {s.status === "ended_early" ? " · Ended early" : ""}
                         </p>
                       </div>
                       <div className="text-right">
-                        <p className="text-lg font-bold text-monk-success">{s.durationMinutes}m</p>
-                        <p className="text-[10px] text-monk-muted">Duration</p>
+                        <p className="text-lg font-bold text-monk-success">{s.focusDurationMinutes ?? s.durationMinutes}m</p>
+                        <p className="text-[10px] text-monk-muted">{s.breakDurationMinutes ?? 0}m break</p>
                       </div>
                     </Card>
                   );
@@ -2832,7 +3037,7 @@ function LibraryScreen() {
                 <span className="text-sm font-semibold">History & Logs</span>
               </div>
               <span className="text-xs text-monk-text-soft">
-                {store.focusSessions.filter(s => s.status === "completed").length} focus · {store.relapseLogs.length} drifts
+                {store.focusSessions.filter(s => ["completed", "ended_early"].includes(s.status)).length} focus · {store.relapseLogs.length} drifts
               </span>
             </div>
           </Card>

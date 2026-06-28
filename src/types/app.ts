@@ -144,9 +144,9 @@ export type FocusSession = {
   startTime: ISODateString;
   endTime?: ISODateString;
   durationMinutes: number;
-  status: "running" | "paused" | "completed" | "abandoned";
+  status: "running" | "paused" | "completed" | "ended_early" | "abandoned";
   note?: string;
-  timerMode?: "deep_work" | "pomodoro";
+  timerMode?: FocusSessionPreset;
   timerState?: "work" | "break";
   elapsedSeconds?: number;
   createdAt: ISODateString;
@@ -155,9 +155,38 @@ export type FocusSession = {
   // New schema fields
   startedAt?: string;
   endedAt?: string;
+  completedAt?: string;
   plannedDurationMinutes?: number;
   actualDurationSeconds?: number;
+  totalDurationSeconds?: number;
+  focusDurationSeconds?: number;
+  breakDurationSeconds?: number;
+  segmentsCompleted?: number;
+  expectedTotalDurationSeconds?: number;
+  expectedFocusDurationSeconds?: number;
+  expectedBreakDurationSeconds?: number;
+  expectedSegmentsCompleted?: number;
   actionId?: string | null;
+  preset?: FocusSessionPreset;
+  completedDurationMinutes?: number;
+  focusDurationMinutes?: number;
+  breakDurationMinutes?: number;
+  completedFocusBlocks?: number;
+  completedBreakBlocks?: number;
+  totalFocusBlocks?: number;
+  totalBreakBlocks?: number;
+  currentPhaseIndex?: number;
+  phases?: FocusSessionPhase[];
+};
+
+export type FocusSessionPreset = "custom" | "deep_work" | "pomodoro";
+
+export type FocusSessionPhase = {
+  type: "focus" | "break";
+  label: string;
+  plannedMinutes: number;
+  completedMinutes: number;
+  status: "pending" | "running" | "completed" | "ended_early";
 };
 
 export type LearningSourceType =
@@ -210,6 +239,35 @@ export type TimelineEvent = {
   description?: string;
   occurredAt: string;
   createdAt: string;
+  focusSession?: FocusSessionTimelineDetails;
+};
+
+export type FocusSessionTimelineDetails = {
+  id: string;
+  type: "focus_session";
+  preset: FocusSessionPreset;
+  title: string;
+  startedAt: string;
+  endedAt: string;
+  completedAt?: string;
+  plannedDurationMinutes: number;
+  completedDurationMinutes: number;
+  totalDurationSeconds?: number;
+  focusDurationSeconds?: number;
+  breakDurationSeconds?: number;
+  segmentsCompleted?: number;
+  expectedTotalDurationSeconds?: number;
+  expectedFocusDurationSeconds?: number;
+  expectedBreakDurationSeconds?: number;
+  expectedSegmentsCompleted?: number;
+  focusDurationMinutes: number;
+  breakDurationMinutes: number;
+  completedFocusBlocks: number;
+  completedBreakBlocks: number;
+  totalFocusBlocks: number;
+  totalBreakBlocks: number;
+  status: "completed" | "ended_early" | "paused";
+  phases: FocusSessionPhase[];
 };
 
 export type LearningEntry = {
