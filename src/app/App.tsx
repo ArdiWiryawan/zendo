@@ -53,6 +53,7 @@ import {
   addDaysToDate,
   datesInRange,
   formatHumanDate,
+  getDayNumber,
   getDaysLeft,
   getDaysPassed,
   getSeasonDayLabel,
@@ -159,11 +160,16 @@ const JOURNAL_QUESTION_LABELS: Record<keyof JournalAnswers, string> = {
   whatShouldBeHarderTomorrow: "What should be harder tomorrow?"
 };
 
-function getJournalAnswerItems(answers: JournalAnswers) {
+function getDailyJournalPromptForDate(date: string) {
+  const sum = date.split("-").reduce((acc, char) => acc + char.charCodeAt(0), 0);
+  return promptsDailyJournal[Math.abs(sum) % promptsDailyJournal.length];
+}
+
+function getJournalAnswerItems(answers: JournalAnswers, date?: string) {
   return (Object.keys(JOURNAL_QUESTION_LABELS) as Array<keyof JournalAnswers>)
     .map((key) => ({
       id: key,
-      question: JOURNAL_QUESTION_LABELS[key],
+      question: key === "whatMovedToday" && date ? getDailyJournalPromptForDate(date) : JOURNAL_QUESTION_LABELS[key],
       answer: answers[key]?.trim()
     }))
     .filter((item): item is { id: keyof JournalAnswers; question: string; answer: string } => Boolean(item.answer));
@@ -1736,27 +1742,28 @@ function JournalScreen() {
 
   const todayPlan = selectTodayPlan(store);
   const todayEntry = selectJournalEntryForToday(store);
+  const dateSeed = todayPlan ? todayPlan.date : getTodayDateString();
+  const journalDraftKey = `${JOURNAL_DRAFT_KEY}:${dateSeed}`;
 
   const initial = useMemo(() => {
-    const draft = localStorage.getItem(JOURNAL_DRAFT_KEY);
+    const draft = localStorage.getItem(journalDraftKey);
     return draft ? (JSON.parse(draft) as JournalAnswers) : todayEntry?.answers ?? {};
-  }, [todayEntry?.id]);
+  }, [journalDraftKey, todayEntry?.id, todayEntry?.updatedAt]);
 
   const [answers, setAnswers] = useState<JournalAnswers>(initial);
   const [saved, setSaved] = useState(false);
   const result = validateJournalEntry(answers as Record<string, string | undefined>);
 
   useEffect(() => {
-    localStorage.setItem(JOURNAL_DRAFT_KEY, JSON.stringify(answers));
-  }, [answers]);
+    setAnswers(initial);
+    setSaved(false);
+  }, [initial]);
 
-  const dateSeed = todayPlan ? todayPlan.date : getTodayDateString();
-  const promptIndex = useMemo(() => {
-    const sum = dateSeed.split("-").reduce((acc, char) => acc + char.charCodeAt(0), 0);
-    return Math.abs(sum) % promptsDailyJournal.length;
-  }, [dateSeed]);
-  
-  const activePrompt = promptsDailyJournal[promptIndex];
+  useEffect(() => {
+    localStorage.setItem(journalDraftKey, JSON.stringify(answers));
+  }, [answers, journalDraftKey]);
+
+  const activePrompt = useMemo(() => getDailyJournalPromptForDate(dateSeed), [dateSeed]);
 
   return (
     <>
@@ -1785,7 +1792,7 @@ function JournalScreen() {
           disabled={!todayPlan || !result.valid}
           onClick={() => {
             store.saveJournalEntry(answers);
-            localStorage.removeItem(JOURNAL_DRAFT_KEY);
+            localStorage.removeItem(journalDraftKey);
             setSaved(true);
             setTimeout(() => {
               navigate(routes.today);
@@ -2083,7 +2090,7 @@ function TimelineEventRow({ event }: { event: TimelineEvent }) {
   const journalRecord = event.type === "journal_entry"
     ? store.journalEntries.find((entry) => entry.id === event.sourceId)
     : undefined;
-  const journalItems = journalRecord ? getJournalAnswerItems(journalRecord.answers) : [];
+  const journalItems = journalRecord ? getJournalAnswerItems(journalRecord.answers, journalRecord.date) : [];
   const displayDescription = event.type === "focus_session" && normalizedFocusRecord
     ? formatFocusSessionTimelineDescription(normalizedFocusRecord, focusCompleted ? undefined : "saved")
     : event.type === "journal_entry" && journalItems.length > 0
@@ -2162,12 +2169,8 @@ function TimelineScreen() {
   }, [activeGoals, retroGoalId]);
 
   const dates = useMemo(() => {
-    return Array.from({ length: season.durationDays }, (_, index) => {
-      const date = new Date(`${season.startDate}T00:00:00`);
-      date.setDate(date.getDate() + index);
-      return date.toISOString().slice(0, 10);
-    });
-  }, [season.id]);
+    return datesInRange(season.startDate, season.durationDays);
+  }, [season.id, season.startDate, season.durationDays]);
 
   const chunks = useMemo(() => {
     const result: string[][] = [];
@@ -2215,10 +2218,14 @@ function TimelineScreen() {
           <p className="text-[10px] font-bold text-monk-muted uppercase tracking-widest border-b border-monk-border pb-2">Weekly Progress Rows</p>
           <div className="space-y-2">
             {chunks.map((weekDates, weekIdx) => {
-              const completedInWeek = weekDates.filter(date => {
-                return getDailyStatusForDate(store, date) === "completed";
-              }).length;
-              const rate = Math.round((completedInWeek / 7) * 100);
+              const validWeekDates = weekDates.filter((date) => date >= season.startDate && date <= getTodayDateString());
+              const completedInWeek = validWeekDates.filter((date) => getDailyStatusForDate(store, date) === "completed").length;
+              const partialInWeek = validWeekDates.filter((date) => getDailyStatusForDate(store, date) === "partial").length;
+              const notStartedInWeek = validWeekDates.filter((date) => getDailyStatusForDate(store, date) === "not_started").length;
+              const rate = validWeekDates.length > 0 ? Math.round((completedInWeek / validWeekDates.length) * 100) : 0;
+              const weekSummary = validWeekDates.length > 0
+                ? `${completedInWeek}/${validWeekDates.length} done · ${partialInWeek} partial · ${notStartedInWeek} not started`
+                : "Upcoming";
               
               return (
                 <div key={weekIdx} className="flex items-center gap-3">
@@ -2231,6 +2238,7 @@ function TimelineScreen() {
                         <CalendarCell
                           key={date}
                           date={date}
+                          dayNumber={getDayNumber(date, season.startDate)}
                           status={status}
                           helperText={helperText}
                           active={date === getTodayDateString()}
@@ -2244,6 +2252,9 @@ function TimelineScreen() {
                   <span className={`text-[10px] font-bold font-mono w-8 shrink-0 text-right ${
                     rate >= 80 ? "text-monk-success" : (rate >= 40 ? "text-monk-accent" : "text-monk-muted")
                   }`}>{rate}%</span>
+                  <span className="hidden text-[10px] font-semibold text-monk-muted sm:block">
+                    {weekSummary}
+                  </span>
                 </div>
               );
             })}
@@ -2262,7 +2273,7 @@ function TimelineScreen() {
             <div className="space-y-4">
               {groupedEvents.map((group) => {
                 const isToday = group.date === getTodayDateString();
-                const isYesterday = group.date === new Date(Date.now() - 86400000).toISOString().slice(0, 10);
+                const isYesterday = group.date === addDaysToDate(getTodayDateString(), -1);
                 const groupTitle = isToday ? "Today" : (isYesterday ? "Yesterday" : formatHumanDate(group.date));
                 
                 return (
@@ -2371,12 +2382,14 @@ function TimelineScreen() {
 
 function CalendarCell({ 
   date, 
+  dayNumber,
   status, 
   active,
   helperText,
   onClick 
 }: { 
   date: string; 
+  dayNumber?: number;
   status: TimelineStatus; 
   active?: boolean;
   helperText?: string;
@@ -2407,7 +2420,7 @@ function CalendarCell({
 
   return (
     <div 
-      title={`${date}${helperText ? ` · ${helperText}` : ""}`} 
+      title={`${dayNumber ? `Day ${dayNumber} · ` : ""}${date}${helperText ? ` · ${helperText}` : ""}`} 
       onClick={isEligible ? onClick : undefined}
       className={`aspect-square rounded-xl border flex items-center justify-center font-bold text-xs select-none ${classes[status]} ${
         active ? "ring-2 ring-monk-accent" : ""
@@ -2542,7 +2555,7 @@ function SettingsScreen() {
       ...store.journalEntries.map(j => {
         return [
           `### Reflection for ${j.date}`,
-          `- **What moved today?**: ${j.answers.whatMovedToday || "-"}`,
+          `- **${getDailyJournalPromptForDate(j.date)}**: ${j.answers.whatMovedToday || "-"}`,
           j.answers.whatDistractedMe ? `- **What distracted me?**: ${j.answers.whatDistractedMe}` : "",
           j.answers.whatDidILearn ? `- **What did I learn?**: ${j.answers.whatDidILearn}` : "",
           j.answers.whatShouldBeEasierTomorrow ? `- **What should be easier tomorrow?**: ${j.answers.whatShouldBeEasierTomorrow}` : "",
@@ -2761,7 +2774,7 @@ function LibraryScreen() {
                       </div>
                     </div>
                     <div className="space-y-2">
-                      {getJournalAnswerItems(j.answers).map((item) => (
+                      {getJournalAnswerItems(j.answers, j.date).map((item) => (
                         <div key={item.id}>
                           <span className="block text-[10px] font-bold uppercase tracking-wider text-monk-muted">{item.question}</span>
                           <p className="mt-0.5 text-xs font-medium leading-relaxed text-monk-text">{item.answer}</p>

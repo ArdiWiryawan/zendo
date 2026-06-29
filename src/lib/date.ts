@@ -3,7 +3,6 @@ import {
   differenceInCalendarDays,
   format,
   isAfter,
-  parseISO
 } from "date-fns";
 import type { Season } from "../types/app";
 
@@ -11,20 +10,25 @@ export function getTodayDateString(date = new Date()) {
   return format(date, "yyyy-MM-dd");
 }
 
+export function parseLocalDateKey(date: string) {
+  const [year, month, day] = date.split("-").map(Number);
+  return new Date(year, month - 1, day);
+}
+
 export function nowIso() {
   return new Date().toISOString();
 }
 
 export function addDaysToDate(date: string, days: number) {
-  return format(addDays(parseISO(date), days), "yyyy-MM-dd");
+  return format(addDays(parseLocalDateKey(date), days), "yyyy-MM-dd");
 }
 
 export function getDaysPassed(startDate: string, today = getTodayDateString()) {
-  return Math.max(1, differenceInCalendarDays(parseISO(today), parseISO(startDate)) + 1);
+  return Math.max(1, differenceInCalendarDays(parseLocalDateKey(today), parseLocalDateKey(startDate)) + 1);
 }
 
 export function getDaysLeft(endDate: string, today = getTodayDateString()) {
-  return Math.max(0, differenceInCalendarDays(parseISO(endDate), parseISO(today)));
+  return Math.max(0, differenceInCalendarDays(parseLocalDateKey(endDate), parseLocalDateKey(today)));
 }
 
 export function getSeasonProgress(season: Season, today = getTodayDateString()) {
@@ -45,7 +49,7 @@ export function getWeekEndDate(startDate: string, weekNumber: number) {
 }
 
 export function isDatePast(date: string, today = getTodayDateString()) {
-  return isAfter(parseISO(today), parseISO(date));
+  return isAfter(parseLocalDateKey(today), parseLocalDateKey(date));
 }
 
 export function isSeasonEnded(season: Season, today = getTodayDateString()) {
@@ -57,8 +61,12 @@ export function getSeasonDayLabel(season: Season, today = getTodayDateString()) 
   return `Day ${day} of ${season.durationDays}`;
 }
 
+export function getDayNumber(date: string, startDate: string) {
+  return differenceInCalendarDays(parseLocalDateKey(date), parseLocalDateKey(startDate)) + 1;
+}
+
 export function formatHumanDate(date: string) {
-  return format(parseISO(date), "MMM d");
+  return format(parseLocalDateKey(date), "MMM d");
 }
 
 export function datesInRange(startDate: string, count: number) {
