@@ -1252,13 +1252,29 @@ export const useMonkStore = create<MonkStore>((set, get) => ({
       : [...state.journalEntries, entry];
 
     // Create journal entry timeline event
+    const hasReflection = !!answers.whatMovedToday?.trim();
+    const hasMorningPages = !!answers.morningPages?.trim();
+    let eventTitle = "Wrote reflection";
+    let eventDesc = "";
+
+    if (hasMorningPages && hasReflection) {
+      eventTitle = "Completed morning pages & reflection";
+      eventDesc = `Morning Pages:\n${answers.morningPages}\n\nReflection:\n${answers.whatMovedToday}`;
+    } else if (hasMorningPages) {
+      eventTitle = "Wrote morning pages";
+      eventDesc = answers.morningPages || "";
+    } else if (hasReflection) {
+      eventTitle = "Wrote journal reflection";
+      eventDesc = answers.whatMovedToday || "";
+    }
+
     const event: TimelineEvent = {
       id: createId("event"),
       type: "journal_entry",
       seasonId: state.activeSeason?.id,
       sourceId: entry.id,
-      title: "Wrote journal reflection",
-      description: answers.whatMovedToday || "Closed the day with reflection.",
+      title: eventTitle,
+      description: eventDesc,
       occurredAt: timestamp,
       createdAt: timestamp
     };

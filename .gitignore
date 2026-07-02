@@ -94,7 +94,6 @@ dist
 
 # Gatsby files
 .cache/
-public
 
 # vuepress build output
 .vuepress/dist
@@ -129,3 +128,11 @@ Thumbs.db
 .agents/
 .opencode/
 test-artifacts/
+.tools/
+local.properties
+.gradle/
+build/
+app/build/
+android.keystore
+
+.vercel

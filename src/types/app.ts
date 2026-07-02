@@ -292,6 +292,7 @@ export type JournalAnswers = {
   whatDidILearn?: string;
   whatShouldBeEasierTomorrow?: string;
   whatShouldBeHarderTomorrow?: string;
+  morningPages?: string;
 };
 
 export type JournalEntry = {

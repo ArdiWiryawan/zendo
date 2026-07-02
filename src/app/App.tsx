@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link, Navigate, Route, Routes, useLocation, useNavigate } from "react-router-dom";
+import { Link, Navigate, Route, Routes, useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import {
   ArrowLeft,
   BookOpen,
@@ -18,7 +18,8 @@ import {
   Flag,
   Flame,
   Trophy,
-  Lightbulb
+  Lightbulb,
+  Sun
 } from "lucide-react";
 import {
   AppShell,
@@ -157,7 +158,8 @@ const JOURNAL_QUESTION_LABELS: Record<keyof JournalAnswers, string> = {
   whatDistractedMe: "What distracted me?",
   whatDidILearn: "What did I learn today?",
   whatShouldBeEasierTomorrow: "What should be easier tomorrow?",
-  whatShouldBeHarderTomorrow: "What should be harder tomorrow?"
+  whatShouldBeHarderTomorrow: "What should be harder tomorrow?",
+  morningPages: "Morning Pages"
 };
 
 function getDailyJournalPromptForDate(date: string) {
@@ -1309,6 +1311,7 @@ function TodayScreen() {
     (entry) => entry.seasonId === season.id && entry.date === getTodayDateString()
   );
   const hasJournal = !!todayEntry;
+  const hasMorningPages = !!todayEntry?.answers.morningPages?.trim();
 
   const [editingAction, setEditingAction] = useState(false);
   const [actionInput, setActionInput] = useState("");
@@ -1455,6 +1458,28 @@ function TodayScreen() {
               )}
             </Card>
             <SeasonProgressCard compact />
+
+            {/* Morning Pages Card */}
+            <Card className="p-4">
+              <div className="mb-3 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <Sun size={16} strokeWidth={1.5} className="text-monk-accent" />
+                  <p className="font-semibold text-sm">Morning Pages</p>
+                </div>
+                {hasMorningPages ? (
+                  <span className="text-[10px] font-bold text-monk-success uppercase tracking-wider flex items-center gap-1">
+                    <span className="h-1.5 w-1.5 rounded-full bg-monk-success inline-block"></span>
+                    Logged
+                  </span>
+                ) : null}
+              </div>
+              <p className="text-xs leading-5 text-monk-muted">
+                Clear your mind with stream-of-consciousness writing. No prompts, no pressure.
+              </p>
+              <GhostButton className="mt-3 px-0 min-h-8" onClick={() => navigate(routes.journal + "?tab=morning")}>
+                {hasMorningPages ? "Edit Morning Pages" : "Write Morning Pages"}
+              </GhostButton>
+            </Card>
             {todayPlan.dayType === "goal" ? (
               <>
                 {todayPlan.status !== "completed" ? (
@@ -1739,6 +1764,7 @@ function FocusScreen() {
 function JournalScreen() {
   const navigate = useNavigate();
   const store = useMonkStore();
+  const [searchParams, setSearchParams] = useSearchParams();
 
   const todayPlan = selectTodayPlan(store);
   const todayEntry = selectJournalEntryForToday(store);
@@ -1752,7 +1778,6 @@ function JournalScreen() {
 
   const [answers, setAnswers] = useState<JournalAnswers>(initial);
   const [saved, setSaved] = useState(false);
-  const result = validateJournalEntry(answers as Record<string, string | undefined>);
 
   useEffect(() => {
     setAnswers(initial);
@@ -1765,31 +1790,106 @@ function JournalScreen() {
 
   const activePrompt = useMemo(() => getDailyJournalPromptForDate(dateSeed), [dateSeed]);
 
+  const currentTab = searchParams.get("tab") === "morning" ? "morning" : "reflection";
+  const setTab = (tab: "reflection" | "morning") => {
+    setSearchParams({ tab });
+  };
+
+  const wordCount = useMemo(() => {
+    const text = answers.morningPages || "";
+    return text.trim() ? text.trim().split(/\s+/).length : 0;
+  }, [answers.morningPages]);
+
+  const canSave = todayPlan && (
+    currentTab === "morning"
+      ? !!answers.morningPages?.trim()
+      : !!answers.whatMovedToday?.trim()
+  );
+
   return (
     <>
       <PageHeader title="Journal" subtitle="Close the day with one honest note." rightSlot={<SettingsLink />} />
       {!todayPlan ? <CalmAlert type="warning" title="Pick today's focus before saving reflection." /> : null}
-      
-      <div className="mt-5 space-y-4">
-        {/* Main Required Question */}
-        <Card>
-          <label className="mb-3 block font-semibold text-sm leading-relaxed text-monk-text" htmlFor="whatMovedToday">
-            {activePrompt}
-          </label>
-          <Textarea
-            id="whatMovedToday"
-            value={answers.whatMovedToday ?? ""}
-            placeholder="Write your honest reflection..."
-            onChange={(event) => setAnswers((value) => ({ ...value, whatMovedToday: event.target.value }))}
-          />
-        </Card>
+
+      <div className="flex rounded-xl bg-monk-soft p-1 mb-5 border border-monk-border/40">
+        <button
+          type="button"
+          className={`flex-1 rounded-lg py-2 text-xs font-semibold tracking-wide transition ${
+            currentTab === "reflection"
+              ? "bg-monk-surface text-monk-text border border-monk-border-strong shadow-sm"
+              : "text-monk-muted hover:text-monk-text"
+          }`}
+          onClick={() => setTab("reflection")}
+        >
+          Daily Reflection
+        </button>
+        <button
+          type="button"
+          className={`flex-1 rounded-lg py-2 text-xs font-semibold tracking-wide transition ${
+            currentTab === "morning"
+              ? "bg-monk-surface text-monk-text border border-monk-border-strong shadow-sm"
+              : "text-monk-muted hover:text-monk-text"
+          }`}
+          onClick={() => setTab("morning")}
+        >
+          Morning Pages
+        </button>
       </div>
+      
+      {currentTab === "morning" ? (
+        <div className="mt-5 space-y-4">
+          <Card>
+            <div className="mb-2 flex items-center justify-between">
+              <label className="font-semibold text-sm leading-relaxed text-monk-text" htmlFor="morningPages">
+                Morning Pages
+              </label>
+              <span className="text-[10px] font-mono font-bold text-monk-muted uppercase tracking-wider">
+                {wordCount} {wordCount === 1 ? "word" : "words"}
+              </span>
+            </div>
+            <p className="mb-4 text-xs text-monk-muted leading-relaxed">
+              Write whatever is on your mind. Free-form, stream of consciousness. No prompts, no pressure.
+            </p>
+            <Textarea
+              id="morningPages"
+              value={answers.morningPages ?? ""}
+              placeholder="Start writing..."
+              className="min-h-[240px]"
+              onChange={(event) => setAnswers((value) => ({ ...value, morningPages: event.target.value }))}
+            />
+          </Card>
+        </div>
+      ) : (
+        <div className="mt-5 space-y-4">
+          {/* Main Required Question */}
+          <Card>
+            <label className="mb-3 block font-semibold text-sm leading-relaxed text-monk-text" htmlFor="whatMovedToday">
+              {activePrompt}
+            </label>
+            <Textarea
+              id="whatMovedToday"
+              value={answers.whatMovedToday ?? ""}
+              placeholder="Write your honest reflection..."
+              onChange={(event) => setAnswers((value) => ({ ...value, whatMovedToday: event.target.value }))}
+            />
+          </Card>
+        </div>
+      )}
 
       <div className="mt-6 space-y-3">
-        {saved ? <CalmAlert type="success" title="Reflection saved." /> : null}
-        {!result.valid ? <CalmAlert type="warning" title={result.message!} /> : null}
+        {saved ? <CalmAlert type="success" title="Saved successfully." /> : null}
+        {!canSave && todayPlan ? (
+          <CalmAlert
+            type="warning"
+            title={
+              currentTab === "morning"
+                ? "Write something in your morning pages before saving."
+                : "Write at least one reflection before saving."
+            }
+          />
+        ) : null}
         <PrimaryButton
-          disabled={!todayPlan || !result.valid}
+          disabled={!canSave}
           onClick={() => {
             store.saveJournalEntry(answers);
             localStorage.removeItem(journalDraftKey);
@@ -1799,7 +1899,7 @@ function JournalScreen() {
             }, 800);
           }}
         >
-          Save Reflection
+          {currentTab === "morning" ? "Save Morning Pages" : "Save Reflection"}
         </PrimaryButton>
       </div>
     </>

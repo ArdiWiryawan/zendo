@@ -85,8 +85,8 @@ export function selectTodayLearningSessions(state: MonkMVPState, today = getToda
 
 export function selectTotalFocusSecondsForDate(state: MonkMVPState, date: string): number {
   return state.focusSessions
-    .filter((s) => (s.startTime.slice(0, 10) === date || s.startedAt?.slice(0, 10) === date) && s.status === "completed")
-    .reduce((sum, s) => sum + (s.actualDurationSeconds ?? (s.durationMinutes * 60)), 0);
+    .filter((s) => (s.startTime.slice(0, 10) === date || s.startedAt?.slice(0, 10) === date) && ["completed", "ended_early"].includes(s.status))
+    .reduce((sum, s) => sum + ((s.focusDurationMinutes ?? s.durationMinutes) * 60), 0);
 }
 
 export function selectTotalLearningSecondsForDate(state: MonkMVPState, date: string): number {
@@ -104,8 +104,8 @@ export function selectLearningSessionsByGoal(state: MonkMVPState, goalId: string
 }
 
 export function selectSeasonFocusSummary(state: MonkMVPState, seasonId: string) {
-  const sessions = state.focusSessions.filter((s) => s.seasonId === seasonId && s.status === "completed");
-  const totalSeconds = sessions.reduce((sum, s) => sum + (s.actualDurationSeconds ?? (s.durationMinutes * 60)), 0);
+  const sessions = state.focusSessions.filter((s) => s.seasonId === seasonId && ["completed", "ended_early"].includes(s.status));
+  const totalSeconds = sessions.reduce((sum, s) => sum + ((s.focusDurationMinutes ?? s.durationMinutes) * 60), 0);
   return {
     count: sessions.length,
     totalSeconds,
