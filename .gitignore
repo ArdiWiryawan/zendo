@@ -136,3 +136,6 @@ app/build/
 android.keystore
 
 .vercel
+
+.vercel
+.env*

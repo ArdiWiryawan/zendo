@@ -1,7 +1,8 @@
 // src/components/SignupScreen.tsx
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { supabase } from "../lib/supabase";
+import { supabase as getSupabase } from "../lib/supabase";
+const sb = getSupabase();
 import { GhostButton } from "../components/ui";
 
 export default function SignupScreen() {
@@ -16,13 +17,13 @@ export default function SignupScreen() {
     setLoading(true);
     setError(null);
     try {
-      const { data, error } = await supabase.auth.signUp({
+      const { data, error } = (await sb?.auth.signUp({
         email,
         password,
-      });
+      })) ?? { data: null, error: null };
       if (error) throw error;
       // auto-login if session created, else go to login
-      if (data.session) {
+      if (data?.session) {
         navigate("/today", { replace: true });
       } else {
         navigate("/login", { replace: true });

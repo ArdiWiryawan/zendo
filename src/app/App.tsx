@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, Navigate, Route, Routes, useLocation, useNavigate, useSearchParams } from "react-router-dom";
-import { supabase } from "../lib/supabase";
+import { supabase as getSupabase } from "../lib/supabase";
 import LoginScreen from "../components/LoginScreen";
 import SignupScreen from "../components/SignupScreen";
 import {

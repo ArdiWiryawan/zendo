@@ -1,15 +1,30 @@
 // src/lib/supabase.ts
 import { createClient } from '@supabase/supabase-js'
+import type { SupabaseClient } from '@supabase/supabase-js'
 
-export const supabase = createClient(
-  import.meta.env.VITE_SUPABASE_URL || "",
-  import.meta.env.VITE_SUPABASE_ANON_KEY || ""
-)
+let _supabase: SupabaseClient | null = null
+
+function getSupabase() {
+  if (!_supabase) {
+    const url = import.meta.env.VITE_SUPABASE_URL || ""
+    const key = import.meta.env.VITE_SUPABASE_ANON_KEY || ""
+    if (url && key) {
+      _supabase = createClient(url, key)
+    }
+  }
+  return _supabase
+}
+
+export function supabase(): SupabaseClient | null {
+  return getSupabase()
+}
 
 export type ZendoState = Record<string, unknown>
 
 export async function getState(): Promise<ZendoState> {
-  const { data, error } = await supabase
+  const client = getSupabase()
+  if (!client) return {}
+  const { data, error } = await client
     .from('zendo_state')
     .select('state_json')
     .eq('id', 'global')
@@ -19,8 +34,10 @@ export async function getState(): Promise<ZendoState> {
 }
 
 export async function setState(state: ZendoState): Promise<void> {
+  const client = getSupabase()
+  if (!client) return
   const state_json = JSON.stringify(state)
-  await supabase
+  await client
     .from('zendo_state')
     .update({ state_json, updated_at: new Date().toISOString() })
     .eq('id', 'global')

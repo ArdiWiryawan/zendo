@@ -1,7 +1,8 @@
 // src/components/LoginScreen.tsx
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { supabase } from "../lib/supabase";
+import { supabase as getSupabase } from "../lib/supabase";
+const sb = getSupabase();
 import { PrimaryButton, GhostButton } from "../components/ui";
 
 export default function LoginScreen() {
@@ -16,10 +17,10 @@ export default function LoginScreen() {
     setLoading(true);
     setError(null);
     try {
-      const { data, error } = await supabase.auth.signInWithPassword({
+      const { data, error } = (await sb?.auth.signInWithPassword({
         email,
         password,
-      });
+      })) ?? { data: null, error: null };
       if (error) throw error;
       navigate("/today", { replace: true });
     } catch (err: unknown) {
