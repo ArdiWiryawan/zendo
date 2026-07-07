@@ -66,3 +66,25 @@ button {
     transition-duration: 0.01ms !important;
   }
 }
+
+/* Page transitions */
+.page-enter {
+  animation: slideIn 0.25s ease-out forwards;
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateX(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+/* Prevent layout shift on button active */
+button {
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}

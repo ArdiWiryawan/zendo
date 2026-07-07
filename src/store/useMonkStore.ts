@@ -924,11 +924,17 @@ export const useMonkStore = create<MonkStore>((set, get) => ({
   },
 
   tickFocusSession: (sessionId, elapsedSeconds) => {
-    set((state) => ({
-      focusSessions: state.focusSessions.map((session) =>
-        session.id === sessionId ? { ...session, elapsedSeconds, updatedAt: nowIso() } : session
-      )
-    }));
+    const current = snapshot(get());
+    const session = current.focusSessions.find((s) => s.id === sessionId);
+    if (!session) return;
+    const dayPlan = current.dayPlans.find((d) => d.id === session.dayPlanId);
+    if (!dayPlan) return;
+    withPersist(set, get, {
+      focusSessions: current.focusSessions.map((s) =>
+        s.id === sessionId ? { ...s, elapsedSeconds, updatedAt: nowIso() } : s
+      ),
+      timelineDays: updatedTimelineDays(current, dayPlan)
+    });
   },
 
   resetFocusSession: (sessionId) => {
@@ -1035,11 +1041,13 @@ export const useMonkStore = create<MonkStore>((set, get) => ({
     const state = get();
     const session = state.focusSessions.find((s) => s.id === sessionId);
     if (!session) return;
-    const adjustedStart = new Date(Date.now() - (session.elapsedSeconds || 0) * 1000).toISOString();
+    const currentPhase = getCurrentFocusPhase(session);
+    const phaseElapsed = currentPhase.plannedMinutes * 60 - Math.max(0, currentPhase.plannedMinutes * 60 - (session.elapsedSeconds ?? 0));
+    const adjustedStart = new Date(Date.now() - phaseElapsed * 1000).toISOString();
     withPersist(set, get, {
       focusSessions: state.focusSessions.map((s) =>
         s.id === sessionId
-          ? { ...s, status: "running", startTime: adjustedStart, updatedAt: nowIso() }
+          ? { ...s, status: "running" as const, startTime: adjustedStart, elapsedSeconds: phaseElapsed, updatedAt: nowIso() }
           : s
       )
     });

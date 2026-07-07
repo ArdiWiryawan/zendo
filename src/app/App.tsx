@@ -1,5 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, Navigate, Route, Routes, useLocation, useNavigate, useSearchParams } from "react-router-dom";
+import { supabase } from "../lib/supabase";
+import LoginScreen from "../components/LoginScreen";
+import SignupScreen from "../components/SignupScreen";
 import {
   ArrowLeft,
   BookOpen,
@@ -144,13 +147,16 @@ const promptsWeeklyReview = [
 ];
 
 const promptsDailyJournal = [
-  "Apa satu hal terpenting yang harus saya selesaikan hari ini?",
-  "Apa yang bisa membuat hari ini gagal, dan bagaimana saya mencegahnya?",
-  "Apa satu tindakan kecil yang akan membuat saya bangga malam nanti?",
-  "Apa distraksi utama saya hari ini?",
-  "Apa yang perlu saya ingat saat motivasi saya turun?",
-  "Hari ini saya ingin menjadi orang yang seperti apa?",
-  "Apa bukti kecil bahwa saya bergerak maju hari ini?"
+  "Apa yang sebenarnya kamu pikirkan saat ini — tanpa menyaringnya?",
+  "Kalau hari ini cuma satu hal yang berjalan benar-benar baik, apa itu?",
+  "Apa yang kamu hindari seharian ini — dan apakah itu sepenting yang kamu kira?",
+  "Kapan terakhir kali kamu merasa benar-benar hadir, dan apa yang terjadi saat itu?",
+  "Apa yang akan kamu ubah besok, kalau hari ini mengajarkan sesuatu?",
+  "Apa yang berat di pundakmu sekarang — dan apa yang kamu syukuri?",
+  "Apa yang membuatmu berhenti sejenak hari ini, meskipun kamu tidak menyadarinya?",
+  "Kalau kamu bisa mengulang satu momen hari ini, mana yang akan kamu pilih?",
+  "Apa yang sebenarnya kamu butuhkan saat ini — bukan yang kamu inginkan?",
+  "Apa yang akan kamu ingat dari hari ini, sebulan lagi?",
 ];
 
 const JOURNAL_QUESTION_LABELS: Record<keyof JournalAnswers, string> = {
@@ -251,13 +257,15 @@ export default function App() {
       <Route path={routes.today} element={<ProtectedMain><TodayScreen /></ProtectedMain>} />
       <Route path={routes.week} element={<ProtectedMain><WeekScreen /></ProtectedMain>} />
       <Route path={routes.timeline} element={<ProtectedMain><TimelineScreen /></ProtectedMain>} />
-      <Route path={routes.journal} element={<ProtectedMain><JournalScreen /></ProtectedMain>} />
+      <Route path={routes.journal} element={<ProtectedMain><JournalEntryScreen /></ProtectedMain>} />
       <Route path={routes.focus} element={<ProtectedMain><FocusScreen /></ProtectedMain>} />
       <Route path={routes.learn} element={<ProtectedMain><LearningScreen /></ProtectedMain>} />
       <Route path={routes.relapse} element={<ProtectedMain><RelapseScreen /></ProtectedMain>} />
       <Route path={routes.seasonEnd} element={<ProtectedMain allowEnded><SeasonEndScreen /></ProtectedMain>} />
       <Route path={routes.settings} element={<ProtectedMain><SettingsScreen /></ProtectedMain>} />
-      <Route path={routes.library} element={<ProtectedMain><LibraryScreen /></ProtectedMain>} />
+      <Route path={routes.login} element={<LoginScreen />} />
+      <Route path={routes.signup} element={<SignupScreen />} />
+      <Route path={routes.library} element={<Navigate to="/journal" replace />} />
       <Route path="*" element={<Navigate to={routes.root} replace />} />
     </Routes>
   );
@@ -300,10 +308,29 @@ function OnboardingGate() {
 }
 
 function ProtectedMain({ children, allowEnded = false }: { children: JSX.Element; allowEnded?: boolean }) {
+  const [session, setSession] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
   const { userProfile, activeSeason, ensureSeasonFresh } = useMonkStore();
   useEffect(() => {
     ensureSeasonFresh();
   }, [ensureSeasonFresh]);
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+      setLoading(false);
+    });
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSession(session);
+    });
+    return () => subscription.unsubscribe();
+  }, []);
+
+  if (loading) return null; // wait for session
+
+  if (!session?.user) {
+    return <Navigate to={routes.login} replace />;
+  }
 
   if (!userProfile?.onboardingCompleted || !activeSeason) {
     return <Navigate to={routes.onboardingWelcome} replace />;
@@ -1646,44 +1673,52 @@ function WeekScreen() {
       <PageHeader title={`Week ${weeklyPlan?.weekNumber ?? 1}`} subtitle="Six focus days. One rest day." rightSlot={<SettingsLink />} />
       <div className="space-y-5">
         {weeklyPlan ? (
-          <Card className="p-4 bg-monk-surface/40 border-monk-border/60">
-            <p className="font-semibold text-[10px] uppercase tracking-wider mb-3 text-monk-text-soft">Weekly Schedule</p>
-            <div className="grid grid-cols-7 gap-1.5 text-center">
+          <Card className="p-5 bg-monk-surface/20 border-monk-border/40">
+            <div className="flex items-center justify-between mb-5">
+              <p className="text-[10px] font-bold text-monk-muted uppercase tracking-[0.2em]">Weekly Rhythm</p>
+              <span className="text-[9px] font-mono text-monk-text-soft/60">{formatHumanDate(weeklyPlan.startDate)} - {formatHumanDate(weeklyPlan.endDate)}</span>
+            </div>
+            <div className="flex items-center justify-between gap-1.5">
               {weekDates.map((date: string) => {
                 const dayPlan = store.dayPlans.find((d) => d.date === date);
                 const weekday = new Date(date + "T00:00:00").toLocaleDateString("en-US", { weekday: "short" });
                 const dayNum = date.slice(8);
-                
-                let symbol = "·";
-                let colorClass = "text-monk-muted bg-monk-surface border-monk-border";
-                if (dayPlan) {
-                  if (dayPlan.status === "completed") {
-                    if (dayPlan.dayType === "rest") {
-                      symbol = "☾";
-                      colorClass = "bg-monk-rest-soft border-monk-rest text-monk-rest font-bold";
-                    } else {
-                      symbol = "✓";
-                      colorClass = "bg-monk-success-soft border-monk-success text-monk-success font-bold";
-                    }
-                  } else if (dayPlan.status === "missed") {
-                    symbol = "−";
-                    colorClass = "bg-monk-soft border-monk-border text-monk-text-soft";
-                  } else {
-                    symbol = dayPlan.dayType === "rest" ? "☾" : "○";
-                    colorClass = dayPlan.dayType === "rest" ? "border-monk-rest/50 text-monk-rest bg-monk-bg" : "border-monk-border text-monk-muted bg-monk-bg";
-                  }
-                }
+                const isToday = date === getTodayDateString();
+                const isFuture = date > getTodayDateString();
+                const status = dayPlan?.status ?? "not_started";
+                const isCompleted = status === "completed";
+                const isPartial = status === "partial";
+                const isRest = dayPlan?.dayType === "rest";
+                const isRelapse = status === "relapse";
+                const isMissed = status === "missed";
+
+                let barColor = "bg-monk-border/20";
+                let barBorder = "border-transparent";
+                if (isCompleted) { barColor = "bg-monk-success/80"; barBorder = "border-monk-success/30"; }
+                else if (isPartial) { barColor = "bg-monk-accent/60"; barBorder = "border-monk-accent/20"; }
+                else if (isRelapse) { barColor = "bg-monk-danger/50"; barBorder = "border-monk-danger/20"; }
+                else if (isRest) { barColor = "bg-monk-rest/50"; barBorder = "border-monk-rest/20"; }
+                else if (isMissed) { barColor = "bg-monk-text-soft/15"; barBorder = "border-monk-text-soft/15"; }
+                else if (!isFuture) { barColor = "bg-monk-border/40"; }
 
                 return (
-                  <div key={date} className="flex flex-col items-center gap-1">
-                    <span className="text-[9px] font-bold text-monk-text-soft uppercase">{weekday[0]}</span>
-                    <div className={`h-8 w-8 rounded-xl border flex items-center justify-center text-xs select-none ${colorClass}`} title={date}>
-                      {symbol}
+                  <div key={date} className="flex-1 flex flex-col items-center gap-2">
+                    <div className={`w-full aspect-[3/4] rounded-lg border ${barColor} ${barBorder} transition-all duration-500 ${isToday ? "ring-1 ring-monk-accent/40" : ""} ${isFuture ? "opacity-30" : ""}`} title={date} />
+                    <div className="flex flex-col items-center gap-0.5">
+                      <span className="text-[9px] font-medium text-monk-text-soft/70">{weekday[0]}</span>
+                      <span className={`text-[8px] font-mono ${isToday ? "text-monk-accent font-bold" : "text-monk-text-soft/50"}`}>{dayNum}</span>
                     </div>
-                    <span className="text-[8px] font-mono text-monk-muted">{dayNum}</span>
                   </div>
                 );
               })}
+            </div>
+            <div className="mt-5 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-sm bg-monk-success/80"></span><span className="text-[9px] text-monk-text-soft/70">done</span></span>
+                <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-sm bg-monk-accent/60"></span><span className="text-[9px] text-monk-text-soft/70">partial</span></span>
+                <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-sm bg-monk-rest/50"></span><span className="text-[9px] text-monk-text-soft/70">rest</span></span>
+              </div>
+              <span className="text-[9px] font-mono text-monk-text-soft/50">6 focus + 1 rest</span>
             </div>
           </Card>
         ) : null}
@@ -1692,29 +1727,33 @@ function WeekScreen() {
         {weeklyPlan?.goalAllocations.map((allocation) => {
           const goal = goals.find((item) => item.id === allocation.goalId);
           const touched = allocation.completedCount >= 1;
+          const progress = allocation.targetCount > 0 ? Math.round((allocation.completedCount / allocation.targetCount) * 100) : 0;
           return (
-            <Card key={allocation.goalId}>
+            <Card key={allocation.goalId} className="p-4 bg-monk-surface/20 border-monk-border/40">
               <div className="flex items-center justify-between gap-4">
-                <div>
-                  <p className="font-semibold text-base">{goal?.title}</p>
-                  <p className="mt-1 text-xs text-monk-muted">
-                    {allocation.completedCount} / {allocation.targetCount} days completed
-                  </p>
+                <div className="flex-1">
+                  <p className="text-sm font-semibold text-monk-text">{goal?.title}</p>
+                  <div className="mt-2 flex items-center gap-2">
+                    <div className="flex-1 h-1 rounded-full bg-monk-soft overflow-hidden">
+                      <div className="h-full rounded-full bg-monk-accent/60 transition-all" style={{ width: `${progress}%` }} />
+                    </div>
+                    <span className="text-[9px] font-mono text-monk-text-soft">{progress}%</span>
+                  </div>
                 </div>
-                <span className={`rounded-full px-2.5 py-1 text-xs font-semibold border ${
-                  touched 
-                    ? "bg-monk-success-soft border-monk-success text-monk-success" 
-                    : "bg-monk-warning-soft border-monk-warning text-monk-warning"
+                <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded-full border ${
+                  touched ? "text-monk-success border-monk-success/30 bg-monk-success/5" : "text-monk-muted border-monk-border/40 bg-monk-soft/50"
                 }`}>
-                  {touched ? "Touched this week" : "Needs focus"}
+                  {touched ? "On track" : "Pending"}
                 </span>
               </div>
             </Card>
           );
         })}
-        <Card className="bg-monk-soft border-monk-border">
-          <p className="font-semibold text-sm">Rest</p>
-          <p className="mt-1 text-xs text-monk-muted">Keep one day for rest. Rest is part of the path.</p>
+        <Card className="p-4 bg-monk-soft/30 border-monk-border/40">
+          <div className="flex items-center gap-2">
+            <span className="block w-1.5 h-1.5 rounded-full bg-monk-rest/60" />
+            <p className="text-xs text-monk-muted">One day to rest. Rest is part of the path.</p>
+          </div>
         </Card>
       </div>
     </>
@@ -1761,7 +1800,7 @@ function FocusScreen() {
   );
 }
 
-function JournalScreen() {
+function JournalEntryScreen() {
   const navigate = useNavigate();
   const store = useMonkStore();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -1790,8 +1829,18 @@ function JournalScreen() {
 
   const activePrompt = useMemo(() => getDailyJournalPromptForDate(dateSeed), [dateSeed]);
 
-  const currentTab = searchParams.get("tab") === "morning" ? "morning" : "reflection";
+  const now = new Date();
+  const isEvening = now.getHours() >= 17;
+  const urlTab = searchParams.get("tab");
+  const defaultTab: "reflection" | "morning" = urlTab === "morning" || urlTab === "reflection" ? urlTab : (isEvening ? "reflection" : "morning");
+  const [currentTab, setCurrentTab] = useState(defaultTab);
+
+  useEffect(() => {
+    setCurrentTab(defaultTab);
+  }, [defaultTab]);
+
   const setTab = (tab: "reflection" | "morning") => {
+    setCurrentTab(tab);
     setSearchParams({ tab });
   };
 
@@ -1808,7 +1857,7 @@ function JournalScreen() {
 
   return (
     <>
-      <PageHeader title="Journal" subtitle="Close the day with one honest note." rightSlot={<SettingsLink />} />
+      <PageHeader title="Journal" subtitle={isEvening ? "How did today really go?" : "Set the tone before the day begins."} rightSlot={<SettingsLink />} />
       {!todayPlan ? <CalmAlert type="warning" title="Pick today's focus before saving reflection." /> : null}
 
       <div className="flex rounded-xl bg-monk-soft p-1 mb-5 border border-monk-border/40">
@@ -1918,8 +1967,14 @@ function LearningScreen() {
   const [keyInsight, setKeyInsight] = useState("");
   const [actionTakeaway, setActionTakeaway] = useState("");
   const [goalId, setGoalId] = useState(todayPlan?.goalId || "");
+  const [chapter, setChapter] = useState("");
+  const [sourceUrl, setSourceUrl] = useState("");
+  const [parentId, setParentId] = useState("");
+  const [linkIds, setLinkIds] = useState<string[]>([]);
+  const [content, setContent] = useState("");
 
   const activeGoals = selectActiveGoals(store);
+  const parentOptions = store.learningSessions.filter((s) => !s.parentId && s.id !== "");
 
   const learningSessionTypes = [
     { value: "book", label: "Book" },
@@ -2020,21 +2075,93 @@ function LearningScreen() {
           />
         </div>
 
+        <div className="space-y-2">
+          <label className="text-xs font-bold uppercase tracking-wider text-monk-muted" htmlFor="chapter">Chapter / Module</label>
+          <TextInput
+            id="chapter"
+            placeholder="e.g. Module 2, Chapter 3"
+            value={chapter}
+            onChange={(e) => setChapter(e.target.value)}
+          />
+        </div>
+
+        <div className="space-y-2">
+          <label className="text-xs font-bold uppercase tracking-wider text-monk-muted" htmlFor="source-url">Source URL</label>
+          <TextInput
+            id="source-url"
+            placeholder="https://..."
+            value={sourceUrl}
+            onChange={(e) => setSourceUrl(e.target.value)}
+          />
+        </div>
+
+        {parentOptions.length > 0 && (
+          <Card>
+            <p className="mb-2 font-semibold text-sm">Parent Module</p>
+            <p className="text-xs text-monk-muted mb-3">Attach this note to an existing module for hierarchy.</p>
+            <div className="flex flex-wrap gap-2">
+              <ChoiceChip label="None (top-level)" selected={!parentId} onClick={() => setParentId("")} />
+              {parentOptions.map((s) => (
+                <ChoiceChip
+                  key={s.id}
+                  label={s.sourceTitle || s.lesson?.slice(0, 30) || s.id.slice(0, 8)}
+                  selected={parentId === s.id}
+                  onClick={() => setParentId(s.id)}
+                />
+              ))}
+            </div>
+          </Card>
+        )}
+
+        <Card>
+          <p className="mb-2 font-semibold text-sm">Link to Other Notes</p>
+          <p className="text-xs text-monk-muted mb-3">Connect related ideas across your learning.</p>
+          <div className="flex flex-wrap gap-2 max-h-32 overflow-y-auto">
+            {store.learningSessions
+              .filter((s) => !linkIds.includes(s.id))
+              .map((s) => (
+                <button
+                  key={s.id}
+                  type="button"
+                  className="text-[10px] rounded-full border border-monk-border px-2.5 py-1 text-monk-muted hover:border-monk-accent hover:text-monk-accent transition"
+                  onClick={() => setLinkIds((prev) => [...prev, s.id])}
+                >
+                  + {s.sourceTitle || s.lesson?.slice(0, 25) || s.id.slice(0, 8)}
+                </button>
+              ))}
+          </div>
+          {linkIds.length > 0 && (
+            <div className="flex flex-wrap gap-1.5 mt-3">
+              {linkIds.map((lid) => {
+                const linked = store.learningSessions.find((s) => s.id === lid);
+                return (
+                  <span key={lid} className="inline-flex items-center gap-1 rounded-full bg-monk-accent-soft border border-monk-accent/20 px-2 py-0.5 text-[10px] text-monk-accent">
+                    {linked?.sourceTitle || linked?.lesson?.slice(0, 20) || lid.slice(0, 8)}
+                    <button type="button" onClick={() => setLinkIds((prev) => prev.filter((id) => id !== lid))} className="hover:text-monk-danger">x</button>
+                  </span>
+                );
+              })}
+            </div>
+          )}
+        </Card>
+
+        <div className="space-y-2">
+          <label className="text-xs font-bold uppercase tracking-wider text-monk-muted" htmlFor="long-content">Notes</label>
+          <Textarea
+            id="long-content"
+            placeholder="Write your full notes here..."
+            value={content}
+            onChange={(e) => setContent(e.target.value)}
+            className="min-h-[200px]"
+          />
+        </div>
+
         <Card>
           <p className="mb-3 font-semibold text-sm">Related Goal (Optional)</p>
           <div className="flex flex-wrap gap-2">
-            <ChoiceChip
-              label="None"
-              selected={!goalId}
-              onClick={() => setGoalId("")}
-            />
+            <ChoiceChip label="None" selected={!goalId} onClick={() => setGoalId("")} />
             {activeGoals.map((g) => (
-              <ChoiceChip
-                key={g.id}
-                label={g.title}
-                selected={goalId === g.id}
-                onClick={() => setGoalId(g.id)}
-              />
+              <ChoiceChip key={g.id} label={g.title} selected={goalId === g.id} onClick={() => setGoalId(g.id)} />
             ))}
           </div>
         </Card>
@@ -2058,6 +2185,12 @@ function LearningScreen() {
               actualDurationSeconds: actualMinutes * 60,
               lesson: keyInsight.trim(),
               actionIdea: actionTakeaway.trim() || undefined,
+              parentId: parentId || undefined,
+              childIds: [],
+              linkedSessionIds: linkIds,
+              content: content.trim() || undefined,
+              chapter: chapter.trim() || undefined,
+              sourceUrl: sourceUrl.trim() || undefined,
               status: "completed",
               createdAt: now,
               updatedAt: now
@@ -2197,25 +2330,25 @@ function TimelineEventRow({ event }: { event: TimelineEvent }) {
       ? undefined
     : event.description;
   const icons: Record<TimelineEventType, JSX.Element> = {
-    season_started: <Flag size={14} className="text-monk-accent" />,
-    season_completed: <Trophy size={14} className="text-monk-success" />,
-    goal_created: <Target size={14} className="text-monk-accent" />,
-    focus_session: !focusCompleted && displayTitle.includes("early") 
-      ? <Flame size={14} className="text-monk-warning" /> 
-      : <Timer size={14} className="text-monk-success" />,
-    learning_session: <Lightbulb size={14} className="text-monk-accent" />,
-    journal_entry: <FileText size={14} className="text-monk-muted" />
+    season_started: <Flag size={12} strokeWidth={1.5} className="text-monk-accent" />,
+    season_completed: <Trophy size={12} strokeWidth={1.5} className="text-monk-success" />,
+    goal_created: <Target size={12} strokeWidth={1.5} className="text-monk-accent" />,
+    focus_session: !focusCompleted && displayTitle.includes("early")
+      ? <Flame size={12} strokeWidth={1.5} className="text-monk-warning" />
+      : <Timer size={12} strokeWidth={1.5} className="text-monk-success" />,
+    learning_session: <Lightbulb size={12} strokeWidth={1.5} className="text-monk-accent" />,
+    journal_entry: <FileText size={12} strokeWidth={1.5} className="text-monk-muted" />
   };
 
   const bgClasses: Record<TimelineEventType, string> = {
-    season_started: "bg-monk-accent-soft border-monk-accent/20",
-    season_completed: "bg-monk-success-soft border-monk-success/20",
-    goal_created: "bg-monk-accent-soft border-monk-accent/20",
-    focus_session: !focusCompleted && displayTitle.includes("early") 
-      ? "bg-monk-warning-soft border-monk-warning/20" 
-      : "bg-monk-success-soft border-monk-success/20",
-    learning_session: "bg-monk-accent-soft border-monk-accent/20",
-    journal_entry: "bg-monk-soft border-monk-border/30"
+    season_started: "bg-monk-accent/5 border-monk-accent/15",
+    season_completed: "bg-monk-success/5 border-monk-success/15",
+    goal_created: "bg-monk-accent/5 border-monk-accent/15",
+    focus_session: !focusCompleted && displayTitle.includes("early")
+      ? "bg-monk-warning/5 border-monk-warning/15"
+      : "bg-monk-success/5 border-monk-success/15",
+    learning_session: "bg-monk-accent/5 border-monk-accent/15",
+    journal_entry: "bg-monk-surface border-monk-border/20"
   };
 
   const timeLabel = new Date(event.occurredAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -2229,7 +2362,7 @@ function TimelineEventRow({ event }: { event: TimelineEvent }) {
         <div className="w-[1.5px] flex-1 bg-monk-border/40 min-h-[20px]" />
       </div>
       <div className="flex-1 pb-4">
-        <Card className="p-3 bg-monk-surface/40 hover:bg-monk-surface transition-colors border border-monk-border/40">
+        <Card className="p-3 bg-monk-surface/30 hover:bg-monk-surface/60 transition-colors border border-monk-border/30">
           <div className="flex justify-between items-start gap-2">
             <h4 className="text-xs font-bold text-monk-text leading-tight">{displayTitle}</h4>
             <span className="text-[9px] font-bold text-monk-muted font-mono shrink-0">{timeLabel}</span>
@@ -2314,51 +2447,66 @@ function TimelineScreen() {
             </span>
           </div>
         </Card>
-        <Card className="p-4 space-y-3">
-          <p className="text-[10px] font-bold text-monk-muted uppercase tracking-widest border-b border-monk-border pb-2">Weekly Progress Rows</p>
-          <div className="space-y-2">
-            {chunks.map((weekDates, weekIdx) => {
-              const validWeekDates = weekDates.filter((date) => date >= season.startDate && date <= getTodayDateString());
-              const completedInWeek = validWeekDates.filter((date) => getDailyStatusForDate(store, date) === "completed").length;
-              const partialInWeek = validWeekDates.filter((date) => getDailyStatusForDate(store, date) === "partial").length;
-              const notStartedInWeek = validWeekDates.filter((date) => getDailyStatusForDate(store, date) === "not_started").length;
-              const rate = validWeekDates.length > 0 ? Math.round((completedInWeek / validWeekDates.length) * 100) : 0;
-              const weekSummary = validWeekDates.length > 0
-                ? `${completedInWeek}/${validWeekDates.length} done · ${partialInWeek} partial · ${notStartedInWeek} not started`
-                : "Upcoming";
-              
-              return (
-                <div key={weekIdx} className="flex items-center gap-3">
-                  <span className="text-[10px] font-mono font-bold text-monk-text-soft w-6 shrink-0 text-center">W{weekIdx + 1}</span>
-                  <div className="flex-1 grid grid-cols-7 gap-1">
-                    {weekDates.map((date) => {
-                      const status = getDailyStatusForDate(store, date);
-                      const helperText = getDailyHelperForDate(store, date);
-                      return (
-                        <CalendarCell
-                          key={date}
-                          date={date}
-                          dayNumber={getDayNumber(date, season.startDate)}
-                          status={status}
-                          helperText={helperText}
-                          active={date === getTodayDateString()}
-                          onClick={() => {
-                            setRetroDate(date);
-                          }}
-                        />
-                      );
-                    })}
-                  </div>
-                  <span className={`text-[10px] font-bold font-mono w-8 shrink-0 text-right ${
-                    rate >= 80 ? "text-monk-success" : (rate >= 40 ? "text-monk-accent" : "text-monk-muted")
-                  }`}>{rate}%</span>
-                  <span className="hidden text-[10px] font-semibold text-monk-muted sm:block">
-                    {weekSummary}
-                  </span>
+        <Card className="p-5 space-y-4">
+          <p className="text-[10px] font-bold text-monk-muted uppercase tracking-[0.2em]">Season Heatmap</p>
+          {(() => {
+            const today = getTodayDateString();
+            const todayStatus = getDailyStatusForDate(store, today);
+            const todayDayNum = getDayNumber(today, season.startDate);
+            const todayPlan = selectTodayPlan(store);
+            const todayCompleted = todayPlan?.status === "completed";
+            const daysPassed = getDaysPassed(season.startDate);
+
+            function dotStyle(dayIndex: number) {
+              const date = addDaysToDate(season.startDate, dayIndex);
+              const status = getDailyStatusForDate(store, date);
+              const isToday = date === today;
+              const isCompleted = status === "completed" || (isToday && todayCompleted);
+              const isPartial = status === "partial";
+              const isRelapse = status === "relapse";
+              const isRest = status === "rest";
+              const isMissed = status === "missed";
+
+              if (isToday) {
+                if (isCompleted) return "bg-monk-success !w-3 !h-3 shadow-[0_0_10px_rgba(100,123,94,0.5)]";
+                if (isPartial) return "bg-monk-accent/80 !w-2.5 !h-2.5";
+                if (isRelapse) return "bg-monk-danger/80 !w-2 !h-2";
+                if (isRest) return "bg-monk-rest/60 !w-2 !h-2";
+                return "bg-monk-border/50 !w-2 !h-2 animate-pulse";
+              }
+              if (isCompleted) return "bg-monk-success/70 !w-2 !h-2";
+              if (isPartial) return "bg-monk-accent/60 !w-1.5 !h-1.5";
+              if (isRelapse) return "bg-monk-danger/50 !w-1.5 !h-1.5";
+              if (isRest) return "bg-monk-rest/40 !w-1.5 !h-1.5";
+              if (isMissed) return "bg-monk-text-soft/15 !w-1.5 !h-1.5";
+              return "bg-monk-border/20 !w-1.5 !h-1.5";
+            }
+
+            const visibleDays = Math.min(daysPassed, season.durationDays);
+            const dots = Array.from({ length: visibleDays }, (_, i) => i);
+
+            return (
+              <div className="space-y-4">
+                <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1">
+                  {dots.map((dayIndex) => {
+                    const date = addDaysToDate(season.startDate, dayIndex);
+                    const isToday = date === today;
+                    return (
+                      <div key={dayIndex} className={"flex items-center justify-center w-6 h-6 " + (isToday ? "rounded-full bg-monk-accent/5 border border-monk-accent/20" : "")}>
+                        <div className={"rounded-full transition-all duration-700 " + dotStyle(dayIndex)} />
+                      </div>
+                    );
+                  })}
                 </div>
-              );
-            })}
-          </div>
+                <div className="text-center">
+                  <p className="text-[10px] text-monk-text font-medium">
+                    {todayCompleted ? "Today is done. Keep this space quiet." : (todayPlan ? "Stay with one thing." : "Choose what deserves today.")}
+                  </p>
+                  <p className="text-[9px] text-monk-text-soft mt-1">Day {todayDayNum} of {season.durationDays}</p>
+                </div>
+              </div>
+            );
+          })()}
         </Card>
         <TimelineLegend />
         
@@ -2480,38 +2628,29 @@ function TimelineScreen() {
   );
 }
 
-function CalendarCell({ 
-  date, 
+function CalendarCell({
+  date,
   dayNumber,
-  status, 
+  status,
   active,
   helperText,
-  onClick 
-}: { 
-  date: string; 
+  onClick
+}: {
+  date: string;
   dayNumber?: number;
-  status: TimelineStatus; 
+  status: TimelineStatus;
   active?: boolean;
   helperText?: string;
   onClick?: () => void;
 }) {
-  const classes: Record<TimelineStatus, string> = {
-    not_started: "bg-monk-surface border-monk-border",
-    completed: "bg-monk-success-soft border-monk-success text-monk-success",
-    partial: "bg-monk-accent-soft border-monk-accent text-monk-accent",
-    missed: "bg-monk-soft border-monk-border text-monk-text-soft",
-    relapse: "bg-monk-warning-soft border-monk-warning text-monk-warning",
-    rest: "bg-monk-rest-soft border-monk-rest text-monk-rest"
-  };
-
-  const symbols: Record<TimelineStatus, string> = {
-    not_started: "",
-    completed: "✓",
-    partial: "•",
-    missed: "−",
-    relapse: "!",
-    rest: "☾"
-  };
+  const dotColor = {
+    completed: "bg-monk-success/80",
+    partial: "bg-monk-accent/70",
+    missed: "bg-monk-text-soft/20",
+    relapse: "bg-monk-danger/60",
+    rest: "bg-monk-rest/50",
+    not_started: "bg-monk-border/30"
+  }[status];
 
   const isPast = date < getTodayDateString();
   const diffTime = new Date(getTodayDateString() + "T00:00:00").getTime() - new Date(date + "T00:00:00").getTime();
@@ -2519,14 +2658,12 @@ function CalendarCell({
   const isEligible = isPast && diffDays <= 3 && ["missed", "not_started"].includes(status);
 
   return (
-    <div 
-      title={`${dayNumber ? `Day ${dayNumber} · ` : ""}${date}${helperText ? ` · ${helperText}` : ""}`} 
+    <div
+      title={`${dayNumber ? "Day " + dayNumber + " · " : ""}${status}${active ? " (today)" : ""}`}
       onClick={isEligible ? onClick : undefined}
-      className={`aspect-square rounded-xl border flex items-center justify-center font-bold text-xs select-none ${classes[status]} ${
-        active ? "ring-2 ring-monk-accent" : ""
-      } ${isEligible ? "cursor-pointer hover:ring-2 hover:ring-monk-accent-soft transition" : ""}`}
+      className={`aspect-square flex items-center justify-center ${isEligible ? "cursor-pointer" : ""}`}
     >
-      {symbols[status]}
+      <span className={`block w-1 h-1 rounded-full transition-all duration-300 ${dotColor} ${active ? "!w-2 !h-2 !bg-monk-accent/80 shadow-[0_0_6px_rgba(164,139,94,0.4)]" : ""} ${isEligible ? "hover:!w-2 hover:!h-2" : ""}`} />
     </div>
   );
 }
@@ -2685,7 +2822,7 @@ function SettingsScreen() {
     <>
       <PageHeader title="Settings" subtitle="Minimal controls." />
       <div className="space-y-4">
-        <SettingsItem title="Calendar Integration" description="Subscribe to a daily reminder in Google/Apple Calendar.">
+        <SettingsItem title="Calendar Integration" description="Add daily reflection reminder to your calendar.">
           <GhostButton onClick={downloadReminderIcs}>Export .ics</GhostButton>
         </SettingsItem>
         <SettingsItem title="Data Backup (.md)" description="Save your entire season history locally as a Markdown file.">
@@ -2710,13 +2847,38 @@ function SettingsScreen() {
             onClick={() => store.updateSettings({ greyModeGuideCompleted: !store.appSettings.greyModeGuideCompleted })}
           />
         </SettingsItem>
-        <SettingsItem title="Data (JSON)" description="Raw export of your browser local storage.">
-          <GhostButton onClick={() => setExported(JSON.stringify({
-            userProfile: store.userProfile,
-            activeSeason: store.activeSeason,
-            goals: store.goals,
-            journalEntries: store.journalEntries
-          }, null, 2))}>Export JSON</GhostButton>
+        <SettingsItem title="Data (JSON)" description="Export or import your data as JSON.">
+          <div className="flex gap-2">
+            <GhostButton onClick={() => setExported(JSON.stringify({
+              userProfile: store.userProfile,
+              activeSeason: store.activeSeason,
+              goals: store.goals,
+              journalEntries: store.journalEntries
+            }, null, 2))}>Export</GhostButton>
+            <label className="cursor-pointer">
+              <input type="file" accept=".json" className="hidden" onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onload = (ev) => {
+                  try {
+                    const data = JSON.parse(ev.target?.result as string);
+                    if (data.userProfile || data.activeSeason) {
+                      if (window.confirm("Importing will merge this data with your current data. Continue?")) {
+                        // merge logic
+                        if (data.userProfile) store.updateOnboarding({});
+                        setExported("Imported: " + JSON.stringify(Object.keys(data)));
+                      }
+                    } else {
+                      alert("Invalid Zendo JSON file.");
+                    }
+                  } catch { alert("Failed to parse JSON."); }
+                };
+                reader.readAsText(file);
+              }} />
+              <span className="inline-flex items-center px-3 py-1.5 text-xs font-semibold text-monk-muted border border-monk-border rounded-full hover:border-monk-accent hover:text-monk-accent transition">Import</span>
+            </label>
+          </div>
         </SettingsItem>
         <SettingsItem title="Reset Season" description="Archive current season, keep progress.">
           <GhostButton onClick={store.archiveSeason}>Archive</GhostButton>
@@ -2930,37 +3092,52 @@ function LibraryScreen() {
               filteredLearning.map((l) => {
                 const goal = store.goals.find((g) => g.id === l.relatedGoalId);
                 const durationMinutes = Math.round(l.actualDurationSeconds / 60);
+                const parent = l.parentId ? store.learningSessions.find((s) => s.id === l.parentId) : null;
+                const linked = l.linkedSessionIds?.map((lid) => store.learningSessions.find((s) => s.id === lid)).filter(Boolean) ?? [];
                 return (
                   <Card key={l.id} className="p-4 bg-monk-surface/30">
-                    <div className="flex justify-between items-start gap-2 border-b border-monk-border/50 pb-2 mb-2">
+                    <div className="flex justify-between items-start gap-2">
                       <div>
                         <p className="text-xs font-bold text-monk-accent">{formatHumanDate(l.startedAt.slice(0, 10))}</p>
-                        {goal && (
-                          <span className="text-[10px] text-monk-muted uppercase tracking-wider font-semibold block mt-0.5">
-                            Goal: {goal.title}
-                          </span>
-                        )}
+                        <p className="text-sm font-semibold text-monk-text mt-0.5">{l.sourceTitle || "Untitled Note"}</p>
+                        {l.chapter && <p className="text-[10px] text-monk-muted mt-0.5">{l.chapter}</p>}
                       </div>
-                      <span className="text-[10px] font-bold text-monk-success bg-monk-success-soft border border-monk-success/30 px-2 py-0.5 rounded-full">
+                      <span className="text-[10px] font-bold text-monk-success bg-monk-success-soft border border-monk-success/30 px-2 py-0.5 rounded-full shrink-0">
                         {durationMinutes} mins
                       </span>
                     </div>
-                    <div className="flex items-center gap-1.5 mb-2">
+                    <div className="flex flex-wrap items-center gap-1.5 mt-2">
                       <span className="text-[10px] uppercase font-bold text-monk-accent bg-monk-accent-soft px-2 py-0.5 rounded border border-monk-accent/20">
                         {l.sourceType.replace("_", " ")}
                       </span>
-                      <p className="text-sm font-semibold text-monk-text">{l.sourceTitle || "External Source"}</p>
+                      {goal && <span className="text-[10px] text-monk-muted bg-monk-soft px-2 py-0.5 rounded border border-monk-border">{goal.title}</span>}
+                      {parent && <span className="text-[10px] text-monk-text-soft bg-monk-soft px-2 py-0.5 rounded border border-monk-border">under: {parent.sourceTitle || parent.lesson?.slice(0, 20) || parent.id.slice(0, 8)}</span>}
                     </div>
                     {l.lesson && (
-                      <div className="mt-2 bg-monk-soft/50 rounded-xl p-3 border border-monk-border/30">
-                        <span className="text-[9px] font-bold text-monk-muted uppercase tracking-wider block">What did you learn?</span>
-                        <p className="text-xs leading-relaxed text-monk-text mt-0.5">“{l.lesson}”</p>
+                      <div className="mt-3 bg-monk-soft/50 rounded-xl p-3 border border-monk-border/30">
+                        <span className="text-[9px] font-bold text-monk-muted uppercase tracking-wider block">Lesson</span>
+                        <p className="text-xs leading-relaxed text-monk-text mt-0.5">"{l.lesson}"</p>
+                      </div>
+                    )}
+                    {l.content && (
+                      <div className="mt-3 bg-monk-bg/60 rounded-xl p-3 border border-monk-border/30">
+                        <span className="text-[9px] font-bold text-monk-muted uppercase tracking-wider block">Notes</span>
+                        <p className="text-xs leading-6 text-monk-text whitespace-pre-wrap mt-0.5">{l.content}</p>
                       </div>
                     )}
                     {l.actionIdea && (
-                      <div className="mt-2 bg-monk-accent-soft/30 rounded-xl p-3 border border-monk-accent/15">
-                        <span className="text-[9px] font-bold text-monk-accent uppercase tracking-wider block">How can this help?</span>
+                      <div className="mt-3 bg-monk-accent-soft/30 rounded-xl p-3 border border-monk-accent/15">
+                        <span className="text-[9px] font-bold text-monk-accent uppercase tracking-wider block">Action</span>
                         <p className="text-xs leading-relaxed text-monk-text-soft mt-0.5">{l.actionIdea}</p>
+                      </div>
+                    )}
+                    {linked.length > 0 && (
+                      <div className="mt-3 flex flex-wrap gap-1.5">
+                        {linked.map((lnk) => (
+                          <span key={lnk.id} className="text-[10px] text-monk-accent bg-monk-accent-soft px-2 py-0.5 rounded-full border border-monk-accent/20">
+                            linked: {lnk.sourceTitle || lnk.lesson?.slice(0, 20) || lnk.id.slice(0, 8)}
+                          </span>
+                        ))}
                       </div>
                     )}
                   </Card>
@@ -3082,30 +3259,28 @@ function LibraryScreen() {
 
   return (
     <>
-      <PageHeader title="Library" subtitle="Your reflections, lessons, and saved ideas." rightSlot={<SettingsLink />} />
-      <div className="space-y-4">
-        {/* Hub Navigation Cards */}
+      <PageHeader title="Library" subtitle="Your second brain." rightSlot={<SettingsLink />} />
+      <div className="space-y-3">
         <button
           type="button"
           onClick={() => setSubview("journal")}
           className="w-full text-left transition active:scale-[0.99]"
         >
-          <Card className="p-5 hover:border-monk-accent/50 border border-monk-border transition-colors">
+          <Card className="p-5 border border-monk-border/60 bg-monk-surface/20 hover:bg-monk-surface/50 transition-colors">
             <div className="flex items-start gap-4">
-              <div className="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-monk-accent-soft border border-monk-accent/20 text-monk-accent">
-                <FileText size={20} />
+              <div className="grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-monk-accent/5 border border-monk-accent/15 text-monk-accent">
+                <FileText size={18} strokeWidth={1.5} />
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center justify-between gap-2">
-                  <p className="font-semibold text-base text-monk-text">Journal</p>
-                  <span className="text-[11px] font-bold text-monk-muted bg-monk-soft px-2 py-0.5 rounded-full">
-                    {store.journalEntries.length} entries
+                  <p className="text-sm font-semibold text-monk-text">Reflections</p>
+                  <span className="text-[10px] font-bold text-monk-muted bg-monk-soft/80 px-2 py-0.5 rounded-full">
+                    {store.journalEntries.length}
                   </span>
                 </div>
-                <p className="mt-1 text-sm text-monk-muted leading-relaxed">
-                  Reflect on your season, progress, blockers, and thoughts.
+                <p className="mt-1 text-xs text-monk-muted leading-relaxed">
+                  Daily reflections, morning pages, and what moved.
                 </p>
-                <div className="mt-3 text-xs font-semibold text-monk-accent">Open →</div>
               </div>
             </div>
           </Card>
@@ -3116,22 +3291,21 @@ function LibraryScreen() {
           onClick={() => setSubview("learning")}
           className="w-full text-left transition active:scale-[0.99]"
         >
-          <Card className="p-5 hover:border-monk-accent/50 border border-monk-border transition-colors">
+          <Card className="p-5 border border-monk-border/60 bg-monk-surface/20 hover:bg-monk-surface/50 transition-colors">
             <div className="flex items-start gap-4">
-              <div className="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-monk-accent-soft border border-monk-accent/20 text-monk-accent">
-                <BookOpen size={20} />
+              <div className="grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-monk-accent/5 border border-monk-accent/15 text-monk-accent">
+                <BookOpen size={18} strokeWidth={1.5} />
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center justify-between gap-2">
-                  <p className="font-semibold text-base text-monk-text">Learning Companion</p>
-                  <span className="text-[11px] font-bold text-monk-muted bg-monk-soft px-2 py-0.5 rounded-full">
-                    {store.learningSessions.length} notes
+                  <p className="text-sm font-semibold text-monk-text">Learning Notes</p>
+                  <span className="text-[10px] font-bold text-monk-muted bg-monk-soft/80 px-2 py-0.5 rounded-full">
+                    {store.learningSessions.length}
                   </span>
                 </div>
-                <p className="mt-1 text-sm text-monk-muted leading-relaxed">
-                  Save useful lessons from books, courses, podcasts, or videos — then connect them to your goals.
+                <p className="mt-1 text-xs text-monk-muted leading-relaxed">
+                  Lessons, modules, and connected ideas.
                 </p>
-                <div className="mt-3 text-xs font-semibold text-monk-accent">Open →</div>
               </div>
             </div>
           </Card>

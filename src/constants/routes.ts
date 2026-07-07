@@ -21,7 +21,9 @@ export const routes = {
   relapse: "/relapse",
   seasonEnd: "/season-end",
   settings: "/settings",
-  library: "/library"
+  library: "/library",
+  login: "/login",
+  signup: "/signup"
 } as const;
 
 export const onboardingOrder = [

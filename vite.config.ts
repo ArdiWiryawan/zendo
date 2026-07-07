@@ -13,6 +13,7 @@ export default defineConfig({
         "icons/icon-192.png",
         "icons/icon-512.png"
       ],
+      devOptions: { enabled: true },
       manifest: {
         name: "Zendo",
         short_name: "Zendo",

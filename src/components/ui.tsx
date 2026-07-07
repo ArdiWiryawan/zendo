@@ -1,5 +1,7 @@
 import type { ButtonHTMLAttributes, InputHTMLAttributes, ReactNode, TextareaHTMLAttributes } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ArrowRight, BookOpen, Calendar, Circle, Flag, Grid3X3, Settings } from "lucide-react";
+import { hapticPress } from "../lib/haptics";
 import { NavLink, useLocation } from "react-router-dom";
 import { routes } from "../constants/routes";
 
@@ -22,10 +24,18 @@ export function ScreenContainer({
 }
 
 export function AppShell({ children, showBottomNav = true }: { children: ReactNode; showBottomNav?: boolean }) {
+  const navVisible = useScrollNav();
+
   return (
     <div className="min-h-dvh bg-monk-bg text-monk-text">
       <ScreenContainer withBottomNavPadding={showBottomNav}>{children}</ScreenContainer>
-      {showBottomNav ? <BottomNav /> : null}
+      {showBottomNav ? (
+        <div className={`fixed inset-x-0 bottom-[calc(env(safe-area-inset-bottom)+12px)] px-6 transition-transform duration-300 z-50 ${
+          navVisible ? "translate-y-0" : "translate-y-[120%]"
+        }`}>
+          <BottomNav />
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -101,6 +111,7 @@ export function PrimaryButton(props: ButtonHTMLAttributes<HTMLButtonElement>) {
   return (
     <button
       {...props}
+      onClick={(e) => { hapticPress("medium"); props.onClick?.(e); }}
       className={`min-h-[50px] w-full rounded-[16px] bg-monk-accent px-6 text-base font-bold text-monk-bg transition active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-45 ${
         props.className ?? ""
       }`}
@@ -112,6 +123,7 @@ export function SecondaryButton(props: ButtonHTMLAttributes<HTMLButtonElement>) 
   return (
     <button
       {...props}
+      onClick={(e) => { hapticPress("light"); props.onClick?.(e); }}
       className={`min-h-[46px] w-full rounded-[14px] border border-monk-border bg-monk-soft px-6 text-sm font-semibold text-monk-text transition active:scale-[0.98] disabled:opacity-45 ${
         props.className ?? ""
       }`}
@@ -123,6 +135,7 @@ export function GhostButton(props: ButtonHTMLAttributes<HTMLButtonElement>) {
   return (
     <button
       {...props}
+      onClick={(e) => { hapticPress("light"); props.onClick?.(e); }}
       className={`min-h-10 rounded-full px-4 text-xs font-medium text-monk-muted transition active:scale-[0.98] disabled:opacity-45 ${
         props.className ?? ""
       }`}
@@ -163,7 +176,7 @@ export function ChoiceChip({
     <button
       type="button"
       disabled={disabled}
-      onClick={onClick}
+      onClick={() => { hapticPress("light"); onClick(); }}
       className={`min-h-10 rounded-full border px-4 text-sm transition disabled:opacity-45 ${
         selected
           ? "border-monk-accent bg-monk-accent-soft text-monk-accent"
@@ -189,7 +202,7 @@ export function ChoiceCard({
   return (
     <button
       type="button"
-      onClick={onClick}
+      onClick={() => { hapticPress("light"); onClick(); }}
       className={`w-full rounded-monk border p-5 text-left transition ${
         selected ? "border-monk-accent bg-monk-accent-soft" : "border-monk-border bg-monk-surface"
       }`}
@@ -259,7 +272,7 @@ function BottomNav() {
     { to: routes.today, label: "Today", icon: Circle },
     { to: routes.week, label: "Week", icon: Calendar },
     { to: routes.timeline, label: "Timeline", icon: Grid3X3 },
-    { to: routes.library, label: "Library", icon: BookOpen }
+    { to: routes.journal, label: "Journal", icon: BookOpen }
   ];
   return (
     <nav className="fixed inset-x-0 bottom-[calc(env(safe-area-inset-bottom)+12px)] px-6">
@@ -359,4 +372,44 @@ export function SeasonPreviewCard({
       </div>
     </div>
   );
+}
+
+function ScrollHideWrapper({ children }: { children: ReactNode }) {
+  const [showNav, setShowNav] = useState(true);
+  const lastScroll = useRef(0);
+
+  useEffect(() => {
+    const onScroll = () => {
+      const current = window.scrollY;
+      if (current > lastScroll.current && current > 80) setShowNav(false);
+      else setShowNav(true);
+      lastScroll.current = current;
+    };
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
+  return (
+    <div className="min-h-dvh">
+      {children}
+    </div>
+  );
+}
+
+export function useScrollNav() {
+  const [visible, setVisible] = useState(true);
+  const lastY = useRef(0);
+
+  useEffect(() => {
+    const onScroll = () => {
+      const y = window.scrollY;
+      if (y > lastY.current && y > 80) setVisible(false);
+      else setVisible(true);
+      lastY.current = y;
+    };
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
+  return visible;
 }

@@ -215,6 +215,20 @@ export type LearningSession = {
   lesson?: string;
   actionIdea?: string;
 
+  // Hierarchy: parent -> child sessions (module -> submodule)
+  parentId?: string;
+  childIds?: string[];
+
+  // Obsidian-style linking
+  linkedSessionIds?: string[];
+
+  // Long-form notes
+  content?: string;
+
+  // Course/book structure
+  chapter?: string;
+  sourceUrl?: string;
+
   status: "completed" | "cancelled" | "abandoned";
 
   createdAt: string;

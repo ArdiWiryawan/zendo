@@ -11,6 +11,7 @@
     "testsprite": "testsprite"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.110.1",
     "@vitejs/plugin-react": "^4.3.4",
     "date-fns": "^4.1.0",
     "lucide-react": "^0.468.0",
