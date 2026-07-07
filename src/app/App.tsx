@@ -335,7 +335,7 @@ function getDailyActivity(store: MonkMVPState, date: string) {
   return { focusSessions, learningSessions, legacyLearningEntries };
 }
 
-function getDailyStatusForDate(store: MonkMVPState, date: string) {
+function getDailyStatusForDate(store: MonkMVPState, date: string): TimelineStatus {
   const day = store.timelineDays.find((item) => item.date === date);
   if (day?.status === "relapse" || day?.status === "rest") return day.status;
   return getCoreDailyStatusForDate(store, date);
@@ -2864,7 +2864,7 @@ function SettingsScreen() {
         <SettingsItem title="Account Sync (Optional)" description="Connect to Supabase to sync your progress across devices. Works fully offline without an account.">
           <div className="flex items-center justify-between gap-2">
             <span className="text-sm text-monk-muted">Not connected</span>
-            <GhostButton onClick={() => navigate(routes.login)}>Connect Account</GhostButton>
+            <GhostButton onClick={() => window.location.href = routes.login}>Connect Account</GhostButton>
           </div>
         </SettingsItem>
         <SettingsItem title="Reset Season" description="Archive current season, keep progress.">
@@ -3120,9 +3120,9 @@ function LibraryScreen() {
                     )}
                     {linked.length > 0 && (
                       <div className="mt-3 flex flex-wrap gap-1.5">
-                        {linked.map((lnk) => (
-                          <span key={lnk.id} className="text-[10px] text-monk-accent bg-monk-accent-soft px-2 py-0.5 rounded-full border border-monk-accent/20">
-                            linked: {lnk.sourceTitle || lnk.lesson?.slice(0, 20) || lnk.id.slice(0, 8)}
+                        {linked.filter(Boolean).map((lnk: any) => (
+                          <span key={lnk?.id} className="text-[10px] text-monk-accent bg-monk-accent-soft px-2 py-0.5 rounded-full border border-monk-accent/20">
+                            linked: {lnk?.sourceTitle || lnk?.lesson?.slice(0, 20) || lnk?.id?.slice(0, 8)}
                           </span>
                         ))}
                       </div>

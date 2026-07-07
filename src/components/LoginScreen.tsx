@@ -22,8 +22,9 @@ export default function LoginScreen() {
       });
       if (error) throw error;
       navigate("/today", { replace: true });
-    } catch (err) {
-      setError(err.message || "Login failed");
+    } catch (err: unknown) {
+      const msg = (err as any)?.message || "Login failed";
+      setError(msg);
     } finally {
       setLoading(false);
     }

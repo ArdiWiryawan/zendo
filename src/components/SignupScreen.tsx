@@ -27,8 +27,9 @@ export default function SignupScreen() {
       } else {
         navigate("/login", { replace: true });
       }
-    } catch (err) {
-      setError(err.message || "Signup failed");
+    } catch (err: unknown) {
+      const msg = (err as any)?.message || "Signup failed";
+      setError(msg);
     } finally {
       setLoading(false);
     }
