@@ -308,29 +308,10 @@ function OnboardingGate() {
 }
 
 function ProtectedMain({ children, allowEnded = false }: { children: JSX.Element; allowEnded?: boolean }) {
-  const [session, setSession] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
   const { userProfile, activeSeason, ensureSeasonFresh } = useMonkStore();
   useEffect(() => {
     ensureSeasonFresh();
   }, [ensureSeasonFresh]);
-
-  useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setLoading(false);
-    });
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session);
-    });
-    return () => subscription.unsubscribe();
-  }, []);
-
-  if (loading) return null; // wait for session
-
-  if (!session?.user) {
-    return <Navigate to={routes.login} replace />;
-  }
 
   if (!userProfile?.onboardingCompleted || !activeSeason) {
     return <Navigate to={routes.onboardingWelcome} replace />;
@@ -2878,6 +2859,12 @@ function SettingsScreen() {
               }} />
               <span className="inline-flex items-center px-3 py-1.5 text-xs font-semibold text-monk-muted border border-monk-border rounded-full hover:border-monk-accent hover:text-monk-accent transition">Import</span>
             </label>
+          </div>
+        </SettingsItem>
+        <SettingsItem title="Account Sync (Optional)" description="Connect to Supabase to sync your progress across devices. Works fully offline without an account.">
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-sm text-monk-muted">Not connected</span>
+            <GhostButton onClick={() => navigate(routes.login)}>Connect Account</GhostButton>
           </div>
         </SettingsItem>
         <SettingsItem title="Reset Season" description="Archive current season, keep progress.">
