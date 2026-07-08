@@ -3,6 +3,8 @@ let ctx: AudioContext | null = null
 let playing = false
 let oscNodes: OscillatorNode[] = []
 let gainNodes: GainNode[] = []
+let lfoNodes: OscillatorNode[] = []
+let lfoGainNodes: GainNode[] = []
 
 function getCtx() {
   if (!ctx) {
@@ -14,7 +16,8 @@ function getCtx() {
   return ctx
 }
 
-const HARMONICS = [55, 82.5, 110, 137.5, 165]
+// Higher harmonics that work on phone speakers
+const HARMONICS = [110, 165, 220, 275, 330, 440, 550]
 
 export function startMusic(vol = 0.06) {
   if (playing) return
@@ -28,6 +31,7 @@ export function startMusic(vol = 0.06) {
     osc.type = 'sine'
     osc.frequency.setValueAtTime(freq, now)
 
+    // stereo spread
     const pan = (i / (HARMONICS.length - 1)) * 2 - 1
     const stereo = c.createStereoPanner ? c.createStereoPanner() : null
     if (stereo) {
@@ -38,10 +42,10 @@ export function startMusic(vol = 0.06) {
     gain.gain.linearRampToValueAtTime(vol, now + 2)
     gain.gain.linearRampToValueAtTime(vol * 0.5, now + 4)
 
-    // slow LFO for depth
+    // slow LFO for gentle movement
     const lfo = c.createOscillator()
     const lfoGain = c.createGain()
-    lfo.frequency.setValueAtTime(0.3 + i * 0.1, now)
+    lfo.frequency.setValueAtTime(0.25 + i * 0.08, now)
     lfoGain.gain.setValueAtTime(vol * 0.12, now)
     lfo.connect(lfoGain)
     lfoGain.connect(gain.gain)
@@ -57,14 +61,18 @@ export function startMusic(vol = 0.06) {
     osc.start(now)
     oscNodes.push(osc)
     gainNodes.push(gain)
+    lfoNodes.push(lfo)
+    lfoGainNodes.push(lfoGain)
   })
   playing = true
 }
 
 export function stopMusic() {
-  oscNodes.forEach(n => { try { n.stop() } catch {} })
+  [...oscNodes, ...lfoNodes].forEach(n => { try { n.stop() } catch {} })
   oscNodes = []
   gainNodes = []
+  lfoNodes = []
+  lfoGainNodes = []
   playing = false
 }
 

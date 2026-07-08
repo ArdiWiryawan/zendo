@@ -268,7 +268,7 @@ export default function App() {
       <Route path={routes.settings} element={<ProtectedMain><SettingsScreen /></ProtectedMain>} />
       <Route path={routes.login} element={<LoginScreen />} />
       <Route path={routes.signup} element={<SignupScreen />} />
-      <Route path={routes.library} element={<Navigate to="/journal" replace />} />
+      <Route path={routes.library} element={<ProtectedMain><JournalLibraryScreen /></ProtectedMain>} />
       <Route path="*" element={<Navigate to={routes.root} replace />} />
     </Routes>
   );
@@ -1645,9 +1645,13 @@ function WeekScreen() {
   const store = useMonkStore();
   const weeklyPlan = selectCurrentWeeklyPlan(store);
   const goals = selectActiveGoals(store);
+  const dayPlans = store.dayPlans;
   useEffect(() => {
     store.getOrCreateCurrentWeeklyPlan();
   }, []);
+  useEffect(() => {
+    // re-render when dayPlans change (sync with Today)
+  }, [dayPlans]);
   const weekDates = useMemo(() => {
     return weeklyPlan ? datesInRange(weeklyPlan.startDate, 7) : [];
   }, [weeklyPlan?.startDate]);
@@ -1686,12 +1690,27 @@ function WeekScreen() {
                 else if (!isFuture) { barColor = "bg-monk-border/40"; }
 
                 return (
-                  <div key={date} className="flex-1 flex flex-col items-center gap-2">
-                    <div className={`w-full aspect-[3/4] rounded-lg border ${barColor} ${barBorder} transition-all duration-500 ${isToday ? "ring-1 ring-monk-accent/40" : ""} ${isFuture ? "opacity-30" : ""}`} title={date} />
-                    <div className="flex flex-col items-center gap-0.5">
-                      <span className="text-[9px] font-medium text-monk-text-soft/70">{weekday[0]}</span>
-                      <span className={`text-[8px] font-mono ${isToday ? "text-monk-accent font-bold" : "text-monk-text-soft/50"}`}>{dayNum}</span>
+                  <div key={date} className="flex-1 flex flex-col items-center gap-1.5">
+                    <div className={`w-10 h-10 sm:w-11 sm:h-11 rounded-full border-2 flex items-center justify-center text-[11px] font-mono font-bold transition-all duration-300 ${
+                      isCompleted
+                        ? "bg-monk-success/15 border-monk-success/40 text-monk-success"
+                        : isPartial
+                        ? "bg-monk-accent/15 border-monk-accent/30 text-monk-accent"
+                        : isRest
+                        ? "bg-monk-rest/15 border-monk-rest/30 text-monk-rest"
+                        : isRelapse
+                        ? "bg-monk-danger/10 border-monk-danger/30 text-monk-danger"
+                        : isMissed
+                        ? "bg-monk-text-soft/5 border-monk-text-soft/20 text-monk-text-soft/40"
+                        : isFuture
+                        ? "bg-transparent border-monk-border/20 text-monk-text-soft/30"
+                        : "bg-monk-border/10 border-monk-border/30 text-monk-text-soft/60"
+                    } ${isToday ? "ring-1 ring-monk-accent/40" : ""} ${isFuture ? "opacity-25" : ""}`}>
+                      {dayNum}
                     </div>
+                    <span className={`text-[8px] font-semibold uppercase tracking-wider ${
+                      isToday ? "text-monk-accent" : "text-monk-text-soft/50"
+                    }`}>{weekday[0]}</span>
                   </div>
                 );
               })}
@@ -1864,7 +1883,23 @@ function JournalEntryScreen() {
 
   return (
     <>
-      <PageHeader title="Journal" subtitle={isEvening ? "How did today really go?" : "Set the tone before the day begins."} rightSlot={<SettingsLink />} />
+      <PageHeader
+        title="Journal"
+        subtitle={isEvening ? "How did today really go?" : "Set the tone before the day begins."}
+        rightSlot={
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => navigate(routes.library)}
+              className="grid h-9 w-9 place-items-center rounded-full border border-monk-border bg-monk-surface text-monk-muted hover:text-monk-accent hover:border-monk-accent transition active:scale-90"
+              aria-label="View journal library"
+            >
+              <BookOpen size={16} strokeWidth={1.5} />
+            </button>
+            <SettingsLink />
+          </div>
+        }
+      />
       {!todayPlan ? <CalmAlert type="warning" title="Pick today's focus before saving reflection." /> : null}
 
       <div className="flex rounded-xl bg-monk-soft p-1 mb-5 border border-monk-border/40">
@@ -2735,6 +2770,59 @@ function Section({ title, children }: { title: string; children: React.ReactNode
       <p className="text-[10px] font-bold text-monk-muted uppercase tracking-[0.2em] mb-3 px-1">{title}</p>
       <div className="space-y-3">{children}</div>
     </div>
+  );
+}
+
+function JournalLibraryScreen() {
+  const store = useMonkStore();
+  const navigate = useNavigate();
+  const season = store.activeSeason;
+  const entries = store.journalEntries.filter(e => e.seasonId === season?.id);
+
+  return (
+    <>
+      <PageHeader
+        title="Journal Library"
+        subtitle={`${entries.length} entries`}
+        rightSlot={<SettingsLink />}
+      />
+      <div className="space-y-4 pb-8">
+        {entries.length === 0 ? (
+          <EmptyState title="No entries yet" description="Morning pages and reflections appear here." />
+        ) : null}
+        {entries
+          .sort((a, b) => b.date.localeCompare(a.date))
+          .map((entry) => {
+            const key = `lib-${entry.id}`;
+            const hasMorningPages = !!entry.answers.morningPages?.trim();
+            const hasReflection = !!entry.answers.whatMovedToday?.trim();
+            return (
+              <button key={key} className="w-full text-left p-4 bg-monk-surface hover:bg-monk-surface/40 transition border border-monk-border/40 rounded-xl text-left"
+                onClick={() => navigate(`/journal?tab=${hasReflection ? "reflection" : "morning"}&date=${entry.date}`)}>
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-sm font-semibold text-monk-text">{formatHumanDate(entry.date)}</span>
+                  <div className="flex gap-1.5">
+                    {hasMorningPages ? (
+                      <span className="text-[9px] font-bold uppercase tracking-wider text-monk-accent bg-monk-accent-soft px-2 py-0.5 rounded-full">AM</span>
+                    ) : null}
+                    {hasReflection ? (
+                      <span className="text-[9px] font-bold uppercase tracking-wider text-monk-success bg-monk-success-soft px-2 py-0.5 rounded-full">PM</span>
+                    ) : null}
+                  </div>
+                </div>
+                {hasReflection ? (
+                  <p className="text-xs text-monk-muted mt-1 line-clamp-2">{entry.answers.whatMovedToday}</p>
+                ) : hasMorningPages ? (
+                  <p className="text-xs text-monk-muted mt-1 line-clamp-2">{entry.answers.morningPages}</p>
+                ) : null}
+              </button>
+            );
+          })}
+        <GhostButton className="w-full mt-4" onClick={() => navigate(routes.journal)}>
+          Write new entry
+        </GhostButton>
+      </div>
+    </>
   );
 }
 
