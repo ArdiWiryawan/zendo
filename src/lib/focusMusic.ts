@@ -19,7 +19,7 @@ function getCtx() {
 // Higher harmonics that work on phone speakers
 const HARMONICS = [110, 165, 220, 275, 330, 440, 550]
 
-export function startMusic(vol = 0.15) {
+export function startMusic(vol = 0.22) {
   if (playing) return
   const c = getCtx()
   if (!c) return
@@ -41,8 +41,8 @@ export function startMusic(vol = 0.15) {
         if (stereo) stereo.pan.setValueAtTime(pan, now)
 
         gain.gain.setValueAtTime(0, now)
-        gain.gain.linearRampToValueAtTime(vol, now + 2)
-        gain.gain.linearRampToValueAtTime(vol * 0.5, now + 4)
+        gain.gain.linearRampToValueAtTime(vol, now + 3)
+        gain.gain.linearRampToValueAtTime(vol * 0.6, now + 6)
 
         // slow LFO
         const lfo = c.createOscillator()
