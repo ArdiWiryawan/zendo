@@ -1750,16 +1750,13 @@ function FocusScreen() {
   const store = useMonkStore();
   const plan = selectTodayPlan(store);
   const goal = plan?.goalId ? store.goals.find((item) => item.id === plan.goalId) : undefined;
-  const [musicOn, setMusicOn] = useState(true);
+  const [musicOn, setMusicOn] = useState(false);
 
   const activeSession = store.focusSessions.find(
     (session) => session.dayPlanId === plan?.id && ["running", "paused"].includes(session.status)
   );
 
   useEffect(() => {
-    // auto-start music when entering focus mode
-    startMusic();
-    setMusicOn(true);
     return () => { stopMusic(); };
   }, []);
 
@@ -1790,7 +1787,7 @@ function FocusScreen() {
             className="grid h-9 w-9 place-items-center rounded-full border border-monk-border bg-monk-surface text-monk-muted hover:text-monk-accent hover:border-monk-accent transition active:scale-90"
             aria-label={musicOn ? "Mute music" : "Unmute music"}
           >
-            {musicOn ? <Volume2 size={16} /> : <VolumeX size={16} />}
+            {musicOn ? <Volume2 size={18} strokeWidth={1.5} /> : <VolumeX size={18} strokeWidth={1.5} />}
           </button>
         }
       />
