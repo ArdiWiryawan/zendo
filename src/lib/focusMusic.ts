@@ -19,52 +19,53 @@ function getCtx() {
 // Higher harmonics that work on phone speakers
 const HARMONICS = [110, 165, 220, 275, 330, 440, 550]
 
-export function startMusic(vol = 0.06) {
+export function startMusic(vol = 0.15) {
   if (playing) return
   const c = getCtx()
   if (!c) return
-  const now = c.currentTime
 
-  HARMONICS.forEach((freq, i) => {
-    const osc = c.createOscillator()
-    const gain = c.createGain()
-    osc.type = 'sine'
-    osc.frequency.setValueAtTime(freq, now)
+  // Ensure context is running before starting oscillators
+  const p = c.resume()
+  const startAll = () => {
+    const now = c.currentTime
+    HARMONICS.forEach((freq, i) => {
+      try {
+        const osc = c.createOscillator()
+        const gain = c.createGain()
+        osc.type = 'sine'
+        osc.frequency.setValueAtTime(freq, now)
 
-    // stereo spread
-    const pan = (i / (HARMONICS.length - 1)) * 2 - 1
-    const stereo = c.createStereoPanner ? c.createStereoPanner() : null
-    if (stereo) {
-      stereo.pan.setValueAtTime(pan, now)
-    }
+        // gentle stereo spread
+        const pan = (i / (HARMONICS.length - 1)) * 2 - 1
+        const stereo = c.createStereoPanner ? c.createStereoPanner() : null
+        if (stereo) stereo.pan.setValueAtTime(pan, now)
 
-    gain.gain.setValueAtTime(0, now)
-    gain.gain.linearRampToValueAtTime(vol, now + 2)
-    gain.gain.linearRampToValueAtTime(vol * 0.5, now + 4)
+        gain.gain.setValueAtTime(0, now)
+        gain.gain.linearRampToValueAtTime(vol, now + 2)
+        gain.gain.linearRampToValueAtTime(vol * 0.5, now + 4)
 
-    // slow LFO for gentle movement
-    const lfo = c.createOscillator()
-    const lfoGain = c.createGain()
-    lfo.frequency.setValueAtTime(0.25 + i * 0.08, now)
-    lfoGain.gain.setValueAtTime(vol * 0.12, now)
-    lfo.connect(lfoGain)
-    lfoGain.connect(gain.gain)
-    lfo.start(now)
+        // slow LFO
+        const lfo = c.createOscillator()
+        const lfoG = c.createGain()
+        lfo.frequency.setValueAtTime(0.25 + i * 0.08, now)
+        lfoG.gain.setValueAtTime(vol * 0.12, now)
+        lfo.connect(lfoG)
+        lfoG.connect(gain.gain)
+        lfo.start(now)
 
-    osc.connect(gain)
-    if (stereo) {
-      gain.connect(stereo)
-      stereo.connect(c.destination)
-    } else {
-      gain.connect(c.destination)
-    }
-    osc.start(now)
-    oscNodes.push(osc)
-    gainNodes.push(gain)
-    lfoNodes.push(lfo)
-    lfoGainNodes.push(lfoGain)
-  })
-  playing = true
+        osc.connect(gain)
+        if (stereo) { gain.connect(stereo); stereo.connect(c.destination) }
+        else gain.connect(c.destination)
+        osc.start(now)
+        oscNodes.push(osc)
+        gainNodes.push(gain)
+        lfoNodes.push(lfo)
+        lfoGainNodes.push(lfoG)
+      } catch {}
+    })
+    playing = true
+  }
+  p.then(startAll).catch(startAll)
 }
 
 export function stopMusic() {
