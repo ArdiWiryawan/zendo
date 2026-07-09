@@ -421,13 +421,89 @@ export type MonkMVPState = {
   timelineDays: TimelineDay[];
   notificationReminders: NotificationReminder[];
   onboarding: OnboardingState;
-  
+
   // New state properties
   learningSessions: LearningSession[];
   timelineEvents: TimelineEvent[];
+
+  // Notebook (Free Journal)
+  notebookCategories: NotebookCategory[];
+  notebookEntries: NotebookEntry[];
+
+  // Journal Packs
+  journalPacks: JournalPack[];
+  journalPackSessions: JournalPackSession[];
+  purchasedPackIds: string[];
+
+  // Energy Logs
+  energyLogs: EnergyLog[];
+};
+
+// ── Notebook (Free Journal) ──
+
+export type NotebookCategory = {
+  id: string;
+  name: string;
+  icon: string;
+  isBuiltIn: boolean;
+  sortOrder: number;
+};
+
+export type NotebookEntry = {
+  id: string;
+  title: string;
+  body: string;
+  categoryId: string;
+  tags: string[];
+  isPinned: boolean;
+  createdAt: ISODateString;
+  updatedAt: ISODateString;
+};
+
+// ── Journal Packs (Themed Q&A) ──
+
+export type JournalPack = {
+  id: string;
+  title: string;
+  description: string;
+  icon: string;
+  questions: JournalPackQuestion[];
+  estimatedMinutes: number;
+  isPremium: boolean;
+  createdAt: ISODateString;
+};
+
+export type JournalPackQuestion = {
+  id: string;
+  order: number;
+  question: string;
+  hint?: string;
+};
+
+export type JournalPackAnswer = {
+  questionId: string;
+  answer: string;
+};
+
+export type JournalPackSession = {
+  id: string;
+  packId: string;
+  answers: JournalPackAnswer[];
+  startedAt: ISODateString;
+  completedAt?: ISODateString;
+  progress: number; // 0-100
 };
 
 export type ValidationResult = {
   valid: boolean;
   message?: string;
+};
+
+// ── Energy Log ──
+
+export type EnergyLog = {
+  id: string;
+  date: string; // YYYY-MM-DD
+  level: EnergyLevel;
+  createdAt: ISODateString;
 };

@@ -1,0 +1,15 @@
+.git/
+node_modules/
+.tools/
+.gradle/
+build/
+app/build/
+.vercel/
+test-artifacts/
+.agents/
+.opencode/
+.qwen/
+.cursor/
+.windsurf/
+android.keystore
+local.properties

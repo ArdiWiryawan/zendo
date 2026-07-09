@@ -105,3 +105,102 @@ button {
   -webkit-tap-highlight-color: transparent;
   touch-action: manipulation;
 }
+
+/* Dark parchment — analog feel that fits dark mode */
+.notebook-paper {
+  background-color: #1a1814;
+  background-image: repeating-linear-gradient(
+    transparent,
+    transparent 31px,
+    #25221c 31px,
+    #25221c 32px
+  );
+  color: #d4cdc0;
+}
+
+.notebook-card {
+  background-color: #1f1c17;
+  background-image: repeating-linear-gradient(
+    transparent,
+    transparent 23px,
+    #2a251e 23px,
+    #2a251e 24px
+  );
+  color: #d4cdc0;
+  border: 1px solid #2a251e;
+  border-radius: 4px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+}
+
+.notebook-card-title {
+  font-family: 'Caveat', cursive;
+  font-size: 1.25rem;
+  line-height: 1.4;
+  color: #e5e2da;
+}
+
+.notebook-card-body {
+  font-size: 0.875rem;
+  line-height: 2rem;
+  color: #c8c2b4;
+}
+
+/* Notebook category tab colors — darkened for night */
+.nb-tab-pribadi { --tab-color: #8c5a4a; }
+.nb-tab-karier { --tab-color: #4a6a7a; }
+.nb-tab-keuangan { --tab-color: #4a7a5a; }
+.nb-tab-kesehatan { --tab-color: #7a5a6a; }
+.nb-tab-hubungan { --tab-color: #7a6a4a; }
+.nb-tab-spiritual { --tab-color: #5a6a7a; }
+.nb-tab-perjalanan { --tab-color: #4a7a6a; }
+.nb-tab-kreatif { --tab-color: #7a5a4a; }
+.nb-tab-lainnya { --tab-color: #5a5a5a; }
+
+/* Workbook / Pack styles */
+.workbook-card {
+  background-color: #1f1c17;
+  color: #d4cdc0;
+  border: 1px solid #2a251e;
+  border-radius: 4px;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.15);
+}
+
+.workbook-question {
+  font-family: 'Georgia', 'Times New Roman', serif;
+  font-style: italic;
+  font-size: 1.125rem;
+  line-height: 1.7;
+  color: #e5e2da;
+}
+
+.workbook-page-number {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 0.6875rem;
+  letter-spacing: 0.05em;
+  color: #68655e;
+  text-transform: uppercase;
+}
+
+.workbook-answer-area {
+  background-image: repeating-linear-gradient(
+    transparent,
+    transparent 27px,
+    #2a251e 27px,
+    #2a251e 28px
+  );
+  min-height: 200px;
+  line-height: 2rem;
+}
+
+/* Dark parchment page backgrounds */
+.notebook-page-bg {
+  background-color: #1a1814;
+  min-height: 100%;
+  padding: 1rem;
+}
+
+.packs-page-bg {
+  background-color: #1a1814;
+  min-height: 100%;
+  padding: 1rem;
+}

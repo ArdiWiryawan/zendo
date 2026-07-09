@@ -85,6 +85,8 @@ import { selectActiveGoals, selectCurrentWeeklyPlan, selectTodayPlan, selectJour
 import { useMonkStore } from "../store/useMonkStore";
 import type { EnergyLevel, FocusSession, FocusSessionPreset, JournalAnswers, JournalEntry, LearningType, SeasonDurationPreset, TimelineStatus, LearningSourceType, LearningSession, TimelineEvent, TimelineEventType, MonkMVPState } from "../types/app";
 import { playZenBell } from "../lib/audio";
+import JournalNotebook, { NotebookEditor } from "../components/JournalNotebook";
+import JournalPacks from "../components/JournalPacks";
 
 const promptsBig90Days = [
   "Kalau 90 hari ke depan berjalan dengan sangat baik, apa yang berubah dalam hidup saya?",
@@ -269,6 +271,8 @@ export default function App() {
       <Route path={routes.login} element={<LoginScreen />} />
       <Route path={routes.signup} element={<SignupScreen />} />
       <Route path={routes.library} element={<ProtectedMain><JournalLibraryScreen /></ProtectedMain>} />
+      <Route path={routes.notebook} element={<ProtectedMain><NotebookPage /></ProtectedMain>} />
+      <Route path={routes.packs} element={<ProtectedMain><PacksPage /></ProtectedMain>} />
       <Route path="*" element={<Navigate to={routes.root} replace />} />
     </Routes>
   );
@@ -1525,7 +1529,13 @@ function TodayScreen() {
                   <p className="text-xs leading-5 text-monk-muted">Add one thing you learned that supports today's focus.</p>
                   <GhostButton className="mt-3 px-0 min-h-8" onClick={() => navigate(routes.learn)}>Add learning</GhostButton>
                 </Card>
-                <EnergyCheck value={todayPlan.energyLevel} onChange={store.updateTodayEnergy} />
+                <EnergyCheck
+                  value={todayPlan.energyLevel}
+                  onChange={(level) => {
+                    store.updateTodayEnergy(level);
+                    store.logEnergy(level);
+                  }}
+                />
               </>
             ) : (
               <div className="space-y-3">
@@ -1912,7 +1922,7 @@ function JournalEntryScreen() {
           }`}
           onClick={() => setTab("reflection")}
         >
-          Daily Reflection
+          Reflection
         </button>
         <button
           type="button"
@@ -1923,10 +1933,10 @@ function JournalEntryScreen() {
           }`}
           onClick={() => setTab("morning")}
         >
-          Morning Pages
+          Morning
         </button>
       </div>
-      
+
       {currentTab === "morning" ? (
         <div className="mt-5 space-y-4">
           <Card>
@@ -1968,6 +1978,7 @@ function JournalEntryScreen() {
       )}
 
       <div className="mt-6 space-y-3">
+        {(currentTab === "reflection" || currentTab === "morning") ? <>
         {saved ? <CalmAlert type="success" title="Saved successfully." /> : null}
         {!canSave && todayPlan ? (
           <CalmAlert
@@ -1992,6 +2003,25 @@ function JournalEntryScreen() {
         >
           {currentTab === "morning" ? "Save Morning Pages" : "Save Reflection"}
         </PrimaryButton>
+      </> : null}
+      </div>
+
+      {/* Notebook & Packs shortcuts below save */}
+      <div className="flex gap-4 pt-4 pb-8">
+        <button
+          type="button"
+          onClick={() => navigate(routes.notebook)}
+          className="flex items-center gap-1.5 text-xs text-monk-muted hover:text-monk-accent transition"
+        >
+          <span>📓</span> Notebook
+        </button>
+        <button
+          type="button"
+          onClick={() => navigate(routes.packs)}
+          className="flex items-center gap-1.5 text-xs text-monk-muted hover:text-monk-accent transition"
+        >
+          <span>📦</span> Packs
+        </button>
       </div>
     </>
   );
@@ -2325,26 +2355,40 @@ function TimelineStats() {
     : 0;
 
   return (
-    <Card className="grid grid-cols-2 gap-4">
-      <div className="border-r border-monk-border pr-2">
-        <p className="text-[10px] uppercase font-bold text-monk-text-soft tracking-wider">Focus Time</p>
-        <p className="text-xl font-bold mt-1 text-monk-accent">{totalFocusMinutes} <span className="text-xs font-semibold text-monk-muted">mins</span></p>
-        <p className="text-[10px] text-monk-muted mt-0.5">{totalFocusSessions} sessions</p>
+    <Card className="p-4 space-y-3">
+      <div className="grid grid-cols-2 gap-3">
+        <div className="rounded-2xl border border-monk-border/40 bg-monk-surface p-3">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <p className="text-[9px] uppercase font-bold text-monk-text-soft tracking-wider">Focus Time</p>
+              <p className="text-2xl font-bold mt-1 text-monk-accent">{totalFocusMinutes}<span className="text-[10px] font-semibold text-monk-muted ml-0.5">m</span></p>
+              <p className="text-[9px] text-monk-muted mt-1">{totalFocusSessions} sessions</p>
+            </div>
+            <div className="grid h-8 w-8 place-items-center rounded-full bg-monk-accent-soft text-monk-accent text-xs font-bold">⏱</div>
+          </div>
+        </div>
+        <div className="rounded-2xl border border-monk-border/40 bg-monk-surface p-3">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <p className="text-[9px] uppercase font-bold text-monk-text-soft tracking-wider">Consistency</p>
+              <p className="text-2xl font-bold mt-1 text-monk-success">{consistencyRate}%</p>
+              <p className="text-[9px] text-monk-muted mt-1">{completedDaysCount}/{totalPassedDays} days</p>
+            </div>
+            <div className="grid h-8 w-8 place-items-center rounded-full bg-monk-success-soft text-monk-success text-xs font-bold">🔥</div>
+          </div>
+        </div>
       </div>
-      <div className="pl-2">
-        <p className="text-[10px] uppercase font-bold text-monk-text-soft tracking-wider">Consistency</p>
-        <p className="text-xl font-bold mt-1 text-monk-success">{consistencyRate}%</p>
-        <p className="text-[10px] text-monk-muted mt-0.5">{completedDaysCount} of {totalPassedDays} days done</p>
-      </div>
-      <div className="border-r border-monk-border pr-2 pt-2 border-t">
-        <p className="text-[10px] uppercase font-bold text-monk-text-soft tracking-wider">Learning</p>
-        <p className="text-base font-semibold mt-1 text-monk-text">{totalLearningMinutes} mins</p>
-        <p className="text-[10px] text-monk-muted mt-0.5">{store.learningSessions.length} notes</p>
-      </div>
-      <div className="pl-2 pt-2 border-t">
-        <p className="text-[10px] uppercase font-bold text-monk-text-soft tracking-wider">Reflections</p>
-        <p className="text-base font-semibold mt-1 text-monk-text">{totalJournals} days</p>
-        <p className="text-[10px] text-monk-muted mt-0.5">{totalRelapses} drifts logged</p>
+      <div className="grid grid-cols-2 gap-3">
+        <div className="rounded-2xl border border-monk-border/40 bg-monk-soft p-3">
+          <p className="text-[9px] uppercase font-bold text-monk-text-soft tracking-wider">Learning</p>
+          <p className="text-lg font-bold mt-1 text-monk-text">{totalLearningMinutes}<span className="text-[9px] font-semibold text-monk-muted ml-0.5">m</span></p>
+          <p className="text-[9px] text-monk-muted mt-1">{store.learningSessions.length} notes</p>
+        </div>
+        <div className="rounded-2xl border border-monk-border/40 bg-monk-soft p-3">
+          <p className="text-[9px] uppercase font-bold text-monk-text-soft tracking-wider">Reflections</p>
+          <p className="text-lg font-bold mt-1 text-monk-text">{totalJournals}<span className="text-[9px] font-semibold text-monk-muted ml-0.5">d</span></p>
+          <p className="text-[9px] text-monk-muted mt-1">{totalRelapses} drifts</p>
+        </div>
       </div>
     </Card>
   );
@@ -2499,8 +2543,7 @@ function TimelineScreen() {
             const todayCompleted = todayPlan?.status === "completed";
             const daysPassed = getDaysPassed(season.startDate);
 
-            function dotStyle(dayIndex: number) {
-              const date = addDaysToDate(season.startDate, dayIndex);
+            function dotStyle(date: string) {
               const status = getDailyStatusForDate(store, date);
               const isToday = date === today;
               const isCompleted = status === "completed" || (isToday && todayCompleted);
@@ -2510,32 +2553,54 @@ function TimelineScreen() {
               const isMissed = status === "missed";
 
               if (isToday) {
-                if (isCompleted) return "bg-monk-success !w-3 !h-3 shadow-[0_0_10px_rgba(100,123,94,0.5)]";
-                if (isPartial) return "bg-monk-accent/80 !w-2.5 !h-2.5";
-                if (isRelapse) return "bg-monk-danger/80 !w-2 !h-2";
-                if (isRest) return "bg-monk-rest/60 !w-2 !h-2";
-                return "bg-monk-border/50 !w-2 !h-2 animate-pulse";
+                if (isCompleted) return "bg-monk-success shadow-[0_0_8px_rgba(100,123,94,0.5)] ring-1 ring-monk-success/30";
+                if (isPartial) return "bg-monk-accent/80 ring-1 ring-monk-accent/30";
+                if (isRelapse) return "bg-monk-danger/80 ring-1 ring-monk-danger/30";
+                if (isRest) return "bg-monk-rest/60 ring-1 ring-monk-rest/30";
+                return "bg-monk-border/50 animate-pulse ring-1 ring-monk-border/30";
               }
-              if (isCompleted) return "bg-monk-success/70 !w-2 !h-2";
-              if (isPartial) return "bg-monk-accent/60 !w-1.5 !h-1.5";
-              if (isRelapse) return "bg-monk-danger/50 !w-1.5 !h-1.5";
-              if (isRest) return "bg-monk-rest/40 !w-1.5 !h-1.5";
-              if (isMissed) return "bg-monk-text-soft/15 !w-1.5 !h-1.5";
-              return "bg-monk-border/20 !w-1.5 !h-1.5";
+              if (isCompleted) return "bg-monk-success/70";
+              if (isPartial) return "bg-monk-accent/60";
+              if (isRelapse) return "bg-monk-danger/50";
+              if (isRest) return "bg-monk-rest/40";
+              if (isMissed) return "bg-monk-text-soft/15";
+              return "bg-monk-border/10";
             }
-
-            const visibleDays = Math.min(daysPassed, season.durationDays);
-            const dots = Array.from({ length: visibleDays }, (_, i) => i);
 
             return (
               <div className="space-y-4">
-                <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1">
-                  {dots.map((dayIndex) => {
-                    const date = addDaysToDate(season.startDate, dayIndex);
-                    const isToday = date === today;
+                <div className="space-y-2">
+                  {chunks.map((week, wi) => {
+                    const weekNum = wi + 1;
+                    const allFuture = week.every((d) => d > today);
+                    if (allFuture) return null;
                     return (
-                      <div key={dayIndex} className={"flex items-center justify-center w-6 h-6 " + (isToday ? "rounded-full bg-monk-accent/5 border border-monk-accent/20" : "")}>
-                        <div className={"rounded-full transition-all duration-700 " + dotStyle(dayIndex)} />
+                      <div key={wi} className="grid grid-cols-[30px,1fr] items-center gap-2">
+                        <span className="w-6 text-[8px] font-bold text-monk-text-soft/50 uppercase shrink-0">W{weekNum}</span>
+                        <div className="grid grid-cols-7 gap-1.5">
+                          {week.map((date) => {
+                            const isFuture = date > today;
+                            const isToday = date === today;
+                            const energy = store.energyLogs.find(el => el.date === date)?.level;
+                            let energyColor = "";
+                            if (energy === "high") energyColor = "ring-1 ring-monk-success/40";
+                            else if (energy === "medium") energyColor = "ring-1 ring-monk-accent/40";
+                            else if (energy === "low") energyColor = "ring-1 ring-monk-danger/40";
+
+                            return (
+                              <div
+                                key={date}
+                                className={`w-5 h-5 rounded-full flex items-center justify-center transition-all duration-500 ${
+                                  isToday ? "ring-1 ring-monk-accent/80 scale-105" : ""
+                                } ${isFuture ? "opacity-0" : ""}`}
+                              >
+                                <div className={`rounded-full transition-all duration-500 ${
+                                  isFuture ? "w-0 h-0" : "w-3.5 h-3.5 " + dotStyle(date)
+                                } ${energyColor}`} />
+                              </div>
+                            );
+                          })}
+                        </div>
                       </div>
                     );
                   })}
@@ -2777,52 +2842,190 @@ function JournalLibraryScreen() {
   const store = useMonkStore();
   const navigate = useNavigate();
   const season = store.activeSeason;
-  const entries = store.journalEntries.filter(e => e.seasonId === season?.id);
+  const journalEntries = store.journalEntries.filter(e => e.seasonId === season?.id);
+  const notebookEntries = store.notebookEntries;
+  const packSessions = store.journalPackSessions.filter(s => s.completedAt);
+  const categories = store.notebookCategories;
+
+  const [libTab, setLibTab] = useState<"reflections" | "notebook" | "packs">("reflections");
+
+  const catName = (id: string) => categories.find((c) => c.id === id)?.name ?? "Unknown";
 
   return (
     <>
       <PageHeader
         title="Journal Library"
-        subtitle={`${entries.length} entries`}
+        subtitle={libTab === "reflections" ? `${journalEntries.length} reflections` : libTab === "notebook" ? `${notebookEntries.length} notes` : `${packSessions.length} pack sessions`}
         rightSlot={<SettingsLink />}
       />
+      <div className="flex rounded-xl bg-monk-soft p-1 mb-5 border border-monk-border/40 overflow-x-auto">
+        <button type="button" className={`flex-1 rounded-lg py-2 text-xs font-semibold tracking-wide transition whitespace-nowrap px-2 ${libTab === "reflections" ? "bg-monk-surface text-monk-text border border-monk-border-strong shadow-sm" : "text-monk-muted hover:text-monk-text"}`} onClick={() => setLibTab("reflections")}>Reflections</button>
+        <button type="button" className={`flex-1 rounded-lg py-2 text-xs font-semibold tracking-wide transition whitespace-nowrap px-2 ${libTab === "notebook" ? "bg-monk-surface text-monk-text border border-monk-border-strong shadow-sm" : "text-monk-muted hover:text-monk-text"}`} onClick={() => setLibTab("notebook")}>Notebook</button>
+        <button type="button" className={`flex-1 rounded-lg py-2 text-xs font-semibold tracking-wide transition whitespace-nowrap px-2 ${libTab === "packs" ? "bg-monk-surface text-monk-text border border-monk-border-strong shadow-sm" : "text-monk-muted hover:text-monk-text"}`} onClick={() => setLibTab("packs")}>Packs</button>
+      </div>
       <div className="space-y-4 pb-8">
-        {entries.length === 0 ? (
-          <EmptyState title="No entries yet" description="Morning pages and reflections appear here." />
-        ) : null}
-        {entries
-          .sort((a, b) => b.date.localeCompare(a.date))
-          .map((entry) => {
-            const key = `lib-${entry.id}`;
-            const hasMorningPages = !!entry.answers.morningPages?.trim();
-            const hasReflection = !!entry.answers.whatMovedToday?.trim();
-            return (
-              <button key={key} className="w-full text-left p-4 bg-monk-surface hover:bg-monk-surface/40 transition border border-monk-border/40 rounded-xl text-left"
-                onClick={() => navigate(`/journal?tab=${hasReflection ? "reflection" : "morning"}&date=${entry.date}`)}>
-                <div className="flex items-center justify-between mb-1">
-                  <span className="text-sm font-semibold text-monk-text">{formatHumanDate(entry.date)}</span>
-                  <div className="flex gap-1.5">
-                    {hasMorningPages ? (
-                      <span className="text-[9px] font-bold uppercase tracking-wider text-monk-accent bg-monk-accent-soft px-2 py-0.5 rounded-full">AM</span>
-                    ) : null}
-                    {hasReflection ? (
-                      <span className="text-[9px] font-bold uppercase tracking-wider text-monk-success bg-monk-success-soft px-2 py-0.5 rounded-full">PM</span>
-                    ) : null}
+
+        {libTab === "notebook" ? (
+          notebookEntries.length === 0
+            ? <EmptyState title="No notebook entries" description="Write freely in the Notebook tab." />
+            : [...notebookEntries]
+              .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
+              .map((entry) => (
+                <div key={entry.id} className="p-4 bg-monk-surface border border-monk-border/40 rounded-xl">
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-sm font-semibold text-monk-text truncate mr-2">{entry.title || "Untitled"}</span>
+                    <span className="text-[9px] font-bold uppercase tracking-wider text-monk-accent bg-monk-accent-soft px-2 py-0.5 rounded-full shrink-0">{catName(entry.categoryId)}</span>
                   </div>
+                  <p className="text-xs text-monk-muted mt-1 line-clamp-2">{entry.body.replace(/\n/g, " ").slice(0, 200)}</p>
+                  <p className="text-[9px] text-monk-text-soft mt-1">{new Date(entry.updatedAt).toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" })}</p>
                 </div>
-                {hasReflection ? (
-                  <p className="text-xs text-monk-muted mt-1 line-clamp-2">{entry.answers.whatMovedToday}</p>
-                ) : hasMorningPages ? (
-                  <p className="text-xs text-monk-muted mt-1 line-clamp-2">{entry.answers.morningPages}</p>
-                ) : null}
-              </button>
-            );
-          })}
+              ))
+        ) : libTab === "packs" ? (
+          packSessions.length === 0
+            ? <EmptyState title="No pack sessions completed" description="Complete a themed journal pack first." />
+            : [...packSessions]
+              .sort((a, b) => new Date(b.completedAt!).getTime() - new Date(a.completedAt!).getTime())
+              .map((session) => {
+                const pack = store.journalPacks.find((p) => p.id === session.packId);
+                return (
+                  <div key={session.id} className="p-4 bg-monk-surface border border-monk-border/40 rounded-xl">
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="text-sm">🧭</span>
+                      <span className="text-sm font-semibold text-monk-text">{pack?.title ?? "Unknown Pack"}</span>
+                    </div>
+                    <p className="text-xs text-monk-muted mt-1">{session.answers.length} answers</p>
+                    <p className="text-[9px] text-monk-text-soft mt-1">
+                      {session.completedAt ? `Completed ${new Date(session.completedAt).toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" })}` : ""}
+                    </p>
+                  </div>
+                );
+              })
+        ) : (
+          journalEntries.length === 0
+            ? <EmptyState title="No entries yet" description="Morning pages and reflections appear here." />
+            : [...journalEntries]
+              .sort((a, b) => b.date.localeCompare(a.date))
+              .map((entry) => {
+                const hasMorningPages = !!entry.answers.morningPages?.trim();
+                const hasReflection = !!entry.answers.whatMovedToday?.trim();
+                return (
+                  <button key={entry.id} className="w-full text-left p-4 bg-monk-surface hover:bg-monk-surface/40 transition border border-monk-border/40 rounded-xl"
+                    onClick={() => navigate(`/journal?tab=${hasReflection ? "reflection" : "morning"}&date=${entry.date}`)}>
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-sm font-semibold text-monk-text">{formatHumanDate(entry.date)}</span>
+                      <div className="flex gap-1.5">
+                        {hasMorningPages ? <span className="text-[9px] font-bold uppercase tracking-wider text-monk-accent bg-monk-accent-soft px-2 py-0.5 rounded-full">AM</span> : null}
+                        {hasReflection ? <span className="text-[9px] font-bold uppercase tracking-wider text-monk-success bg-monk-success-soft px-2 py-0.5 rounded-full">PM</span> : null}
+                      </div>
+                    </div>
+                    {hasReflection ? <p className="text-xs text-monk-muted mt-1 line-clamp-2">{entry.answers.whatMovedToday}</p> : hasMorningPages ? <p className="text-xs text-monk-muted mt-1 line-clamp-2">{entry.answers.morningPages}</p> : null}
+                  </button>
+                );
+              })
+        )}
         <GhostButton className="w-full mt-4" onClick={() => navigate(routes.journal)}>
           Write new entry
         </GhostButton>
       </div>
     </>
+  );
+}
+
+function NotebookPage() {
+  const navigate = useNavigate();
+  return (
+    <div className="notebook-page-bg rounded-2xl -mx-5 px-5 pb-8">
+      <div className="flex items-center justify-between pt-6 pb-4">
+        <div>
+          <h1 className="font-handwriting text-3xl text-[#1a1a1a]">Notebook</h1>
+          <p className="text-sm text-[#5a5a5a] mt-0.5">Free journal for your thoughts</p>
+        </div>
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={() => navigate(routes.library)}
+            className="text-[10px] font-semibold text-[#68655e] hover:text-[#a48b5e] transition flex items-center gap-1"
+          >
+            <BookOpen size={12} strokeWidth={1.5} /> Library
+          </button>
+          <button
+            type="button"
+            onClick={() => navigate(routes.journal)}
+            className="text-[10px] font-semibold text-[#68655e] hover:text-[#a48b5e] transition flex items-center gap-1"
+          >
+            <FileText size={12} strokeWidth={1.5} /> Journal
+          </button>
+        </div>
+      </div>
+      <NotebookEditor entry={null} onBack={() => {}} />
+    </div>
+  );
+}
+
+function PacksPage() {
+  const navigate = useNavigate();
+  return (
+    <div className="packs-page-bg rounded-2xl -mx-5 px-5 pb-8">
+      <div className="flex items-center justify-between pt-6 pb-4">
+        <div>
+          <h1 className="font-handwriting text-3xl text-[#e5e2da]">Packs</h1>
+          <p className="text-sm text-[#908c83] mt-0.5">Themed questions for deeper reflection</p>
+        </div>
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={() => navigate(routes.library)}
+            className="text-[10px] font-semibold text-[#68655e] hover:text-[#a48b5e] transition flex items-center gap-1"
+          >
+            <BookOpen size={12} strokeWidth={1.5} /> Library
+          </button>
+          <button
+            type="button"
+            onClick={() => navigate(routes.journal)}
+            className="text-[10px] font-semibold text-[#68655e] hover:text-[#a48b5e] transition flex items-center gap-1"
+          >
+            <FileText size={12} strokeWidth={1.5} />
+            Journal
+          </button>
+        </div>
+      </div>
+      <JournalPacks />
+    </div>
+  );
+}
+
+function AccountStatus() {
+  const navigate = useNavigate();
+  const [session, setSession] = useState<{ email?: string } | null>(null);
+  const sb = typeof getSupabase === "function" ? (getSupabase as () => any)() : null;
+
+  useEffect(() => {
+    if (!sb?.auth) return;
+    sb.auth.getSession().then(({ data }: any) => {
+      if (data?.session) setSession({ email: data.session.user?.email });
+    });
+  }, []);
+
+  const handleLogout = async () => {
+    if (!sb?.auth) return;
+    await sb.auth.signOut();
+    setSession(null);
+  };
+
+  if (session?.email) {
+    return (
+      <div className="flex items-center justify-between gap-2">
+        <span className="text-xs text-monk-muted">{session.email}</span>
+        <GhostButton onClick={handleLogout}>Logout</GhostButton>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex items-center justify-between gap-2">
+      <span className="text-sm text-monk-muted">Not connected</span>
+      <GhostButton onClick={() => navigate(routes.login)}>Connect Account</GhostButton>
+    </div>
   );
 }
 
@@ -2986,10 +3189,7 @@ function SettingsScreen() {
           </div>
         </SettingsItem>
         <SettingsItem title="Account Sync (Optional)" description="Connect to Supabase to sync your progress across devices. Works fully offline without an account.">
-          <div className="flex items-center justify-between gap-2">
-            <span className="text-sm text-monk-muted">Not connected</span>
-            <GhostButton onClick={() => window.location.href = routes.login}>Connect Account</GhostButton>
-          </div>
+          <AccountStatus />
         </SettingsItem>
         <SettingsItem title="Reset Season" description="Archive current season, keep progress.">
           <GhostButton onClick={store.archiveSeason}>Archive</GhostButton>

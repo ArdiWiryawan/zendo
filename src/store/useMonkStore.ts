@@ -38,14 +38,18 @@ import type {
   BadHabitDraft,
   DayPlan,
   EnergyLevel,
+  EnergyLog,
   FocusSession,
   Goal,
   GoalAllocation,
   JournalAnswers,
+  JournalPackAnswer,
   LearningEntry,
   LearningType,
   LearningSession,
   LearningSourceType,
+  NotebookCategory,
+  NotebookEntry,
   TimelineEvent,
   TimelineEventType,
   FocusSessionPreset,
@@ -126,6 +130,24 @@ type MonkActions = {
   archiveSeason: () => void;
   startNewSeason: () => void;
   updateSettings: (patch: Partial<AppSettings>) => void;
+  importState: (data: Partial<MonkMVPState>) => void;
+
+  // Notebook actions
+  addNotebookCategory: (name: string, icon?: string) => void;
+  renameNotebookCategory: (id: string, name: string) => void;
+  deleteNotebookCategory: (id: string) => void;
+  saveNotebookEntry: (entry: NotebookEntry) => void;
+  deleteNotebookEntry: (id: string) => void;
+  togglePinNotebookEntry: (id: string) => void;
+
+  // Energy tracking
+  logEnergy: (level: EnergyLevel) => void;
+
+  // Journal Pack actions
+  startJournalPack: (packId: string) => string | undefined;
+  savePackAnswer: (sessionId: string, questionId: string, answer: string) => void;
+  completeJournalPack: (sessionId: string) => void;
+  purchasePack: (packId: string) => void;
 };
 
 export type MonkStore = StoreSnapshot & MonkActions;
@@ -147,7 +169,13 @@ function snapshot(state: MonkStore | MonkMVPState): MonkMVPState {
     notificationReminders: state.notificationReminders,
     onboarding: state.onboarding,
     learningSessions: state.learningSessions,
-    timelineEvents: state.timelineEvents
+    timelineEvents: state.timelineEvents,
+    notebookCategories: state.notebookCategories,
+    notebookEntries: state.notebookEntries,
+    journalPacks: state.journalPacks,
+    journalPackSessions: state.journalPackSessions,
+    purchasedPackIds: state.purchasedPackIds,
+    energyLogs: state.energyLogs
   };
 }
 
@@ -403,14 +431,19 @@ export const useMonkStore = create<MonkStore>((set, get) => ({
         };
       });
 
+      const fresh = createInitialState();
+
       set({
-        ...createInitialState(),
+        ...fresh,
         ...stored,
+        // Always use latest pack definitions (stale localStorage must not overwrite)
+        journalPacks: fresh.journalPacks,
+        purchasedPackIds: stored.purchasedPackIds ?? [],
         focusSessions,
         timelineDays,
         timelineEvents,
         appSettings: {
-          ...createInitialState().appSettings,
+          ...fresh.appSettings,
           ...stored.appSettings
         },
         onboarding: {
@@ -854,6 +887,21 @@ export const useMonkStore = create<MonkStore>((set, get) => ({
     const dayPlan = { ...plan, energyLevel, updatedAt: nowIso() };
     withPersist(set, get, {
       dayPlans: state.dayPlans.map((day) => (day.id === dayPlan.id ? dayPlan : day))
+    });
+  },
+
+  logEnergy: (level) => {
+    const state = get();
+    const today = getTodayDateString();
+    const existing = state.energyLogs.filter((e) => e.date !== today);
+    const log: EnergyLog = {
+      id: createId("energy"),
+      date: today,
+      level,
+      createdAt: nowIso(),
+    };
+    withPersist(set, get, {
+      energyLogs: [...existing, log]
     });
   },
 
@@ -1420,6 +1468,154 @@ export const useMonkStore = create<MonkStore>((set, get) => ({
     const state = get();
     withPersist(set, get, {
       appSettings: { ...state.appSettings, ...patch, updatedAt: nowIso() }
+    });
+  },
+
+  // ── Notebook Actions ──
+
+  addNotebookCategory: (name, icon) => {
+    const state = get();
+    const maxSort = state.notebookCategories.reduce((m, c) => Math.max(m, c.sortOrder), 0);
+    const cat: NotebookCategory = {
+      id: createId("nb_cat"),
+      name,
+      icon: icon ?? "MoreHorizontal",
+      isBuiltIn: false,
+      sortOrder: maxSort + 1,
+    };
+    withPersist(set, get, {
+      notebookCategories: [...state.notebookCategories, cat]
+    });
+  },
+
+  renameNotebookCategory: (id, name) => {
+    const state = get();
+    withPersist(set, get, {
+      notebookCategories: state.notebookCategories.map((c) =>
+        c.id === id ? { ...c, name } : c
+      )
+    });
+  },
+
+  deleteNotebookCategory: (id) => {
+    const state = get();
+    withPersist(set, get, {
+      notebookCategories: state.notebookCategories.filter((c) => c.id !== id),
+      notebookEntries: state.notebookEntries.filter((e) => e.categoryId !== id)
+    });
+  },
+
+  saveNotebookEntry: (entry) => {
+    const state = get();
+    const existing = state.notebookEntries.find((e) => e.id === entry.id);
+    const timestamp = nowIso();
+    withPersist(set, get, {
+      notebookEntries: existing
+        ? state.notebookEntries.map((e) => e.id === entry.id ? { ...entry, updatedAt: timestamp } : e)
+        : [...state.notebookEntries, { ...entry, createdAt: entry.createdAt || timestamp, updatedAt: timestamp }]
+    });
+  },
+
+  deleteNotebookEntry: (id) => {
+    const state = get();
+    withPersist(set, get, {
+      notebookEntries: state.notebookEntries.filter((e) => e.id !== id)
+    });
+  },
+
+  togglePinNotebookEntry: (id) => {
+    const state = get();
+    withPersist(set, get, {
+      notebookEntries: state.notebookEntries.map((e) =>
+        e.id === id ? { ...e, isPinned: !e.isPinned, updatedAt: nowIso() } : e
+      )
+    });
+  },
+
+  // ── Journal Pack Actions ──
+
+  startJournalPack: (packId) => {
+    const state = get();
+    const existing = state.journalPackSessions.find(
+      (s) => s.packId === packId && !s.completedAt
+    );
+    if (existing) return existing.id;
+    const timestamp = nowIso();
+    const session = {
+      id: createId("jp_session"),
+      packId,
+      answers: [] as JournalPackAnswer[],
+      startedAt: timestamp,
+      completedAt: undefined,
+      progress: 0,
+    };
+    withPersist(set, get, {
+      journalPackSessions: [...state.journalPackSessions, session]
+    });
+    return session.id;
+  },
+
+  savePackAnswer: (sessionId, questionId, answer) => {
+    const state = get();
+    const session = state.journalPackSessions.find((s) => s.id === sessionId);
+    if (!session) return;
+    const existingIdx = session.answers.findIndex((a) => a.questionId === questionId);
+    const answers = existingIdx >= 0
+      ? session.answers.map((a) => a.questionId === questionId ? { ...a, answer } : a)
+      : [...session.answers, { questionId, answer }];
+    // Find pack for progress calc
+    const pack = state.journalPacks.find((p) => p.id === session.packId);
+    const progress = pack ? Math.round((answers.filter((a) => a.answer.trim()).length / pack.questions.length) * 100) : 0;
+    withPersist(set, get, {
+      journalPackSessions: state.journalPackSessions.map((s) =>
+        s.id === sessionId ? { ...s, answers, progress } : s
+      )
+    });
+  },
+
+  completeJournalPack: (sessionId) => {
+    const state = get();
+    const timestamp = nowIso();
+    withPersist(set, get, {
+      journalPackSessions: state.journalPackSessions.map((s) =>
+        s.id === sessionId
+          ? { ...s, completedAt: timestamp, progress: 100 }
+          : s
+      )
+    });
+  },
+
+  purchasePack: (packId) => {
+    const state = get();
+    if (state.purchasedPackIds.includes(packId)) return;
+    withPersist(set, get, {
+      purchasedPackIds: [...state.purchasedPackIds, packId]
+    });
+  },
+
+  importState: (data) => {
+    const state = get();
+    withPersist(set, get, {
+      userProfile: data.userProfile !== undefined ? data.userProfile : state.userProfile,
+      appSettings: data.appSettings !== undefined ? { ...state.appSettings, ...data.appSettings } : state.appSettings,
+      activeSeason: data.activeSeason !== undefined ? data.activeSeason : state.activeSeason,
+      goals: data.goals !== undefined ? data.goals : state.goals,
+      badHabits: data.badHabits !== undefined ? data.badHabits : state.badHabits,
+      weeklyPlans: data.weeklyPlans !== undefined ? data.weeklyPlans : state.weeklyPlans,
+      dayPlans: data.dayPlans !== undefined ? data.dayPlans : state.dayPlans,
+      focusSessions: data.focusSessions !== undefined ? data.focusSessions : state.focusSessions,
+      learningEntries: data.learningEntries !== undefined ? data.learningEntries : state.learningEntries,
+      journalEntries: data.journalEntries !== undefined ? data.journalEntries : state.journalEntries,
+      relapseLogs: data.relapseLogs !== undefined ? data.relapseLogs : state.relapseLogs,
+      timelineDays: data.timelineDays !== undefined ? data.timelineDays : state.timelineDays,
+      learningSessions: data.learningSessions !== undefined ? data.learningSessions : state.learningSessions,
+      timelineEvents: data.timelineEvents !== undefined ? data.timelineEvents : state.timelineEvents,
+      notebookCategories: data.notebookCategories !== undefined ? data.notebookCategories : state.notebookCategories,
+      notebookEntries: data.notebookEntries !== undefined ? data.notebookEntries : state.notebookEntries,
+      journalPacks: data.journalPacks !== undefined ? data.journalPacks : state.journalPacks,
+      journalPackSessions: data.journalPackSessions !== undefined ? data.journalPackSessions : state.journalPackSessions,
+      purchasedPackIds: data.purchasedPackIds !== undefined ? data.purchasedPackIds : state.purchasedPackIds,
+      energyLogs: data.energyLogs !== undefined ? data.energyLogs : state.energyLogs,
     });
   }
 }));

@@ -5,7 +5,7 @@ import {
   getSeasonProgress,
   getTodayDateString
 } from "../lib/date";
-import type { DayPlan, Goal, MonkMVPState, TimelineDay, WeeklyPlan, FocusSession, LearningSession } from "../types/app";
+import type { DayPlan, EnergyLevel, Goal, MonkMVPState, TimelineDay, WeeklyPlan, FocusSession, LearningSession } from "../types/app";
 
 export function selectActiveGoals(state: MonkMVPState): Goal[] {
   const season = state.activeSeason;
@@ -121,4 +121,8 @@ export function selectSeasonLearningSummary(state: MonkMVPState, seasonId: strin
     totalSeconds,
     totalMinutes: Math.round(totalSeconds / 60)
   };
+}
+
+export function selectEnergyForDate(state: MonkMVPState, date: string): EnergyLevel | undefined {
+  return state.energyLogs.find((e) => e.date === date)?.level;
 }

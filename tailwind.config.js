@@ -32,7 +32,8 @@ export default {
             },
             fontFamily: {
                 sans: ["Inter", "ui-sans-serif", "system-ui", "sans-serif"],
-                mono: ["IBM Plex Mono", "ui-monospace", "SFMono-Regular", "monospace"]
+                mono: ["IBM Plex Mono", "ui-monospace", "SFMono-Regular", "monospace"],
+                handwriting: ["Caveat", "cursive"]
             },
             boxShadow: {
                 calm: "0 8px 24px rgba(21, 21, 21, 0.06)"

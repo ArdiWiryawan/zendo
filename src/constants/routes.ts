@@ -22,6 +22,8 @@ export const routes = {
   seasonEnd: "/season-end",
   settings: "/settings",
   library: "/library",
+  notebook: "/notebook",
+  packs: "/packs",
   login: "/login",
   signup: "/signup"
 } as const;
