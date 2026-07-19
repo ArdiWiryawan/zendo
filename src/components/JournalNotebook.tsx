@@ -1,19 +1,10 @@
 import { useState, useMemo, useRef, useEffect } from "react";
 import { useMonkStore } from "../store/useMonkStore";
-import { Card, PrimaryButton, SecondaryButton, TextInput, Textarea, EmptyState, GhostButton } from "./ui";
+import { PrimaryButton, SecondaryButton } from "./ui";
 import { createId } from "../lib/ids";
 import { nowIso } from "../lib/date";
-import type { NotebookEntry, NotebookCategory } from "../types/app";
-import {
-  Search,
-  Plus,
-  Pin,
-  PinOff,
-  Trash2,
-  Edit3,
-  ChevronRight,
-  ArrowLeft,
-} from "lucide-react";
+import type { NotebookEntry } from "../types/app";
+import { Search, Plus, Pin, PinOff, Trash2, Edit3, ArrowLeft } from "lucide-react";
 
 const CATEGORY_COLORS: Record<string, string> = {
   cat_pribadi: "bg-[#e07c6b]",
@@ -25,6 +16,18 @@ const CATEGORY_COLORS: Record<string, string> = {
   cat_perjalanan: "bg-[#6bc4b4]",
   cat_kreatif: "bg-[#c48b6b]",
   cat_lainnya: "bg-[#a0a0a0]",
+};
+
+const CATEGORY_HEX: Record<string, string> = {
+  cat_pribadi: "#e07c6b",
+  cat_karier: "#6b9ac4",
+  cat_keuangan: "#6bb48b",
+  cat_kesehatan: "#c48bb4",
+  cat_hubungan: "#c4a06b",
+  cat_spiritual: "#8b9dc4",
+  cat_perjalanan: "#6bc4b4",
+  cat_kreatif: "#c48b6b",
+  cat_lainnya: "#a0a0a0",
 };
 
 export default function JournalNotebook() {
@@ -50,14 +53,12 @@ export default function JournalNotebook() {
     return list;
   }, [entries, filterCat, searchQuery]);
 
-  if (view === "edit") return <NotebookEditor entry={editEntry} onBack={() => { setView("list"); setEditEntry(null); }} />;
-
-  const catName = (id: string) => categories.find((c) => c.id === id)?.name ?? "Unknown";
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    handleSave();
-  };
+  if (view === "edit") return (
+    <NotebookEditor
+      entry={editEntry}
+      onBack={() => { setView("list"); setEditEntry(null); }}
+    />
+  );
 
   return (
     <div className="space-y-4">
@@ -67,24 +68,31 @@ export default function JournalNotebook() {
           type="button"
           onClick={() => setFilterCat(null)}
           className={`rounded-full px-3 py-1 text-[10px] font-bold uppercase tracking-wider border transition ${
-            !filterCat ? "bg-monk-accent-soft border-monk-accent text-monk-accent" : "bg-monk-soft border-monk-border text-monk-muted"
+            !filterCat ? "bg-monk-accent-soft border-monk-accent text-monk-accent" : "border-[#2a251e] text-[#68655e] hover:text-[#a48b5e]"
           }`}
         >
           All
         </button>
-        {categories.map((cat) => (
-          <button
-            key={cat.id}
-            type="button"
-            onClick={() => setFilterCat(filterCat === cat.id ? null : cat.id)}
-            className={`rounded-full px-3 py-1 text-[10px] font-bold uppercase tracking-wider border transition flex items-center gap-1.5 ${
-              filterCat === cat.id ? "border-monk-accent text-monk-accent" : "border-monk-border text-monk-muted"
-            }`}
-          >
-            <span className={`w-2 h-2 rounded-full ${CATEGORY_COLORS[cat.id] ?? "bg-current"}`} />
-            {cat.name}
-          </button>
-        ))}
+        {categories.map((cat) => {
+          const hex = CATEGORY_HEX[cat.id] ?? "#a0a0a0";
+          const isActive = filterCat === cat.id;
+          return (
+            <button
+              key={cat.id}
+              type="button"
+              onClick={() => setFilterCat(isActive ? null : cat.id)}
+              className="rounded-full px-3 py-1 text-[10px] font-bold uppercase tracking-wider border transition flex items-center gap-1.5"
+              style={{
+                borderColor: isActive ? hex : "#2a251e",
+                color: isActive ? hex : "#68655e",
+                backgroundColor: isActive ? `${hex}18` : "transparent",
+              }}
+            >
+              <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: hex }} />
+              {cat.name}
+            </button>
+          );
+        })}
       </div>
 
       {/* Search */}
@@ -92,7 +100,7 @@ export default function JournalNotebook() {
         <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#68655e]" strokeWidth={1.5} />
         <input
           type="text"
-          placeholder="Search notebook..."
+          placeholder="Cari catatan..."
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           className="w-full min-h-[40px] rounded-lg border border-[#2a251e] bg-[#1f1c17] pl-9 pr-4 text-sm text-[#d4cdc0] placeholder:text-[#68655e] focus:border-[#a48b5e] focus:outline-none"
@@ -101,54 +109,64 @@ export default function JournalNotebook() {
 
       {/* Entry list */}
       {sorted.length === 0 ? (
-        <div className="rounded-lg border border-[#2a251e] bg-[#1f1c17] p-8 text-center">
-          <p className="font-handwriting text-2xl text-[#68655e]">Still empty...</p>
-          <p className="mt-2 text-sm text-[#68655e]">Start writing your first note.</p>
+        <div className="rounded-lg border border-[#2a251e] bg-[#1a1814] p-10 text-center">
+          <p className="font-handwriting text-3xl text-[#4a4640] mb-2">Masih kosong...</p>
+          <p className="text-xs text-[#68655e]">Tulis catatan pertamamu.</p>
         </div>
       ) : (
-        <div className="space-y-4">
+        <div className="space-y-2">
           {sorted.map((entry) => {
             const cat = categories.find((c) => c.id === entry.categoryId);
-            const preview = entry.body.replace(/\n/g, " ").slice(0, 120);
-            const catColor = CATEGORY_COLORS[entry.categoryId] ?? "bg-[#a0a0a0]";
+            const preview = entry.body.replace(/\n/g, " ").slice(0, 100);
+            const catHex = CATEGORY_HEX[entry.categoryId] ?? "#a0a0a0";
             return (
-              <div key={entry.id} className="notebook-card p-4 relative overflow-hidden">
-                {/* Category color stripe on left */}
-                <div className={`absolute left-0 top-0 bottom-0 w-1 ${catColor}`} />
-
-                <div className="flex items-start justify-between gap-3 pl-3">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      {entry.isPinned ? <Pin size={12} className="text-[#a48b5e]" strokeWidth={1.5} /> : null}
-                      <p className="notebook-card-title truncate">{entry.title || "Untitled"}</p>
+              <div
+                key={entry.id}
+                className="notebook-card p-4 relative"
+                style={{ borderLeftColor: catHex, borderLeftWidth: 3 }}
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <button
+                    type="button"
+                    className="flex-1 min-w-0 text-left"
+                    onClick={() => { setEditEntry(entry); setView("edit"); }}
+                  >
+                    <div className="flex items-center gap-2 mb-0.5">
+                      {entry.isPinned ? <Pin size={11} className="text-[#a48b5e] shrink-0" strokeWidth={1.5} /> : null}
+                      <p className="notebook-card-title truncate">{entry.title || "Tanpa judul"}</p>
                     </div>
-                    <p className="notebook-card-body mt-0.5 line-clamp-3">{preview}</p>
+                    {preview ? (
+                      <p className="notebook-card-body line-clamp-2 text-[13px]">{preview}</p>
+                    ) : null}
                     <div className="mt-1.5 flex items-center gap-2">
-                      {cat ? <span className={`rounded px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-white ${catColor}`}>{cat.name}</span> : null}
-                      <span className="text-[10px] text-[#68655e]">{new Date(entry.updatedAt).toLocaleDateString("id-ID", { day: "numeric", month: "short" })}</span>
+                      {cat ? (
+                        <span
+                          className="rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider"
+                          style={{ color: catHex, backgroundColor: `${catHex}20` }}
+                        >
+                          {cat.name}
+                        </span>
+                      ) : null}
+                      <span className="text-[10px] text-[#4a4640]">
+                        {new Date(entry.updatedAt).toLocaleDateString("id-ID", { day: "numeric", month: "short" })}
+                      </span>
                     </div>
-                  </div>
-                  <div className="flex items-center gap-1 shrink-0">
+                  </button>
+
+                  <div className="flex items-center shrink-0">
                     <button
                       type="button"
-                      onClick={() => { store.togglePinNotebookEntry(entry.id); }}
+                      onClick={() => store.togglePinNotebookEntry(entry.id)}
                       className="grid h-8 w-8 place-items-center rounded-full text-[#68655e] hover:text-[#a48b5e] hover:bg-[#2a251e] transition"
                     >
-                      {entry.isPinned ? <PinOff size={14} strokeWidth={1.5} /> : <Pin size={14} strokeWidth={1.5} />}
+                      {entry.isPinned ? <PinOff size={13} strokeWidth={1.5} /> : <Pin size={13} strokeWidth={1.5} />}
                     </button>
                     <button
                       type="button"
-                      onClick={() => { setEditEntry(entry); setView("edit"); }}
-                      className="grid h-8 w-8 place-items-center rounded-full text-[#68655e] hover:text-[#a48b5e] hover:bg-[#2a251e] transition"
+                      onClick={() => store.deleteNotebookEntry(entry.id)}
+                      className="grid h-8 w-8 place-items-center rounded-full text-[#68655e] hover:text-[#c48b6b] hover:bg-[#2a251e] transition"
                     >
-                      <Edit3 size={14} strokeWidth={1.5} />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => { store.deleteNotebookEntry(entry.id); }}
-                      className="grid h-8 w-8 place-items-center rounded-full text-[#c48b6b] hover:bg-[#2a251e] transition"
-                    >
-                      <Trash2 size={14} strokeWidth={1.5} />
+                      <Trash2 size={13} strokeWidth={1.5} />
                     </button>
                   </div>
                 </div>
@@ -176,7 +194,7 @@ export default function JournalNotebook() {
           setView("edit");
         }}
         className="fixed bottom-24 right-6 grid h-14 w-14 place-items-center rounded-full bg-[#a48b5e] text-white shadow-lg hover:bg-[#a48b5e]/90 active:scale-90 transition z-40"
-        aria-label="New notebook entry"
+        aria-label="Catatan baru"
       >
         <Plus size={24} strokeWidth={2} />
       </button>
@@ -194,9 +212,7 @@ export function NotebookEditor({ entry, onBack }: { entry: NotebookEntry | null;
   const [showNewCat, setShowNewCat] = useState(false);
   const [newCatName, setNewCatName] = useState("");
 
-  useEffect(() => {
-    titleRef.current?.focus();
-  }, []);
+  useEffect(() => { titleRef.current?.focus(); }, []);
 
   const handleSave = () => {
     const timestamp = nowIso();
@@ -213,29 +229,52 @@ export function NotebookEditor({ entry, onBack }: { entry: NotebookEntry | null;
     onBack();
   };
 
+  const activeCatHex = CATEGORY_HEX[catId] ?? "#6b9ac4";
+
   return (
-    <div className="space-y-4">
-      {/* Title */}
+    <div className="space-y-0 pb-8">
+      {/* Header bar */}
+      <div className="flex items-center justify-between py-3 border-b border-[#2a251e] mb-4">
+        <button
+          type="button"
+          onClick={onBack}
+          className="flex items-center gap-1.5 text-[#68655e] hover:text-[#a48b5e] transition text-[11px] uppercase tracking-wider font-mono"
+        >
+          <ArrowLeft size={13} strokeWidth={1.5} />
+          Kembali
+        </button>
+        <span className="text-[10px] text-[#4a4640] font-mono">
+          {new Date().toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" })}
+        </span>
+      </div>
+
+      {/* Title — big, handwriting */}
       <input
         ref={titleRef}
         type="text"
-        placeholder="Entry title..."
+        placeholder="Judul catatan..."
         value={title}
         onChange={(e) => setTitle(e.target.value)}
-        className="w-full bg-transparent font-handwriting text-2xl text-[#e5e2da] placeholder:text-[#68655e] border-none outline-none focus:outline-none"
+        className="w-full bg-transparent font-handwriting text-[1.6rem] leading-tight text-[#e5e2da] placeholder:text-[#4a4640] border-none outline-none focus:outline-none mb-4"
       />
 
-      {/* Category tabs as colored sticky notes */}
-      <div className="flex flex-wrap gap-1.5">
+      {/* Category chips */}
+      <div className="flex flex-wrap gap-1.5 mb-4">
         {categories.map((cat) => {
           const isActive = catId === cat.id;
-          const color = CATEGORY_COLORS[cat.id] ?? "bg-[#a0a0a0]";
+          const hex = CATEGORY_HEX[cat.id] ?? "#a0a0a0";
           return (
             <button
               key={cat.id}
               type="button"
               onClick={() => setCatId(cat.id)}
-              className={`rounded px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-white transition ${color} ${isActive ? "ring-2 ring-offset-1 ring-offset-[#1a1814] ring-[#a48b5e]" : "opacity-70 hover:opacity-100"}`}
+              className="rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider transition"
+              style={{
+                backgroundColor: isActive ? hex : `${hex}20`,
+                color: isActive ? "#fff" : hex,
+                outline: isActive ? `2px solid ${hex}` : "none",
+                outlineOffset: "2px",
+              }}
             >
               {cat.name}
             </button>
@@ -244,17 +283,17 @@ export function NotebookEditor({ entry, onBack }: { entry: NotebookEntry | null;
         <button
           type="button"
           onClick={() => setShowNewCat(!showNewCat)}
-          className="rounded px-2 py-1 text-[10px] font-bold uppercase tracking-wider border border-dashed border-[#2a251e] text-[#68655e] hover:text-[#a48b5e]"
+          className="rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider border border-dashed border-[#2a251e] text-[#68655e] hover:text-[#a48b5e] transition"
         >
-          + New
+          + Baru
         </button>
       </div>
 
       {showNewCat ? (
-        <div className="flex gap-2">
+        <div className="flex gap-2 mb-4">
           <input
             type="text"
-            placeholder="Category name..."
+            placeholder="Nama kategori..."
             value={newCatName}
             onChange={(e) => setNewCatName(e.target.value)}
             className="flex-1 rounded-lg border border-[#2a251e] bg-[#1f1c17] px-3 py-2 text-sm text-[#d4cdc0] placeholder:text-[#68655e] focus:border-[#a48b5e] focus:outline-none"
@@ -269,28 +308,32 @@ export function NotebookEditor({ entry, onBack }: { entry: NotebookEntry | null;
               }
             }}
           >
-            Add
+            Tambah
           </PrimaryButton>
         </div>
       ) : null}
 
-      {/* Writing area — ruled paper */}
-      <div className="notebook-card p-4">
+      {/* Writing area — left border matches active category */}
+      <div
+        className="notebook-card rounded-none p-4"
+        style={{ borderLeftWidth: 3, borderLeftColor: activeCatHex }}
+      >
         <textarea
-          placeholder="Write whatever is on your mind..."
+          placeholder="Tulis bebas..."
           value={body}
           onChange={(e) => setBody(e.target.value)}
-          className="w-full bg-transparent notebook-card-body border-none outline-none resize-none min-h-[350px]"
-          style={{ lineHeight: "2rem", backgroundImage: "none" }}
+          className="w-full bg-transparent notebook-card-body border-none outline-none resize-none min-h-[360px] pl-4"
+          style={{ lineHeight: "2rem" }}
         />
       </div>
 
-      <div className="flex gap-3 pb-8">
-        <SecondaryButton onClick={onBack} className="flex-1">Cancel</SecondaryButton>
-        <PrimaryButton
-          onClick={handleSave}
-          disabled={!title.trim()}
-          className="flex-1">Save Entry
+      {/* Save / word count row */}
+      <div className="flex items-center justify-between pt-4">
+        <span className="text-[10px] text-[#4a4640] font-mono">
+          {body.trim() ? body.trim().split(/\s+/).length : 0} kata
+        </span>
+        <PrimaryButton onClick={handleSave} disabled={!title.trim()}>
+          Simpan
         </PrimaryButton>
       </div>
     </div>

@@ -61,20 +61,25 @@ function PackList({
         const progress = activeSession?.progress ?? 0;
         const hasStarted = !!activeSession;
         return (
-          <div key={pack.id} className={`workbook-card p-4 ${pack.isPremium && !purchased.includes(pack.id) ? "opacity-60" : ""}`}>
-            <div className="flex items-start justify-between gap-3">
+          <div key={pack.id} className={`workbook-card p-4 ${pack.isPremium && !purchased.includes(pack.id) ? "opacity-60 bg-[#1d1914]" : "bg-[#1f1c17]"}`}>
+            <div className="flex items-start gap-3">
+              {/* Left color indicator */}
+              <div className={`w-1 self-stretch rounded-full shrink-0 ${pack.isPremium && !purchased.includes(pack.id) ? "bg-[#a48b5e]/60" : "bg-[#6bb48b]/50"}`} />
+              <div className="flex-1 flex items-start justify-between gap-3">
               <div className="flex-1">
-                <div className="flex items-center gap-2">
-                  <span className="text-lg">{iconMap[pack.icon] ?? "📓"}</span>
-                  <p className="font-semibold text-[#e5e2da]">{pack.title}</p>
-                  {pack.isPremium && !purchased.includes(pack.id) ? (
-                    <span className="rounded bg-[#a48b5e]/20 px-1.5 py-0.5 text-[8px] font-bold text-[#a48b5e] uppercase tracking-wider flex items-center gap-0.5">
-                      <Lock size={8} /> Premium
-                    </span>
-                  ) : null}
+                <div className="border-b border-[#2a251e] pb-3 mb-3">
+                  <div className="flex items-center gap-2">
+                    <span className="text-lg">{iconMap[pack.icon] ?? "📓"}</span>
+                    <p className="font-semibold text-[#e5e2da]">{pack.title}</p>
+                    {pack.isPremium && !purchased.includes(pack.id) ? (
+                      <span className="rounded bg-[#a48b5e]/20 px-1.5 py-0.5 text-[8px] font-bold text-[#a48b5e] uppercase tracking-wider flex items-center gap-0.5">
+                        <Lock size={8} /> Premium
+                      </span>
+                    ) : null}
+                  </div>
+                  <p className="mt-1 text-sm text-[#908c83] leading-relaxed">{pack.description}</p>
                 </div>
-                <p className="mt-1 text-sm text-[#908c83] leading-relaxed">{pack.description}</p>
-                <div className="mt-2 flex items-center gap-2 flex-wrap">
+                <div className="flex items-center gap-2 flex-wrap">
                   <span className="rounded bg-[#2a251e] px-2 py-0.5 text-[9px] font-bold text-[#908c83] uppercase tracking-wider">
                     {pack.questions.length} {pack.questions.length === 1 ? "question" : "questions"}
                   </span>
@@ -91,13 +96,14 @@ function PackList({
                   ) : null}
                 </div>
                 {hasStarted && progress > 0 && progress < 100 ? (
-                  <div className="mt-2 h-1 rounded-full bg-[#2a251e] overflow-hidden">
-                    <div className="h-full rounded-full bg-[#a48b5e]" style={{ width: `${progress}%` }} />
+                  <div className="mt-2 h-1.5 rounded-none bg-[#2a251e] overflow-hidden">
+                    <div className="h-full rounded-none bg-[#a48b5e]" style={{ width: `${progress}%` }} />
                   </div>
                 ) : null}
                 {lastCompleted ? (
                   <p className="mt-1 text-[10px] text-[#68655e]">Last: {new Date(lastCompleted).toLocaleDateString("id-ID", { day: "numeric", month: "short" })}</p>
                 ) : null}
+              </div>
               </div>
               {pack.isPremium && !purchased.includes(pack.id) ? (
                 <button
@@ -156,7 +162,7 @@ function PackSession({ pack, onBack }: { pack: JournalPack; onBack: () => void }
         <p className="text-2xl mb-3">✨</p>
         <p className="font-handwriting text-2xl text-[#e5e2da]">Well done.</p>
         <p className="mt-2 text-sm text-[#908c83]">You completed <span className="font-semibold">{pack.title}</span></p>
-        <PrimaryButton className="mt-6" onClick={onBack}>← Back to Packs</PrimaryButton>
+        <PrimaryButton className="mt-6" onClick={onBack}>Back to Packs</PrimaryButton>
       </div>
     );
   }
@@ -182,11 +188,13 @@ function PackSession({ pack, onBack }: { pack: JournalPack; onBack: () => void }
   };
 
   return (
+    <div className="pack-session-bg">
     <div className="space-y-5">
       {/* Header: Page X of Y + progress */}
       <div className="flex items-center justify-between">
-        <button type="button" onClick={onBack} className="text-xs text-[#68655e] hover:text-[#a48b5e] flex items-center gap-1">
-          ← Back
+        <button type="button" onClick={onBack} className="text-xs text-[#68655e] hover:text-[#a48b5e] flex items-center gap-1 transition-colors">
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg" className="shrink-0"><path d="M9 2L4 7L9 12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+          Back
         </button>
         <span className="workbook-page-number">Page {currentIndex + 1} of {pack.questions.length}</span>
       </div>
@@ -198,7 +206,7 @@ function PackSession({ pack, onBack }: { pack: JournalPack; onBack: () => void }
           return (
             <span
               key={q.id}
-              className={`w-2.5 h-2.5 rounded-full transition ${
+              className={`w-3 h-3 rounded-full transition ${
                 i === currentIndex ? "bg-[#a48b5e]" : answered ? "bg-[#6bb48b]" : "bg-[#2a251e]"
               }`}
             />
@@ -207,7 +215,7 @@ function PackSession({ pack, onBack }: { pack: JournalPack; onBack: () => void }
       </div>
 
       {/* Question card — workbook style */}
-      <div className="workbook-card p-6">
+      <div className="workbook-card rounded-none p-6">
         <p className="text-[10px] font-bold uppercase tracking-widest text-[#68655e] mb-2">{pack.title}</p>
         <p className="workbook-question">{question.question}</p>
         {question.hint ? <p className="mt-3 text-sm text-[#68655e] italic">— {question.hint}</p> : null}
@@ -220,7 +228,7 @@ function PackSession({ pack, onBack }: { pack: JournalPack; onBack: () => void }
           onChange={(e) => setInput(e.target.value)}
           placeholder="Write your answer..."
           className="w-full bg-transparent workbook-answer-area border-none outline-none focus:outline-none resize-none min-h-[200px] text-sm text-[#d4cdc0] placeholder:text-[#68655e]"
-          style={{ lineHeight: "2rem", backgroundImage: "repeating-linear-gradient(transparent, transparent 27px, #ddd6c8 27px, #ddd6c8 28px)" }}
+          style={{ lineHeight: "2rem", backgroundImage: "repeating-linear-gradient(transparent, transparent 27px, #25221c 27px, #25221c 28px)" }}
         />
       </div>
 
@@ -245,6 +253,7 @@ function PackSession({ pack, onBack }: { pack: JournalPack; onBack: () => void }
           {currentIndex < pack.questions.length - 1 ? "Next Question →" : "Complete"}
         </button>
       </div>
+    </div>
     </div>
   );
 }

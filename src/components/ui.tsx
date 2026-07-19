@@ -1,6 +1,6 @@
 import type { ButtonHTMLAttributes, InputHTMLAttributes, ReactNode, TextareaHTMLAttributes } from "react";
 import { useEffect, useRef, useState } from "react";
-import { ArrowRight, BookOpen, Calendar, Circle, Flag, Grid3X3, Settings } from "lucide-react";
+import { ArrowRight, BookOpen, Calendar, Flag, Grid3X3, Settings, Sun } from "lucide-react";
 import { hapticPress } from "../lib/haptics";
 import { NavLink, useLocation } from "react-router-dom";
 import { routes } from "../constants/routes";
@@ -112,7 +112,7 @@ export function PrimaryButton(props: ButtonHTMLAttributes<HTMLButtonElement>) {
     <button
       {...props}
       onClick={(e) => { hapticPress("medium"); props.onClick?.(e); }}
-      className={`min-h-[50px] w-full rounded-[16px] bg-monk-accent px-6 text-base font-bold text-monk-bg transition active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-45 ${
+      className={`min-h-[50px] w-full rounded-monk px-6 text-base font-bold bg-monk-accent text-monk-bg transition active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-45 ${
         props.className ?? ""
       }`}
     />
@@ -124,7 +124,7 @@ export function SecondaryButton(props: ButtonHTMLAttributes<HTMLButtonElement>) 
     <button
       {...props}
       onClick={(e) => { hapticPress("light"); props.onClick?.(e); }}
-      className={`min-h-[46px] w-full rounded-[14px] border border-monk-border bg-monk-soft px-6 text-sm font-semibold text-monk-text transition active:scale-[0.98] disabled:opacity-45 ${
+      className={`min-h-[46px] w-full rounded-monk border border-monk-border bg-monk-soft px-6 text-sm font-semibold text-monk-text transition active:scale-[0.98] disabled:opacity-45 ${
         props.className ?? ""
       }`}
     />
@@ -147,7 +147,7 @@ export function TextInput({ className = "", ...props }: InputHTMLAttributes<HTML
   return (
     <input
       {...props}
-      className={`min-h-[48px] w-full rounded-[14px] border border-monk-border bg-monk-surface px-4 text-sm text-monk-text placeholder:text-monk-text-soft focus:border-monk-accent focus:outline-none ${className}`}
+      className={`min-h-[48px] w-full rounded-xl border border-monk-border bg-monk-surface px-4 text-sm text-monk-text placeholder:text-monk-text-soft focus:border-monk-accent focus:outline-none ${className}`}
     />
   );
 }
@@ -156,7 +156,7 @@ export function Textarea({ className = "", ...props }: TextareaHTMLAttributes<HT
   return (
     <textarea
       {...props}
-      className={`min-h-[120px] w-full resize-none rounded-[16px] border border-monk-border bg-monk-surface p-4 text-sm leading-6 text-monk-text placeholder:text-monk-text-soft focus:border-monk-accent focus:outline-none ${className}`}
+      className={`min-h-[120px] w-full resize-none rounded-xl border border-monk-border bg-monk-surface p-4 text-sm leading-6 text-monk-text placeholder:text-monk-text-soft focus:border-monk-accent focus:outline-none ${className}`}
     />
   );
 }
@@ -269,13 +269,13 @@ export function SettingsLink() {
 function BottomNav() {
   const location = useLocation();
   const tabs = [
-    { to: routes.today, label: "Today", icon: Circle },
+    { to: routes.today, label: "Today", icon: Sun },
     { to: routes.week, label: "Week", icon: Calendar },
     { to: routes.timeline, label: "Timeline", icon: Grid3X3 },
     { to: routes.journal, label: "Journal", icon: BookOpen }
   ];
   return (
-    <nav className="fixed inset-x-0 bottom-[calc(env(safe-area-inset-bottom)+12px)] px-6">
+    <nav>
       <div className="mx-auto grid h-[58px] max-w-[360px] grid-cols-4 rounded-full border border-monk-border-strong bg-monk-surface p-1">
         {tabs.map((tab) => {
           const Icon = tab.icon;
@@ -284,7 +284,8 @@ function BottomNav() {
             <NavLink
               key={tab.to}
               to={tab.to}
-              className={`flex flex-col items-center justify-center gap-0.5 rounded-full text-[10px] font-medium transition ${
+              aria-current={active ? "page" : undefined}
+              className={`flex flex-col items-center justify-center gap-0.5 rounded-full text-xs font-medium transition ${
                 active ? "bg-monk-accent-soft text-monk-accent" : "text-monk-text-soft"
               }`}
             >
@@ -316,7 +317,7 @@ export function DurationCard({
       type="button"
       onClick={onClick}
       className={`w-full rounded-monk border p-4 text-left transition ${
-        selected ? "border-monk-accent bg-monk-accent-soft" : "border-monk-border bg-monk-surface"
+        selected ? "border-monk-accent bg-monk-accent-soft" : "border-monk-border bg-monk-surface hover:bg-monk-soft hover:border-monk-border-strong"
       }`}
     >
       <div className="flex items-center justify-between gap-2">
@@ -326,6 +327,7 @@ export function DurationCard({
         }`}>
           {badge}
         </span>
+
       </div>
       <p className="mt-1.5 text-sm leading-relaxed text-monk-muted">{description}</p>
     </button>
@@ -349,13 +351,13 @@ export function SeasonPreviewCard({
           <div className="grid h-9 w-9 place-items-center rounded-full border border-monk-accent bg-monk-accent-soft">
             <Flag size={14} className="text-monk-accent" />
           </div>
-          <span className="mt-1.5 text-[10px] font-bold uppercase tracking-wider text-monk-accent">Start</span>
+          <span className="mt-1.5 text-xs font-bold uppercase tracking-wider text-monk-accent">Start</span>
         </div>
         <div className="flex-1">
           <div className="relative h-1 rounded-full bg-monk-soft">
             <div className="absolute inset-0 rounded-full bg-gradient-to-r from-monk-accent/60 to-monk-accent/20" />
           </div>
-          <p className="mt-1.5 text-center text-[10px] font-bold uppercase tracking-wider text-monk-muted">
+          <p className="mt-1.5 text-center text-xs font-bold uppercase tracking-wider text-monk-muted">
             {durationLabel}
           </p>
         </div>
@@ -363,7 +365,7 @@ export function SeasonPreviewCard({
           <div className="grid h-9 w-9 place-items-center rounded-full border border-monk-border bg-monk-soft">
             <Calendar size={14} className="text-monk-muted" />
           </div>
-          <span className="mt-1.5 text-[10px] font-bold uppercase tracking-wider text-monk-muted">End</span>
+          <span className="mt-1.5 text-xs font-bold uppercase tracking-wider text-monk-muted">End</span>
         </div>
       </div>
       <div className="mt-4 flex justify-between text-xs text-monk-text-soft">
@@ -376,17 +378,23 @@ export function SeasonPreviewCard({
 
 function ScrollHideWrapper({ children }: { children: ReactNode }) {
   const [showNav, setShowNav] = useState(true);
-  const lastScroll = useRef(0);
 
   useEffect(() => {
-    const onScroll = () => {
-      const current = window.scrollY;
-      if (current > lastScroll.current && current > 80) setShowNav(false);
-      else setShowNav(true);
-      lastScroll.current = current;
-    };
-    window.addEventListener("scroll", onScroll, { passive: true });
-    return () => window.removeEventListener("scroll", onScroll);
+    const sentinel = document.createElement("div");
+    sentinel.style.cssText = "position:absolute;top:80px;height:1px;width:1px;pointer-events:none";
+    document.body.appendChild(sentinel);
+    let lastY = 0;
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        const currentY = window.scrollY;
+        if (!entry.isIntersecting && currentY > lastY) setShowNav(false);
+        else setShowNav(true);
+        lastY = currentY;
+      },
+      { threshold: 0 }
+    );
+    observer.observe(sentinel);
+    return () => { observer.disconnect(); sentinel.remove(); };
   }, []);
 
   return (
@@ -398,17 +406,23 @@ function ScrollHideWrapper({ children }: { children: ReactNode }) {
 
 export function useScrollNav() {
   const [visible, setVisible] = useState(true);
-  const lastY = useRef(0);
 
   useEffect(() => {
-    const onScroll = () => {
-      const y = window.scrollY;
-      if (y > lastY.current && y > 80) setVisible(false);
-      else setVisible(true);
-      lastY.current = y;
-    };
-    window.addEventListener("scroll", onScroll, { passive: true });
-    return () => window.removeEventListener("scroll", onScroll);
+    const sentinel = document.createElement("div");
+    sentinel.style.cssText = "position:absolute;top:80px;height:1px;width:1px;pointer-events:none";
+    document.body.appendChild(sentinel);
+    let lastY = 0;
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        const currentY = window.scrollY;
+        if (!entry.isIntersecting && currentY > lastY) setVisible(false);
+        else setVisible(true);
+        lastY = currentY;
+      },
+      { threshold: 0 }
+    );
+    observer.observe(sentinel);
+    return () => { observer.disconnect(); sentinel.remove(); };
   }, []);
 
   return visible;

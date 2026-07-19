@@ -3,7 +3,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase as getSupabase } from "../lib/supabase";
 const sb = getSupabase();
-import { GhostButton } from "../components/ui";
+import { PrimaryButton, GhostButton, TextInput } from "./ui";
 
 export default function SignupScreen() {
   const navigate = useNavigate();
@@ -37,45 +37,43 @@ export default function SignupScreen() {
   };
 
   return (
-    <div className="flex flex-col items-center justify-center h-screen">
-      <div className="w-full max-w-lg space-y-4">
+    <div className="flex flex-col items-center justify-center min-h-dvh">
+      <div className="w-full max-w-sm space-y-4">
         <h1 className="text-3xl font-bold text-center mb-6">Create your Zendo account</h1>
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="mb-4">
+          <div>
             <label className="block text-sm font-semibold text-monk-text">
               Email
             </label>
-            <input
+            <TextInput
               type="email"
               value={email}
               placeholder="your@email.com"
-              className="mt-1 block w-full rounded-md border border-monk-border bg-monk-soft px-3 py-2"
+              autoComplete="email"
+              className="mt-1"
               onChange={(e) => setEmail(e.target.value)}
             />
           </div>
 
-          <div className="mb-4">
+          <div>
             <label className="block text-sm font-semibold text-monk-text">
               Password
             </label>
-            <input
+            <TextInput
               type="password"
               value={password}
               placeholder="••••••••"
-              className="mt-1 block w-full rounded-md border border-monk-border bg-monk-soft px-3 py-2"
+              autoComplete="new-password"
+              className="mt-1"
               onChange={(e) => setPassword(e.target.value)}
             />
           </div>
 
           {error && <p className="text-monk-danger mt-2">{error}</p>}
 
-          <button
-            type="submit"
-            className="w-full bg-monk-accent text-monk-text px-4 py-2 rounded-md hover:bg-monk-accent hover:text-monk-accent transition"
-            disabled={loading}
-          >
+          <PrimaryButton type="submit" disabled={loading} className="hover:opacity-90">
             {loading ? "Creating…" : "Sign Up"}
-          </button>
+          </PrimaryButton>
         </form>
 
         <div className="mt-4">

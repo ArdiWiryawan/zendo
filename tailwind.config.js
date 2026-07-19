@@ -31,7 +31,7 @@ export default {
                 "monk-lg": "32px"
             },
             fontFamily: {
-                sans: ["Inter", "ui-sans-serif", "system-ui", "sans-serif"],
+                sans: ["Outfit", "ui-sans-serif", "system-ui", "sans-serif"],
                 mono: ["IBM Plex Mono", "ui-monospace", "SFMono-Regular", "monospace"],
                 handwriting: ["Caveat", "cursive"]
             },

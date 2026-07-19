@@ -81,7 +81,7 @@ import {
   validateSeasonDuration,
   validateWeeklyAllocation
 } from "../lib/validation";
-import { selectActiveGoals, selectCurrentWeeklyPlan, selectTodayPlan, selectJournalEntryForToday } from "../store/selectors";
+import { selectActiveGoals, selectCurrentWeeklyPlan, selectTodayPlan, selectJournalEntryForToday, selectEnergyForDate } from "../store/selectors";
 import { useMonkStore } from "../store/useMonkStore";
 import type { EnergyLevel, FocusSession, FocusSessionPreset, JournalAnswers, JournalEntry, LearningType, SeasonDurationPreset, TimelineStatus, LearningSourceType, LearningSession, TimelineEvent, TimelineEventType, MonkMVPState } from "../types/app";
 import { playZenBell } from "../lib/audio";
@@ -225,9 +225,12 @@ export default function App() {
     const currentPhase = getCurrentFocusPhase(activeSession);
     const targetSeconds = currentPhase.plannedMinutes * 60;
 
-    const timer = window.setInterval(() => {
-      const elapsed = Math.floor((Date.now() - startMs) / 1000);
+    const notify = (title: string, body: string) => {
+      if (Notification.permission === "granted") new Notification(title, { body, icon: "/apple-touch-icon.png", silent: true });
+    };
 
+    const tick = () => {
+      const elapsed = Math.floor((Date.now() - startMs) / 1000);
       if (elapsed >= targetSeconds) {
         const phases = activeSession.phases ?? [];
         const currentIndex = activeSession.currentPhaseIndex ?? 0;
@@ -235,16 +238,32 @@ export default function App() {
           advanceFocusPhase(activeSession.id);
           playZenBell();
           if ("vibrate" in navigator) navigator.vibrate([200, 100, 200]);
+          const nextPhase = phases[currentIndex + 1];
+          notify(
+            nextPhase?.type === "break" ? "Break time" : "Focus block",
+            nextPhase?.type === "break" ? "Step away and recharge." : "Back to deep work. You've got this."
+          );
         } else {
           completeFocusSession(activeSession.id, true);
           playZenBell();
           if ("vibrate" in navigator) navigator.vibrate(300);
+          notify("Session complete", "You did the work. Rest well.");
         }
       } else {
         tickFocusSession(activeSession.id, Math.max(0, elapsed));
       }
-    }, 1000);
-    return () => window.clearInterval(timer);
+    };
+
+    const timer = window.setInterval(tick, 1000);
+
+    // Re-sync immediately when tab becomes visible again (interval may have been throttled)
+    const onVisibilityChange = () => { if (document.visibilityState === "visible") tick(); };
+    document.addEventListener("visibilitychange", onVisibilityChange);
+
+    return () => {
+      window.clearInterval(timer);
+      document.removeEventListener("visibilitychange", onVisibilityChange);
+    };
   }, [activeSession?.id, activeSession?.status, activeSession?.startTime, activeSession?.currentPhaseIndex, activeSession?.phases, tickFocusSession, completeFocusSession, advanceFocusPhase]);
 
   if (!ready) {
@@ -436,17 +455,33 @@ function getSessionLeftLabel(session: FocusSession) {
   return `${remainingFocusBlocks} focus ${remainingFocusBlocks === 1 ? "block" : "blocks"} after this`;
 }
 
-function getBreakGuidance(session: FocusSession) {
+function getBreakGuidance(session: FocusSession): {
+  title: string;
+  description: string;
+  activities: { label: string; emoji: string }[];
+} {
   const phase = getCurrentFocusPhase(session);
   if (phase.plannedMinutes >= 10) {
     return {
-      title: "10-minute recovery",
-      description: "Step away from your screen. Walk, stretch, refill water, and reset your desk before the next focus block."
+      title: "10-min recharge",
+      description: "Real recovery needs a scene change. Try:",
+      activities: [
+        { label: "Doodle freely — no goal, just pen on paper", emoji: "✏️" },
+        { label: "Walk outside or to a window", emoji: "🚶" },
+        { label: "Stretch neck, shoulders, hips", emoji: "🧘" },
+        { label: "Refill water, grab a snack", emoji: "🥜" },
+      ],
     };
   }
   return {
-    title: "5-minute reset",
-    description: "Stand up, drink water, stretch your shoulders, and rest your eyes."
+    title: "5-min reset",
+    description: "Short movement beats passive scrolling. Pick one:",
+    activities: [
+      { label: "Stand & shake out your hands", emoji: "🤲" },
+      { label: "Look 20ft away for 20 seconds", emoji: "👁️" },
+      { label: "3 slow deep breaths", emoji: "🌬️" },
+      { label: "Drink water", emoji: "💧" },
+    ],
   };
 }
 
@@ -486,7 +521,7 @@ function FocusSessionPanel({
 
   return (
     <Card important className={`text-center bg-monk-soft border-monk-border-strong relative ${compact ? "p-6" : "p-8"}`}>
-      <p className="text-[10px] font-bold text-monk-accent uppercase tracking-widest">
+      <p className="text-xs font-bold text-monk-accent uppercase tracking-widest">
         {modeLabel}
       </p>
       <p className="mt-1 text-sm font-bold text-monk-text">
@@ -498,7 +533,7 @@ function FocusSessionPanel({
           <p className={`${compact ? "text-3xl" : "text-5xl"} font-mono font-bold leading-none text-monk-text`}>
             {formatTimer(remaining)}
           </p>
-          <p className="mt-2 text-[10px] uppercase font-bold text-monk-muted tracking-wider">
+          <p className="mt-2 text-xs uppercase font-bold text-monk-muted tracking-wider">
             {segmentLabel}
           </p>
         </div>
@@ -507,15 +542,26 @@ function FocusSessionPanel({
       {phase.type === "break" ? (
         <div className={`${compact ? "px-2" : "max-w-sm mx-auto"} mb-5 text-left`}>
           <div className="rounded-2xl border border-monk-border bg-monk-bg p-4">
-            <p className="text-[10px] font-bold uppercase tracking-wider text-monk-accent">{breakGuidance.title}</p>
-            <p className="mt-2 text-sm leading-6 text-monk-text">{breakGuidance.description}</p>
+            <p className="text-xs font-bold uppercase tracking-wider text-monk-accent">{breakGuidance.title}</p>
+            <p className="mt-2 text-xs leading-5 text-monk-muted">{breakGuidance.description}</p>
+            <div className="flex flex-wrap gap-2 mt-3">
+              {breakGuidance.activities.map((activity) => (
+                <span
+                  key={activity.label}
+                  className="rounded-full border border-monk-border bg-monk-bg px-3 py-1.5 text-xs text-monk-text flex items-center gap-1.5"
+                >
+                  <span>{activity.emoji}</span>
+                  {activity.label}
+                </span>
+              ))}
+            </div>
             <p className="mt-3 text-xs font-semibold text-monk-muted">{getNextFocusLabel(session)}</p>
           </div>
         </div>
       ) : (
         <div className={`${compact ? "px-2" : "max-w-sm mx-auto"} mb-5 text-left`}>
           <div className="rounded-2xl border border-monk-border bg-monk-bg p-4">
-            <p className="text-[10px] font-bold uppercase tracking-wider text-monk-muted">{getSessionLeftTitle(session)}:</p>
+            <p className="text-xs font-bold uppercase tracking-wider text-monk-muted">{getSessionLeftTitle(session)}:</p>
             <p className="mt-1 text-sm font-bold text-monk-text">{getSessionLeftLabel(session)}</p>
           </div>
           <p className="mt-4 text-sm leading-6 text-monk-muted font-medium">
@@ -530,7 +576,7 @@ function FocusSessionPanel({
       )}
 
       <div className="mb-5">
-        <div className="mb-2 flex items-center justify-between text-[10px] font-bold text-monk-muted uppercase tracking-wider">
+        <div className="mb-2 flex items-center justify-between text-xs font-bold text-monk-muted uppercase tracking-wider">
           <span>Session progress</span>
           <span>{progressLabel}</span>
         </div>
@@ -568,7 +614,7 @@ function FocusSessionPanel({
       {onOpenFocus ? (
         <button
           type="button"
-          className="mt-4 text-[10px] font-bold text-monk-muted hover:text-monk-accent flex items-center justify-center gap-1 mx-auto"
+          className="mt-4 py-3 px-4 text-xs font-bold text-monk-muted hover:text-monk-accent flex items-center justify-center gap-1 mx-auto"
           onClick={onOpenFocus}
         >
           Enter Distraction-Free Mode →
@@ -578,76 +624,139 @@ function FocusSessionPanel({
   );
 }
 
+const CHECKLIST_ITEMS = [
+  "Close other tabs and notifications",
+  "Water bottle nearby",
+  "Phone face-down or on silent",
+  "Clear desk, one task in mind",
+];
+
 function FocusSessionStarter({ compact = false }: { compact?: boolean }) {
   const store = useMonkStore();
   const [selectedPreset, setSelectedPreset] = useState<FocusSessionPreset>("deep_work");
   const [customMinutes, setCustomMinutes] = useState(50);
+  const [showChecklist, setShowChecklist] = useState(false);
+  const [checked, setChecked] = useState<Set<string>>(new Set());
   const selected = FOCUS_PRESETS[selectedPreset];
   const phases = selected.buildPhases(customMinutes);
   const totalMinutes = phases.reduce((sum, phase) => sum + phase.plannedMinutes, 0);
   const canStart = selectedPreset !== "custom" || customMinutes >= 5;
 
+  function toggleItem(item: string) {
+    setChecked((prev) => {
+      const next = new Set(prev);
+      if (next.has(item)) {
+        next.delete(item);
+      } else {
+        next.add(item);
+      }
+      return next;
+    });
+  }
+
   return (
     <Card className="bg-monk-surface border-monk-border p-5">
-      <p className="font-bold text-sm">{compact ? "Focus Session" : "Focus Strategy"}</p>
-      <p className="mt-1 text-xs text-monk-muted mb-4">Choose how you want to move today.</p>
-      <div className="grid grid-cols-3 gap-2 mb-4">
-        {(["custom", "deep_work", "pomodoro"] as FocusSessionPreset[]).map((preset) => (
-          <button
-            key={preset}
-            type="button"
-            className={`min-h-11 rounded-xl border px-2 text-xs font-semibold transition active:scale-98 ${
-              selectedPreset === preset
-                ? "border-monk-accent bg-monk-accent-soft text-monk-accent"
-                : "border-monk-border bg-monk-soft text-monk-muted hover:border-monk-border-strong"
-            }`}
-            onClick={() => setSelectedPreset(preset)}
-          >
-            {FOCUS_PRESETS[preset].shortLabel}
-          </button>
-        ))}
-      </div>
+      {showChecklist ? (
+        <>
+          <p className="font-bold text-sm mb-1">Ready to focus?</p>
+          <p className="text-xs text-monk-muted mb-4">A quick mindfulness check before you begin.</p>
+          <div className="flex flex-col gap-2 mb-5">
+            {CHECKLIST_ITEMS.map((item) => {
+              const isChecked = checked.has(item);
+              return (
+                <button
+                  key={item}
+                  type="button"
+                  onClick={() => toggleItem(item)}
+                  className="rounded-xl border border-monk-border bg-monk-soft p-3 flex items-center gap-3 text-left transition hover:border-monk-border-strong"
+                >
+                  <span
+                    className={`flex-shrink-0 w-5 h-5 rounded border-2 flex items-center justify-center transition ${
+                      isChecked
+                        ? "bg-monk-accent border-monk-accent"
+                        : "bg-monk-surface border-monk-border"
+                    }`}
+                  >
+                    {isChecked ? <Check size={14} className="text-white" /> : null}
+                  </span>
+                  <span className="text-sm text-monk-text">{item}</span>
+                </button>
+              );
+            })}
+          </div>
+          <PrimaryButton onClick={() => {
+            if ("Notification" in window && Notification.permission === "default") Notification.requestPermission();
+            store.startFocusSession(selectedPreset, customMinutes);
+          }}>
+            Begin Session
+          </PrimaryButton>
+          <GhostButton className="mt-2 w-full" onClick={() => setShowChecklist(false)}>
+            Back
+          </GhostButton>
+        </>
+      ) : (
+        <>
+          <p className="font-bold text-sm">{compact ? "Focus Session" : "Focus Strategy"}</p>
+          <p className="mt-1 text-xs text-monk-muted mb-4">Choose how you want to move today.</p>
+          <div className="grid grid-cols-3 gap-2 mb-4">
+            {(["custom", "deep_work", "pomodoro"] as FocusSessionPreset[]).map((preset) => (
+              <button
+                key={preset}
+                type="button"
+                className={`min-h-11 rounded-xl border px-2 text-xs font-semibold transition active:scale-98 ${
+                  selectedPreset === preset
+                    ? "border-monk-accent bg-monk-accent-soft text-monk-accent"
+                    : "border-monk-border bg-monk-soft text-monk-muted hover:border-monk-border-strong"
+                }`}
+                onClick={() => setSelectedPreset(preset)}
+              >
+                {FOCUS_PRESETS[preset].shortLabel}
+              </button>
+            ))}
+          </div>
 
-      {selectedPreset === "custom" ? (
-        <div className="mb-4">
-          <label className="text-[10px] font-bold uppercase tracking-wider text-monk-muted" htmlFor="custom-focus-minutes">
-            Duration minutes
-          </label>
-          <input
-            id="custom-focus-minutes"
-            type="number"
-            min={5}
-            max={180}
-            value={customMinutes}
-            onChange={(event) => setCustomMinutes(Number(event.target.value))}
-            className="mt-2 min-h-[48px] w-full rounded-[14px] border border-monk-border bg-monk-soft px-4 text-sm font-semibold text-monk-text focus:border-monk-accent focus:outline-none"
-          />
-          <p className="mt-2 text-xs text-monk-muted">Minimum 5 minutes. Recommended max 180 minutes.</p>
-        </div>
-      ) : null}
+          {selectedPreset === "custom" ? (
+            <div className="mb-4">
+              <label className="text-xs font-bold uppercase tracking-wider text-monk-muted" htmlFor="custom-focus-minutes">
+                Duration minutes
+              </label>
+              <input
+                id="custom-focus-minutes"
+                type="number"
+                min={5}
+                max={180}
+                value={customMinutes}
+                onChange={(event) => setCustomMinutes(Number(event.target.value))}
+                className="mt-2 min-h-[48px] w-full rounded-xl border border-monk-border bg-monk-soft px-4 text-sm font-semibold text-monk-text focus:border-monk-accent focus:outline-none"
+              />
+              <p className="mt-2 text-xs text-monk-muted">Minimum 5 minutes. Recommended max 180 minutes.</p>
+            </div>
+          ) : null}
 
-      <div className="mb-4 rounded-2xl border border-monk-border bg-monk-soft p-4">
-        <p className="text-sm font-semibold text-monk-text">{selected.description}</p>
-        <p className="mt-1 text-xs text-monk-muted">{selected.summary}</p>
-        <div className="mt-3 flex flex-wrap gap-1.5">
-          {phases.map((phase) => (
-            <span
-              key={phase.label}
-              className={`rounded-full px-2 py-1 text-[10px] font-bold ${
-                phase.type === "focus" ? "bg-monk-accent-soft text-monk-accent" : "bg-monk-bg text-monk-muted"
-              }`}
-            >
-              {phase.label} · {phase.plannedMinutes}m
-            </span>
-          ))}
-        </div>
-      </div>
+          <div className="mb-4 rounded-2xl border border-monk-border bg-monk-soft p-4">
+            <p className="text-sm font-semibold text-monk-text">{selected.description}</p>
+            <p className="mt-1 text-xs text-monk-muted">{selected.summary}</p>
+            <div className="mt-3 flex flex-wrap gap-1.5">
+              {phases.map((phase) => (
+                <span
+                  key={phase.label}
+                  className={`rounded-full px-2 py-1 text-xs font-bold ${
+                    phase.type === "focus" ? "bg-monk-accent-soft text-monk-accent" : "bg-monk-bg text-monk-muted"
+                  }`}
+                >
+                  {phase.label} · {phase.plannedMinutes}m
+                </span>
+              ))}
+            </div>
+          </div>
 
-      {!canStart ? <CalmAlert type="warning" title="Choose at least 5 minutes." /> : null}
-      <PrimaryButton disabled={!canStart} onClick={() => store.startFocusSession(selectedPreset, customMinutes)}>
-        Start {selected.shortLabel}
-        <span className="ml-1 text-xs opacity-80">({totalMinutes}m)</span>
-      </PrimaryButton>
+          {!canStart ? <CalmAlert type="warning" title="Choose at least 5 minutes." /> : null}
+          <PrimaryButton disabled={!canStart} onClick={() => setShowChecklist(true)}>
+            Start {selected.shortLabel}
+            <span className="ml-1 text-xs opacity-80">({totalMinutes}m)</span>
+          </PrimaryButton>
+        </>
+      )}
     </Card>
   );
 }
@@ -1066,7 +1175,7 @@ function NarrowGoals({ onNext }: { onNext: () => void }) {
               }`}
             >
               <span className={isSelected ? "font-semibold" : ""}>{goal.title}</span>
-              <span className={`rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider ${
+              <span className={`rounded-full px-2.5 py-0.5 text-xs font-bold uppercase tracking-wider ${
                 isSelected
                   ? "bg-monk-accent/15 text-monk-accent"
                   : "bg-monk-soft text-monk-text-soft"
@@ -1367,7 +1476,7 @@ function TodayScreen() {
             <Card important className="relative overflow-hidden">
               <div className="flex items-start justify-between gap-4">
                 <div className="flex-1">
-                  <p className="text-[10px] font-bold text-monk-muted uppercase tracking-widest">
+                  <p className="text-xs font-bold text-monk-muted uppercase tracking-widest">
                     {todayPlan.dayType === "rest" ? "Rest Day" : "Today's Focus"}
                   </p>
                   <h2 className="mt-2 text-2xl font-bold leading-8">
@@ -1397,11 +1506,11 @@ function TodayScreen() {
 
               <div className="mt-5 rounded-2xl border border-monk-border bg-monk-bg p-4">
                 <div className="flex items-center justify-between gap-2">
-                  <p className="text-[10px] font-medium uppercase tracking-[0.16em] text-monk-text-soft">One action</p>
+                  <p className="text-xs font-medium uppercase tracking-[0.16em] text-monk-text-soft">One action</p>
                   {!editingAction && todayPlan.dayType === "goal" && todayPlan.status !== "completed" ? (
                     <button
                       type="button"
-                      className="text-[10px] font-bold text-monk-accent hover:underline"
+                      className="text-xs font-bold text-monk-accent hover:underline"
                       onClick={() => {
                         setActionInput(todayPlan.mainAction || "");
                         setEditingAction(true);
@@ -1482,7 +1591,7 @@ function TodayScreen() {
                   <p className="font-semibold text-sm">Morning Pages</p>
                 </div>
                 {hasMorningPages ? (
-                  <span className="text-[10px] font-bold text-monk-success uppercase tracking-wider flex items-center gap-1">
+                  <span className="text-xs font-bold text-monk-success uppercase tracking-wider flex items-center gap-1">
                     <span className="h-1.5 w-1.5 rounded-full bg-monk-success inline-block"></span>
                     Logged
                   </span>
@@ -1536,6 +1645,11 @@ function TodayScreen() {
                     store.logEnergy(level);
                   }}
                 />
+                {selectEnergyForDate(store, getTodayDateString()) === "low" && (
+                  <div className="rounded-xl border border-monk-danger/20 bg-monk-danger/5 px-3 py-2 text-xs text-monk-danger/80">
+                    Low energy today — consider a lighter focus task or shorter sessions.
+                  </div>
+                )}
               </>
             ) : (
               <div className="space-y-3">
@@ -1634,9 +1748,17 @@ function FlowPickToday({ goals }: { goals: ReturnType<typeof selectActiveGoals> 
 }
 
 function EnergyCheck({ value, onChange }: { value?: EnergyLevel; onChange: (value: EnergyLevel) => void }) {
+  const store = useMonkStore();
+  const today = getTodayDateString();
+  const past7 = Array.from({ length: 7 }, (_, i) => {
+    const d = new Date(today + "T00:00:00");
+    d.setDate(d.getDate() - (6 - i));
+    return d.toISOString().slice(0, 10);
+  });
   return (
     <Card className="p-4">
-      <p className="mb-3 font-semibold">Energy Check</p>
+      <p className="mb-0.5 font-semibold">Energy Check</p>
+      <p className="text-[10px] text-monk-muted mt-0.5 mb-3">How's your energy today?</p>
       <div className="flex gap-2">
         {(["low", "medium", "high"] as EnergyLevel[]).map((level) => (
           <ChoiceChip
@@ -1646,6 +1768,22 @@ function EnergyCheck({ value, onChange }: { value?: EnergyLevel; onChange: (valu
             onClick={() => onChange(level)}
           />
         ))}
+      </div>
+      <div className="mt-3">
+        <p className="text-[10px] text-monk-muted mb-1.5">7-day trend</p>
+        <div className="flex gap-1.5">
+          {past7.map((date) => {
+            const log = store.energyLogs?.find((l) => l.date === date);
+            const dotCls = log?.level === "high"
+              ? "bg-monk-success"
+              : log?.level === "medium"
+              ? "bg-monk-accent"
+              : log?.level === "low"
+              ? "bg-monk-danger"
+              : "bg-monk-border/30";
+            return <span key={date} className={`inline-block h-2.5 w-2.5 rounded-full ${dotCls}`} title={date} />;
+          })}
+        </div>
       </div>
     </Card>
   );
@@ -1673,8 +1811,8 @@ function WeekScreen() {
         {weeklyPlan ? (
           <Card className="p-5 bg-monk-surface/20 border-monk-border/40">
             <div className="flex items-center justify-between mb-5">
-              <p className="text-[10px] font-bold text-monk-muted uppercase tracking-[0.2em]">Weekly Rhythm</p>
-              <span className="text-[9px] font-mono text-monk-text-soft/60">{formatHumanDate(weeklyPlan.startDate)} - {formatHumanDate(weeklyPlan.endDate)}</span>
+              <p className="text-xs font-bold text-monk-muted uppercase tracking-[0.2em]">Weekly Rhythm</p>
+              <span className="text-xs font-mono text-monk-text-soft/60">{formatHumanDate(weeklyPlan.startDate)} - {formatHumanDate(weeklyPlan.endDate)}</span>
             </div>
             <div className="flex items-center justify-between gap-1.5">
               {weekDates.map((date: string) => {
@@ -1699,6 +1837,9 @@ function WeekScreen() {
                 else if (isMissed) { barColor = "bg-monk-text-soft/15"; barBorder = "border-monk-text-soft/15"; }
                 else if (!isFuture) { barColor = "bg-monk-border/40"; }
 
+                const energyLevel = selectEnergyForDate(store, date);
+                const energyDot = energyLevel === "high" ? "bg-monk-success" : energyLevel === "medium" ? "bg-monk-accent" : energyLevel === "low" ? "bg-monk-danger" : null;
+
                 return (
                   <div key={date} className="flex-1 flex flex-col items-center gap-1.5">
                     <div className={`w-10 h-10 sm:w-11 sm:h-11 rounded-full border-2 flex items-center justify-center text-[11px] font-mono font-bold transition-all duration-300 ${
@@ -1718,23 +1859,50 @@ function WeekScreen() {
                     } ${isToday ? "ring-1 ring-monk-accent/40" : ""} ${isFuture ? "opacity-25" : ""}`}>
                       {dayNum}
                     </div>
-                    <span className={`text-[8px] font-semibold uppercase tracking-wider ${
+                    <span className={`text-xs font-semibold uppercase tracking-wider ${
                       isToday ? "text-monk-accent" : "text-monk-text-soft/50"
                     }`}>{weekday[0]}</span>
+                    <span className={`w-1.5 h-1.5 rounded-full ${energyDot ?? "bg-transparent"}`} title={energyLevel ?? ""} />
                   </div>
                 );
               })}
             </div>
             <div className="mt-5 flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-sm bg-monk-success/80"></span><span className="text-[9px] text-monk-text-soft/70">done</span></span>
-                <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-sm bg-monk-accent/60"></span><span className="text-[9px] text-monk-text-soft/70">partial</span></span>
-                <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-sm bg-monk-rest/50"></span><span className="text-[9px] text-monk-text-soft/70">rest</span></span>
+                <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-sm bg-monk-success/80"></span><span className="text-xs text-monk-text-soft/70">done</span></span>
+                <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-sm bg-monk-accent/60"></span><span className="text-xs text-monk-text-soft/70">partial</span></span>
+                <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-sm bg-monk-rest/50"></span><span className="text-xs text-monk-text-soft/70">rest</span></span>
               </div>
-              <span className="text-[9px] font-mono text-monk-text-soft/50">6 focus + 1 rest</span>
+              <span className="text-xs font-mono text-monk-text-soft/50">6 focus + 1 rest</span>
             </div>
           </Card>
         ) : null}
+
+        {weeklyPlan ? (() => {
+          const energyCounts = weekDates.reduce((acc, date) => {
+            const lvl = selectEnergyForDate(store, date);
+            if (lvl) acc[lvl] = (acc[lvl] ?? 0) + 1;
+            return acc;
+          }, {} as Record<EnergyLevel, number>);
+          const total = Object.values(energyCounts).reduce((a, b) => a + b, 0);
+          if (!total) return null;
+          const dominant = (["high", "medium", "low"] as EnergyLevel[]).find(l => energyCounts[l]);
+          const labelColor = dominant === "high" ? "text-monk-success" : dominant === "medium" ? "text-monk-accent" : "text-monk-danger";
+          return (
+            <Card className="p-4 bg-monk-surface/20 border-monk-border/40">
+              <p className="text-xs font-bold text-monk-muted uppercase tracking-[0.2em] mb-3">Energy This Week</p>
+              <div className="flex items-center gap-3">
+                {(["high", "medium", "low"] as EnergyLevel[]).map(lvl => energyCounts[lvl] ? (
+                  <span key={lvl} className="flex items-center gap-1.5">
+                    <span className={`w-2 h-2 rounded-full ${lvl === "high" ? "bg-monk-success" : lvl === "medium" ? "bg-monk-accent" : "bg-monk-danger"}`} />
+                    <span className="text-xs text-monk-text-soft">{energyCounts[lvl]}d {lvl}</span>
+                  </span>
+                ) : null)}
+                <span className={`ml-auto text-xs font-semibold ${labelColor}`}>avg: {dominant}</span>
+              </div>
+            </Card>
+          );
+        })() : null}
 
         <SectionHeader title="This week's rhythm" />
         {weeklyPlan?.goalAllocations.map((allocation) => {
@@ -1750,10 +1918,10 @@ function WeekScreen() {
                     <div className="flex-1 h-1 rounded-full bg-monk-soft overflow-hidden">
                       <div className="h-full rounded-full bg-monk-accent/60 transition-all" style={{ width: `${progress}%` }} />
                     </div>
-                    <span className="text-[9px] font-mono text-monk-text-soft">{progress}%</span>
+                    <span className="text-xs font-mono text-monk-text-soft">{progress}%</span>
                   </div>
                 </div>
-                <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded-full border ${
+                <span className={`text-xs font-bold uppercase tracking-wider px-2 py-1 rounded-full border ${
                   touched ? "text-monk-success border-monk-success/30 bg-monk-success/5" : "text-monk-muted border-monk-border/40 bg-monk-soft/50"
                 }`}>
                   {touched ? "On track" : "Pending"}
@@ -1854,6 +2022,8 @@ function JournalEntryScreen() {
   const [answers, setAnswers] = useState<JournalAnswers>(initial);
   const [saved, setSaved] = useState(false);
 
+  useEffect(() => { window.scrollTo(0, 0); }, []);
+
   useEffect(() => {
     setAnswers(initial);
     setSaved(false);
@@ -1916,49 +2086,47 @@ function JournalEntryScreen() {
         <button
           type="button"
           className={`flex-1 rounded-lg py-2 text-xs font-semibold tracking-wide transition ${
-            currentTab === "reflection"
-              ? "bg-monk-surface text-monk-text border border-monk-border-strong shadow-sm"
-              : "text-monk-muted hover:text-monk-text"
-          }`}
-          onClick={() => setTab("reflection")}
-        >
-          Reflection
-        </button>
-        <button
-          type="button"
-          className={`flex-1 rounded-lg py-2 text-xs font-semibold tracking-wide transition ${
             currentTab === "morning"
               ? "bg-monk-surface text-monk-text border border-monk-border-strong shadow-sm"
               : "text-monk-muted hover:text-monk-text"
           }`}
           onClick={() => setTab("morning")}
         >
-          Morning
+          Pagi
+        </button>
+        <button
+          type="button"
+          className={`flex-1 rounded-lg py-2 text-xs font-semibold tracking-wide transition ${
+            currentTab === "reflection"
+              ? "bg-monk-surface text-monk-text border border-monk-border-strong shadow-sm"
+              : "text-monk-muted hover:text-monk-text"
+          }`}
+          onClick={() => setTab("reflection")}
+        >
+          Refleksi
         </button>
       </div>
 
       {currentTab === "morning" ? (
-        <div className="mt-5 space-y-4">
-          <Card>
-            <div className="mb-2 flex items-center justify-between">
-              <label className="font-semibold text-sm leading-relaxed text-monk-text" htmlFor="morningPages">
-                Morning Pages
-              </label>
-              <span className="text-[10px] font-mono font-bold text-monk-muted uppercase tracking-wider">
-                {wordCount} {wordCount === 1 ? "word" : "words"}
-              </span>
-            </div>
-            <p className="mb-4 text-xs text-monk-muted leading-relaxed">
-              Write whatever is on your mind. Free-form, stream of consciousness. No prompts, no pressure.
-            </p>
-            <Textarea
+        <div className="mt-4 space-y-3">
+          <div className="flex items-center justify-between px-1">
+            <span className="text-[10px] uppercase tracking-widest text-[#68655e] font-mono">Halaman Pagi</span>
+            <span className="text-[10px] font-mono" style={{ color: wordCount >= 750 ? "#647b5e" : "#68655e" }}>
+              {wordCount > 0 ? `${wordCount} kata${wordCount >= 750 ? " ✦" : ""}` : ""}
+            </span>
+          </div>
+          <div className="morning-page-card">
+            <textarea
               id="morningPages"
               value={answers.morningPages ?? ""}
-              placeholder="Start writing..."
-              className="min-h-[240px]"
+              placeholder="Start writing — anything on your mind..."
+              className="morning-page-textarea"
               onChange={(event) => setAnswers((value) => ({ ...value, morningPages: event.target.value }))}
             />
-          </Card>
+          </div>
+          <p className="text-[11px] text-[#4a4640] text-center leading-relaxed px-2">
+            Free-form. Stream of consciousness. No prompts, no pressure.
+          </p>
         </div>
       ) : (
         <div className="mt-5 space-y-4">
@@ -2031,6 +2199,8 @@ function LearningScreen() {
   const navigate = useNavigate();
   const store = useMonkStore();
   const todayPlan = selectTodayPlan(store);
+
+  useEffect(() => { window.scrollTo(0, 0); }, []);
 
   const [type, setType] = useState<LearningSourceType>("book");
   const [title, setTitle] = useState("");
@@ -2195,7 +2365,7 @@ function LearningScreen() {
                 <button
                   key={s.id}
                   type="button"
-                  className="text-[10px] rounded-full border border-monk-border px-2.5 py-1 text-monk-muted hover:border-monk-accent hover:text-monk-accent transition"
+                  className="text-xs rounded-full border border-monk-border px-2.5 py-1 text-monk-muted hover:border-monk-accent hover:text-monk-accent transition"
                   onClick={() => setLinkIds((prev) => [...prev, s.id])}
                 >
                   + {s.sourceTitle || s.lesson?.slice(0, 25) || s.id.slice(0, 8)}
@@ -2207,7 +2377,7 @@ function LearningScreen() {
               {linkIds.map((lid) => {
                 const linked = store.learningSessions.find((s) => s.id === lid);
                 return (
-                  <span key={lid} className="inline-flex items-center gap-1 rounded-full bg-monk-accent-soft border border-monk-accent/20 px-2 py-0.5 text-[10px] text-monk-accent">
+                  <span key={lid} className="inline-flex items-center gap-1 rounded-full bg-monk-accent-soft border border-monk-accent/20 px-2 py-0.5 text-xs text-monk-accent">
                     {linked?.sourceTitle || linked?.lesson?.slice(0, 20) || lid.slice(0, 8)}
                     <button type="button" onClick={() => setLinkIds((prev) => prev.filter((id) => id !== lid))} className="hover:text-monk-danger">x</button>
                   </span>
@@ -2355,42 +2525,62 @@ function TimelineStats() {
     : 0;
 
   return (
-    <Card className="p-4 space-y-3">
-      <div className="grid grid-cols-2 gap-3">
-        <div className="rounded-2xl border border-monk-border/40 bg-monk-surface p-3">
-          <div className="flex items-start justify-between gap-3">
-            <div>
-              <p className="text-[9px] uppercase font-bold text-monk-text-soft tracking-wider">Focus Time</p>
-              <p className="text-2xl font-bold mt-1 text-monk-accent">{totalFocusMinutes}<span className="text-[10px] font-semibold text-monk-muted ml-0.5">m</span></p>
-              <p className="text-[9px] text-monk-muted mt-1">{totalFocusSessions} sessions</p>
-            </div>
-            <div className="grid h-8 w-8 place-items-center rounded-full bg-monk-accent-soft text-monk-accent text-xs font-bold">⏱</div>
-          </div>
+    <div className="grid grid-cols-2 gap-3">
+      <div className="rounded-2xl border border-monk-accent/25 bg-gradient-to-br from-monk-surface to-monk-surface/60 p-3 relative overflow-hidden">
+        <div className="absolute inset-x-0 bottom-0 h-0.5 bg-monk-border/20">
+          <div className="h-full bg-monk-accent/40 transition-all" style={{ width: `${Math.min(100, totalFocusSessions * 10)}%` }} />
         </div>
-        <div className="rounded-2xl border border-monk-border/40 bg-monk-surface p-3">
-          <div className="flex items-start justify-between gap-3">
-            <div>
-              <p className="text-[9px] uppercase font-bold text-monk-text-soft tracking-wider">Consistency</p>
-              <p className="text-2xl font-bold mt-1 text-monk-success">{consistencyRate}%</p>
-              <p className="text-[9px] text-monk-muted mt-1">{completedDaysCount}/{totalPassedDays} days</p>
-            </div>
-            <div className="grid h-8 w-8 place-items-center rounded-full bg-monk-success-soft text-monk-success text-xs font-bold">🔥</div>
+        <div className="flex items-start justify-between gap-2">
+          <div>
+            <p className="text-[10px] uppercase font-bold text-monk-muted tracking-wider">Focus Time</p>
+            <p className="text-2xl font-bold mt-0.5 text-monk-accent tabular-nums leading-none">{totalFocusMinutes}<span className="text-xs font-semibold text-monk-muted ml-0.5">m</span></p>
+            <p className="text-[10px] text-monk-muted mt-1">{totalFocusSessions} sessions</p>
+          </div>
+          <div className="grid h-7 w-7 place-items-center rounded-full bg-monk-accent/10 shrink-0 mt-0.5">
+            <Timer size={13} strokeWidth={1.5} className="text-monk-accent" />
           </div>
         </div>
       </div>
-      <div className="grid grid-cols-2 gap-3">
-        <div className="rounded-2xl border border-monk-border/40 bg-monk-soft p-3">
-          <p className="text-[9px] uppercase font-bold text-monk-text-soft tracking-wider">Learning</p>
-          <p className="text-lg font-bold mt-1 text-monk-text">{totalLearningMinutes}<span className="text-[9px] font-semibold text-monk-muted ml-0.5">m</span></p>
-          <p className="text-[9px] text-monk-muted mt-1">{store.learningSessions.length} notes</p>
+      <div className="rounded-2xl border border-monk-success/25 bg-gradient-to-br from-monk-surface to-monk-surface/60 p-3 relative overflow-hidden">
+        <div className="absolute inset-x-0 bottom-0 h-0.5 bg-monk-border/20">
+          <div className="h-full bg-monk-success/40 transition-all" style={{ width: `${consistencyRate}%` }} />
         </div>
-        <div className="rounded-2xl border border-monk-border/40 bg-monk-soft p-3">
-          <p className="text-[9px] uppercase font-bold text-monk-text-soft tracking-wider">Reflections</p>
-          <p className="text-lg font-bold mt-1 text-monk-text">{totalJournals}<span className="text-[9px] font-semibold text-monk-muted ml-0.5">d</span></p>
-          <p className="text-[9px] text-monk-muted mt-1">{totalRelapses} drifts</p>
+        <div className="flex items-start justify-between gap-2">
+          <div>
+            <p className="text-[10px] uppercase font-bold text-monk-muted tracking-wider">Consistency</p>
+            <p className="text-2xl font-bold mt-0.5 text-monk-success tabular-nums leading-none">{consistencyRate}<span className="text-xs font-semibold text-monk-muted ml-0.5">%</span></p>
+            <p className="text-[10px] text-monk-muted mt-1">{completedDaysCount}/{totalPassedDays} days</p>
+          </div>
+          <div className="grid h-7 w-7 place-items-center rounded-full bg-monk-success/10 shrink-0 mt-0.5">
+            <Flame size={13} strokeWidth={1.5} className="text-monk-success" />
+          </div>
         </div>
       </div>
-    </Card>
+      <div className="rounded-2xl border border-monk-border/40 bg-monk-soft p-3">
+        <div className="flex items-start justify-between gap-2">
+          <div>
+            <p className="text-[10px] uppercase font-bold text-monk-muted tracking-wider">Learning</p>
+            <p className="text-xl font-bold mt-1 text-monk-text tabular-nums">{totalLearningMinutes}<span className="text-xs font-semibold text-monk-muted ml-0.5">m</span></p>
+            <p className="text-[10px] text-monk-muted mt-0.5">{store.learningSessions.length} notes</p>
+          </div>
+          <div className="grid h-7 w-7 place-items-center rounded-full bg-monk-accent/10 shrink-0">
+            <Lightbulb size={13} strokeWidth={1.5} className="text-monk-accent" />
+          </div>
+        </div>
+      </div>
+      <div className="rounded-2xl border border-monk-border/40 bg-monk-soft p-3">
+        <div className="flex items-start justify-between gap-2">
+          <div>
+            <p className="text-[10px] uppercase font-bold text-monk-muted tracking-wider">Reflections</p>
+            <p className="text-xl font-bold mt-1 text-monk-text tabular-nums">{totalJournals}<span className="text-xs font-semibold text-monk-muted ml-0.5">d</span></p>
+            <p className="text-[10px] text-monk-muted mt-0.5">{totalRelapses} drifts noted</p>
+          </div>
+          <div className="grid h-7 w-7 place-items-center rounded-full bg-monk-border/30 shrink-0">
+            <FileText size={13} strokeWidth={1.5} className="text-monk-muted" />
+          </div>
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -2451,7 +2641,7 @@ function TimelineEventRow({ event }: { event: TimelineEvent }) {
         <Card className="p-3 bg-monk-surface/30 hover:bg-monk-surface/60 transition-colors border border-monk-border/30">
           <div className="flex justify-between items-start gap-2">
             <h4 className="text-xs font-bold text-monk-text leading-tight">{displayTitle}</h4>
-            <span className="text-[9px] font-bold text-monk-muted font-mono shrink-0">{timeLabel}</span>
+            <span className="text-xs font-bold text-monk-muted font-mono shrink-0">{timeLabel}</span>
           </div>
           {displayDescription && (
             <p className="mt-1 text-xs text-monk-muted leading-relaxed whitespace-pre-line">{displayDescription}</p>
@@ -2460,7 +2650,7 @@ function TimelineEventRow({ event }: { event: TimelineEvent }) {
             <div className="mt-2 space-y-2">
               {journalItems.map((item) => (
                 <div key={item.id}>
-                  <p className="text-[10px] font-bold uppercase tracking-wider text-monk-muted">{item.question}</p>
+                  <p className="text-xs font-bold uppercase tracking-wider text-monk-muted">{item.question}</p>
                   <p className="mt-0.5 text-xs font-medium leading-relaxed text-monk-text">{item.answer}</p>
                 </div>
               ))}
@@ -2522,26 +2712,13 @@ function TimelineScreen() {
       <div className="space-y-5">
         <SeasonProgressCard />
         <TimelineStats />
-        <Card className="p-4 bg-monk-soft border-monk-border">
-          <div className="flex items-start justify-between gap-3">
-            <div>
-              <p className="text-[10px] font-bold uppercase tracking-widest text-monk-muted">Today</p>
-              <p className="mt-1 text-sm font-semibold text-monk-text">{getDailyHelperForDate(store, getTodayDateString())}</p>
-            </div>
-            <span className="rounded-full border border-monk-border bg-monk-surface px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-monk-muted">
-              {DAILY_STATUS_LABELS[getCoreDailyStatusForDate(store, getTodayDateString())]}
-            </span>
-          </div>
-        </Card>
         <Card className="p-5 space-y-4">
-          <p className="text-[10px] font-bold text-monk-muted uppercase tracking-[0.2em]">Season Heatmap</p>
           {(() => {
             const today = getTodayDateString();
-            const todayStatus = getDailyStatusForDate(store, today);
             const todayDayNum = getDayNumber(today, season.startDate);
             const todayPlan = selectTodayPlan(store);
             const todayCompleted = todayPlan?.status === "completed";
-            const daysPassed = getDaysPassed(season.startDate);
+            const DOW = ["M", "T", "W", "T", "F", "S", "S"];
 
             function dotStyle(date: string) {
               const status = getDailyStatusForDate(store, date);
@@ -2553,69 +2730,93 @@ function TimelineScreen() {
               const isMissed = status === "missed";
 
               if (isToday) {
-                if (isCompleted) return "bg-monk-success shadow-[0_0_8px_rgba(100,123,94,0.5)] ring-1 ring-monk-success/30";
-                if (isPartial) return "bg-monk-accent/80 ring-1 ring-monk-accent/30";
-                if (isRelapse) return "bg-monk-danger/80 ring-1 ring-monk-danger/30";
-                if (isRest) return "bg-monk-rest/60 ring-1 ring-monk-rest/30";
-                return "bg-monk-border/50 animate-pulse ring-1 ring-monk-border/30";
+                if (isCompleted) return "bg-monk-success shadow-[0_0_10px_rgba(100,123,94,0.6)] ring-2 ring-monk-success/40";
+                if (isPartial) return "bg-monk-accent/80 ring-2 ring-monk-accent/40";
+                if (isRelapse) return "bg-monk-danger/80 ring-2 ring-monk-danger/40";
+                if (isRest) return "bg-monk-rest/60 ring-2 ring-monk-rest/40";
+                return "bg-monk-border-strong animate-pulse ring-2 ring-monk-accent/40";
               }
-              if (isCompleted) return "bg-monk-success/70";
+              if (isCompleted) return "bg-monk-success/75";
               if (isPartial) return "bg-monk-accent/60";
-              if (isRelapse) return "bg-monk-danger/50";
-              if (isRest) return "bg-monk-rest/40";
-              if (isMissed) return "bg-monk-text-soft/15";
-              return "bg-monk-border/10";
+              if (isRelapse) return "bg-monk-danger/55";
+              if (isRest) return "bg-monk-rest/45";
+              if (isMissed) return "bg-monk-text-soft/20";
+              return "bg-monk-border/40";
             }
 
             return (
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  {chunks.map((week, wi) => {
-                    const weekNum = wi + 1;
-                    const allFuture = week.every((d) => d > today);
-                    if (allFuture) return null;
-                    return (
-                      <div key={wi} className="grid grid-cols-[30px,1fr] items-center gap-2">
-                        <span className="w-6 text-[8px] font-bold text-monk-text-soft/50 uppercase shrink-0">W{weekNum}</span>
-                        <div className="grid grid-cols-7 gap-1.5">
-                          {week.map((date) => {
-                            const isFuture = date > today;
-                            const isToday = date === today;
-                            const energy = store.energyLogs.find(el => el.date === date)?.level;
-                            let energyColor = "";
-                            if (energy === "high") energyColor = "ring-1 ring-monk-success/40";
-                            else if (energy === "medium") energyColor = "ring-1 ring-monk-accent/40";
-                            else if (energy === "low") energyColor = "ring-1 ring-monk-danger/40";
-
-                            return (
-                              <div
-                                key={date}
-                                className={`w-5 h-5 rounded-full flex items-center justify-center transition-all duration-500 ${
-                                  isToday ? "ring-1 ring-monk-accent/80 scale-105" : ""
-                                } ${isFuture ? "opacity-0" : ""}`}
-                              >
-                                <div className={`rounded-full transition-all duration-500 ${
-                                  isFuture ? "w-0 h-0" : "w-3.5 h-3.5 " + dotStyle(date)
-                                } ${energyColor}`} />
-                              </div>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    );
-                  })}
+              <div className="space-y-3">
+                {/* Today status row */}
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-monk-muted">Day {todayDayNum} of {season.durationDays}</p>
+                    <p className="mt-0.5 text-sm font-semibold text-monk-text">{getDailyHelperForDate(store, today)}</p>
+                  </div>
+                  <span className="rounded-full border border-monk-border bg-monk-surface px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-monk-muted">
+                    {DAILY_STATUS_LABELS[getCoreDailyStatusForDate(store, today)]}
+                  </span>
                 </div>
-                <div className="text-center">
-                  <p className="text-[10px] text-monk-text font-medium">
-                    {todayCompleted ? "Today is done. Keep this space quiet." : (todayPlan ? "Stay with one thing." : "Choose what deserves today.")}
-                  </p>
-                  <p className="text-[9px] text-monk-text-soft mt-1">Day {todayDayNum} of {season.durationDays}</p>
+                {/* Heatmap: circles when early in season, grid when enough days */}
+                {todayDayNum <= 13 ? (
+                  <div className="flex flex-wrap justify-center gap-2">
+                    {allDates.filter((date) => date <= today).map((date) => {
+                      const isToday = date === today;
+                      return (
+                        <div
+                          key={date}
+                          title={date}
+                          className={`h-5 w-5 rounded-full transition-all duration-300 ${dotStyle(date)} ${isToday ? "scale-110" : ""}`}
+                        />
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <>
+                    {/* Day-of-week header */}
+                    <div className="grid grid-cols-7 gap-2 px-0.5">
+                      {DOW.map((d, i) => (
+                        <span key={i} className="text-center text-[9px] font-bold uppercase text-monk-muted/50 tabular-nums">{d}</span>
+                      ))}
+                    </div>
+                    {/* Heatmap rows */}
+                    <div className="space-y-2">
+                      {chunks.map((week, wi) => {
+                        const allFuture = week.every((d) => d > today);
+                        if (allFuture) return null;
+                        return (
+                          <div key={wi} className="grid grid-cols-7 gap-2">
+                            {week.map((date) => {
+                              const isFuture = date > today;
+                              const isToday = date === today;
+                              return (
+                                <div
+                                  key={date}
+                                  title={date}
+                                  className={`w-full aspect-square rounded-[5px] transition-all duration-300 ${
+                                    isFuture ? "bg-monk-border/10" : dotStyle(date)
+                                  } ${isToday ? "scale-110" : ""}`}
+                                />
+                              );
+                            })}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </>
+                )}
+                {/* Legend */}
+                <div className="flex items-center gap-3 pt-1 flex-wrap">
+                  {([["bg-monk-success/75", "Done"], ["bg-monk-accent/60", "Partial"], ["bg-monk-rest/45", "Rest"], ["bg-monk-danger/55", "Drift"], ["bg-monk-text-soft/20", "Missed"]] as const).map(([cls, label]) => (
+                    <span key={label} className="flex items-center gap-1">
+                      <span className={`inline-block w-2 h-2 rounded-[3px] ${cls}`} />
+                      <span className="text-[9px] text-monk-muted/70">{label}</span>
+                    </span>
+                  ))}
                 </div>
               </div>
             );
           })()}
         </Card>
-        <TimelineLegend />
         
         {/* Timeline Log Section */}
         <div className="space-y-4 pt-2">
@@ -2633,7 +2834,7 @@ function TimelineScreen() {
                 
                 return (
                   <div key={group.date} className="space-y-3">
-                    <p className="text-[10px] font-bold text-monk-accent uppercase tracking-wider pl-1">{groupTitle}</p>
+                    <p className="text-xs font-bold text-monk-accent uppercase tracking-wider pl-1">{groupTitle}</p>
                     <div className="space-y-0">
                       {group.events.map((event) => (
                         <TimelineEventRow key={event.id} event={event} />
@@ -2652,7 +2853,7 @@ function TimelineScreen() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
           <Card className="w-full max-w-sm p-6 bg-monk-bg border border-monk-border shadow-2xl space-y-4">
             <div>
-              <p className="text-[10px] font-bold text-monk-accent uppercase tracking-widest">Retroactive Log</p>
+              <p className="text-xs font-bold text-monk-accent uppercase tracking-widest">Retroactive Log</p>
               <h3 className="text-lg font-bold text-monk-text mt-1">Log for {formatHumanDate(retroDate)}</h3>
               <p className="text-xs text-monk-muted mt-1 leading-normal">
                 Logged entries count toward weekly allocations and season consistency.
@@ -2686,7 +2887,7 @@ function TimelineScreen() {
 
             {retroDayType === "goal" ? (
               <div className="space-y-2">
-                <label className="text-[10px] font-bold text-monk-muted uppercase tracking-wider block">Choose theme</label>
+                <label className="text-xs font-bold text-monk-muted uppercase tracking-wider block">Choose theme</label>
                 <div className="space-y-2 max-h-40 overflow-y-auto">
                   {activeGoals.map((goal) => (
                     <button
@@ -2832,7 +3033,7 @@ function SeasonEndScreen() {
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div>
-      <p className="text-[10px] font-bold text-monk-muted uppercase tracking-[0.2em] mb-3 px-1">{title}</p>
+      <p className="text-xs font-bold text-monk-muted uppercase tracking-[0.2em] mb-3 px-1">{title}</p>
       <div className="space-y-3">{children}</div>
     </div>
   );
@@ -2874,10 +3075,10 @@ function JournalLibraryScreen() {
                 <div key={entry.id} className="p-4 bg-monk-surface border border-monk-border/40 rounded-xl">
                   <div className="flex items-center justify-between mb-1">
                     <span className="text-sm font-semibold text-monk-text truncate mr-2">{entry.title || "Untitled"}</span>
-                    <span className="text-[9px] font-bold uppercase tracking-wider text-monk-accent bg-monk-accent-soft px-2 py-0.5 rounded-full shrink-0">{catName(entry.categoryId)}</span>
+                    <span className="text-xs font-bold uppercase tracking-wider text-monk-accent bg-monk-accent-soft px-2 py-0.5 rounded-full shrink-0">{catName(entry.categoryId)}</span>
                   </div>
                   <p className="text-xs text-monk-muted mt-1 line-clamp-2">{entry.body.replace(/\n/g, " ").slice(0, 200)}</p>
-                  <p className="text-[9px] text-monk-text-soft mt-1">{new Date(entry.updatedAt).toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" })}</p>
+                  <p className="text-xs text-monk-text-soft mt-1">{new Date(entry.updatedAt).toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" })}</p>
                 </div>
               ))
         ) : libTab === "packs" ? (
@@ -2894,7 +3095,7 @@ function JournalLibraryScreen() {
                       <span className="text-sm font-semibold text-monk-text">{pack?.title ?? "Unknown Pack"}</span>
                     </div>
                     <p className="text-xs text-monk-muted mt-1">{session.answers.length} answers</p>
-                    <p className="text-[9px] text-monk-text-soft mt-1">
+                    <p className="text-xs text-monk-text-soft mt-1">
                       {session.completedAt ? `Completed ${new Date(session.completedAt).toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" })}` : ""}
                     </p>
                   </div>
@@ -2914,8 +3115,8 @@ function JournalLibraryScreen() {
                     <div className="flex items-center justify-between mb-1">
                       <span className="text-sm font-semibold text-monk-text">{formatHumanDate(entry.date)}</span>
                       <div className="flex gap-1.5">
-                        {hasMorningPages ? <span className="text-[9px] font-bold uppercase tracking-wider text-monk-accent bg-monk-accent-soft px-2 py-0.5 rounded-full">AM</span> : null}
-                        {hasReflection ? <span className="text-[9px] font-bold uppercase tracking-wider text-monk-success bg-monk-success-soft px-2 py-0.5 rounded-full">PM</span> : null}
+                        {hasMorningPages ? <span className="text-xs font-bold uppercase tracking-wider text-monk-accent bg-monk-accent-soft px-2 py-0.5 rounded-full">AM</span> : null}
+                        {hasReflection ? <span className="text-xs font-bold uppercase tracking-wider text-monk-success bg-monk-success-soft px-2 py-0.5 rounded-full">PM</span> : null}
                       </div>
                     </div>
                     {hasReflection ? <p className="text-xs text-monk-muted mt-1 line-clamp-2">{entry.answers.whatMovedToday}</p> : hasMorningPages ? <p className="text-xs text-monk-muted mt-1 line-clamp-2">{entry.answers.morningPages}</p> : null}
@@ -2937,21 +3138,21 @@ function NotebookPage() {
     <div className="notebook-page-bg rounded-2xl -mx-5 px-5 pb-8">
       <div className="flex items-center justify-between pt-6 pb-4">
         <div>
-          <h1 className="font-handwriting text-3xl text-[#1a1a1a]">Notebook</h1>
-          <p className="text-sm text-[#5a5a5a] mt-0.5">Free journal for your thoughts</p>
+          <h1 className="font-handwriting text-3xl text-monk-text">Notebook</h1>
+          <p className="text-sm text-monk-muted mt-0.5">Free journal for your thoughts</p>
         </div>
         <div className="flex items-center gap-3">
           <button
             type="button"
             onClick={() => navigate(routes.library)}
-            className="text-[10px] font-semibold text-[#68655e] hover:text-[#a48b5e] transition flex items-center gap-1"
+            className="text-xs font-semibold text-monk-text-soft hover:text-monk-accent transition flex items-center gap-1"
           >
             <BookOpen size={12} strokeWidth={1.5} /> Library
           </button>
           <button
             type="button"
             onClick={() => navigate(routes.journal)}
-            className="text-[10px] font-semibold text-[#68655e] hover:text-[#a48b5e] transition flex items-center gap-1"
+            className="text-xs font-semibold text-monk-text-soft hover:text-monk-accent transition flex items-center gap-1"
           >
             <FileText size={12} strokeWidth={1.5} /> Journal
           </button>
@@ -2968,21 +3169,21 @@ function PacksPage() {
     <div className="packs-page-bg rounded-2xl -mx-5 px-5 pb-8">
       <div className="flex items-center justify-between pt-6 pb-4">
         <div>
-          <h1 className="font-handwriting text-3xl text-[#e5e2da]">Packs</h1>
-          <p className="text-sm text-[#908c83] mt-0.5">Themed questions for deeper reflection</p>
+          <h1 className="font-handwriting text-3xl text-monk-text">Packs</h1>
+          <p className="text-sm text-monk-muted mt-0.5">Themed questions for deeper reflection</p>
         </div>
         <div className="flex items-center gap-3">
           <button
             type="button"
             onClick={() => navigate(routes.library)}
-            className="text-[10px] font-semibold text-[#68655e] hover:text-[#a48b5e] transition flex items-center gap-1"
+            className="text-xs font-semibold text-monk-text-soft hover:text-monk-accent transition flex items-center gap-1"
           >
             <BookOpen size={12} strokeWidth={1.5} /> Library
           </button>
           <button
             type="button"
             onClick={() => navigate(routes.journal)}
-            className="text-[10px] font-semibold text-[#68655e] hover:text-[#a48b5e] transition flex items-center gap-1"
+            className="text-xs font-semibold text-monk-text-soft hover:text-monk-accent transition flex items-center gap-1"
           >
             <FileText size={12} strokeWidth={1.5} />
             Journal
@@ -3128,94 +3329,150 @@ function SettingsScreen() {
 
   return (
     <>
-      <PageHeader title="Settings" subtitle="Minimal controls." />
-      <div className="space-y-4">
-        <SettingsItem title="Calendar Integration" description="Add daily reflection reminder to your calendar.">
-          <GhostButton onClick={downloadReminderIcs}>Export .ics</GhostButton>
-        </SettingsItem>
-        <SettingsItem title="Data Backup (.md)" description="Save your entire season history locally as a Markdown file.">
-          <GhostButton onClick={downloadSeasonLogMd}>Export Markdown</GhostButton>
-        </SettingsItem>
-        <SettingsItem title="Notifications" description="Zendo can remind you gently without adding noise.">
-          <ChoiceChip
-            label={store.appSettings.notificationEnabled ? "Enabled" : "Enable"}
-            selected={store.appSettings.notificationEnabled}
-            onClick={async () => {
-              if ("Notification" in window && Notification.permission !== "granted") {
-                await Notification.requestPermission();
-              }
-              store.updateSettings({ notificationEnabled: !store.appSettings.notificationEnabled });
-            }}
-          />
-        </SettingsItem>
-        <SettingsItem title="Grey Mode Guide" description="Store manual confirmation.">
-          <ChoiceChip
-            label={store.appSettings.greyModeGuideCompleted ? "Done" : "Mark Done"}
-            selected={store.appSettings.greyModeGuideCompleted}
-            onClick={() => store.updateSettings({ greyModeGuideCompleted: !store.appSettings.greyModeGuideCompleted })}
-          />
-        </SettingsItem>
-        <SettingsItem title="Data (JSON)" description="Export or import your data as JSON.">
-          <div className="flex gap-2">
-            <GhostButton onClick={() => setExported(JSON.stringify({
-              userProfile: store.userProfile,
-              activeSeason: store.activeSeason,
-              goals: store.goals,
-              journalEntries: store.journalEntries
-            }, null, 2))}>Export</GhostButton>
-            <label className="cursor-pointer">
-              <input type="file" accept=".json" className="hidden" onChange={(e) => {
-                const file = e.target.files?.[0];
-                if (!file) return;
-                const reader = new FileReader();
-                reader.onload = (ev) => {
-                  try {
-                    const data = JSON.parse(ev.target?.result as string);
-                    if (data.userProfile || data.activeSeason) {
-                      if (window.confirm("Importing will merge this data with your current data. Continue?")) {
-                        // merge logic
-                        if (data.userProfile) store.updateOnboarding({});
-                        setExported("Imported: " + JSON.stringify(Object.keys(data)));
-                      }
-                    } else {
-                      alert("Invalid Zendo JSON file.");
-                    }
-                  } catch { alert("Failed to parse JSON."); }
-                };
-                reader.readAsText(file);
-              }} />
-              <span className="inline-flex items-center px-3 py-1.5 text-xs font-semibold text-monk-muted border border-monk-border rounded-full hover:border-monk-accent hover:text-monk-accent transition">Import</span>
-            </label>
-          </div>
-        </SettingsItem>
-        <SettingsItem title="Account Sync (Optional)" description="Connect to Supabase to sync your progress across devices. Works fully offline without an account.">
-          <AccountStatus />
-        </SettingsItem>
-        <SettingsItem title="Reset Season" description="Archive current season, keep progress.">
-          <GhostButton onClick={store.archiveSeason}>Archive</GhostButton>
-        </SettingsItem>
-        <SettingsItem title="Factory Reset" description="Permanently delete all Zendo logs, goals, and history from this device. Wipes storage.">
-          <button
-            type="button"
-            className="text-xs font-bold text-monk-danger border border-monk-danger/30 hover:border-monk-danger bg-monk-danger-soft px-3 py-1.5 rounded-xl transition active:scale-95"
-            onClick={() => {
-              if (window.confirm("WARNING: Wiping will permanently delete all your season logs, goals, and history. Wiped data cannot be recovered. Are you sure?")) {
-                localStorage.clear();
-                window.location.href = "/";
-              }
-            }}
-          >
-            Wipe All Data
-          </button>
-        </SettingsItem>
-        <Card className="bg-monk-soft">
-          <p className="font-semibold">About</p>
-          <p className="mt-2 text-sm leading-6 text-monk-muted">Zendo is a quiet digital temple for deep focus and intentional progress.</p>
-        </Card>
-        {exported ? <Textarea readOnly value={exported} className="font-mono text-xs" /> : null}
-        <Link to={routes.today} className="flex min-h-[60px] items-center justify-center rounded-[24px] bg-monk-accent px-6 text-[17px] font-bold text-monk-bg">
-          Return to Today
-        </Link>
+      <PageHeader title="Settings" subtitle="Customize your experience." />
+      <div className="space-y-6 pb-8">
+
+        {/* Preferences */}
+        <div>
+          <p className="text-[10px] font-bold uppercase tracking-widest text-monk-muted px-1 mb-2">Preferences</p>
+          <Card className="divide-y divide-monk-border/40 p-0 overflow-hidden">
+            <SettingsRow title="Notifications" description="Daily reflection reminder.">
+              <button
+                type="button"
+                onClick={async () => {
+                  if ("Notification" in window && Notification.permission !== "granted") {
+                    await Notification.requestPermission();
+                  }
+                  store.updateSettings({ notificationEnabled: !store.appSettings.notificationEnabled });
+                }}
+                className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors ${store.appSettings.notificationEnabled ? "bg-monk-accent" : "bg-monk-border"}`}
+              >
+                <span className={`inline-block h-3.5 w-3.5 rounded-full bg-white shadow transition-transform ${store.appSettings.notificationEnabled ? "translate-x-[18px]" : "translate-x-[3px]"}`} />
+              </button>
+            </SettingsRow>
+            <SettingsRow title="Grey Mode Guide" description="Mark digital detox guide as read.">
+              <button
+                type="button"
+                onClick={() => store.updateSettings({ greyModeGuideCompleted: !store.appSettings.greyModeGuideCompleted })}
+                className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors ${store.appSettings.greyModeGuideCompleted ? "bg-monk-accent" : "bg-monk-border"}`}
+              >
+                <span className={`inline-block h-3.5 w-3.5 rounded-full bg-white shadow transition-transform ${store.appSettings.greyModeGuideCompleted ? "translate-x-[18px]" : "translate-x-[3px]"}`} />
+              </button>
+            </SettingsRow>
+          </Card>
+        </div>
+
+        {/* Data & Export */}
+        <div>
+          <p className="text-[10px] font-bold uppercase tracking-widest text-monk-muted px-1 mb-2">Data & Export</p>
+          <Card className="divide-y divide-monk-border/40 p-0 overflow-hidden">
+            <SettingsRow title="Calendar Reminder" description="Download .ics file — import into Google Calendar, Apple Calendar, or Outlook.">
+              <GhostButton onClick={downloadReminderIcs}>Export .ics</GhostButton>
+            </SettingsRow>
+            <SettingsRow title="Season Log" description="Download full season history as Markdown.">
+              <GhostButton onClick={downloadSeasonLogMd}>Export .md</GhostButton>
+            </SettingsRow>
+            <SettingsRow title="Data (JSON)" description="Export or import your full data.">
+              <div className="flex gap-2 shrink-0">
+                <GhostButton onClick={() => setExported(JSON.stringify({
+                  userProfile: store.userProfile,
+                  activeSeason: store.activeSeason,
+                  goals: store.goals,
+                  journalEntries: store.journalEntries,
+                  dayPlans: store.dayPlans,
+                  weeklyPlans: store.weeklyPlans,
+                  focusSessions: store.focusSessions,
+                  learningSessions: store.learningSessions,
+                  learningEntries: store.learningEntries,
+                  relapseLogs: store.relapseLogs,
+                  energyLogs: store.energyLogs,
+                  timelineEvents: store.timelineEvents,
+                  appSettings: store.appSettings,
+                }, null, 2))}>Export</GhostButton>
+                <label className="cursor-pointer">
+                  <input type="file" accept=".json" className="hidden" onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (!file) return;
+                    const reader = new FileReader();
+                    reader.onload = (ev) => {
+                      try {
+                        const data = JSON.parse(ev.target?.result as string);
+                        if (data.userProfile || data.activeSeason || data.goals) {
+                          if (window.confirm("Import will merge with current data. Continue?")) {
+                            const separateKeys = new Set(["focusSessions", "learningSessions", "timelineEvents"]);
+                            const mainState: Record<string, unknown> = {};
+                            Object.entries(data).forEach(([key, value]) => {
+                              if (separateKeys.has(key)) {
+                                localStorage.setItem(key, JSON.stringify(value));
+                              } else {
+                                mainState[key] = value;
+                              }
+                            });
+                            if (Object.keys(mainState).length > 0) {
+                              const existing = localStorage.getItem("monk_mode_pwa_state_v1");
+                              const base = existing ? JSON.parse(existing) : {};
+                              localStorage.setItem("monk_mode_pwa_state_v1", JSON.stringify({ ...base, ...mainState }));
+                            }
+                            setExported("✓ Imported successfully. Reload to apply.");
+                          }
+                        } else {
+                          alert("Invalid Zendo backup file.");
+                        }
+                      } catch { alert("Failed to parse file."); }
+                    };
+                    reader.readAsText(file);
+                  }} />
+                  <span className="inline-flex items-center px-3 py-1.5 text-xs font-semibold text-monk-muted border border-monk-border rounded-full hover:border-monk-accent hover:text-monk-accent transition active:scale-95">Import</span>
+                </label>
+              </div>
+            </SettingsRow>
+          </Card>
+          {exported ? <Textarea readOnly value={exported} className="font-mono text-xs mt-3" /> : null}
+        </div>
+
+        {/* Account */}
+        <div>
+          <p className="text-[10px] font-bold uppercase tracking-widest text-monk-muted px-1 mb-2">Account</p>
+          <Card className="p-0 overflow-hidden">
+            <SettingsRow title="Sync" description="Connect to sync across devices. Works offline without an account.">
+              <AccountStatus />
+            </SettingsRow>
+          </Card>
+        </div>
+
+        {/* Season */}
+        <div>
+          <p className="text-[10px] font-bold uppercase tracking-widest text-monk-muted px-1 mb-2">Season</p>
+          <Card className="p-0 overflow-hidden">
+            <SettingsRow title="Archive Season" description="End current season, preserve all progress.">
+              <GhostButton onClick={store.archiveSeason}>Archive</GhostButton>
+            </SettingsRow>
+          </Card>
+        </div>
+
+        {/* Danger Zone */}
+        <div>
+          <p className="text-[10px] font-bold uppercase tracking-widest text-monk-danger/60 px-1 mb-2">Danger Zone</p>
+          <Card className="border-monk-danger/20 p-0 overflow-hidden">
+            <SettingsRow title="Factory Reset" description="Permanently delete all logs, goals, and history from this device.">
+              <button
+                type="button"
+                className="shrink-0 text-xs font-bold text-monk-danger border border-monk-danger/30 hover:border-monk-danger bg-monk-danger/5 px-3 py-1.5 rounded-full transition active:scale-95"
+                onClick={() => {
+                  if (window.confirm("WARNING: Wiping will permanently delete all your season logs, goals, and history. Wiped data cannot be recovered. Are you sure?")) {
+                    localStorage.clear();
+                    window.location.href = "/";
+                  }
+                }}
+              >
+                Wipe All Data
+              </button>
+            </SettingsRow>
+          </Card>
+        </div>
+
+        {/* About */}
+        <p className="text-center text-xs text-monk-muted/50 pb-2">Zendo — a quiet space for deep focus and intentional progress.</p>
       </div>
     </>
   );
@@ -3321,11 +3578,11 @@ function LibraryScreen() {
                     <div className="flex items-start justify-between gap-3">
                       <div>
                         <p className="text-xs font-bold text-monk-accent">{formatHumanDate(j.date)}</p>
-                        <p className="mt-1 text-[10px] font-bold uppercase tracking-wider text-monk-muted">
+                        <p className="mt-1 text-xs font-bold uppercase tracking-wider text-monk-muted">
                           {getDailyHelperForDate(store, j.date)}
                         </p>
                       </div>
-                      <span className="rounded-full border border-monk-border bg-monk-soft px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-monk-muted">
+                      <span className="rounded-full border border-monk-border bg-monk-soft px-2 py-1 text-xs font-bold uppercase tracking-wider text-monk-muted">
                         {DAILY_STATUS_LABELS[resolveDailyActivityStatus({
                           focusSessions: getDailyActivity(store, j.date).focusSessions,
                           learningSessions: getDailyActivity(store, j.date).learningSessions.length > 0
@@ -3338,18 +3595,18 @@ function LibraryScreen() {
                   <div className="space-y-3">
                     <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                       <div className="rounded-xl border border-monk-border bg-monk-bg p-3">
-                        <p className="text-[10px] font-bold uppercase tracking-wider text-monk-muted">Focus</p>
+                        <p className="text-xs font-bold uppercase tracking-wider text-monk-muted">Focus</p>
                         <p className="mt-1 text-xs font-semibold leading-relaxed text-monk-text">{getFocusSummaryForDate(store, j.date)}</p>
                       </div>
                       <div className="rounded-xl border border-monk-border bg-monk-bg p-3">
-                        <p className="text-[10px] font-bold uppercase tracking-wider text-monk-muted">Learning</p>
+                        <p className="text-xs font-bold uppercase tracking-wider text-monk-muted">Learning</p>
                         <p className="mt-1 text-xs font-semibold leading-relaxed text-monk-text">{getLearningSummaryForDate(store, j.date)}</p>
                       </div>
                     </div>
                     <div className="space-y-2">
                       {getJournalAnswerItems(j.answers, j.date).map((item) => (
                         <div key={item.id}>
-                          <span className="block text-[10px] font-bold uppercase tracking-wider text-monk-muted">{item.question}</span>
+                          <span className="block text-xs font-bold uppercase tracking-wider text-monk-muted">{item.question}</span>
                           <p className="mt-0.5 text-xs font-medium leading-relaxed text-monk-text">{item.answer}</p>
                         </div>
                       ))}
@@ -3411,41 +3668,41 @@ function LibraryScreen() {
                       <div>
                         <p className="text-xs font-bold text-monk-accent">{formatHumanDate(l.startedAt.slice(0, 10))}</p>
                         <p className="text-sm font-semibold text-monk-text mt-0.5">{l.sourceTitle || "Untitled Note"}</p>
-                        {l.chapter && <p className="text-[10px] text-monk-muted mt-0.5">{l.chapter}</p>}
+                        {l.chapter && <p className="text-xs text-monk-muted mt-0.5">{l.chapter}</p>}
                       </div>
-                      <span className="text-[10px] font-bold text-monk-success bg-monk-success-soft border border-monk-success/30 px-2 py-0.5 rounded-full shrink-0">
+                      <span className="text-xs font-bold text-monk-success bg-monk-success-soft border border-monk-success/30 px-2 py-0.5 rounded-full shrink-0">
                         {durationMinutes} mins
                       </span>
                     </div>
                     <div className="flex flex-wrap items-center gap-1.5 mt-2">
-                      <span className="text-[10px] uppercase font-bold text-monk-accent bg-monk-accent-soft px-2 py-0.5 rounded border border-monk-accent/20">
+                      <span className="text-xs uppercase font-bold text-monk-accent bg-monk-accent-soft px-2 py-0.5 rounded border border-monk-accent/20">
                         {l.sourceType.replace("_", " ")}
                       </span>
-                      {goal && <span className="text-[10px] text-monk-muted bg-monk-soft px-2 py-0.5 rounded border border-monk-border">{goal.title}</span>}
-                      {parent && <span className="text-[10px] text-monk-text-soft bg-monk-soft px-2 py-0.5 rounded border border-monk-border">under: {parent.sourceTitle || parent.lesson?.slice(0, 20) || parent.id.slice(0, 8)}</span>}
+                      {goal && <span className="text-xs text-monk-muted bg-monk-soft px-2 py-0.5 rounded border border-monk-border">{goal.title}</span>}
+                      {parent && <span className="text-xs text-monk-text-soft bg-monk-soft px-2 py-0.5 rounded border border-monk-border">under: {parent.sourceTitle || parent.lesson?.slice(0, 20) || parent.id.slice(0, 8)}</span>}
                     </div>
                     {l.lesson && (
                       <div className="mt-3 bg-monk-soft/50 rounded-xl p-3 border border-monk-border/30">
-                        <span className="text-[9px] font-bold text-monk-muted uppercase tracking-wider block">Lesson</span>
+                        <span className="text-xs font-bold text-monk-muted uppercase tracking-wider block">Lesson</span>
                         <p className="text-xs leading-relaxed text-monk-text mt-0.5">"{l.lesson}"</p>
                       </div>
                     )}
                     {l.content && (
                       <div className="mt-3 bg-monk-bg/60 rounded-xl p-3 border border-monk-border/30">
-                        <span className="text-[9px] font-bold text-monk-muted uppercase tracking-wider block">Notes</span>
+                        <span className="text-xs font-bold text-monk-muted uppercase tracking-wider block">Notes</span>
                         <p className="text-xs leading-6 text-monk-text whitespace-pre-wrap mt-0.5">{l.content}</p>
                       </div>
                     )}
                     {l.actionIdea && (
                       <div className="mt-3 bg-monk-accent-soft/30 rounded-xl p-3 border border-monk-accent/15">
-                        <span className="text-[9px] font-bold text-monk-accent uppercase tracking-wider block">Action</span>
+                        <span className="text-xs font-bold text-monk-accent uppercase tracking-wider block">Action</span>
                         <p className="text-xs leading-relaxed text-monk-text-soft mt-0.5">{l.actionIdea}</p>
                       </div>
                     )}
                     {linked.length > 0 && (
                       <div className="mt-3 flex flex-wrap gap-1.5">
                         {linked.filter(Boolean).map((lnk: any) => (
-                          <span key={lnk?.id} className="text-[10px] text-monk-accent bg-monk-accent-soft px-2 py-0.5 rounded-full border border-monk-accent/20">
+                          <span key={lnk?.id} className="text-xs text-monk-accent bg-monk-accent-soft px-2 py-0.5 rounded-full border border-monk-accent/20">
                             linked: {lnk?.sourceTitle || lnk?.lesson?.slice(0, 20) || lnk?.id?.slice(0, 8)}
                           </span>
                         ))}
@@ -3518,14 +3775,14 @@ function LibraryScreen() {
                       <div>
                         <p className="text-xs font-bold text-monk-accent">{formatHumanDate(s.startTime.slice(0, 10))}</p>
                         <p className="text-sm font-semibold mt-1">{goal?.title || "Focus Session"}</p>
-                        <p className="text-[10px] text-monk-muted mt-0.5 uppercase tracking-wider font-bold">
+                        <p className="text-xs text-monk-muted mt-0.5 uppercase tracking-wider font-bold">
                           {FOCUS_PRESETS[s.preset ?? s.timerMode ?? "deep_work"].shortLabel}
                           {s.status === "ended_early" ? " · Ended early" : ""}
                         </p>
                       </div>
                       <div className="text-right">
                         <p className="text-lg font-bold text-monk-success">{s.focusDurationMinutes ?? s.durationMinutes}m</p>
-                        <p className="text-[10px] text-monk-muted">{s.breakDurationMinutes ?? 0}m break</p>
+                        <p className="text-xs text-monk-muted">{s.breakDurationMinutes ?? 0}m break</p>
                       </div>
                     </Card>
                   );
@@ -3544,16 +3801,16 @@ function LibraryScreen() {
                     </div>
                     <div className="space-y-2">
                       <div>
-                        <span className="text-[10px] font-bold text-monk-muted uppercase tracking-wider block">Trigger</span>
+                        <span className="text-xs font-bold text-monk-muted uppercase tracking-wider block">Trigger</span>
                         <p className="text-xs font-semibold leading-relaxed text-monk-danger mt-0.5 uppercase tracking-wider">{r.trigger.replace("_", " ")}</p>
                       </div>
                       <div>
-                        <span className="text-[10px] font-bold text-monk-muted uppercase tracking-wider block">Notes</span>
+                        <span className="text-xs font-bold text-monk-muted uppercase tracking-wider block">Notes</span>
                         <p className="text-xs text-monk-text mt-0.5 leading-relaxed">{r.note || "-"}</p>
                       </div>
                       {r.recoveryAction && (
                         <div className="bg-monk-soft/30 rounded-xl p-2.5 border border-monk-border/40 mt-1">
-                          <span className="text-[9px] font-bold text-monk-muted uppercase tracking-wider block">Recovery plan</span>
+                          <span className="text-xs font-bold text-monk-muted uppercase tracking-wider block">Recovery plan</span>
                           <p className="text-xs text-monk-text-soft mt-0.5 leading-normal">{r.recoveryAction}</p>
                         </div>
                       )}
@@ -3585,7 +3842,7 @@ function LibraryScreen() {
               <div className="flex-1 min-w-0">
                 <div className="flex items-center justify-between gap-2">
                   <p className="text-sm font-semibold text-monk-text">Reflections</p>
-                  <span className="text-[10px] font-bold text-monk-muted bg-monk-soft/80 px-2 py-0.5 rounded-full">
+                  <span className="text-xs font-bold text-monk-muted bg-monk-soft/80 px-2 py-0.5 rounded-full">
                     {store.journalEntries.length}
                   </span>
                 </div>
@@ -3610,7 +3867,7 @@ function LibraryScreen() {
               <div className="flex-1 min-w-0">
                 <div className="flex items-center justify-between gap-2">
                   <p className="text-sm font-semibold text-monk-text">Learning Notes</p>
-                  <span className="text-[10px] font-bold text-monk-muted bg-monk-soft/80 px-2 py-0.5 rounded-full">
+                  <span className="text-xs font-bold text-monk-muted bg-monk-soft/80 px-2 py-0.5 rounded-full">
                     {store.learningSessions.length}
                   </span>
                 </div>
@@ -3656,5 +3913,17 @@ function SettingsItem({ title, description, children }: { title: string; descrip
         {children}
       </div>
     </Card>
+  );
+}
+
+function SettingsRow({ title, description, children }: { title: string; description?: string; children: React.ReactNode }) {
+  return (
+    <div className="flex items-center justify-between gap-4 px-4 py-3">
+      <div className="min-w-0">
+        <p className="text-sm font-semibold text-monk-text">{title}</p>
+        {description ? <p className="text-xs text-monk-muted mt-0.5 leading-4">{description}</p> : null}
+      </div>
+      <div className="shrink-0">{children}</div>
+    </div>
   );
 }
