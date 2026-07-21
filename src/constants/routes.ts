@@ -2,6 +2,7 @@ export const routes = {
   root: "/",
   onboardingWelcome: "/onboarding/welcome",
   onboardingValues: "/onboarding/values",
+  onboardingVision: "/onboarding/vision",
   onboardingReality: "/onboarding/reality",
   onboardingObstacles: "/onboarding/obstacles",
   onboardingSeason: "/onboarding/season",
@@ -54,6 +55,7 @@ export const onboardingOrder = [
   routes.onboardingGreyMode,
   routes.onboardingGoals,
   routes.onboardingSeason,
+  routes.onboardingVision,
   routes.onboardingNarrow,
   routes.onboardingKeystone,
   routes.onboardingWeekSetup

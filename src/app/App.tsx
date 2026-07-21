@@ -891,6 +891,7 @@ function OnboardingScreen({ path }: { path: string }) {
   return (
     <OnboardingShell currentStep={currentStep} totalSteps={totalSteps} onBack={goBack}>
       {path === routes.onboardingValues ? <ValuesStep onNext={goNext} /> : null}
+      {path === routes.onboardingVision ? <VisionStep onNext={goNext} /> : null}
       {path === routes.onboardingReality ? <RealityCheck onNext={goNext} /> : null}
       {path === routes.onboardingObstacles ? <PastObstacles onNext={goNext} /> : null}
       {path === routes.onboardingHabits ? <HabitAudit onNext={goNext} /> : null}
@@ -919,28 +920,19 @@ function ValuesStep({ onNext }: { onNext: () => void }) {
   const [protect, setProtect] = useState<string[]>(onboarding.valueTradeoffs.protect);
   const [sacrifice, setSacrifice] = useState<string[]>(onboarding.valueTradeoffs.sacrifice);
   const [tradeoff, setTradeoff] = useState(onboarding.valueTradeoffs.tradeoffExplanation);
-  const [vision, setVision] = useState(onboarding.legacyVision.proudChange);
-  const [consequence, setConsequence] = useState(onboarding.legacyVision.consequenceOfInaction);
 
-  const canContinue =
-    protect.length === 3 &&
-    sacrifice.length === 3 &&
-    tradeoff.length >= 30 &&
-    vision.length >= 30 &&
-    consequence.length >= 20;
+  const canContinue = protect.length === 3 && sacrifice.length === 3 && tradeoff.length >= 20;
 
   const handleNext = () => {
     updateOnboarding({
-      valueTradeoffs: { protect, sacrifice, tradeoffExplanation: tradeoff },
-      legacyVision: { proudChange: vision, consequenceOfInaction: consequence },
-      whyDiscovery: { selectedValues: protect, identityStatement: vision }
+      valueTradeoffs: { protect, sacrifice, tradeoffExplanation: tradeoff }
     });
     onNext();
   };
 
   return (
     <>
-      <ScreenIntro title="Values & Vision" subtitle="What matters most in next 90 days?" />
+      <ScreenIntro title="Values" subtitle="What matters most right now?" />
       <div className="mb-3 flex items-center justify-between">
         <p className="text-sm font-semibold">Protect (pick 3):</p>
         <span className="rounded-full bg-monk-soft px-2.5 py-1 text-xs font-bold text-monk-muted">
@@ -992,29 +984,7 @@ function ValuesStep({ onNext }: { onNext: () => void }) {
           label="Why this tradeoff?"
           value={tradeoff}
           onChange={e => setTradeoff(e.target.value)}
-          rows={3}
-          showCharCount
-          minLength={30}
-        />
-      </div>
-
-      <div className="mb-6">
-        <Textarea
-          label="90 days from now, what change are you proud of?"
-          value={vision}
-          onChange={e => setVision(e.target.value)}
-          rows={3}
-          showCharCount
-          minLength={30}
-        />
-      </div>
-
-      <div className="mb-6">
-        <Textarea
-          label="If you stay the same, what do you lose?"
-          value={consequence}
-          onChange={e => setConsequence(e.target.value)}
-          rows={3}
+          rows={2}
           showCharCount
           minLength={20}
         />
@@ -1022,6 +992,53 @@ function ValuesStep({ onNext }: { onNext: () => void }) {
 
       <div className="mt-auto space-y-3 pt-8">
         {!canContinue ? <CalmAlert type="warning" title="Complete all fields to continue." /> : null}
+        <PrimaryButton disabled={!canContinue} onClick={handleNext}>Continue</PrimaryButton>
+      </div>
+    </>
+  );
+}
+
+function VisionStep({ onNext }: { onNext: () => void }) {
+  const { onboarding, updateOnboarding } = useMonkStore();
+  const [vision, setVision] = useState(onboarding.legacyVision.proudChange);
+  const [consequence, setConsequence] = useState(onboarding.legacyVision.consequenceOfInaction);
+  const days = onboarding.seasonDurationDays;
+
+  const canContinue = vision.length >= 20 && consequence.length >= 10;
+
+  const handleNext = () => {
+    updateOnboarding({
+      legacyVision: { proudChange: vision, consequenceOfInaction: consequence },
+      whyDiscovery: { selectedValues: onboarding.valueTradeoffs.protect, identityStatement: vision }
+    });
+    onNext();
+  };
+
+  return (
+    <>
+      <ScreenIntro title="Vision" subtitle="Picture the end of this season" />
+      <div className="mb-6">
+        <Textarea
+          label={`${days} days from now, what change are you proud of?`}
+          value={vision}
+          onChange={e => setVision(e.target.value)}
+          rows={3}
+          showCharCount
+          minLength={20}
+        />
+      </div>
+      <div className="mb-6">
+        <Textarea
+          label="If you stay the same, what do you lose?"
+          value={consequence}
+          onChange={e => setConsequence(e.target.value)}
+          rows={3}
+          showCharCount
+          minLength={10}
+        />
+      </div>
+      <div className="mt-auto space-y-3 pt-8">
+        {!canContinue ? <CalmAlert type="warning" title="Complete both reflections to continue." /> : null}
         <PrimaryButton disabled={!canContinue} onClick={handleNext}>Continue</PrimaryButton>
       </div>
     </>
@@ -1239,6 +1256,61 @@ function RemoveDistractions({ onNext }: { onNext: () => void }) {
 
 function GreyMode({ onNext }: { onNext: () => void }) {
   const { onboarding, updateOnboarding } = useMonkStore();
+  const [platform, setPlatform] = useState<"ios" | "android" | "mac" | "windows" | "other">("other");
+
+  useEffect(() => {
+    const ua = navigator.userAgent;
+    if (/iPhone|iPad|iPod/.test(ua)) setPlatform("ios");
+    else if (/Android/.test(ua)) setPlatform("android");
+    else if (/Mac/.test(ua)) setPlatform("mac");
+    else if (/Win/.test(ua)) setPlatform("windows");
+    else setPlatform("other");
+  }, []);
+
+  const platformInstructions: Record<string, { steps: string[]; hint?: string }> = {
+    ios: {
+      steps: [
+        "Settings → Accessibility → Display & Text Size",
+        "Tap Color Filters",
+        "Toggle Color Filters ON, select Grayscale"
+      ],
+      hint: "You can add a shortcut: Accessibility → Accessibility Shortcut → Color Filters"
+    },
+    android: {
+      steps: [
+        "Settings → Accessibility → Color and motion",
+        "Tap Color correction",
+        "Toggle ON, select Grayscale"
+      ],
+      hint: "Some Samsung devices: Settings → Accessibility → Visibility enhancements → Color adjustment"
+    },
+    mac: {
+      steps: [
+        "System Settings → Accessibility → Display",
+        "Click Color Filters",
+        "Toggle Color Filters ON, select Grayscale"
+      ],
+      hint: "Or use keyboard shortcut: Ctrl + Cmd + Option + 5 (if configured)"
+    },
+    windows: {
+      steps: [
+        "Settings → Accessibility → Color filters",
+        "Toggle Color filters ON",
+        "Select Grayscale"
+      ],
+      hint: "Shortcut: Win + Ctrl + C to toggle quickly"
+    },
+    other: {
+      steps: [
+        "Open Accessibility settings",
+        "Find Color filters / Grayscale",
+        "Turn it on"
+      ]
+    }
+  };
+
+  const currentInstructions = platformInstructions[platform];
+
   return (
     <>
       <ScreenIntro title="Grey mode" subtitle="Make distracting apps less magnetic." />
@@ -1246,12 +1318,15 @@ function GreyMode({ onNext }: { onNext: () => void }) {
         <div className="mb-4 grid h-11 w-11 place-items-center rounded-full bg-monk-soft">
           <EyeOff size={22} strokeWidth={1.5} />
         </div>
-        <p className="font-semibold">Manual guide</p>
+        <p className="font-semibold">{platform === "ios" ? "iOS" : platform === "android" ? "Android" : platform === "mac" ? "macOS" : platform === "windows" ? "Windows" : "Manual guide"}</p>
         <ol className="mt-3 list-decimal space-y-2 pl-5 text-sm leading-6 text-monk-muted">
-          <li>Open Accessibility settings</li>
-          <li>Find Color filters / Grayscale</li>
-          <li>Turn it on</li>
+          {currentInstructions.steps.map((step, i) => (
+            <li key={i}>{step}</li>
+          ))}
         </ol>
+        {currentInstructions.hint && (
+          <p className="mt-3 text-xs text-monk-muted italic">{currentInstructions.hint}</p>
+        )}
       </Card>
       <div className="mt-auto space-y-3 pt-8">
         <PrimaryButton
@@ -1590,20 +1665,26 @@ function KeystoneSetup({ onNext }: { onNext: () => void }) {
               </p>
               <p className="mb-3 font-semibold text-monk-text">{goal.title}</p>
               <div className="space-y-3">
-                <TextInput
-                  label="When"
-                  id={`keystone-when-${goal.id}`}
-                  placeholder={whenPh}
-                  value={parsed.when}
-                  onChange={(event) => commit(event.target.value, parsed.action)}
-                />
-                <TextInput
-                  label="I will"
-                  id={`keystone-action-${goal.id}`}
-                  placeholder={actionPh}
-                  value={parsed.action}
-                  onChange={(event) => commit(parsed.when, event.target.value)}
-                />
+                <div>
+                  <TextInput
+                    label="When"
+                    id={`keystone-when-${goal.id}`}
+                    placeholder={whenPh}
+                    value={parsed.when}
+                    onChange={(event) => commit(event.target.value, parsed.action)}
+                  />
+                  <p className="mt-1 text-xs text-monk-muted">e.g., "after breakfast", "at 9pm", "before checking email"</p>
+                </div>
+                <div>
+                  <TextInput
+                    label="I will"
+                    id={`keystone-action-${goal.id}`}
+                    placeholder={actionPh}
+                    value={parsed.action}
+                    onChange={(event) => commit(parsed.when, event.target.value)}
+                  />
+                  <p className="mt-1 text-xs text-monk-muted">One specific, repeatable action</p>
+                </div>
                 <TextInput
                   label="Why this goal (optional)"
                   id={`goal-why-${goal.id}`}
