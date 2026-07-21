@@ -1,22 +1,10 @@
-import { useState, useMemo, useRef, useEffect } from "react";
+import { useState, useMemo, useRef, useEffect, useCallback } from "react";
 import { useMonkStore } from "../store/useMonkStore";
-import { PrimaryButton, SecondaryButton } from "./ui";
+import { PrimaryButton, SecondaryButton, GhostButton } from "./ui";
 import { createId } from "../lib/ids";
 import { nowIso } from "../lib/date";
 import type { NotebookEntry } from "../types/app";
-import { Search, Plus, Pin, PinOff, Trash2, Edit3, ArrowLeft } from "lucide-react";
-
-const CATEGORY_COLORS: Record<string, string> = {
-  cat_pribadi: "bg-[#e07c6b]",
-  cat_karier: "bg-[#6b9ac4]",
-  cat_keuangan: "bg-[#6bb48b]",
-  cat_kesehatan: "bg-[#c48bb4]",
-  cat_hubungan: "bg-[#c4a06b]",
-  cat_spiritual: "bg-[#8b9dc4]",
-  cat_perjalanan: "bg-[#6bc4b4]",
-  cat_kreatif: "bg-[#c48b6b]",
-  cat_lainnya: "bg-[#a0a0a0]",
-};
+import { Search, Plus, Pin, PinOff, Trash2, ArrowLeft, X } from "lucide-react";
 
 const CATEGORY_HEX: Record<string, string> = {
   cat_pribadi: "#e07c6b",
@@ -27,8 +15,37 @@ const CATEGORY_HEX: Record<string, string> = {
   cat_spiritual: "#8b9dc4",
   cat_perjalanan: "#6bc4b4",
   cat_kreatif: "#c48b6b",
-  cat_lainnya: "#a0a0a0",
+  cat_lainnya: "#a0a0a0"
 };
+
+function catHex(id: string) {
+  return CATEGORY_HEX[id] ?? "#a48b5e";
+}
+
+function wordCount(text: string) {
+  const t = text.trim();
+  return t ? t.split(/\s+/).length : 0;
+}
+
+function previewBody(body: string, max = 110) {
+  const flat = body.replace(/\s+/g, " ").trim();
+  if (!flat) return "Belum ada isi…";
+  return flat.length > max ? `${flat.slice(0, max).trim()}…` : flat;
+}
+
+function formatRelative(iso: string) {
+  const t = new Date(iso).getTime();
+  if (Number.isNaN(t)) return "";
+  const diff = Date.now() - t;
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1) return "baru saja";
+  if (mins < 60) return `${mins}m lalu`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `${hours}j lalu`;
+  const days = Math.floor(hours / 24);
+  if (days < 7) return `${days}h lalu`;
+  return new Date(iso).toLocaleDateString("id-ID", { day: "numeric", month: "short" });
+}
 
 export default function JournalNotebook() {
   const store = useMonkStore();
@@ -44,7 +61,9 @@ export default function JournalNotebook() {
     if (filterCat) list = list.filter((e) => e.categoryId === filterCat);
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
-      list = list.filter((e) => e.title.toLowerCase().includes(q) || e.body.toLowerCase().includes(q));
+      list = list.filter(
+        (e) => e.title.toLowerCase().includes(q) || e.body.toLowerCase().includes(q)
+      );
     }
     list.sort((a, b) => {
       if (a.isPinned !== b.isPinned) return a.isPinned ? -1 : 1;
@@ -53,147 +72,214 @@ export default function JournalNotebook() {
     return list;
   }, [entries, filterCat, searchQuery]);
 
-  if (view === "edit") return (
-    <NotebookEditor
-      entry={editEntry}
-      onBack={() => { setView("list"); setEditEntry(null); }}
-    />
-  );
+  const openNew = () => {
+    setEditEntry(null);
+    setView("edit");
+  };
+
+  const openEdit = (entry: NotebookEntry) => {
+    setEditEntry(entry);
+    setView("edit");
+  };
+
+  if (view === "edit") {
+    return (
+      <NotebookEditor
+        entry={editEntry}
+        onBack={() => {
+          setView("list");
+          setEditEntry(null);
+        }}
+      />
+    );
+  }
+
+  const pinnedCount = entries.filter((e) => e.isPinned).length;
 
   return (
-    <div className="space-y-4">
-      {/* Category filter chips */}
-      <div className="flex flex-wrap gap-1.5">
+    <div className="relative space-y-4 pb-24">
+      <div className="flex items-end justify-between gap-3">
+        <div>
+          <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-monk-muted">
+            Koleksi
+          </p>
+          <p className="mt-0.5 text-sm text-monk-text-soft">
+            {entries.length === 0
+              ? "Belum ada catatan"
+              : `${entries.length} catatan${pinnedCount ? ` · ${pinnedCount} disemat` : ""}`}
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={openNew}
+          className="hidden min-h-10 items-center gap-1.5 rounded-full border border-monk-accent/40 bg-monk-accent-soft px-3 text-xs font-bold text-monk-accent transition active:scale-95 sm:inline-flex"
+        >
+          <Plus size={14} strokeWidth={2} />
+          Baru
+        </button>
+      </div>
+
+      <div className="relative">
+        <Search
+          size={14}
+          className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-monk-text-soft"
+          strokeWidth={1.5}
+        />
+        <input
+          type="search"
+          placeholder="Cari judul atau isi…"
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          className="w-full min-h-11 rounded-monk border border-monk-border bg-monk-surface pl-9 pr-10 text-sm text-monk-text placeholder:text-monk-text-soft focus:border-monk-accent focus:outline-none"
+        />
+        {searchQuery ? (
+          <button
+            type="button"
+            aria-label="Hapus pencarian"
+            onClick={() => setSearchQuery("")}
+            className="absolute right-2 top-1/2 grid h-8 w-8 -translate-y-1/2 place-items-center text-monk-text-soft hover:text-monk-text"
+          >
+            <X size={14} />
+          </button>
+        ) : null}
+      </div>
+
+      <div className="-mx-1 flex gap-1.5 overflow-x-auto px-1 pb-1 scrollbar-none">
         <button
           type="button"
           onClick={() => setFilterCat(null)}
-          className={`rounded-full px-3 py-1 text-[10px] font-bold uppercase tracking-wider border transition ${
-            !filterCat ? "bg-monk-accent-soft border-monk-accent text-monk-accent" : "border-[#2a251e] text-[#68655e] hover:text-[#a48b5e]"
+          className={`shrink-0 rounded-full border px-3 py-1.5 text-[11px] font-bold uppercase tracking-wider transition ${
+            !filterCat
+              ? "border-monk-accent bg-monk-accent-soft text-monk-accent"
+              : "border-monk-border text-monk-muted hover:border-monk-border-strong"
           }`}
         >
-          All
+          Semua
         </button>
         {categories.map((cat) => {
-          const hex = CATEGORY_HEX[cat.id] ?? "#a0a0a0";
+          const hex = catHex(cat.id);
           const isActive = filterCat === cat.id;
+          const count = entries.filter((e) => e.categoryId === cat.id).length;
           return (
             <button
               key={cat.id}
               type="button"
               onClick={() => setFilterCat(isActive ? null : cat.id)}
-              className="rounded-full px-3 py-1 text-[10px] font-bold uppercase tracking-wider border transition flex items-center gap-1.5"
+              className="flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-1.5 text-[11px] font-bold uppercase tracking-wider transition"
               style={{
-                borderColor: isActive ? hex : "#2a251e",
-                color: isActive ? hex : "#68655e",
-                backgroundColor: isActive ? `${hex}18` : "transparent",
+                borderColor: isActive ? hex : undefined,
+                color: isActive ? hex : undefined,
+                backgroundColor: isActive ? `${hex}18` : undefined
               }}
             >
-              <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: hex }} />
+              <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: hex }} />
               {cat.name}
+              {count > 0 ? (
+                <span className="font-mono text-[10px] opacity-70">{count}</span>
+              ) : null}
             </button>
           );
         })}
       </div>
 
-      {/* Search */}
-      <div className="relative">
-        <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#68655e]" strokeWidth={1.5} />
-        <input
-          type="text"
-          placeholder="Cari catatan..."
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          className="w-full min-h-[40px] rounded-lg border border-[#2a251e] bg-[#1f1c17] pl-9 pr-4 text-sm text-[#d4cdc0] placeholder:text-[#68655e] focus:border-[#a48b5e] focus:outline-none"
-        />
-      </div>
-
-      {/* Entry list */}
       {sorted.length === 0 ? (
-        <div className="rounded-lg border border-[#2a251e] bg-[#1a1814] p-10 text-center">
-          <p className="font-handwriting text-3xl text-[#4a4640] mb-2">Masih kosong...</p>
-          <p className="text-xs text-[#68655e]">Tulis catatan pertamamu.</p>
+        <div className="notebook-empty rounded-monk border border-monk-border bg-monk-surface/60 px-6 py-12 text-center">
+          <p className="font-handwriting text-3xl text-monk-text-soft/70">
+            {searchQuery || filterCat ? "Tidak ketemu" : "Halaman masih kosong"}
+          </p>
+          <p className="mx-auto mt-2 max-w-[240px] text-sm leading-6 text-monk-muted">
+            {searchQuery || filterCat
+              ? "Coba kata lain atau lepas filter kategori."
+              : "Tulis bebas — tanpa prompt, tanpa target. Hanya pikiran di kertas."}
+          </p>
+          {!searchQuery && !filterCat ? (
+            <PrimaryButton className="mt-6" onClick={openNew}>
+              Tulis catatan pertama
+            </PrimaryButton>
+          ) : (
+            <SecondaryButton
+              className="mt-6"
+              onClick={() => {
+                setSearchQuery("");
+                setFilterCat(null);
+              }}
+            >
+              Reset filter
+            </SecondaryButton>
+          )}
         </div>
       ) : (
-        <div className="space-y-2">
+        <div className="space-y-3">
           {sorted.map((entry) => {
+            const hex = catHex(entry.categoryId);
             const cat = categories.find((c) => c.id === entry.categoryId);
-            const preview = entry.body.replace(/\n/g, " ").slice(0, 100);
-            const catHex = CATEGORY_HEX[entry.categoryId] ?? "#a0a0a0";
             return (
-              <div
+              <article
                 key={entry.id}
-                className="notebook-card p-4 relative"
-                style={{ borderLeftColor: catHex, borderLeftWidth: 3 }}
+                className="notebook-card group relative overflow-hidden rounded-monk p-4 transition hover:border-monk-border-strong"
+                style={{ borderLeftColor: hex }}
               >
-                <div className="flex items-start justify-between gap-3">
+                <button
+                  type="button"
+                  onClick={() => openEdit(entry)}
+                  className="w-full text-left"
+                >
+                  <div className="mb-1.5 flex items-start justify-between gap-3">
+                    <h3 className="notebook-card-title min-w-0 flex-1 pr-2">
+                      {entry.title || "Tanpa judul"}
+                    </h3>
+                    {entry.isPinned ? (
+                      <Pin size={14} className="mt-1 shrink-0 text-monk-accent" strokeWidth={2} />
+                    ) : null}
+                  </div>
+                  <p className="notebook-card-body line-clamp-3 min-h-[1.5rem]">
+                    {previewBody(entry.body)}
+                  </p>
+                  <div className="mt-3 flex flex-wrap items-center gap-2 text-[11px] text-monk-text-soft">
+                    <span
+                      className="inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 font-semibold uppercase tracking-wide"
+                      style={{ borderColor: `${hex}55`, color: hex }}
+                    >
+                      <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: hex }} />
+                      {cat?.name ?? "Lainnya"}
+                    </span>
+                    <span className="font-mono">{formatRelative(entry.updatedAt)}</span>
+                    <span className="font-mono opacity-70">{wordCount(entry.body)} kata</span>
+                  </div>
+                </button>
+
+                <div className="mt-3 flex items-center justify-end gap-1 border-t border-monk-border/40 pt-2">
                   <button
                     type="button"
-                    className="flex-1 min-w-0 text-left"
-                    onClick={() => { setEditEntry(entry); setView("edit"); }}
+                    aria-label={entry.isPinned ? "Lepas pin" : "Sematkan"}
+                    onClick={() => store.togglePinNotebookEntry(entry.id)}
+                    className="grid min-h-10 min-w-10 place-items-center rounded-full text-monk-muted transition hover:bg-monk-soft hover:text-monk-accent"
                   >
-                    <div className="flex items-center gap-2 mb-0.5">
-                      {entry.isPinned ? <Pin size={11} className="text-[#a48b5e] shrink-0" strokeWidth={1.5} /> : null}
-                      <p className="notebook-card-title truncate">{entry.title || "Tanpa judul"}</p>
-                    </div>
-                    {preview ? (
-                      <p className="notebook-card-body line-clamp-2 text-[13px]">{preview}</p>
-                    ) : null}
-                    <div className="mt-1.5 flex items-center gap-2">
-                      {cat ? (
-                        <span
-                          className="rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider"
-                          style={{ color: catHex, backgroundColor: `${catHex}20` }}
-                        >
-                          {cat.name}
-                        </span>
-                      ) : null}
-                      <span className="text-[10px] text-[#4a4640]">
-                        {new Date(entry.updatedAt).toLocaleDateString("id-ID", { day: "numeric", month: "short" })}
-                      </span>
-                    </div>
+                    {entry.isPinned ? <PinOff size={15} /> : <Pin size={15} />}
                   </button>
-
-                  <div className="flex items-center shrink-0">
-                    <button
-                      type="button"
-                      onClick={() => store.togglePinNotebookEntry(entry.id)}
-                      className="grid h-8 w-8 place-items-center rounded-full text-[#68655e] hover:text-[#a48b5e] hover:bg-[#2a251e] transition"
-                    >
-                      {entry.isPinned ? <PinOff size={13} strokeWidth={1.5} /> : <Pin size={13} strokeWidth={1.5} />}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => store.deleteNotebookEntry(entry.id)}
-                      className="grid h-8 w-8 place-items-center rounded-full text-[#68655e] hover:text-[#c48b6b] hover:bg-[#2a251e] transition"
-                    >
-                      <Trash2 size={13} strokeWidth={1.5} />
-                    </button>
-                  </div>
+                  <button
+                    type="button"
+                    aria-label="Hapus catatan"
+                    onClick={() => {
+                      if (window.confirm(`Hapus “${entry.title || "catatan ini"}”?`)) {
+                        store.deleteNotebookEntry(entry.id);
+                      }
+                    }}
+                    className="grid min-h-10 min-w-10 place-items-center rounded-full text-monk-muted transition hover:bg-monk-danger-soft hover:text-monk-danger"
+                  >
+                    <Trash2 size={15} />
+                  </button>
                 </div>
-              </div>
+              </article>
             );
           })}
         </div>
       )}
 
-      {/* FAB */}
       <button
         type="button"
-        onClick={() => {
-          const firstCat = categories[0];
-          setEditEntry({
-            id: createId("nb_entry"),
-            title: "",
-            body: "",
-            categoryId: firstCat?.id ?? "cat_lainnya",
-            tags: [],
-            isPinned: false,
-            createdAt: nowIso(),
-            updatedAt: nowIso(),
-          });
-          setView("edit");
-        }}
-        className="fixed bottom-24 right-6 grid h-14 w-14 place-items-center rounded-full bg-[#a48b5e] text-white shadow-lg hover:bg-[#a48b5e]/90 active:scale-90 transition z-40"
+        onClick={openNew}
+        className="fixed bottom-[calc(env(safe-area-inset-bottom)+88px)] right-6 z-40 grid h-14 w-14 place-items-center rounded-full bg-monk-accent text-monk-bg shadow-[0_8px_24px_rgba(164,139,94,0.35)] transition active:scale-90"
         aria-label="Catatan baru"
       >
         <Plus size={24} strokeWidth={2} />
@@ -202,110 +288,208 @@ export default function JournalNotebook() {
   );
 }
 
-export function NotebookEditor({ entry, onBack }: { entry: NotebookEntry | null; onBack: () => void }) {
+export function NotebookEditor({
+  entry,
+  onBack
+}: {
+  entry: NotebookEntry | null;
+  onBack: () => void;
+}) {
   const store = useMonkStore();
   const categories = store.notebookCategories;
   const titleRef = useRef<HTMLInputElement>(null);
+  const bodyRef = useRef<HTMLTextAreaElement>(null);
   const [title, setTitle] = useState(entry?.title ?? "");
   const [body, setBody] = useState(entry?.body ?? "");
   const [catId, setCatId] = useState(entry?.categoryId ?? categories[0]?.id ?? "cat_lainnya");
+  const [isPinned, setIsPinned] = useState(entry?.isPinned ?? false);
   const [showNewCat, setShowNewCat] = useState(false);
   const [newCatName, setNewCatName] = useState("");
+  const [dirty, setDirty] = useState(false);
+  const [savedFlash, setSavedFlash] = useState(false);
+  const entryIdRef = useRef(entry?.id ?? createId("nb_entry"));
+  const createdAtRef = useRef(entry?.createdAt ?? nowIso());
 
-  useEffect(() => { titleRef.current?.focus(); }, []);
+  useEffect(() => {
+    titleRef.current?.focus();
+  }, []);
 
-  const handleSave = () => {
-    const timestamp = nowIso();
-    store.saveNotebookEntry({
-      id: entry?.id ?? createId("nb_entry"),
-      title: title.trim(),
-      body,
-      categoryId: catId,
-      tags: entry?.tags ?? [],
-      isPinned: entry?.isPinned ?? false,
-      createdAt: entry?.createdAt ?? timestamp,
-      updatedAt: timestamp,
-    });
+  const markDirty = () => setDirty(true);
+
+  const resolveTitle = useCallback(() => {
+    const t = title.trim();
+    if (t) return t;
+    const firstLine = body
+      .split("\n")
+      .map((l) => l.trim())
+      .find(Boolean);
+    if (firstLine) return firstLine.slice(0, 80);
+    return "Tanpa judul";
+  }, [title, body]);
+
+  const handleSave = useCallback(
+    (andBack = true) => {
+      const timestamp = nowIso();
+      store.saveNotebookEntry({
+        id: entryIdRef.current,
+        title: resolveTitle(),
+        body,
+        categoryId: catId,
+        tags: entry?.tags ?? [],
+        isPinned,
+        createdAt: createdAtRef.current,
+        updatedAt: timestamp
+      });
+      setDirty(false);
+      setSavedFlash(true);
+      window.setTimeout(() => setSavedFlash(false), 1200);
+      if (andBack) onBack();
+    },
+    [body, catId, entry?.tags, isPinned, onBack, resolveTitle, store]
+  );
+
+  // Cmd/Ctrl+S
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "s") {
+        e.preventDefault();
+        handleSave(false);
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [handleSave]);
+
+  const activeCatHex = catHex(catId);
+  const words = wordCount(body);
+  const canSave = title.trim().length > 0 || body.trim().length > 0;
+
+  const handleBack = () => {
+    if (dirty && canSave) {
+      const ok = window.confirm("Simpan perubahan sebelum keluar?");
+      if (ok) {
+        handleSave(true);
+        return;
+      }
+    }
     onBack();
   };
 
-  const activeCatHex = CATEGORY_HEX[catId] ?? "#6b9ac4";
-
   return (
-    <div className="space-y-0 pb-8">
-      {/* Header bar */}
-      <div className="flex items-center justify-between py-3 border-b border-[#2a251e] mb-4">
+    <div className="space-y-0 pb-28">
+      <div className="mb-4 flex items-center justify-between border-b border-monk-border py-3">
         <button
           type="button"
-          onClick={onBack}
-          className="flex items-center gap-1.5 text-[#68655e] hover:text-[#a48b5e] transition text-[11px] uppercase tracking-wider font-mono"
+          onClick={handleBack}
+          className="flex min-h-10 items-center gap-1.5 text-[11px] font-mono uppercase tracking-wider text-monk-muted transition hover:text-monk-accent"
         >
           <ArrowLeft size={13} strokeWidth={1.5} />
           Kembali
         </button>
-        <span className="text-[10px] text-[#4a4640] font-mono">
-          {new Date().toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" })}
-        </span>
+        <div className="flex items-center gap-2 text-[10px] font-mono text-monk-text-soft">
+          {savedFlash ? (
+            <span className="text-monk-success">Tersimpan</span>
+          ) : dirty ? (
+            <span className="text-monk-warning">Belum disimpan</span>
+          ) : entry ? (
+            <span>{formatRelative(entry.updatedAt)}</span>
+          ) : (
+            <span>Catatan baru</span>
+          )}
+          <span className="opacity-40">·</span>
+          <span>
+            {new Date().toLocaleDateString("id-ID", {
+              day: "numeric",
+              month: "short",
+              year: "numeric"
+            })}
+          </span>
+        </div>
       </div>
 
-      {/* Title — big, handwriting */}
       <input
         ref={titleRef}
         type="text"
-        placeholder="Judul catatan..."
+        placeholder="Judul catatan…"
         value={title}
-        onChange={(e) => setTitle(e.target.value)}
-        className="w-full bg-transparent font-handwriting text-[1.6rem] leading-tight text-[#e5e2da] placeholder:text-[#4a4640] border-none outline-none focus:outline-none mb-4"
+        onChange={(e) => {
+          setTitle(e.target.value);
+          markDirty();
+        }}
+        className="mb-3 w-full border-none bg-transparent font-handwriting text-[1.7rem] leading-tight text-monk-text outline-none placeholder:text-monk-text-soft/50 focus:outline-none"
       />
 
-      {/* Category chips */}
-      <div className="flex flex-wrap gap-1.5 mb-4">
+      <div className="mb-4 flex flex-wrap items-center gap-1.5">
         {categories.map((cat) => {
-          const isActive = catId === cat.id;
-          const hex = CATEGORY_HEX[cat.id] ?? "#a0a0a0";
+          const hex = catHex(cat.id);
+          const active = catId === cat.id;
           return (
             <button
               key={cat.id}
               type="button"
-              onClick={() => setCatId(cat.id)}
-              className="rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider transition"
+              onClick={() => {
+                setCatId(cat.id);
+                markDirty();
+              }}
+              className="flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-bold uppercase tracking-wider transition"
               style={{
-                backgroundColor: isActive ? hex : `${hex}20`,
-                color: isActive ? "#fff" : hex,
-                outline: isActive ? `2px solid ${hex}` : "none",
-                outlineOffset: "2px",
+                borderColor: active ? hex : undefined,
+                color: active ? hex : undefined,
+                backgroundColor: active ? `${hex}18` : undefined
               }}
             >
+              <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: hex }} />
               {cat.name}
             </button>
           );
         })}
         <button
           type="button"
-          onClick={() => setShowNewCat(!showNewCat)}
-          className="rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider border border-dashed border-[#2a251e] text-[#68655e] hover:text-[#a48b5e] transition"
+          onClick={() => setShowNewCat((v) => !v)}
+          className="rounded-full border border-dashed border-monk-border px-2.5 py-1 text-[11px] font-bold uppercase tracking-wider text-monk-muted hover:border-monk-accent hover:text-monk-accent"
         >
-          + Baru
+          + Kategori
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            setIsPinned((v) => !v);
+            markDirty();
+          }}
+          className={`ml-auto flex min-h-9 items-center gap-1 rounded-full border px-2.5 text-[11px] font-bold uppercase tracking-wider transition ${
+            isPinned
+              ? "border-monk-accent/40 bg-monk-accent-soft text-monk-accent"
+              : "border-monk-border text-monk-muted"
+          }`}
+        >
+          {isPinned ? <Pin size={12} /> : <PinOff size={12} />}
+          {isPinned ? "Disemat" : "Semat"}
         </button>
       </div>
 
       {showNewCat ? (
-        <div className="flex gap-2 mb-4">
+        <div className="mb-4 flex items-center gap-2">
           <input
             type="text"
-            placeholder="Nama kategori..."
             value={newCatName}
             onChange={(e) => setNewCatName(e.target.value)}
-            className="flex-1 rounded-lg border border-[#2a251e] bg-[#1f1c17] px-3 py-2 text-sm text-[#d4cdc0] placeholder:text-[#68655e] focus:border-[#a48b5e] focus:outline-none"
-          />
-          <PrimaryButton
-            className="shrink-0"
-            onClick={() => {
-              if (newCatName.trim()) {
+            placeholder="Nama kategori baru"
+            className="min-h-11 flex-1 rounded-monk border border-monk-border bg-monk-surface px-3 text-sm text-monk-text placeholder:text-monk-text-soft focus:border-monk-accent focus:outline-none"
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && newCatName.trim()) {
                 store.addNotebookCategory(newCatName.trim());
                 setNewCatName("");
                 setShowNewCat(false);
               }
+            }}
+          />
+          <PrimaryButton
+            className="!w-auto px-4"
+            onClick={() => {
+              if (!newCatName.trim()) return;
+              store.addNotebookCategory(newCatName.trim());
+              setNewCatName("");
+              setShowNewCat(false);
             }}
           >
             Tambah
@@ -313,28 +497,51 @@ export function NotebookEditor({ entry, onBack }: { entry: NotebookEntry | null;
         </div>
       ) : null}
 
-      {/* Writing area — left border matches active category */}
       <div
-        className="notebook-card rounded-none p-4"
+        className="notebook-card rounded-monk p-0"
         style={{ borderLeftWidth: 3, borderLeftColor: activeCatHex }}
       >
         <textarea
-          placeholder="Tulis bebas..."
+          ref={bodyRef}
+          placeholder="Tulis bebas… biarkan pikiran mengalir."
           value={body}
-          onChange={(e) => setBody(e.target.value)}
-          className="w-full bg-transparent notebook-card-body border-none outline-none resize-none min-h-[360px] pl-4"
+          onChange={(e) => {
+            setBody(e.target.value);
+            markDirty();
+          }}
+          className="notebook-card-body min-h-[min(56vh,420px)] w-full resize-y border-none bg-transparent px-4 py-4 outline-none"
           style={{ lineHeight: "2rem" }}
         />
       </div>
 
-      {/* Save / word count row */}
-      <div className="flex items-center justify-between pt-4">
-        <span className="text-[10px] text-[#4a4640] font-mono">
-          {body.trim() ? body.trim().split(/\s+/).length : 0} kata
-        </span>
-        <PrimaryButton onClick={handleSave} disabled={!title.trim()}>
-          Simpan
-        </PrimaryButton>
+      <div className="fixed inset-x-0 bottom-0 z-40 border-t border-monk-border bg-monk-bg/95 px-6 py-3 backdrop-blur-md">
+        <div className="mx-auto flex max-w-[430px] items-center justify-between gap-3">
+          <div className="text-[11px] font-mono text-monk-text-soft">
+            <span>{words} kata</span>
+            {dirty ? <span className="ml-2 text-monk-warning">· draft</span> : null}
+          </div>
+          <div className="flex items-center gap-2">
+            {entry ? (
+              <GhostButton
+                className="text-monk-danger"
+                onClick={() => {
+                  if (window.confirm(`Hapus “${entry.title || "catatan ini"}”?`)) {
+                    store.deleteNotebookEntry(entry.id);
+                    onBack();
+                  }
+                }}
+              >
+                Hapus
+              </GhostButton>
+            ) : null}
+            <SecondaryButton className="!w-auto px-4" onClick={() => handleSave(false)} disabled={!canSave}>
+              Simpan
+            </SecondaryButton>
+            <PrimaryButton className="!w-auto px-5" onClick={() => handleSave(true)} disabled={!canSave}>
+              Selesai
+            </PrimaryButton>
+          </div>
+        </div>
       </div>
     </div>
   );

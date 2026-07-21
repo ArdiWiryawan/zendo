@@ -86,7 +86,7 @@ button {
 
 /* Page transitions */
 .page-enter {
-  animation: slideIn 0.25s ease-out forwards;
+  animation: slideIn 0.15s ease-out forwards;
 }
 
 @keyframes slideIn {
@@ -129,14 +129,18 @@ button {
   color: #d4cdc0;
   border: 1px solid #2a251e;
   border-left: 3px solid #6b9ac4;
-  border-radius: 4px;
+  border-radius: 12px;
   box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+}
+
+.font-handwriting {
+  font-family: 'Caveat', cursive;
 }
 
 .notebook-card-title {
   font-family: 'Caveat', cursive;
-  font-size: 1.25rem;
-  line-height: 1.4;
+  font-size: 1.35rem;
+  line-height: 1.35;
   color: #e5e2da;
 }
 
@@ -144,6 +148,30 @@ button {
   font-size: 0.875rem;
   line-height: 2rem;
   color: #c8c2b4;
+}
+
+.notebook-page-bg {
+  background:
+    radial-gradient(ellipse 80% 50% at 50% -10%, rgba(164, 139, 94, 0.06), transparent 55%),
+    #1a1814;
+  min-height: 100%;
+}
+
+.notebook-empty {
+  background-image: repeating-linear-gradient(
+    transparent,
+    transparent 23px,
+    #2a251e 23px,
+    #2a251e 24px
+  );
+}
+
+.scrollbar-none {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
 }
 
 /* Notebook category tab colors — darkened for night */
@@ -195,12 +223,6 @@ button {
 }
 
 /* Dark parchment page backgrounds */
-.notebook-page-bg {
-  background-color: #1a1814;
-  min-height: 100%;
-  padding: 1rem;
-}
-
 .packs-page-bg {
   background-color: #1a1814;
   min-height: 100%;

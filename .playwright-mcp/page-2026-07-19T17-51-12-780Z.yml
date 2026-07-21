@@ -1,0 +1,6 @@
+- main [ref=f1e4]:
+  - generic [ref=f1e5]:
+    - generic [ref=f1e6]:
+      - heading "Make space for what matters." [level=1] [ref=f1e10]
+      - paragraph [ref=f1e11]: Zendo helps you choose fewer goals and move with intention.
+    - button "Begin" [ref=f1e12] [cursor=pointer]

@@ -39,6 +39,13 @@ export type AppSettings = {
   updatedAt: ISODateString;
 };
 
+/** Motivation snapshot from onboarding — survives createSeasonFromOnboarding. */
+export type SeasonWhy = {
+  identity: string;
+  consequenceOfInaction: string;
+  protectValues: string[];
+};
+
 export type Season = {
   id: string;
   name: string;
@@ -49,6 +56,9 @@ export type Season = {
   mode: WeeklyMode;
   goalIds: string[];
   badHabitIds: string[];
+  antiGoals?: string[];
+  obstacles?: string[];
+  why?: SeasonWhy;
   createdAt: ISODateString;
   updatedAt: ISODateString;
 };
@@ -59,9 +69,12 @@ export type Goal = {
   title: string;
   description?: string;
   keystoneAction: string;
+  /** Why this goal matters — short personal reason. */
+  why?: string;
   priority: 1 | 2 | 3;
   weeklyTargetCount: number;
   status: GoalStatus;
+  antiGoals?: string[];
   createdAt: ISODateString;
   updatedAt: ISODateString;
 };
@@ -404,6 +417,37 @@ export type OnboardingState = {
   weeklyMode: WeeklyMode;
   weeklyAllocations: GoalAllocation[];
   planningAssignments: Record<string, string | "rest">;
+  antiGoals: string[];
+  obstacles: string[];
+  whyDiscovery: {
+    selectedValues: string[];
+    identityStatement: string;
+  };
+  // New depth fields
+  pastReflection: {
+    momentumMemory: string;
+    failurePattern: string;
+    neverFeltMomentum: boolean;
+  };
+  valueTradeoffs: {
+    protect: string[];
+    sacrifice: string[];
+    tradeoffExplanation: string;
+  };
+  legacyVision: {
+    proudChange: string;
+    consequenceOfInaction: string;
+  };
+  identityDraftV1: string;
+  timeAudit: {
+    freeHoursPerDay: number;
+    peakEnergyBlocks: string[];
+  };
+  energyMap: string;
+  pastObstacles: string[];
+  goalWhys: Record<string, string>;
+  goalValueMapping: Record<string, string[]>;
+  obstacleMitigations: Record<string, string>;
 };
 
 export type MonkMVPState = {

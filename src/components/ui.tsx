@@ -1,6 +1,6 @@
 import type { ButtonHTMLAttributes, InputHTMLAttributes, ReactNode, TextareaHTMLAttributes } from "react";
 import { useEffect, useRef, useState } from "react";
-import { ArrowRight, BookOpen, Calendar, Flag, Grid3X3, Settings, Sun } from "lucide-react";
+import { ArrowLeft, ArrowRight, BookOpen, Calendar, Check, Flag, Grid3X3, Settings, Sun } from "lucide-react";
 import { hapticPress } from "../lib/haptics";
 import { NavLink, useLocation } from "react-router-dom";
 import { routes } from "../constants/routes";
@@ -43,16 +43,67 @@ export function AppShell({ children, showBottomNav = true }: { children: ReactNo
 export function OnboardingShell({
   children,
   currentStep,
-  totalSteps
+  totalSteps,
+  onBack
 }: {
   children: ReactNode;
   currentStep?: number;
   totalSteps?: number;
+  onBack?: () => void;
 }) {
+  const shellRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!shellRef.current) return;
+
+    const shell = shellRef.current;
+    const focusableSelector = 'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])';
+    const focusableElements = Array.from(shell.querySelectorAll(focusableSelector)) as HTMLElement[];
+
+    if (focusableElements.length === 0) return;
+
+    const firstFocusable = focusableElements[0];
+    const lastFocusable = focusableElements[focusableElements.length - 1];
+
+    const handleTab = (e: KeyboardEvent) => {
+      if (e.key !== 'Tab') return;
+
+      if (e.shiftKey) {
+        if (document.activeElement === firstFocusable) {
+          e.preventDefault();
+          lastFocusable.focus();
+        }
+      } else {
+        if (document.activeElement === lastFocusable) {
+          e.preventDefault();
+          firstFocusable.focus();
+        }
+      }
+    };
+
+    shell.addEventListener('keydown', handleTab);
+    return () => shell.removeEventListener('keydown', handleTab);
+  }, [currentStep]);
+
   return (
-    <div className="min-h-dvh bg-monk-bg text-monk-text">
+    <div ref={shellRef} className="min-h-dvh bg-monk-bg text-monk-text">
       <ScreenContainer>
-        {currentStep && totalSteps ? <StepIndicator currentStep={currentStep} totalSteps={totalSteps} /> : null}
+        {currentStep && totalSteps ? (
+          <div className="mb-2 flex items-center gap-3">
+            {onBack ? (
+              <button
+                onClick={onBack}
+                className="grid min-h-11 min-w-11 shrink-0 place-items-center -ml-2 text-monk-muted hover:text-monk-text"
+                aria-label="Go back"
+              >
+                <ArrowLeft size={20} strokeWidth={2} />
+              </button>
+            ) : null}
+            <div className="min-w-0 flex-1">
+              <StepIndicator currentStep={currentStep} totalSteps={totalSteps} />
+            </div>
+          </div>
+        ) : null}
         <div className="flex min-h-[calc(100dvh-72px)] flex-col">{children}</div>
       </ScreenContainer>
     </div>
@@ -69,9 +120,9 @@ export function PageHeader({
   rightSlot?: ReactNode;
 }) {
   return (
-    <header className="mb-8 flex items-start justify-between gap-4">
+    <header className="mb-6 flex items-start justify-between gap-4">
       <div>
-        <h1 className="text-[32px] font-bold leading-10 tracking-normal">{title}</h1>
+        <h1 className="text-[32px] font-bold leading-10 tracking-tight">{title}</h1>
         {subtitle ? <p className="mt-1 text-sm leading-6 text-monk-muted">{subtitle}</p> : null}
       </div>
       {rightSlot}
@@ -112,7 +163,7 @@ export function PrimaryButton(props: ButtonHTMLAttributes<HTMLButtonElement>) {
     <button
       {...props}
       onClick={(e) => { hapticPress("medium"); props.onClick?.(e); }}
-      className={`min-h-[50px] w-full rounded-monk px-6 text-base font-bold bg-monk-accent text-monk-bg transition active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-45 ${
+      className={`min-h-[50px] w-full rounded-monk px-6 text-base font-bold bg-monk-accent text-monk-bg shadow-none transition active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40 ${
         props.className ?? ""
       }`}
     />
@@ -143,21 +194,71 @@ export function GhostButton(props: ButtonHTMLAttributes<HTMLButtonElement>) {
   );
 }
 
-export function TextInput({ className = "", ...props }: InputHTMLAttributes<HTMLInputElement>) {
+export function TextInput({
+  className = "",
+  label,
+  showCharCount,
+  minLength,
+  value,
+  ...props
+}: InputHTMLAttributes<HTMLInputElement> & {
+  label?: string;
+  showCharCount?: boolean;
+  minLength?: number;
+  value?: string;
+}) {
+  const count = typeof value === 'string' ? value.length : 0;
+  const min = minLength ?? 0;
+
   return (
-    <input
-      {...props}
-      className={`min-h-[48px] w-full rounded-xl border border-monk-border bg-monk-surface px-4 text-sm text-monk-text placeholder:text-monk-text-soft focus:border-monk-accent focus:outline-none ${className}`}
-    />
+    <div className="w-full">
+      {label && <label className="mb-2 block text-sm font-medium text-monk-muted">{label}</label>}
+      <input
+        {...props}
+        value={value}
+        minLength={minLength}
+        className={`min-h-[48px] w-full rounded-xl border border-monk-border bg-monk-surface px-4 text-sm text-monk-text placeholder:text-monk-text-soft focus:border-monk-accent focus:outline-none [scroll-margin-bottom:200px] ${className}`}
+      />
+      {showCharCount && min > 0 && (
+        <div className={`mt-1 text-right text-xs ${count < min ? "text-monk-danger" : "text-monk-muted"}`}>
+          {count}/{min} characters
+        </div>
+      )}
+    </div>
   );
 }
 
-export function Textarea({ className = "", ...props }: TextareaHTMLAttributes<HTMLTextAreaElement>) {
+export function Textarea({
+  className = "",
+  label,
+  showCharCount,
+  minLength,
+  value,
+  ...props
+}: TextareaHTMLAttributes<HTMLTextAreaElement> & {
+  label?: string;
+  showCharCount?: boolean;
+  minLength?: number;
+  value?: string;
+}) {
+  const count = typeof value === 'string' ? value.length : 0;
+  const min = minLength ?? 0;
+
   return (
-    <textarea
-      {...props}
-      className={`min-h-[120px] w-full resize-none rounded-xl border border-monk-border bg-monk-surface p-4 text-sm leading-6 text-monk-text placeholder:text-monk-text-soft focus:border-monk-accent focus:outline-none ${className}`}
-    />
+    <div className="w-full">
+      {label && <label className="mb-2 block text-sm font-medium text-monk-muted">{label}</label>}
+      <textarea
+        {...props}
+        value={value}
+        minLength={minLength}
+        className={`min-h-[120px] w-full resize-none rounded-xl border border-monk-border bg-monk-surface p-4 text-sm leading-6 text-monk-text placeholder:text-monk-text-soft focus:border-monk-accent focus:outline-none [scroll-margin-bottom:200px] ${className}`}
+      />
+      {showCharCount && min > 0 && (
+        <div className={`mt-1 text-right text-xs ${count < min ? "text-monk-danger" : "text-monk-muted"}`}>
+          {count}/{min} characters
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -177,10 +278,10 @@ export function ChoiceChip({
       type="button"
       disabled={disabled}
       onClick={() => { hapticPress("light"); onClick(); }}
-      className={`min-h-10 rounded-full border px-4 text-sm transition disabled:opacity-45 ${
+      className={`min-h-11 rounded-full border px-4 text-sm transition-colors duration-150 disabled:opacity-45 ${
         selected
-          ? "border-monk-accent bg-monk-accent-soft text-monk-accent"
-          : "border-monk-border bg-monk-surface text-monk-muted"
+          ? "border-monk-accent bg-monk-accent-soft font-semibold text-monk-accent"
+          : "border-monk-border bg-monk-surface text-monk-muted hover:border-monk-border-strong"
       }`}
     >
       {label}
@@ -203,12 +304,31 @@ export function ChoiceCard({
     <button
       type="button"
       onClick={() => { hapticPress("light"); onClick(); }}
-      className={`w-full rounded-monk border p-5 text-left transition ${
-        selected ? "border-monk-accent bg-monk-accent-soft" : "border-monk-border bg-monk-surface"
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          hapticPress("light");
+          onClick();
+        }
+      }}
+      tabIndex={0}
+      className={`relative w-full rounded-monk border p-4 min-h-[56px] text-left transition-colors duration-150 ${
+        selected
+          ? "border-monk-accent bg-monk-accent-soft"
+          : "border-monk-border bg-monk-surface hover:border-monk-border-strong"
       }`}
     >
-      <span className="block text-base font-semibold">{title}</span>
-      {description ? <span className="mt-1 block text-sm leading-6 text-monk-muted">{description}</span> : null}
+      <div className="flex items-start gap-3 pr-1">
+        <div className="min-w-0 flex-1">
+          <span className="block text-base font-semibold">{title}</span>
+          {description ? <span className="mt-1 block text-sm leading-6 text-monk-muted">{description}</span> : null}
+        </div>
+        {selected ? (
+          <span className="mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded-full bg-monk-accent text-monk-bg" aria-hidden>
+            <Check size={12} strokeWidth={2.5} />
+          </span>
+        ) : null}
+      </div>
     </button>
   );
 }
@@ -216,8 +336,11 @@ export function ChoiceCard({
 export function StepIndicator({ currentStep, totalSteps }: { currentStep: number; totalSteps: number }) {
   const width = Math.max(4, Math.min(100, (currentStep / totalSteps) * 100));
   return (
-    <div className="mb-7 h-1.5 rounded-full bg-monk-soft" aria-label={`Step ${currentStep} of ${totalSteps}`}>
-      <div className="h-1.5 rounded-full bg-monk-accent transition-all" style={{ width: `${width}%` }} />
+    <div aria-label={`Progress: step ${currentStep} of ${totalSteps}`}>
+      <p className="mb-2 text-xs text-monk-muted">Step {currentStep} of {totalSteps}</p>
+      <div className="h-2 w-full rounded-full bg-monk-soft">
+        <div className="h-2 rounded-full bg-monk-accent transition-all duration-200" style={{ width: `${width}%` }} />
+      </div>
     </div>
   );
 }

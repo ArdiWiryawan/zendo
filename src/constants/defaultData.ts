@@ -62,7 +62,37 @@ export function createDefaultOnboarding(): OnboardingState {
     keystoneActions: {},
     weeklyMode: "flow",
     weeklyAllocations: [],
-    planningAssignments: {}
+    planningAssignments: {},
+    antiGoals: [],
+    obstacles: [],
+    whyDiscovery: {
+      selectedValues: [],
+      identityStatement: ""
+    },
+    pastReflection: {
+      momentumMemory: "",
+      failurePattern: "",
+      neverFeltMomentum: false
+    },
+    valueTradeoffs: {
+      protect: [],
+      sacrifice: [],
+      tradeoffExplanation: ""
+    },
+    legacyVision: {
+      proudChange: "",
+      consequenceOfInaction: ""
+    },
+    identityDraftV1: "",
+    timeAudit: {
+      freeHoursPerDay: 0,
+      peakEnergyBlocks: []
+    },
+    energyMap: "",
+    pastObstacles: [],
+    goalWhys: {},
+    goalValueMapping: {},
+    obstacleMitigations: {}
   };
 }
 

@@ -56,6 +56,7 @@ import type {
   MonkMVPState,
   OnboardingState,
   RelapseLog,
+  SeasonWhy,
   TimelineDay,
   TimelineStatus,
   WeeklyMode,
@@ -129,6 +130,8 @@ type MonkActions = {
   saveRelapseLog: (input: RelapseInput) => void;
   archiveSeason: () => void;
   startNewSeason: () => void;
+  updateSeasonWhy: (why: SeasonWhy) => void;
+  updateGoalWhy: (goalId: string, why: string) => void;
   updateSettings: (patch: Partial<AppSettings>) => void;
   importState: (data: Partial<MonkMVPState>) => void;
 
@@ -687,6 +690,7 @@ export const useMonkStore = create<MonkStore>((set, get) => ({
       seasonId,
       title: draft.title.trim(),
       keystoneAction: onboarding.keystoneActions[draft.id]?.trim() || "Stay with one thing",
+      why: onboarding.goalWhys[draft.id]?.trim() || undefined,
       priority: (index + 1) as 1 | 2 | 3,
       weeklyTargetCount:
         onboarding.weeklyAllocations.find((allocation) => allocation.goalId === draft.id)
@@ -705,6 +709,11 @@ export const useMonkStore = create<MonkStore>((set, get) => ({
       createdAt: timestamp,
       updatedAt: timestamp
     }));
+    const identity =
+      onboarding.legacyVision.proudChange.trim() ||
+      onboarding.identityDraftV1.trim() ||
+      onboarding.whyDiscovery.identityStatement.trim();
+    const consequence = onboarding.legacyVision.consequenceOfInaction.trim();
     const season = {
       id: seasonId,
       name: "Zendo Season I",
@@ -715,6 +724,16 @@ export const useMonkStore = create<MonkStore>((set, get) => ({
       mode: onboarding.weeklyMode,
       goalIds: goals.map((goal) => goal.id),
       badHabitIds: badHabits.map((habit) => habit.id),
+      antiGoals: onboarding.antiGoals.filter((ag) => ag.trim()),
+      obstacles: onboarding.obstacles.filter((ob) => ob.trim()),
+      why:
+        identity || consequence || onboarding.valueTradeoffs.protect.length
+          ? {
+              identity,
+              consequenceOfInaction: consequence,
+              protectValues: onboarding.valueTradeoffs.protect
+            }
+          : undefined,
       createdAt: timestamp,
       updatedAt: timestamp
     };
@@ -1404,6 +1423,33 @@ export const useMonkStore = create<MonkStore>((set, get) => ({
         ? { ...state.userProfile, onboardingCompleted: false, activeSeasonId: undefined }
         : null,
       onboarding: createDefaultOnboarding()
+    });
+  },
+
+  updateSeasonWhy: (why) => {
+    const state = get();
+    const season = state.activeSeason;
+    if (!season) return;
+    const timestamp = nowIso();
+    const next: SeasonWhy = {
+      identity: why.identity.trim(),
+      consequenceOfInaction: why.consequenceOfInaction.trim(),
+      protectValues: why.protectValues.slice(0, 3)
+    };
+    withPersist(set, get, {
+      activeSeason: { ...season, why: next, updatedAt: timestamp }
+    });
+  },
+
+  updateGoalWhy: (goalId, why) => {
+    const state = get();
+    const trimmed = why.trim();
+    withPersist(set, get, {
+      goals: state.goals.map((g) =>
+        g.id === goalId
+          ? { ...g, why: trimmed || undefined, updatedAt: nowIso() }
+          : g
+      )
     });
   },
 
