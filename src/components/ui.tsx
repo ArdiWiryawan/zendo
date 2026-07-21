@@ -382,7 +382,7 @@ export function SettingsLink() {
     <NavLink
       to={routes.settings}
       aria-label="Settings"
-      className="grid h-11 w-11 place-items-center rounded-full border border-monk-border bg-monk-surface text-monk-muted"
+      className="grid h-12 w-12 place-items-center rounded-full border border-monk-border bg-monk-surface text-monk-muted"
     >
       <Settings size={20} strokeWidth={1.5} />
     </NavLink>
@@ -408,7 +408,7 @@ function BottomNav() {
               key={tab.to}
               to={tab.to}
               aria-current={active ? "page" : undefined}
-              className={`flex flex-col items-center justify-center gap-0.5 rounded-full text-xs font-medium transition ${
+              className={`flex min-h-[48px] flex-col items-center justify-center gap-0.5 rounded-full text-xs font-medium transition ${
                 active ? "bg-monk-accent-soft text-monk-accent" : "text-monk-text-soft"
               }`}
             >
