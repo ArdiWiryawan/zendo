@@ -54,6 +54,10 @@ export function OnboardingShell({
   const shellRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [currentStep]);
+
+  useEffect(() => {
     if (!shellRef.current) return;
 
     const shell = shellRef.current;
@@ -93,7 +97,7 @@ export function OnboardingShell({
             {onBack ? (
               <button
                 onClick={onBack}
-                className="grid min-h-11 min-w-11 shrink-0 place-items-center -ml-2 text-monk-muted hover:text-monk-text"
+                className="grid min-h-12 min-w-12 shrink-0 place-items-center -ml-2 text-monk-muted hover:text-monk-text"
                 aria-label="Go back"
               >
                 <ArrowLeft size={20} strokeWidth={2} />
@@ -104,7 +108,7 @@ export function OnboardingShell({
             </div>
           </div>
         ) : null}
-        <div className="flex min-h-[calc(100dvh-72px)] flex-col">{children}</div>
+        <div className="flex min-h-[calc(100dvh-72px)] flex-col pb-[env(safe-area-inset-bottom)]">{children}</div>
       </ScreenContainer>
     </div>
   );
@@ -337,9 +341,12 @@ export function StepIndicator({ currentStep, totalSteps }: { currentStep: number
   const width = Math.max(4, Math.min(100, (currentStep / totalSteps) * 100));
   return (
     <div aria-label={`Progress: step ${currentStep} of ${totalSteps}`}>
-      <p className="mb-2 text-xs text-monk-muted">Step {currentStep} of {totalSteps}</p>
-      <div className="h-2 w-full rounded-full bg-monk-soft">
-        <div className="h-2 rounded-full bg-monk-accent transition-all duration-200" style={{ width: `${width}%` }} />
+      <div className="mb-2 flex items-center justify-between gap-3">
+        <p className="text-xs text-monk-muted">Step {currentStep} of {totalSteps}</p>
+        <p className="text-xs font-semibold tabular-nums text-monk-text-soft">{Math.round(width)}%</p>
+      </div>
+      <div className="h-1.5 w-full overflow-hidden rounded-full bg-monk-soft">
+        <div className="h-1.5 rounded-full bg-monk-accent transition-all duration-300 ease-out" style={{ width: `${width}%` }} />
       </div>
     </div>
   );
@@ -445,7 +452,7 @@ export function DurationCard({
     >
       <div className="flex items-center justify-between gap-2">
         <span className="text-base font-semibold">{title}</span>
-        <span className={`rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider ${
+        <span className={`rounded-full px-2.5 py-0.5 text-xs font-bold uppercase tracking-wider ${
           selected ? "bg-monk-accent/15 text-monk-accent" : "bg-monk-soft text-monk-muted"
         }`}>
           {badge}

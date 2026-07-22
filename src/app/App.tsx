@@ -879,8 +879,11 @@ function OnboardingScreen({ path }: { path: string }) {
           <h1 className="text-center text-[40px] font-bold leading-[48px] tracking-tight">
             Make space for what matters.
           </h1>
-          <p className="mx-auto mt-5 max-w-[280px] text-center text-base leading-6 text-monk-muted">
-            Zendo helps you choose fewer goals and move with intention.
+          <p className="mx-auto mt-5 max-w-[300px] text-center text-base leading-6 text-monk-muted">
+            Choose fewer goals. Build quiet momentum. One season at a time.
+          </p>
+          <p className="mx-auto mt-4 text-center text-xs font-medium text-monk-text-soft">
+            About 8–12 minutes · progress saves as you go
           </p>
         </div>
         <PrimaryButton className="mt-8" onClick={goNext}>Begin</PrimaryButton>
@@ -1047,16 +1050,22 @@ function VisionStep({ onNext }: { onNext: () => void }) {
 
 function RealityCheck({ onNext }: { onNext: () => void }) {
   const { onboarding, updateOnboarding } = useMonkStore();
-  const [hours, setHours] = useState(onboarding.timeAudit.freeHoursPerDay);
+  const [hours, setHours] = useState(onboarding.timeAudit.freeHoursPerDay || 2);
   const [blocks, setBlocks] = useState<string[]>(onboarding.timeAudit.peakEnergyBlocks);
   const [crash, setCrash] = useState(onboarding.energyMap);
 
-  const timeBlocks = ['Morning (6-9)', 'Midday (9-12)', 'Afternoon (12-17)', 'Evening (17-21)', 'Night (21-24)'];
-  const canContinue = hours > 0 && blocks.length > 0 && crash.length >= 30;
+  const timeBlocks = [
+    { id: "Morning (6-9)", label: "Morning · 6–9" },
+    { id: "Midday (9-12)", label: "Midday · 9–12" },
+    { id: "Afternoon (12-17)", label: "Afternoon · 12–5" },
+    { id: "Evening (17-21)", label: "Evening · 5–9" },
+    { id: "Night (21-24)", label: "Night · 9–12" }
+  ];
+  const canContinue = hours > 0 && hours <= 24 && blocks.length > 0 && crash.length >= 20;
 
   const handleNext = () => {
     updateOnboarding({
-      timeAudit: { freeHoursPerDay: hours, peakEnergyBlocks: blocks },
+      timeAudit: { freeHoursPerDay: Math.min(24, Math.max(1, hours || 1)), peakEnergyBlocks: blocks },
       energyMap: crash
     });
     onNext();
@@ -1064,31 +1073,40 @@ function RealityCheck({ onNext }: { onNext: () => void }) {
 
   return (
     <>
-      <ScreenIntro title="Reality Check" subtitle="Ground plan in actual capacity" />
+      <ScreenIntro title="Reality Check" subtitle="Ground your plan in real capacity, not ideal days." />
 
       <Card>
         <TextInput
-          label="Free hours per day (after work/obligations):"
+          label="Free hours per day"
           type="number"
+          min={1}
+          max={24}
+          inputMode="numeric"
           value={String(hours)}
-          onChange={e => setHours(Number(e.target.value))}
+          onChange={e => setHours(Math.min(24, Math.max(0, Number(e.target.value) || 0)))}
         />
-        <p className="mt-2 text-xs leading-5 text-monk-muted">Honest estimate. Not ideal hours.</p>
+        <p className="mt-2 text-xs leading-5 text-monk-muted">After work and obligations. Honest estimate.</p>
       </Card>
 
       <Card className="mt-6">
-        <p className="mb-3 text-sm font-semibold">Peak energy blocks (select all):</p>
+        <div className="mb-1 flex items-center justify-between gap-3">
+          <p className="text-sm font-semibold">Peak energy blocks</p>
+          <span className="rounded-full bg-monk-soft px-2.5 py-1 text-xs font-bold text-monk-muted">
+            {blocks.length} selected
+          </span>
+        </div>
+        <p className="mb-3 text-xs text-monk-muted">When focus usually feels easiest.</p>
         <div className="flex flex-wrap gap-2">
           {timeBlocks.map(tb => (
             <ChoiceChip
-              key={tb}
-              label={tb}
-              selected={blocks.includes(tb)}
+              key={tb.id}
+              label={tb.label}
+              selected={blocks.includes(tb.id)}
               onClick={() => {
-                if (blocks.includes(tb)) {
-                  setBlocks(blocks.filter(x => x !== tb));
+                if (blocks.includes(tb.id)) {
+                  setBlocks(blocks.filter(x => x !== tb.id));
                 } else {
-                  setBlocks([...blocks, tb]);
+                  setBlocks([...blocks, tb.id]);
                 }
               }}
             />
@@ -1104,11 +1122,12 @@ function RealityCheck({ onNext }: { onNext: () => void }) {
         placeholder="e.g. After lunch, late night scrolling, Sunday evenings..."
         className="mt-6"
         showCharCount
-        minLength={30}
+        minLength={20}
       />
+      <p className="mt-2 text-xs text-monk-muted">Helps plan around low-energy periods.</p>
 
       <div className="mt-auto space-y-3 pt-8">
-        {!canContinue ? <CalmAlert type="warning" title="Complete all fields to continue." /> : null}
+        {!canContinue ? <CalmAlert type="warning" title="Add free hours, peak energy, and crash pattern." /> : null}
         <PrimaryButton disabled={!canContinue} onClick={handleNext}>Continue</PrimaryButton>
       </div>
     </>
@@ -1121,8 +1140,9 @@ function PastObstacles({ onNext }: { onNext: () => void }) {
   const [current, setCurrent] = useState('');
 
   const handleAdd = () => {
-    if (current.trim() && obstacles.length < 5) {
-      setObstacles([...obstacles, current.trim()]);
+    const next = current.trim().slice(0, 100);
+    if (next && obstacles.length < 5 && !obstacles.includes(next)) {
+      setObstacles([...obstacles, next]);
       setCurrent('');
     }
   };
@@ -1134,33 +1154,38 @@ function PastObstacles({ onNext }: { onNext: () => void }) {
 
   return (
     <>
-      <ScreenIntro title="Past Obstacles" subtitle="What killed momentum before? (0-5)" />
-      <p className="mb-4 text-sm leading-6 text-monk-muted">Optional — skip if none come to mind</p>
+      <ScreenIntro title="Past Obstacles" subtitle="What usually kills momentum? Optional." />
+      <p className="mb-4 text-sm leading-6 text-monk-muted">Add up to 5. Skip if nothing comes to mind.</p>
 
       <div className="flex gap-2">
         <TextInput
           value={current}
-          onChange={e => setCurrent(e.target.value)}
+          onChange={e => setCurrent(e.target.value.slice(0, 100))}
           onKeyDown={e => e.key === 'Enter' && handleAdd()}
           placeholder="e.g. No accountability, too ambitious, burnout..."
+          aria-label="Obstacle"
         />
         <button
           type="button"
           onClick={handleAdd}
-          disabled={obstacles.length >= 5}
-          className="grid min-h-[48px] w-[48px] shrink-0 place-items-center rounded-xl border border-monk-border bg-monk-surface text-monk-muted disabled:opacity-40"
+          disabled={!current.trim() || obstacles.length >= 5}
+          className="grid min-h-12 min-w-12 shrink-0 place-items-center rounded-xl border border-monk-border bg-monk-surface text-monk-muted disabled:opacity-40"
+          aria-label="Add obstacle"
         >
           <Plus size={18} strokeWidth={1.5} />
         </button>
       </div>
+      <p className="mt-2 text-xs text-monk-muted">Press Enter or tap + to add · {obstacles.length}/5</p>
 
       <div className="mt-6 space-y-2">
         {obstacles.map((obs, i) => (
-          <div key={i} className="flex items-center justify-between rounded-lg border border-monk-border bg-monk-surface p-3 transition-colors hover:border-monk-border-strong hover:bg-monk-soft">
-            <span className="text-sm">{obs}</span>
+          <div key={`${obs}-${i}`} className="flex items-center justify-between rounded-lg border border-monk-border bg-monk-surface p-3 transition-colors hover:border-monk-border-strong hover:bg-monk-soft">
+            <span className="pr-3 text-sm">{obs}</span>
             <button
+              type="button"
               onClick={() => setObstacles(obstacles.filter((_, idx) => idx !== i))}
-              className="grid h-8 w-8 shrink-0 place-items-center rounded-full text-monk-muted hover:bg-monk-surface"
+              className="grid min-h-12 min-w-12 shrink-0 place-items-center rounded-full text-monk-muted hover:bg-monk-soft"
+              aria-label={`Remove ${obs}`}
             >
               <Minus size={16} strokeWidth={1.5} />
             </button>
@@ -1169,7 +1194,7 @@ function PastObstacles({ onNext }: { onNext: () => void }) {
       </div>
 
       <div className="mt-auto space-y-3 pt-8">
-        <PrimaryButton onClick={handleNext}>Continue</PrimaryButton>
+        <PrimaryButton onClick={handleNext}>{obstacles.length === 0 ? "Skip for now" : "Continue"}</PrimaryButton>
       </div>
     </>
   );
@@ -1179,13 +1204,16 @@ function HabitAudit({ onNext }: { onNext: () => void }) {
   const { onboarding, toggleHabit } = useMonkStore();
   const result = validateHabitAudit(onboarding.selectedHabits.length);
   const selectedCount = onboarding.selectedHabits.length;
+  const otherHabit = onboarding.selectedHabits.find((item) => item.category === "other");
+  const otherNeedsName = Boolean(otherHabit && !otherHabit.customName?.trim());
+  const canContinue = result.valid && !otherNeedsName;
   return (
     <>
       <ScreenIntro title="What usually pulls you away?" subtitle="Notice the patterns that make focus harder." />
       <div className="mb-3 flex items-center justify-between">
         <p className="text-sm font-semibold">Patterns</p>
         <span className="rounded-full bg-monk-soft px-2.5 py-1 text-xs font-bold text-monk-muted">
-          {selectedCount} selected
+          {selectedCount === 0 ? "1+ required" : `${selectedCount} selected`}
         </span>
       </div>
       <div className="flex flex-wrap gap-2">
@@ -1198,17 +1226,22 @@ function HabitAudit({ onNext }: { onNext: () => void }) {
           />
         ))}
       </div>
-      {onboarding.selectedHabits.some((item) => item.category === "other") ? (
+      {otherHabit ? (
         <TextInput
           className="mt-5"
           placeholder="Name the pattern"
-          value={onboarding.selectedHabits.find((item) => item.category === "other")?.customName ?? ""}
+          value={otherHabit.customName ?? ""}
           onChange={(event) => useMonkStore.getState().setCustomHabitName(event.target.value)}
         />
       ) : null}
       <div className="mt-auto space-y-3 pt-8">
-        {!result.valid ? <CalmAlert type="warning" title={result.message || "Select at least 1 habit"} /> : null}
-        <PrimaryButton disabled={!result.valid} onClick={onNext}>Continue</PrimaryButton>
+        {!canContinue ? (
+          <CalmAlert
+            type="warning"
+            title={otherNeedsName ? "Name your custom pattern to continue." : result.message || "Select at least 1 habit"}
+          />
+        ) : null}
+        <PrimaryButton disabled={!canContinue} onClick={onNext}>Continue</PrimaryButton>
       </div>
     </>
   );
@@ -1216,12 +1249,22 @@ function HabitAudit({ onNext }: { onNext: () => void }) {
 
 function RemoveDistractions({ onNext }: { onNext: () => void }) {
   const { onboarding, toggleFrictionAction } = useMonkStore();
-  const completed = Object.values(onboarding.frictionActions).some((actions) =>
-    actions.some((action) => action.completed)
-  );
+  const allActions = Object.values(onboarding.frictionActions).flat();
+  const selectedCount = allActions.filter((action) => action.completed).length;
+  const totalCount = allActions.length;
+  const completed = selectedCount > 0;
   return (
     <>
-      <ScreenIntro title="Make distractions harder to reach." subtitle="You do not need perfection. Just add friction." />
+      <ScreenIntro title="Make distractions harder to reach." subtitle="Pick actions you'll take. Friction beats willpower." />
+      {totalCount === 0 ? (
+        <Card className="mb-4">
+          <p className="text-sm text-monk-muted">No habits selected yet. You can continue and set friction later.</p>
+        </Card>
+      ) : (
+        <p className="mb-4 text-xs font-bold uppercase tracking-wider text-monk-muted">
+          {selectedCount}/{totalCount} actions chosen
+        </p>
+      )}
       <div className="space-y-4">
         {onboarding.selectedHabits.map((habit) => (
           <Card key={habit.id}>
@@ -1232,7 +1275,7 @@ function RemoveDistractions({ onNext }: { onNext: () => void }) {
                   key={action.id}
                   type="button"
                   onClick={() => toggleFrictionAction(habit.id, action.id)}
-                  className="flex min-h-11 w-full items-center gap-3 rounded-2xl text-left text-sm"
+                  className="flex min-h-12 w-full items-center gap-3 rounded-2xl text-left text-sm"
                 >
                   <span className={`grid h-6 w-6 place-items-center rounded-full border ${
                     action.completed ? "border-monk-success bg-monk-success-soft" : "border-monk-border"
@@ -1247,8 +1290,10 @@ function RemoveDistractions({ onNext }: { onNext: () => void }) {
         ))}
       </div>
       <div className="mt-auto space-y-3 pt-8">
-        {!completed ? <CalmAlert type="warning" title="Select at least 1 friction action" /> : null}
-        <PrimaryButton disabled={!completed} onClick={onNext}>I made it harder</PrimaryButton>
+        {!completed && totalCount > 0 ? <CalmAlert type="warning" title="Choose at least 1 action you'll take." /> : null}
+        <PrimaryButton disabled={!completed && totalCount > 0} onClick={onNext}>
+          {totalCount === 0 ? "Continue" : "I'll make it harder"}
+        </PrimaryButton>
       </div>
     </>
   );
@@ -1356,11 +1401,11 @@ function GoalBrainDump({ onNext }: { onNext: () => void }) {
   const result = validateGoalBrainDump(onboarding.goalDrafts);
   return (
     <>
-      <ScreenIntro title="What feels important right now?" subtitle="Write 5–10 possible goals first. Don't filter yet — we'll narrow them down after." />
+      <ScreenIntro title="What feels important in this season?" subtitle="Write 5–10 possible goals first. Don't filter yet — we'll narrow them next." />
       <div className="mb-3 flex items-center justify-between">
-        <p className="text-xs text-monk-muted">Add anything that feels important for this season.</p>
+        <p className="text-xs text-monk-muted">Brain dump first. Selection comes later.</p>
         <span className="rounded-full bg-monk-soft px-2.5 py-1 text-xs font-bold text-monk-muted">
-          {filledCount}/10
+          {filledCount}/10 · min 5
         </span>
       </div>
       <div className="space-y-3">
@@ -1370,14 +1415,15 @@ function GoalBrainDump({ onNext }: { onNext: () => void }) {
               aria-label={`Goal ${index + 1}`}
               placeholder="Example: Build a study routine, finish a course…"
               value={goal.title}
-              onChange={(event) => updateGoalDraft(goal.id, event.target.value)}
+              maxLength={100}
+              onChange={(event) => updateGoalDraft(goal.id, event.target.value.slice(0, 100))}
             />
             {onboarding.goalDrafts.length > 5 ? (
               <button
                 type="button"
                 aria-label="Remove goal"
                 onClick={() => removeGoalDraft(goal.id)}
-                className="grid min-h-[48px] min-w-[48px] shrink-0 place-items-center rounded-xl border border-monk-border bg-monk-surface text-monk-muted"
+                className="grid min-h-12 min-w-12 shrink-0 place-items-center rounded-xl border border-monk-border bg-monk-surface text-monk-muted"
               >
                 <Minus size={18} strokeWidth={1.5} />
               </button>
@@ -1517,7 +1563,7 @@ function SeasonSetup({ onNext }: { onNext: () => void }) {
         />
         <DurationCard
           title="30 Days"
-          badge="Focused month"
+          badge="Recommended"
           description="Best for building consistency and daily momentum."
           selected={preset === "30_days"}
           onClick={() => selectPreset("30_days", 30)}
@@ -1540,7 +1586,7 @@ function SeasonSetup({ onNext }: { onNext: () => void }) {
           }}
         />
       </div>
-      <div className={`mt-4 ${preset !== "custom" ? "opacity-50" : ""}`}>
+      <div className={`mt-4 ${preset !== "custom" ? "opacity-50 pointer-events-none" : ""}`}>
         <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-monk-muted">
           Custom days (min 7)
         </label>
@@ -1580,11 +1626,11 @@ function NarrowGoals({ onNext }: { onNext: () => void }) {
   return (
     <>
       <ScreenIntro
-        title="Now choose your real focus"
-        subtitle="Pick 1–3 goals to keep. The rest can wait. Fewer goals means more energy for what matters."
+        title="What deserves your energy this season?"
+        subtitle="Pick 1–3 goals to keep. Unselected goals stay saved for later seasons."
       />
       <p className="mb-4 text-xs font-bold uppercase tracking-wider text-monk-muted">
-        Tap the goals you want to keep this season ({selectedCount}/3 selected)
+        Keep this season · {selectedCount}/3 selected
       </p>
       <div className="space-y-3">
         {goals.map((goal) => {
@@ -1594,7 +1640,7 @@ function NarrowGoals({ onNext }: { onNext: () => void }) {
               type="button"
               key={goal.id}
               onClick={() => toggleFocusGoal(goal.id)}
-              className={`flex min-h-[56px] w-full items-center justify-between gap-3 rounded-monk border px-4 py-3 text-left transition-colors duration-150 ${
+              className={`flex min-h-14 w-full items-center justify-between gap-3 rounded-monk border px-4 py-3 text-left transition-colors duration-150 ${
                 isSelected
                   ? "border-monk-accent bg-monk-accent-soft text-monk-text"
                   : "border-monk-border bg-monk-surface text-monk-text hover:border-monk-border-strong"
@@ -1605,10 +1651,10 @@ function NarrowGoals({ onNext }: { onNext: () => void }) {
                 className={`grid h-6 w-6 shrink-0 place-items-center rounded-full border ${
                   isSelected
                     ? "border-monk-accent bg-monk-accent text-white"
-                    : "border-monk-border bg-monk-surface text-transparent"
+                    : "border-transparent bg-transparent text-transparent"
                 }`}
               >
-                <Check size={14} strokeWidth={2.5} />
+                {isSelected ? <Check size={14} strokeWidth={2.5} /> : null}
               </span>
             </button>
           );
@@ -1712,7 +1758,6 @@ function KeystoneSetup({ onNext }: { onNext: () => void }) {
   );
 }
 
-
 function WeekSetup() {
   const navigate = useNavigate();
   const { onboarding, setWeeklyAllocation, createSeasonFromOnboarding, updateOnboarding } = useMonkStore();
@@ -1775,7 +1820,7 @@ function WeekSetup() {
     <>
       <ScreenIntro
         title="Shape your quiet week."
-        subtitle="Allocate 6 focus days across goals. One rest day stays open."
+        subtitle="Place 6 focus days across goals. One rest day stays open."
       />
 
       <Card className="mb-5 p-4">
@@ -1865,7 +1910,7 @@ function WeekSetup() {
 
       <Card className="mt-5 p-4">
         <div className="flex items-center justify-between gap-3">
-          <p className="text-xs font-bold uppercase tracking-wider text-monk-muted">Plan solidity</p>
+          <p className="text-xs font-bold uppercase tracking-wider text-monk-muted">Plan strength</p>
           <span className={`text-sm font-bold ${strengthColor}`}>{strength} · {planScore.total}</span>
         </div>
         <div className="mt-3 h-1.5 rounded-full bg-monk-soft overflow-hidden">
