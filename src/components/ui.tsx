@@ -126,7 +126,7 @@ export function PageHeader({
   return (
     <header className="mb-6 flex items-start justify-between gap-4">
       <div>
-        <h1 className="text-[32px] font-bold leading-10 tracking-tight">{title}</h1>
+        <h1 className="text-3xl font-bold leading-10 tracking-tight">{title}</h1>
         {subtitle ? <p className="mt-1 text-sm leading-6 text-monk-muted">{subtitle}</p> : null}
       </div>
       {rightSlot}
@@ -155,45 +155,57 @@ export function Card({
   return (
     <div
       className={`border bg-monk-surface ${
-        important ? "rounded-monk-lg border-monk-border-strong bg-monk-soft p-6" : "rounded-monk border-monk-border p-[22px]"
+        important ? "rounded-monk-lg border-monk-border-strong bg-monk-soft p-6" : "rounded-monk border-monk-border p-5"
       } ${className}`}
     >
       {children}
     </div>
   );
 }
-export function PrimaryButton(props: ButtonHTMLAttributes<HTMLButtonElement>) {
+export function PrimaryButton({
+  type = "button",
+  className = "",
+  onClick,
+  ...props
+}: ButtonHTMLAttributes<HTMLButtonElement>) {
   return (
     <button
       {...props}
-      onClick={(e) => { hapticPress("medium"); props.onClick?.(e); }}
-      className={`min-h-[50px] w-full rounded-monk px-6 text-base font-bold bg-monk-accent text-monk-bg shadow-none transition active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40 ${
-        props.className ?? ""
-      }`}
+      type={type}
+      onClick={(e) => { hapticPress("medium"); onClick?.(e); }}
+      className={`min-h-12 w-full rounded-monk px-6 text-base font-bold bg-monk-accent text-monk-bg transition duration-150 ease-monk active:scale-[0.98] enabled:hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-40 ${className}`}
     />
   );
 }
 
-export function SecondaryButton(props: ButtonHTMLAttributes<HTMLButtonElement>) {
+export function SecondaryButton({
+  type = "button",
+  className = "",
+  onClick,
+  ...props
+}: ButtonHTMLAttributes<HTMLButtonElement>) {
   return (
     <button
       {...props}
-      onClick={(e) => { hapticPress("light"); props.onClick?.(e); }}
-      className={`min-h-[46px] w-full rounded-monk border border-monk-border bg-monk-soft px-6 text-sm font-semibold text-monk-text transition active:scale-[0.98] disabled:opacity-45 ${
-        props.className ?? ""
-      }`}
+      type={type}
+      onClick={(e) => { hapticPress("light"); onClick?.(e); }}
+      className={`min-h-12 w-full rounded-monk border border-monk-border bg-monk-soft px-6 text-sm font-semibold text-monk-text transition duration-150 ease-monk active:scale-[0.98] enabled:hover:border-monk-border-strong enabled:hover:bg-monk-raised disabled:opacity-45 ${className}`}
     />
   );
 }
 
-export function GhostButton(props: ButtonHTMLAttributes<HTMLButtonElement>) {
+export function GhostButton({
+  type = "button",
+  className = "",
+  onClick,
+  ...props
+}: ButtonHTMLAttributes<HTMLButtonElement>) {
   return (
     <button
       {...props}
-      onClick={(e) => { hapticPress("light"); props.onClick?.(e); }}
-      className={`min-h-10 rounded-full px-4 text-xs font-medium text-monk-muted transition active:scale-[0.98] disabled:opacity-45 ${
-        props.className ?? ""
-      }`}
+      type={type}
+      onClick={(e) => { hapticPress("light"); onClick?.(e); }}
+      className={`min-h-11 rounded-full px-4 text-sm font-medium text-monk-muted transition duration-150 ease-monk active:scale-[0.98] enabled:hover:text-monk-text disabled:opacity-45 ${className}`}
     />
   );
 }
@@ -221,10 +233,13 @@ export function TextInput({
         {...props}
         value={value}
         minLength={minLength}
-        className={`min-h-[48px] w-full rounded-xl border border-monk-border bg-monk-surface px-4 text-sm text-monk-text placeholder:text-monk-text-soft focus:border-monk-accent focus:outline-none [scroll-margin-bottom:200px] ${className}`}
+        className={`min-h-12 w-full rounded-xl border border-monk-border bg-monk-surface px-4 text-sm text-monk-text placeholder:text-monk-text-soft transition-colors focus:border-monk-accent focus:outline-none [scroll-margin-bottom:200px] ${className}`}
       />
       {showCharCount && min > 0 && (
-        <div className={`mt-1 text-right text-xs ${count < min ? "text-monk-danger" : "text-monk-muted"}`}>
+        <div
+          aria-live="polite"
+          className={`mt-1 text-right text-xs tabular-nums ${count < min ? "text-monk-danger" : "text-monk-muted"}`}
+        >
           {count}/{min} characters
         </div>
       )}
@@ -255,10 +270,13 @@ export function Textarea({
         {...props}
         value={value}
         minLength={minLength}
-        className={`min-h-[120px] w-full resize-none rounded-xl border border-monk-border bg-monk-surface p-4 text-sm leading-6 text-monk-text placeholder:text-monk-text-soft focus:border-monk-accent focus:outline-none [scroll-margin-bottom:200px] ${className}`}
+        className={`min-h-[120px] w-full resize-none rounded-xl border border-monk-border bg-monk-surface p-4 text-sm leading-6 text-monk-text placeholder:text-monk-text-soft transition-colors focus:border-monk-accent focus:outline-none [scroll-margin-bottom:200px] ${className}`}
       />
       {showCharCount && min > 0 && (
-        <div className={`mt-1 text-right text-xs ${count < min ? "text-monk-danger" : "text-monk-muted"}`}>
+        <div
+          aria-live="polite"
+          className={`mt-1 text-right text-xs tabular-nums ${count < min ? "text-monk-danger" : "text-monk-muted"}`}
+        >
           {count}/{min} characters
         </div>
       )}
@@ -281,6 +299,7 @@ export function ChoiceChip({
     <button
       type="button"
       disabled={disabled}
+      aria-pressed={selected}
       onClick={() => { hapticPress("light"); onClick(); }}
       className={`min-h-11 rounded-full border px-4 text-sm transition-colors duration-150 disabled:opacity-45 ${
         selected
@@ -307,16 +326,9 @@ export function ChoiceCard({
   return (
     <button
       type="button"
+      aria-pressed={selected}
       onClick={() => { hapticPress("light"); onClick(); }}
-      onKeyDown={(e) => {
-        if (e.key === 'Enter' || e.key === ' ') {
-          e.preventDefault();
-          hapticPress("light");
-          onClick();
-        }
-      }}
-      tabIndex={0}
-      className={`relative w-full rounded-monk border p-4 min-h-[56px] text-left transition-colors duration-150 ${
+      className={`relative w-full rounded-monk border p-4 min-h-14 text-left transition-colors duration-150 ${
         selected
           ? "border-monk-accent bg-monk-accent-soft"
           : "border-monk-border bg-monk-surface hover:border-monk-border-strong"
@@ -340,7 +352,13 @@ export function ChoiceCard({
 export function StepIndicator({ currentStep, totalSteps }: { currentStep: number; totalSteps: number }) {
   const width = Math.max(4, Math.min(100, (currentStep / totalSteps) * 100));
   return (
-    <div aria-label={`Progress: step ${currentStep} of ${totalSteps}`}>
+    <div
+      role="progressbar"
+      aria-valuemin={1}
+      aria-valuemax={totalSteps}
+      aria-valuenow={currentStep}
+      aria-label={`Progress: step ${currentStep} of ${totalSteps}`}
+    >
       <div className="mb-2 flex items-center justify-between gap-3">
         <p className="text-xs text-monk-muted">Step {currentStep} of {totalSteps}</p>
         <p className="text-xs font-semibold tabular-nums text-monk-text-soft">{Math.round(width)}%</p>
@@ -367,19 +385,35 @@ export function CalmAlert({
     danger: "bg-monk-danger-soft border-monk-danger",
     success: "bg-monk-success-soft border-monk-success"
   };
+  const role = type === "danger" || type === "warning" ? "alert" : "status";
   return (
-    <div className={`rounded-monk border p-4 ${classes[type]}`}>
+    <div role={role} className={`rounded-monk border p-4 ${classes[type]}`}>
       <p className="text-sm font-medium">{title}</p>
       {description ? <p className="mt-1 text-sm leading-6 text-monk-muted">{description}</p> : null}
     </div>
   );
 }
 
-export function EmptyState({ title, description }: { title: string; description?: string }) {
+export function EmptyState({
+  title,
+  description,
+  actionLabel,
+  onAction
+}: {
+  title: string;
+  description?: string;
+  actionLabel?: string;
+  onAction?: () => void;
+}) {
   return (
     <Card className="bg-monk-soft text-center">
-      <p className="font-semibold">{title}</p>
+      <p className="font-semibold text-monk-text">{title}</p>
       {description ? <p className="mt-2 text-sm leading-6 text-monk-muted">{description}</p> : null}
+      {actionLabel && onAction ? (
+        <PrimaryButton type="button" className="mt-5" onClick={onAction}>
+          {actionLabel}
+        </PrimaryButton>
+      ) : null}
     </Card>
   );
 }
@@ -389,7 +423,7 @@ export function SettingsLink() {
     <NavLink
       to={routes.settings}
       aria-label="Settings"
-      className="grid h-12 w-12 place-items-center rounded-full border border-monk-border bg-monk-surface text-monk-muted"
+      className="grid h-12 w-12 place-items-center rounded-full border border-monk-border bg-monk-surface text-monk-muted transition duration-150 hover:border-monk-border-strong hover:text-monk-text"
     >
       <Settings size={20} strokeWidth={1.5} />
     </NavLink>
@@ -405,21 +439,21 @@ function BottomNav() {
     { to: routes.journal, label: "Journal", icon: BookOpen }
   ];
   return (
-    <nav>
-      <div className="mx-auto grid h-[58px] max-w-[360px] grid-cols-4 rounded-full border border-monk-border-strong bg-monk-surface p-1">
+    <nav aria-label="Main">
+      <div className="mx-auto grid h-[58px] max-w-[360px] grid-cols-4 rounded-full border border-monk-border-strong bg-monk-surface/95 p-1 shadow-soft backdrop-blur-sm">
         {tabs.map((tab) => {
           const Icon = tab.icon;
-          const active = location.pathname === tab.to;
+          const active = location.pathname === tab.to || location.pathname.startsWith(`${tab.to}/`);
           return (
             <NavLink
               key={tab.to}
               to={tab.to}
               aria-current={active ? "page" : undefined}
-              className={`flex min-h-[48px] flex-col items-center justify-center gap-0.5 rounded-full text-xs font-medium transition ${
-                active ? "bg-monk-accent-soft text-monk-accent" : "text-monk-text-soft"
+              className={`flex min-h-12 flex-col items-center justify-center gap-0.5 rounded-full text-xs font-medium transition duration-150 ${
+                active ? "bg-monk-accent-soft text-monk-accent" : "text-monk-text-soft hover:text-monk-muted"
               }`}
             >
-              <Icon size={18} strokeWidth={1.5} />
+              <Icon size={18} strokeWidth={active ? 2 : 1.5} />
               <span>{tab.label}</span>
             </NavLink>
           );
@@ -445,8 +479,9 @@ export function DurationCard({
   return (
     <button
       type="button"
-      onClick={onClick}
-      className={`w-full rounded-monk border p-4 text-left transition ${
+      aria-pressed={selected}
+      onClick={() => { hapticPress("light"); onClick(); }}
+      className={`w-full rounded-monk border p-4 text-left transition duration-150 ${
         selected ? "border-monk-accent bg-monk-accent-soft" : "border-monk-border bg-monk-surface hover:bg-monk-soft hover:border-monk-border-strong"
       }`}
     >
@@ -502,34 +537,6 @@ export function SeasonPreviewCard({
         <span>{startLabel}</span>
         <span>{endLabel}</span>
       </div>
-    </div>
-  );
-}
-
-function ScrollHideWrapper({ children }: { children: ReactNode }) {
-  const [showNav, setShowNav] = useState(true);
-
-  useEffect(() => {
-    const sentinel = document.createElement("div");
-    sentinel.style.cssText = "position:absolute;top:80px;height:1px;width:1px;pointer-events:none";
-    document.body.appendChild(sentinel);
-    let lastY = 0;
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        const currentY = window.scrollY;
-        if (!entry.isIntersecting && currentY > lastY) setShowNav(false);
-        else setShowNav(true);
-        lastY = currentY;
-      },
-      { threshold: 0 }
-    );
-    observer.observe(sentinel);
-    return () => { observer.disconnect(); sentinel.remove(); };
-  }, []);
-
-  return (
-    <div className="min-h-dvh">
-      {children}
     </div>
   );
 }

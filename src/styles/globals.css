@@ -38,9 +38,15 @@ body,
 body {
   margin: 0;
   color: var(--color-text);
+  font-family: Outfit, ui-sans-serif, system-ui, sans-serif;
   overscroll-behavior: none;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
+}
+
+::selection {
+  background: rgba(164, 139, 94, 0.35);
+  color: var(--color-text);
 }
 
 /* Mobile-safe content area */
@@ -87,24 +93,46 @@ button {
 
 /* Page transitions */
 .page-enter {
-  animation: slideIn 0.15s ease-out forwards;
+  animation: slideIn 0.22s cubic-bezier(0.22, 1, 0.36, 1) forwards;
 }
 
 @keyframes slideIn {
   from {
     opacity: 0;
-    transform: translateX(12px);
+    transform: translateY(6px);
   }
   to {
     opacity: 1;
-    transform: translateX(0);
+    transform: translateY(0);
   }
 }
 
-/* Prevent layout shift on button active */
+/* Soft press feedback without layout shift */
 button {
   -webkit-tap-highlight-color: transparent;
   touch-action: manipulation;
+}
+
+/* Skeleton pulse for calm loading states */
+@keyframes monkPulse {
+  0%, 100% { opacity: 0.45; }
+  50% { opacity: 0.85; }
+}
+.animate-monk-pulse {
+  animation: monkPulse 1.4s ease-in-out infinite;
+}
+
+/* Screen-reader only utility */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
 }
 
 /* Dark parchment — analog feel that fits dark mode */

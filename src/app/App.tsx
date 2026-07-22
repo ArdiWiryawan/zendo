@@ -87,7 +87,7 @@ import {
 import { selectActiveGoals, selectCurrentWeeklyPlan, selectTodayPlan, selectJournalEntryForToday, selectEnergyForDate, selectTodayLearningSessions, selectTotalFocusSecondsForDate } from "../store/selectors";
 import { useMonkStore } from "../store/useMonkStore";
 import type { EnergyLevel, FocusSession, FocusSessionPreset, JournalAnswers, JournalEntry, LearningType, SeasonDurationPreset, TimelineStatus, LearningSourceType, LearningSession, TimelineEvent, TimelineEventType, MonkMVPState } from "../types/app";
-import { playZenBell } from "../lib/audio";
+import { playZenBell, unlockAudio } from "../lib/audio";
 import { CircularProgress } from "../components/CircularProgress";
 import JournalNotebook, { NotebookEditor } from "../components/JournalNotebook";
 import JournalPacks from "../components/JournalPacks";
@@ -303,12 +303,18 @@ export default function App() {
 
 function Splash() {
   return (
-    <div className="flex min-h-[70dvh] flex-col items-center justify-center text-center">
+    <div
+      role="status"
+      aria-live="polite"
+      aria-busy="true"
+      className="flex min-h-[70dvh] flex-col items-center justify-center text-center"
+    >
       <div className="mb-5 grid h-16 w-16 place-items-center rounded-full border border-monk-border-strong bg-monk-surface">
-        <span className="h-8 w-8 rounded-full border-2 border-monk-accent" />
+        <span className="h-8 w-8 animate-monk-pulse rounded-full border-2 border-monk-accent" />
       </div>
-      <h1 className="text-[40px] font-bold leading-[48px] tracking-normal">Zendo</h1>
+      <h1 className="text-4xl font-bold leading-[48px] tracking-tight">Zendo</h1>
       <p className="mt-3 text-sm text-monk-muted">A quiet digital temple for focus.</p>
+      <span className="sr-only">Loading your season…</span>
     </div>
   );
 }
@@ -339,9 +345,15 @@ function OnboardingGate() {
 
 function ProtectedMain({ children, allowEnded = false }: { children: JSX.Element; allowEnded?: boolean }) {
   const { userProfile, activeSeason, ensureSeasonFresh } = useMonkStore();
+  const location = useLocation();
+
   useEffect(() => {
     ensureSeasonFresh();
   }, [ensureSeasonFresh]);
+
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [location.pathname]);
 
   if (!userProfile?.onboardingCompleted || !activeSeason) {
     return <Navigate to={routes.onboardingWelcome} replace />;
@@ -739,6 +751,7 @@ function FocusSessionStarter({ compact = false }: { compact?: boolean }) {
           <PrimaryButton
             className="min-h-12"
             onClick={() => {
+              unlockAudio();
               if ("Notification" in window && Notification.permission === "default") {
                 Notification.requestPermission();
               }
@@ -912,7 +925,7 @@ function OnboardingScreen({ path }: { path: string }) {
 function ScreenIntro({ title, subtitle }: { title: string; subtitle: string }) {
   return (
     <div className="mb-6 mt-4">
-      <h1 className="text-[26px] font-semibold leading-9 tracking-tight">{title}</h1>
+      <h1 className="text-2xl font-semibold leading-9 tracking-tight">{title}</h1>
       <p className="mt-3 text-[15px] leading-6 text-monk-muted">{subtitle}</p>
     </div>
   );
@@ -994,7 +1007,12 @@ function ValuesStep({ onNext }: { onNext: () => void }) {
       </div>
 
       <div className="mt-auto space-y-3 pt-8">
-        {!canContinue ? <CalmAlert type="warning" title="Complete all fields to continue." /> : null}
+        {!canContinue ? (
+          <CalmAlert
+            type="warning"
+            title="Pick 3 to protect, 3 to sacrifice, and write why (20+ chars)."
+          />
+        ) : null}
         <PrimaryButton disabled={!canContinue} onClick={handleNext}>Continue</PrimaryButton>
       </div>
     </>
@@ -2203,6 +2221,7 @@ function TodayScreen() {
                       : "border-monk-border bg-monk-surface hover:border-monk-success text-monk-success"
                   }`}
                   onClick={() => {
+                    unlockAudio();
                     const willBeCompleted = !isDone;
                     if (willBeCompleted) playZenBell();
                     store.toggleTodayCompletion();
@@ -2213,11 +2232,17 @@ function TodayScreen() {
               </div>
 
               {checklist.length ? (
-                <div className="mt-4 flex flex-wrap gap-1.5" aria-label={`Day checklist ${checklistDone} of ${checklist.length}`}>
+                <div
+                  className="mt-4 flex flex-wrap gap-1.5"
+                  role="list"
+                  aria-label={`Day checklist ${checklistDone} of ${checklist.length}`}
+                >
                   {checklist.map((item) => (
                     <span
                       key={item.id}
-                      className={`rounded-full border px-2.5 py-1 text-[11px] font-medium ${
+                      role="listitem"
+                      aria-label={`${item.label}: ${item.done ? "done" : "not done"}`}
+                      className={`rounded-full border px-2.5 py-1 text-xs font-medium ${
                         item.done
                           ? "border-monk-success/30 bg-monk-success-soft text-monk-success"
                           : "border-monk-border/60 bg-monk-bg text-monk-text-soft"
@@ -2886,7 +2911,12 @@ function FlowPickToday({ goals }: { goals: ReturnType<typeof selectActiveGoals> 
     (day) => day.weeklyPlanId === weeklyPlan?.id && day.dayType === "rest" && day.status !== "missed"
   );
   if (!weeklyPlan) {
-    return <EmptyState title="Shape this week." description="Six focus days. One rest day." />;
+    return (
+      <EmptyState
+        title="Shape this week."
+        description="Six focus days. One rest day. Your weekly plan appears once a season is active."
+      />
+    );
   }
 
   const ranked = weeklyPlan.goalAllocations
@@ -3111,7 +3141,12 @@ function WeekScreen() {
       />
       <div className="space-y-5">
         {!weeklyPlan || !stats ? (
-          <EmptyState title="Shape this week." description="Your weekly rhythm appears once a season is active." />
+          <EmptyState
+            title="Shape this week."
+            description="Your weekly rhythm appears once a season is active."
+            actionLabel="Open Today"
+            onAction={() => navigate(routes.today)}
+          />
         ) : (
           <>
             <DefenseChips />
@@ -3528,6 +3563,7 @@ function FocusScreen() {
   }, []);
 
   const toggleMusicHandler = () => {
+    unlockAudio();
     const on = toggleMusic();
     setMusicOn(on);
   };
@@ -3536,8 +3572,12 @@ function FocusScreen() {
     return (
       <>
         <PageHeader title="Focus" subtitle="Choose today first." />
-        <EmptyState title="Choose what deserves today." description="One theme is enough." />
-        <PrimaryButton className="mt-5" onClick={() => navigate(routes.today)}>Pick Today</PrimaryButton>
+        <EmptyState
+          title="Choose what deserves today."
+          description="One theme is enough. Pick Today first, then start a quiet session."
+          actionLabel="Pick Today"
+          onAction={() => navigate(routes.today)}
+        />
       </>
     );
   }
@@ -3558,7 +3598,7 @@ function FocusScreen() {
                 ? "border-monk-accent/40 bg-monk-accent-soft text-monk-accent"
                 : "border-monk-border bg-monk-surface text-monk-muted hover:border-monk-accent hover:text-monk-accent"
             }`}
-            aria-label={musicOn ? "Mute music" : "Unmute music"}
+            aria-label={musicOn ? "Turn ambient sound off" : "Turn ambient sound on"}
           >
             {musicOn ? <Volume2 size={18} strokeWidth={1.5} /> : <VolumeX size={18} strokeWidth={1.5} />}
           </button>
@@ -4352,6 +4392,7 @@ function TimelineEventRow({ event }: { event: TimelineEvent }) {
 }
 
 function TimelineScreen() {
+  const navigate = useNavigate();
   const store = useMonkStore();
   const season = store.activeSeason!;
   const activeGoals = selectActiveGoals(store);
@@ -4527,10 +4568,10 @@ function TimelineScreen() {
                 )}
                 {/* Legend */}
                 <div className="flex items-center gap-3 pt-1 flex-wrap">
-                  {([["bg-monk-success/75", "Done"], ["bg-monk-accent/60", "Partial"], ["bg-monk-rest/45", "Rest"], ["bg-monk-danger/55", "Drift"], ["bg-monk-text-soft/20", "Missed"]] as const).map(([cls, label]) => (
+                  {([["bg-monk-success/75", "Done"], ["bg-monk-accent/60", "Partial"], ["bg-monk-rest/45", "Rest"], ["bg-monk-danger/55", "Relapse"], ["bg-monk-text-soft/20", "Missed"]] as const).map(([cls, label]) => (
                     <span key={label} className="flex items-center gap-1">
-                      <span className={`inline-block w-2 h-2 rounded-[3px] ${cls}`} />
-                      <span className="text-[9px] text-monk-muted/70">{label}</span>
+                      <span className={`inline-block h-2 w-2 rounded-[3px] ${cls}`} aria-hidden />
+                      <span className="text-[10px] text-monk-muted/80">{label}</span>
                     </span>
                   ))}
                 </div>
@@ -4545,7 +4586,9 @@ function TimelineScreen() {
           {groupedEvents.length === 0 ? (
             <EmptyState
               title="No activity yet"
-              description="Focus sessions, learning, and reflections appear here."
+              description="Focus sessions, learning, and reflections appear here once you start moving."
+              actionLabel="Start today"
+              onAction={() => navigate(routes.today)}
             />
           ) : (
             <div className="space-y-5">
@@ -4795,7 +4838,14 @@ function JournalLibraryScreen() {
 
         {libTab === "notebook" ? (
           notebookEntries.length === 0
-            ? <EmptyState title="No notebook entries" description="Write freely in the Notebook tab." />
+            ? (
+              <EmptyState
+                title="Notebook is empty"
+                description="Capture free thoughts that don't fit a daily reflection."
+                actionLabel="Open Notebook"
+                onAction={() => navigate(routes.notebook)}
+              />
+            )
             : [...notebookEntries]
               .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
               .map((entry) => (
@@ -4810,7 +4860,14 @@ function JournalLibraryScreen() {
               ))
         ) : libTab === "packs" ? (
           packSessions.length === 0
-            ? <EmptyState title="No pack sessions completed" description="Complete a themed journal pack first." />
+            ? (
+              <EmptyState
+                title="No pack sessions yet"
+                description="Guided packs help you reflect with a clear prompt sequence."
+                actionLabel="Browse packs"
+                onAction={() => navigate(routes.packs)}
+              />
+            )
             : [...packSessions]
               .sort((a, b) => new Date(b.completedAt!).getTime() - new Date(a.completedAt!).getTime())
               .map((session) => {
@@ -4830,7 +4887,14 @@ function JournalLibraryScreen() {
               })
         ) : (
           journalEntries.length === 0
-            ? <EmptyState title="No entries yet" description="Morning pages and reflections appear here." />
+            ? (
+              <EmptyState
+                title="No reflections yet"
+                description="Morning pages and evening reflections collect here as you write."
+                actionLabel="Write today"
+                onAction={() => navigate(routes.journal)}
+              />
+            )
             : [...journalEntries]
               .sort((a, b) => b.date.localeCompare(a.date))
               .map((entry) => {
@@ -5063,29 +5127,35 @@ function SettingsScreen() {
 
         {/* Preferences */}
         <div>
-          <p className="text-[10px] font-bold uppercase tracking-widest text-monk-muted px-1 mb-2">Preferences</p>
-          <Card className="divide-y divide-monk-border/40 p-0 overflow-hidden">
-            <SettingsRow title="Notifications" description="Daily reflection reminder.">
+          <p className="mb-2 px-1 text-xs font-bold uppercase tracking-widest text-monk-muted">Preferences</p>
+          <Card className="divide-y divide-monk-border/40 overflow-hidden p-0">
+            <SettingsRow title="Notifications" description="Gentle daily reminder to reflect.">
               <button
                 type="button"
+                role="switch"
+                aria-checked={store.appSettings.notificationEnabled}
+                aria-label="Toggle notifications"
                 onClick={async () => {
                   if ("Notification" in window && Notification.permission !== "granted") {
                     await Notification.requestPermission();
                   }
                   store.updateSettings({ notificationEnabled: !store.appSettings.notificationEnabled });
                 }}
-                className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors ${store.appSettings.notificationEnabled ? "bg-monk-accent" : "bg-monk-border"}`}
+                className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors ${store.appSettings.notificationEnabled ? "bg-monk-accent" : "bg-monk-border"}`}
               >
-                <span className={`inline-block h-3.5 w-3.5 rounded-full bg-white shadow transition-transform ${store.appSettings.notificationEnabled ? "translate-x-[18px]" : "translate-x-[3px]"}`} />
+                <span className={`inline-block h-4 w-4 rounded-full bg-white shadow transition-transform ${store.appSettings.notificationEnabled ? "translate-x-[22px]" : "translate-x-1"}`} />
               </button>
             </SettingsRow>
-            <SettingsRow title="Grey Mode Guide" description="Mark digital detox guide as read.">
+            <SettingsRow title="Digital detox guide" description="Mark the grey-mode onboarding guide as complete.">
               <button
                 type="button"
+                role="switch"
+                aria-checked={store.appSettings.greyModeGuideCompleted}
+                aria-label="Toggle digital detox guide completed"
                 onClick={() => store.updateSettings({ greyModeGuideCompleted: !store.appSettings.greyModeGuideCompleted })}
-                className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors ${store.appSettings.greyModeGuideCompleted ? "bg-monk-accent" : "bg-monk-border"}`}
+                className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors ${store.appSettings.greyModeGuideCompleted ? "bg-monk-accent" : "bg-monk-border"}`}
               >
-                <span className={`inline-block h-3.5 w-3.5 rounded-full bg-white shadow transition-transform ${store.appSettings.greyModeGuideCompleted ? "translate-x-[18px]" : "translate-x-[3px]"}`} />
+                <span className={`inline-block h-4 w-4 rounded-full bg-white shadow transition-transform ${store.appSettings.greyModeGuideCompleted ? "translate-x-[22px]" : "translate-x-1"}`} />
               </button>
             </SettingsRow>
           </Card>
@@ -5093,7 +5163,7 @@ function SettingsScreen() {
 
         {/* Data & Export */}
         <div>
-          <p className="text-[10px] font-bold uppercase tracking-widest text-monk-muted px-1 mb-2">Data & Export</p>
+          <p className="mb-2 px-1 text-xs font-bold uppercase tracking-widest text-monk-muted">Data & Export</p>
           <Card className="divide-y divide-monk-border/40 p-0 overflow-hidden">
             <SettingsRow title="Calendar Reminder" description="Download .ics file — import into Google Calendar, Apple Calendar, or Outlook.">
               <GhostButton onClick={downloadReminderIcs}>Export .ics</GhostButton>
@@ -5297,8 +5367,12 @@ function LibraryScreen() {
           <div className="space-y-3 pt-2">
             {filteredReflections.length === 0 ? (
               <EmptyState
-                title="Your journal is still empty."
-                description="Write your first reflection to understand what's really happening in your season."
+                title={searchQuery ? "No matching reflections" : "Your journal is still empty."}
+                description={
+                  searchQuery
+                    ? "Try a different search, or clear the box to see everything."
+                    : "Write your first reflection to understand what's really happening in your season."
+                }
               />
             ) : (
               filteredReflections.map((j) => (
@@ -5382,8 +5456,12 @@ function LibraryScreen() {
           <div className="space-y-3 pt-2">
             {filteredLearning.length === 0 ? (
               <EmptyState
-                title="No learning notes yet."
-                description="Add one lesson from a book, course, podcast, or video that can support your season."
+                title={searchQuery ? "No matching notes" : "No learning notes yet."}
+                description={
+                  searchQuery
+                    ? "Try a different search, or clear the box to see everything."
+                    : "Add one lesson from a book, course, podcast, or video that can support your season."
+                }
               />
             ) : (
               filteredLearning.map((l) => {
@@ -5495,7 +5573,16 @@ function LibraryScreen() {
           <div className="space-y-3 pt-2">
             {activeTab === "focus" && (
               filteredFocus.length === 0 ? (
-                <EmptyState title="No focus sessions found" description="Complete a focus session to see it here." />
+                <EmptyState
+                  title={searchQuery ? "No matching sessions" : "No focus sessions yet"}
+                  description={
+                    searchQuery
+                      ? "Try a different search, or clear the box to see everything."
+                      : "Complete a quiet focus block and it will land here."
+                  }
+                  actionLabel={searchQuery ? undefined : "Start focus"}
+                  onAction={searchQuery ? undefined : () => navigate(routes.focus)}
+                />
               ) : (
                 filteredFocus.map((s) => {
                   const goal = store.goals.find((g) => g.id === s.goalId);
@@ -5521,7 +5608,14 @@ function LibraryScreen() {
 
             {activeTab === "drifts" && (
               filteredDrifts.length === 0 ? (
-                <EmptyState title="No drift logs found" description="You are fully on course." />
+                <EmptyState
+                  title={searchQuery ? "No matching drift logs" : "No drift logs"}
+                  description={
+                    searchQuery
+                      ? "Try a different search, or clear the box to see everything."
+                      : "Clean track so far. Drift notes only appear when you log a slip."
+                  }
+                />
               ) : (
                 filteredDrifts.map((r) => (
                   <Card key={r.id} className="p-4 bg-monk-surface/30 border-monk-danger/20">
