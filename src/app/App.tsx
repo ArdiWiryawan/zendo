@@ -178,8 +178,9 @@ const JOURNAL_QUESTION_LABELS: Record<keyof JournalAnswers, string> = {
 };
 
 function getDailyJournalPromptForDate(date: string) {
-  const dayNumber = getDayNumber(date);
-  return promptsDailyJournal[dayNumber % promptsDailyJournal.length];
+  // Fixed epoch so rotation is calendar-stable and independent of season start.
+  const dayNumber = getDayNumber(date, "2020-01-01");
+  return promptsDailyJournal[Math.abs(dayNumber) % promptsDailyJournal.length];
 }
 
 function getJournalAnswerItems(answers: JournalAnswers, date?: string) {
