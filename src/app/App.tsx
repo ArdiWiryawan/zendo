@@ -72,7 +72,7 @@ import {
 import { createId } from "../lib/ids";
 import { formatIntention, parseIntention } from "../lib/implementationIntention";
 import { capacityCheck, planStrengthLabel, scorePlan } from "../lib/planScoring";
-import { JOURNAL_DRAFT_KEY } from "../lib/storage";
+import { exportStateAsJson, JOURNAL_DRAFT_KEY } from "../lib/storage";
 import {
   validateFocusGoalSelection,
   validateGoalBrainDump,
@@ -91,118 +91,14 @@ import { playZenBell, unlockAudio } from "../lib/audio";
 import { CircularProgress } from "../components/CircularProgress";
 import JournalNotebook, { NotebookEditor } from "../components/JournalNotebook";
 import JournalPacks from "../components/JournalPacks";
-
-const promptsBig90Days = [
-  "Kalau 90 hari ke depan berjalan dengan sangat baik, apa yang berubah dalam hidup saya?",
-  "Versi diri seperti apa yang ingin saya bangun dalam 90 hari ke depan?",
-  "Apa 3 hal yang paling ingin saya perbaiki sebelum 90 hari ini selesai?",
-  "Apa masalah terbesar yang membuat hidup saya terasa stuck saat ini?",
-  "Apa satu keputusan yang kalau saya ambil sekarang, akan membuat 90 hari ke depan jauh lebih jelas?",
-  "Apa yang selama ini saya tunda, padahal saya tahu itu penting?",
-  "Apa hal yang harus saya berhenti lakukan agar 90 hari ini berhasil?",
-  "Apa hal kecil yang kalau saya lakukan setiap hari, hasilnya akan besar dalam 90 hari?"
-];
-
-const promptsFocusGoal = [
-  "Apa satu goal utama yang paling layak saya perjuangkan dalam 90 hari ke depan?",
-  "Kenapa goal ini penting untuk hidup saya sekarang?",
-  "Kalau saya hanya boleh fokus pada satu area hidup, area mana yang paling butuh perhatian?",
-  "Apa goal yang terlihat menarik, tapi sebenarnya hanya distraksi?",
-  "Apa goal yang kalau tercapai akan membuat goal lain jadi lebih mudah?",
-  "Apa konsekuensi kalau saya tidak berubah dalam 90 hari ke depan?",
-  "Apa bukti nyata bahwa saya benar-benar serius dengan goal ini?"
-];
-
-const promptsLifeAudit = [
-  "Apa kebiasaan saya saat ini yang sedang membawa saya naik?",
-  "Apa kebiasaan saya saat ini yang diam-diam menghancurkan progress saya?",
-  "Apa 3 aktivitas yang paling banyak membuang waktu saya?",
-  "Kapan saya merasa paling produktif, dan karena apa?",
-  "Kapan saya paling mudah terdistraksi, dan biasanya pemicunya apa?",
-  "Apa yang selama ini membuat saya lelah secara mental?",
-  "Apa yang membuat saya merasa hidup, bersemangat, dan punya arah?"
-];
-
-const promptsSystemDesign = [
-  "Rutinitas pagi seperti apa yang akan membantu saya menang hari ini?",
-  "Rutinitas malam seperti apa yang akan membantu saya menutup hari dengan tenang?",
-  "Apa sistem sederhana yang bisa membuat saya konsisten tanpa bergantung pada motivasi?",
-  "Apa lingkungan yang harus saya ubah agar kebiasaan baik jadi lebih mudah?",
-  "Apa distraksi yang harus saya jauhkan dari hidup saya selama 90 hari?",
-  "Apa aturan pribadi yang perlu saya buat untuk menjaga fokus?",
-  "Apa indikator sederhana bahwa hari ini adalah hari yang berhasil?",
-  "Apa hal minimum yang tetap harus saya lakukan bahkan saat saya capek?"
-];
-
-const promptsIdentityDiscipline = [
-  "Saya ingin menjadi orang seperti apa dalam 90 hari ke depan?",
-  "Apa yang akan dilakukan versi diri saya yang lebih disiplin hari ini?",
-  "Apa yang harus saya buktikan kepada diri sendiri, bukan kepada orang lain?",
-  "Apa janji kecil yang harus saya tepati setiap hari?",
-  "Apa standar baru yang ingin saya bangun untuk diri saya sendiri?",
-  "Apa kebiasaan lama yang sudah tidak cocok dengan identitas baru saya?",
-  "Kalau saya benar-benar menghormati masa depan saya, apa yang akan saya lakukan hari ini?"
-];
-
-const promptsWeeklyReview = [
-  "Apa progress terbesar saya minggu ini?",
-  "Apa hal yang belum berjalan sesuai rencana?",
-  "Apa pelajaran paling penting dari minggu ini?",
-  "Apa yang membuat saya terdistraksi minggu ini?",
-  "Apa yang memberi saya energi minggu ini?",
-  "Apa yang harus saya kurangi minggu depan?",
-  "Apa satu perubahan kecil yang akan membuat minggu depan lebih baik?",
-  "Apakah tindakan saya minggu ini sudah sesuai dengan goal 90 hari saya?"
-];
-
-const promptsDailyJournal = [
-  "Apa yang sebenarnya kamu pikirkan saat ini — tanpa menyaringnya?",
-  "Kalau hari ini cuma satu hal yang berjalan benar-benar baik, apa itu?",
-  "Apa yang kamu hindari seharian ini — dan apakah itu sepenting yang kamu kira?",
-  "Kapan terakhir kali kamu merasa benar-benar hadir, dan apa yang terjadi saat itu?",
-  "Apa yang akan kamu ubah besok, kalau hari ini mengajarkan sesuatu?",
-  "Apa yang berat di pundakmu sekarang — dan apa yang kamu syukuri?",
-  "Apa yang membuatmu berhenti sejenak hari ini, meskipun kamu tidak menyadarinya?",
-  "Kalau kamu bisa mengulang satu momen hari ini, mana yang akan kamu pilih?",
-  "Apa yang sebenarnya kamu butuhkan saat ini — bukan yang kamu inginkan?",
-  "Apa yang akan kamu ingat dari hari ini, sebulan lagi?",
-];
-
-const JOURNAL_QUESTION_LABELS: Record<keyof JournalAnswers, string> = {
-  whatMovedToday: "What moved today?",
-  whatDistractedMe: "What distracted me?",
-  whatDidILearn: "What did I learn today?",
-  whatShouldBeEasierTomorrow: "What should be easier tomorrow?",
-  whatShouldBeHarderTomorrow: "What should be harder tomorrow?",
-  morningPages: "Morning Pages"
-};
-
-function getDailyJournalPromptForDate(date: string) {
-  // Fixed epoch so rotation is calendar-stable and independent of season start.
-  const dayNumber = getDayNumber(date, "2020-01-01");
-  return promptsDailyJournal[Math.abs(dayNumber) % promptsDailyJournal.length];
-}
-
-function getJournalAnswerItems(answers: JournalAnswers, date?: string) {
-  return (Object.keys(JOURNAL_QUESTION_LABELS) as Array<keyof JournalAnswers>)
-    .map((key) => ({
-      id: key,
-      question: key === "whatMovedToday" && date ? getDailyJournalPromptForDate(date) : JOURNAL_QUESTION_LABELS[key],
-      answer: answers[key]?.trim()
-    }))
-    .filter((item): item is { id: keyof JournalAnswers; question: string; answer: string } => Boolean(item.answer));
-}
-
-const promptsClosing90Days = [
-  "Apa perubahan terbesar dalam diri saya setelah 90 hari ini?",
-  "Apa kebiasaan yang paling berdampak?",
-  "Apa goal yang tercapai, dan apa yang belum?",
-  "Apa pelajaran terbesar tentang diri saya?",
-  "Apa yang ternyata tidak sepenting yang saya kira?",
-  "Apa yang ingin saya lanjutkan untuk 90 hari berikutnya?",
-  "Apa nasihat yang akan saya berikan kepada diri saya 90 hari yang lalu?",
-  "Versi diri saya yang baru ini ingin membangun apa selanjutnya?"
-];
+import { t, useT, useLanguage } from "../i18n";
+import {
+  getDailyJournalPromptForDate,
+  getJournalAnswerItems,
+  getPromptPack,
+  getJournalQuestionLabels,
+} from "../i18n/prompts";
+import type { AppLanguage } from "../types/app";
 
 export default function App() {
   const hydrate = useMonkStore((state) => state.hydrate);
@@ -524,6 +420,7 @@ function FocusSessionPanel({
   onOpenFocus?: () => void;
 }) {
   const store = useMonkStore();
+  const t = useT();
   const phase = getCurrentFocusPhase(session);
   const targetSeconds = Math.max(1, phase.plannedMinutes * 60);
   const elapsed = session.elapsedSeconds || 0;
@@ -538,6 +435,8 @@ function FocusSessionPanel({
   const isPaused = session.status === "paused";
   const breakGuidance = getBreakGuidance(session);
   const intention = parseIntention(mainAction || "");
+  const distractionMatch = /^distractions:(\d+)/.exec(session.note ?? "");
+  const distractionCount = distractionMatch ? Number(distractionMatch[1]) : 0;
   const ringSize = compact ? 148 : 196;
   const ringColor = isBreak ? "var(--color-rest)" : isPaused ? "var(--color-warning)" : "var(--color-accent)";
 
@@ -554,15 +453,15 @@ function FocusSessionPanel({
         </span>
         {isPaused ? (
           <span className="rounded-full border border-monk-warning/40 bg-monk-warning-soft px-2.5 py-1 text-[10px] font-bold uppercase tracking-widest text-monk-warning">
-            Paused
+            {t("focus.paused")}
           </span>
         ) : isBreak ? (
           <span className="rounded-full border border-monk-rest/40 bg-monk-rest-soft px-2.5 py-1 text-[10px] font-bold uppercase tracking-widest text-monk-rest">
-            Break
+            {t("focus.break")}
           </span>
         ) : (
           <span className="rounded-full border border-monk-accent/30 bg-monk-accent-soft px-2.5 py-1 text-[10px] font-bold uppercase tracking-widest text-monk-accent">
-            Focus
+            {t("focus.focus")}
           </span>
         )}
       </div>
@@ -580,7 +479,7 @@ function FocusSessionPanel({
             {formatTimer(remaining)}
           </p>
           <p className="mt-2 text-[10px] font-bold uppercase tracking-wider text-monk-muted">
-            {isBreak ? "break left" : "focus left"}
+            {isBreak ? t("focus.breakLeft") : t("focus.focusLeft")}
           </p>
         </CircularProgress>
       </div>
@@ -607,27 +506,41 @@ function FocusSessionPanel({
       ) : (
         <div className={`${compact ? "" : "mx-auto max-w-sm"} mb-5 text-left`}>
           <div className="rounded-2xl border border-monk-border bg-monk-bg p-4">
-            <p className="text-[10px] font-bold uppercase tracking-wider text-monk-muted">This block</p>
+            <p className="text-[10px] font-bold uppercase tracking-wider text-monk-muted">{t("focus.thisBlock")}</p>
             {intention.when && intention.action ? (
               <div className="mt-1.5 space-y-1">
-                <p className="text-xs text-monk-muted">When {intention.when}</p>
-                <p className="text-sm font-semibold text-monk-text">I will {intention.action}</p>
+                <p className="text-xs text-monk-muted">{t("today.whenShown", { when: intention.when })}</p>
+                <p className="text-sm font-semibold text-monk-text">{t("today.iWillShown", { action: intention.action })}</p>
               </div>
             ) : (
               <p className="mt-1.5 text-sm font-semibold text-monk-text">
-                {mainAction || "Stay with one task."}
+                {mainAction || t("focus.stayOneTask")}
               </p>
             )}
             <p className="mt-3 text-xs text-monk-muted">
-              {getSessionLeftLabel(session)} · distractions on paper, not on screen
+              {getSessionLeftLabel(session)} · {t("focus.distractionsNote")}
             </p>
           </div>
+          {!isBreak ? (
+            <div className="mt-3 flex items-center justify-center gap-2">
+              <button
+                type="button"
+                className="rounded-full border border-monk-border bg-monk-bg px-3 py-1.5 text-xs font-semibold text-monk-muted transition hover:border-monk-accent hover:text-monk-accent active:scale-95"
+                onClick={() => store.bumpFocusDistraction(session.id)}
+              >
+                {t("focus.distractionTap")}
+                {distractionCount > 0 ? (
+                  <span className="ml-1.5 text-monk-muted/80">· {t("focus.distractionsCount", { n: distractionCount })}</span>
+                ) : null}
+              </button>
+            </div>
+          ) : null}
         </div>
       )}
 
       <div className="mb-5">
         <div className="mb-2 flex items-center justify-between text-[10px] font-bold uppercase tracking-wider text-monk-muted">
-          <span>Session</span>
+          <span>{t("focus.session")}</span>
           <span className="tabular-nums">{Math.round(sessionProgress)}%</span>
         </div>
         <div className="h-1.5 overflow-hidden rounded-full bg-monk-border">
@@ -641,28 +554,28 @@ function FocusSessionPanel({
       <div className="flex items-stretch gap-2">
         {session.status === "running" ? (
           <SecondaryButton onClick={() => store.pauseFocusSession(session.id)} className="flex-1 min-h-12">
-            Pause
+            {t("focus.pause")}
           </SecondaryButton>
         ) : (
           <PrimaryButton onClick={() => store.resumeFocusSession(session.id)} className="flex-1 min-h-12">
-            Resume
+            {t("focus.resume")}
           </PrimaryButton>
         )}
         <button
           type="button"
-          aria-label="Reset session"
+          aria-label={t("focus.resetAria")}
           className="min-h-12 min-w-12 rounded-monk border border-monk-border px-3 text-xs font-semibold text-monk-muted transition hover:border-monk-accent hover:text-monk-accent active:scale-95"
           onClick={() => store.resetFocusSession(session.id)}
         >
-          Reset
+          {t("focus.reset")}
         </button>
         <button
           type="button"
-          aria-label="End session"
+          aria-label={t("focus.endAria")}
           className="min-h-12 min-w-12 rounded-monk border border-monk-danger/40 px-3 text-xs font-semibold text-monk-danger transition hover:border-monk-danger active:scale-95"
           onClick={() => store.abandonFocusSession(session.id)}
         >
-          End
+          {t("focus.end")}
         </button>
       </div>
 
@@ -672,30 +585,33 @@ function FocusSessionPanel({
           className="mx-auto mt-4 flex min-h-11 items-center justify-center gap-1 px-4 text-xs font-bold text-monk-muted transition hover:text-monk-accent"
           onClick={onOpenFocus}
         >
-          Full focus mode →
+          {t("focus.fullMode")}
         </button>
       ) : null}
     </Card>
   );
 }
 
-const CHECKLIST_ITEMS = [
-  "Close other tabs and notifications",
-  "Water bottle nearby",
-  "Phone face-down or on silent",
-  "Clear desk, one task in mind",
-];
-
 function FocusSessionStarter({ compact = false }: { compact?: boolean }) {
   const store = useMonkStore();
-  const [selectedPreset, setSelectedPreset] = useState<FocusSessionPreset>("deep_work");
-  const [customMinutes, setCustomMinutes] = useState(50);
+  const t = useT();
+  const lowEnergy = selectEnergyForDate(store, getTodayDateString()) === "low";
+  const [selectedPreset, setSelectedPreset] = useState<FocusSessionPreset>(() =>
+    lowEnergy ? "custom" : "deep_work"
+  );
+  const [customMinutes, setCustomMinutes] = useState(() => (lowEnergy ? 10 : 50));
   const [showChecklist, setShowChecklist] = useState(false);
   const [checked, setChecked] = useState<Set<string>>(new Set());
   const selected = FOCUS_PRESETS[selectedPreset];
   const phases = selected.buildPhases(customMinutes);
   const totalMinutes = phases.reduce((sum, phase) => sum + phase.plannedMinutes, 0);
   const canStart = selectedPreset !== "custom" || customMinutes >= 5;
+  const checklistItems = [
+    t("focus.check.tabs"),
+    t("focus.check.water"),
+    t("focus.check.phone"),
+    t("focus.check.desk"),
+  ];
   const checklistDone = checked.size;
 
   function toggleItem(item: string) {
@@ -713,16 +629,16 @@ function FocusSessionStarter({ compact = false }: { compact?: boolean }) {
         <>
           <div className="mb-4 flex items-start justify-between gap-3">
             <div>
-              <p className="text-sm font-bold text-monk-text">Ready to focus?</p>
-              <p className="mt-1 text-xs text-monk-muted">Optional check — skip any that don't fit.</p>
+              <p className="text-sm font-bold text-monk-text">{t("focus.readyTitle")}</p>
+              <p className="mt-1 text-xs text-monk-muted">{t("focus.readyDesc")}</p>
             </div>
             <span className="rounded-full bg-monk-soft px-2.5 py-1 text-[10px] font-bold tabular-nums text-monk-muted">
-              {checklistDone}/{CHECKLIST_ITEMS.length}
+              {checklistDone}/{checklistItems.length}
             </span>
           </div>
           <FrictionWhy className="mb-4" />
           <div className="mb-5 flex flex-col gap-2">
-            {CHECKLIST_ITEMS.map((item) => {
+            {checklistItems.map((item) => {
               const isChecked = checked.has(item);
               return (
                 <button
@@ -759,16 +675,19 @@ function FocusSessionStarter({ compact = false }: { compact?: boolean }) {
               store.startFocusSession(selectedPreset, customMinutes);
             }}
           >
-            Begin {selected.shortLabel}
+            {t("focus.beginWith", { label: selected.shortLabel })}
           </PrimaryButton>
           <GhostButton className="mt-2 w-full min-h-11" onClick={() => setShowChecklist(false)}>
-            Back
+            {t("focus.back")}
           </GhostButton>
         </>
       ) : (
         <>
-          <p className="text-sm font-bold text-monk-text">{compact ? "Start a focus block" : "Choose your rhythm"}</p>
-          <p className="mb-4 mt-1 text-xs text-monk-muted">One block. One task. No multitasking.</p>
+          <p className="text-sm font-bold text-monk-text">{compact ? t("focus.startBlock") : t("focus.chooseRhythm")}</p>
+          <p className="mb-4 mt-1 text-xs text-monk-muted">{t("focus.oneBlock")}</p>
+          {lowEnergy ? (
+            <p className="mb-3 text-xs text-monk-muted">{t("focus.lowEnergyHint")}</p>
+          ) : null}
 
           <div className="mb-4 grid grid-cols-3 gap-2">
             {(["deep_work", "pomodoro", "custom"] as FocusSessionPreset[]).map((preset) => {
@@ -793,12 +712,12 @@ function FocusSessionStarter({ compact = false }: { compact?: boolean }) {
           {selectedPreset === "custom" ? (
             <div className="mb-4">
               <label className="text-xs font-bold uppercase tracking-wider text-monk-muted" htmlFor="custom-focus-minutes">
-                Minutes
+                {t("focus.minutes")}
               </label>
               <div className="mt-2 flex items-center gap-2">
                 <button
                   type="button"
-                  aria-label="Decrease minutes"
+                  aria-label={t("focus.decreaseMin")}
                   className="grid min-h-12 min-w-12 place-items-center rounded-xl border border-monk-border bg-monk-soft text-monk-muted"
                   onClick={() => setCustomMinutes((m) => Math.max(5, m - 5))}
                 >
@@ -815,14 +734,14 @@ function FocusSessionStarter({ compact = false }: { compact?: boolean }) {
                 />
                 <button
                   type="button"
-                  aria-label="Increase minutes"
+                  aria-label={t("focus.increaseMin")}
                   className="grid min-h-12 min-w-12 place-items-center rounded-xl border border-monk-border bg-monk-soft text-monk-muted"
                   onClick={() => setCustomMinutes((m) => Math.min(180, m + 5))}
                 >
                   <Plus size={16} />
                 </button>
               </div>
-              <p className="mt-2 text-xs text-monk-muted">5–180 minutes. Step ±5.</p>
+              <p className="mt-2 text-xs text-monk-muted">{t("focus.minRange")}</p>
             </div>
           ) : null}
 
@@ -846,15 +765,15 @@ function FocusSessionStarter({ compact = false }: { compact?: boolean }) {
                       : "bg-monk-bg text-monk-muted"
                   }`}
                 >
-                  {phase.type === "focus" ? "Focus" : "Break"} · {phase.plannedMinutes}m
+                  {phase.type === "focus" ? t("focus.phaseFocus") : t("focus.phaseBreak")} · {phase.plannedMinutes}m
                 </span>
               ))}
             </div>
           </div>
 
-          {!canStart ? <CalmAlert type="warning" title="Choose at least 5 minutes." /> : null}
+          {!canStart ? <CalmAlert type="warning" title={t("focus.min5")} /> : null}
           <PrimaryButton className="min-h-12" disabled={!canStart} onClick={() => setShowChecklist(true)}>
-            Continue with {selected.shortLabel}
+            {t("focus.continueWith", { label: selected.shortLabel })}
           </PrimaryButton>
         </>
       )}
@@ -2086,9 +2005,209 @@ function WeeklyStatusIndicators() {
   );
 }
 
+function reentryDismissKey(date: string) {
+  return `zendo.reentry.dismissed.${date}`;
+}
+
+function isReentryDismissed(date: string): boolean {
+  try {
+    const raw = localStorage.getItem(reentryDismissKey(date));
+    if (!raw) return false;
+    const until = Number(raw);
+    if (!Number.isFinite(until)) return false;
+    return Date.now() < until;
+  } catch {
+    return false;
+  }
+}
+
+function dismissReentry(date: string) {
+  try {
+    localStorage.setItem(reentryDismissKey(date), String(Date.now() + 24 * 60 * 60 * 1000));
+  } catch {
+    /* ignore */
+  }
+}
+
+function isCloseDaySkipped(date: string) {
+  try {
+    return localStorage.getItem(`zendo.closeday.skipped.${date}`) === "1";
+  } catch {
+    return false;
+  }
+}
+
+function skipCloseDay(date: string) {
+  try {
+    localStorage.setItem(`zendo.closeday.skipped.${date}`, "1");
+  } catch {
+    /* ignore */
+  }
+}
+
+function getDayPart(now = new Date()): "morning" | "afternoon" | "evening" {
+  const h = now.getHours();
+  if (h < 12) return "morning";
+  if (h < 18) return "afternoon";
+  return "evening";
+}
+
+function CloseDayCard({ onSkip }: { onSkip?: () => void }) {
+  const navigate = useNavigate();
+  const store = useMonkStore();
+  const t = useT();
+  const season = store.activeSeason!;
+  const today = getTodayDateString();
+  const todayPlan = selectTodayPlan(store);
+  const todayEntry = store.journalEntries.find(
+    (entry) => entry.seasonId === season.id && entry.date === today
+  );
+  const [text, setText] = useState("");
+  const [tomorrow, setTomorrow] = useState("");
+  const [error, setError] = useState("");
+  const [saved, setSaved] = useState(false);
+
+  return (
+    <Card className="space-y-3 p-5">
+      <div>
+        <p className="text-xs font-bold uppercase tracking-widest text-monk-muted">{t("today.closeDay.title")}</p>
+        <p className="mt-1 text-sm font-semibold">{t("today.closeDay.prompt")}</p>
+      </div>
+      <Textarea
+        className="min-h-[80px]"
+        placeholder={t("today.closeDay.placeholder")}
+        value={text}
+        onChange={(event) => {
+          setText(event.target.value);
+          if (error) setError("");
+        }}
+      />
+      <TextInput
+        label={t("today.closeDay.tomorrowLabel")}
+        placeholder={t("today.closeDay.tomorrowPlaceholder")}
+        value={tomorrow}
+        onChange={(event) => setTomorrow(event.target.value)}
+      />
+      {error ? <p className="text-xs text-monk-danger">{error}</p> : null}
+      {saved ? <p className="text-xs font-medium text-monk-success">{t("today.closeDay.saved")}</p> : null}
+      <PrimaryButton
+        onClick={() => {
+          if (!text.trim()) {
+            setError(t("today.closeDay.needWrite"));
+            return;
+          }
+          const prev = todayEntry?.answers;
+          store.saveJournalEntry({
+            whatMovedToday: text.trim(),
+            whatDistractedMe: prev?.whatDistractedMe ?? "",
+            whatDidILearn: prev?.whatDidILearn ?? "",
+            whatShouldBeEasierTomorrow: prev?.whatShouldBeEasierTomorrow ?? "",
+            whatShouldBeHarderTomorrow: prev?.whatShouldBeHarderTomorrow ?? "",
+            morningPages: prev?.morningPages ?? ""
+          });
+          const tomorrowText = tomorrow.trim();
+          if (tomorrowText) {
+            const isRest = todayPlan?.dayType === "rest";
+            if (isRest) {
+              store.createOrUpdateDayPlan(addDaysToDate(today, 1), { dayType: "rest" });
+            } else if (todayPlan?.goalId) {
+              store.createOrUpdateDayPlan(addDaysToDate(today, 1), {
+                dayType: "goal",
+                goalId: todayPlan.goalId,
+                mainAction: tomorrowText
+              });
+            }
+            // ponytail: no goalId → skip tomorrow plan write; add freeform tomorrow when plan model allows
+          }
+          setError("");
+          setSaved(true);
+        }}
+      >
+        {t("today.closeDay.save")}
+      </PrimaryButton>
+      <GhostButton
+        className="w-full"
+        onClick={() => {
+          skipCloseDay(today);
+          onSkip?.();
+        }}
+      >
+        {t("today.closeDay.skip")}
+      </GhostButton>
+      <GhostButton className="w-full" onClick={() => navigate(routes.journal)}>
+        {t("today.closeDay.full")}
+      </GhostButton>
+    </Card>
+  );
+}
+
+function ReEntryBanner() {
+  const navigate = useNavigate();
+  const store = useMonkStore();
+  const t = useT();
+  const season = store.activeSeason;
+  const today = getTodayDateString();
+  const yesterday = addDaysToDate(today, -1);
+  const todayPlan = selectTodayPlan(store);
+  const isDone = todayPlan?.status === "completed";
+  const todayEntry = store.journalEntries.find(
+    (entry) => entry.seasonId === season?.id && entry.date === today
+  );
+  const hasReflection = !!todayEntry?.answers.whatMovedToday?.trim();
+  const [dismissed, setDismissed] = useState(() => isReentryDismissed(today));
+
+  if (!season || dismissed || isDone || hasReflection) return null;
+  if (yesterday < season.startDate) return null;
+
+  const yStatus = getDailyStatusForDate(store, yesterday);
+  const yPlan = store.dayPlans.find((plan) => plan.date === yesterday);
+  const softMiss = yStatus === "not_started" && !!yPlan;
+  const show = yStatus === "missed" || yStatus === "relapse" || softMiss;
+  if (!show) return null;
+
+  const whyRaw = season.why?.identity || season.why?.consequenceOfInaction || "";
+  const whyLine = whyRaw.length > 120 ? `${whyRaw.slice(0, 120)}…` : whyRaw;
+
+  const startMinutes = (minutes: number) => {
+    store.startFocusSession("custom", minutes);
+    navigate(routes.focus);
+  };
+
+  return (
+    <Card className="border-monk-accent/25 bg-monk-accent-soft/30 p-4">
+      <p className="text-sm font-semibold">{t("today.reentry.title")}</p>
+      <p className="mt-1 text-sm text-monk-muted">{t("today.reentry.body")}</p>
+      {whyLine ? (
+        <p className="mt-1.5 text-xs leading-5 text-monk-muted/90">{t("today.reentry.why", { why: whyLine })}</p>
+      ) : null}
+      <div className="mt-3 flex flex-wrap gap-2">
+        <SecondaryButton onClick={() => startMinutes(10)}>{t("today.reentry.ten")}</SecondaryButton>
+        <SecondaryButton onClick={() => startMinutes(25)}>{t("today.reentry.twentyFive")}</SecondaryButton>
+        <SecondaryButton
+          onClick={() => {
+            store.createOrUpdateDayPlan(today, { dayType: "rest" });
+            navigate(routes.today);
+          }}
+        >
+          {t("today.reentry.rest")}
+        </SecondaryButton>
+        <GhostButton
+          onClick={() => {
+            dismissReentry(today);
+            setDismissed(true);
+          }}
+        >
+          {t("today.reentry.dismiss")}
+        </GhostButton>
+      </div>
+    </Card>
+  );
+}
+
 function TodayScreen() {
   const navigate = useNavigate();
   const store = useMonkStore();
+  const t = useT();
   const season = store.activeSeason!;
   const today = getTodayDateString();
   const todayPlan = selectTodayPlan(store);
@@ -2111,6 +2230,7 @@ function TodayScreen() {
 
   const [editingAction, setEditingAction] = useState(false);
   const [actionInput, setActionInput] = useState("");
+  const [closeDaySkipped, setCloseDaySkipped] = useState(() => isCloseDaySkipped(today));
 
   useEffect(() => {
     if (todayPlan?.mainAction) {
@@ -2122,26 +2242,40 @@ function TodayScreen() {
     store.getOrCreateCurrentWeeklyPlan();
   }, []);
 
+  useEffect(() => {
+    setCloseDaySkipped(isCloseDaySkipped(today));
+  }, [today]);
+
   const goal = todayPlan?.goalId ? store.goals.find((item) => item.id === todayPlan.goalId) : undefined;
   const daysLeft = getDaysLeft(season.endDate);
   const isRest = todayPlan?.dayType === "rest";
   const isDone = todayPlan?.status === "completed";
+  const hasReflection = !!todayEntry?.answers.whatMovedToday?.trim();
+  const dayClosed = hasReflection || closeDaySkipped;
   const energy = selectEnergyForDate(store, today);
+  const dayPart = getDayPart();
   const allocation = todayPlan?.goalId && weeklyPlan
     ? weeklyPlan.goalAllocations.find((a) => a.goalId === todayPlan.goalId)
     : undefined;
+  const showMorningNudge =
+    dayPart === "morning" && !!todayPlan && !hasMorningPages && !dayClosed;
+  const preferCloseDayEvening =
+    dayPart === "evening" &&
+    !!todayPlan &&
+    !dayClosed &&
+    (isDone || isRest || focusMinutes > 0);
 
   const statusLabel = !todayPlan
-    ? "Open"
+    ? t("today.status.open")
     : isDone
-    ? "Done"
+    ? t("today.status.done")
     : activeSession
-    ? "In session"
+    ? t("today.status.inSession")
     : isRest
-    ? "Rest"
+    ? t("today.status.rest")
     : todayPlan.status === "partial"
-    ? "Partial"
-    : "Focus";
+    ? t("today.status.partial")
+    : t("today.status.focus");
 
   const statusClass = isDone
     ? "border-monk-success/30 bg-monk-success-soft text-monk-success"
@@ -2153,11 +2287,11 @@ function TodayScreen() {
 
   const checklist = todayPlan
     ? [
-        { id: "morning", label: "Morning pages", done: hasMorningPages, hide: false },
-        { id: "focus", label: isRest ? "Rest held" : "Focus done", done: isDone, hide: false },
-        { id: "learn", label: "Learning", done: hasLearning, hide: isRest },
-        { id: "energy", label: "Energy", done: !!energy, hide: false },
-        { id: "reflect", label: "Reflection", done: hasJournal && !!todayEntry?.answers.whatMovedToday?.trim(), hide: false }
+        { id: "morning", label: t("today.check.morning"), done: hasMorningPages, hide: false },
+        { id: "focus", label: isRest ? t("today.check.restHeld") : t("today.check.focusDone"), done: isDone, hide: false },
+        { id: "learn", label: t("today.check.learn"), done: hasLearning, hide: isRest },
+        { id: "energy", label: t("today.check.energy"), done: !!energy, hide: false },
+        { id: "reflect", label: t("today.check.reflect"), done: hasJournal && !!todayEntry?.answers.whatMovedToday?.trim(), hide: false }
       ].filter((item) => !item.hide)
     : [];
   const checklistDone = checklist.filter((c) => c.done).length;
@@ -2165,12 +2299,13 @@ function TodayScreen() {
   return (
     <>
       <PageHeader
-        title="Today"
-        subtitle={`${getSeasonDayLabel(season)} · ${daysLeft}d left`}
+        title={t("today.title")}
+        subtitle={`${getSeasonDayLabel(season)} · ${t("today.daysLeft", { n: daysLeft })}`}
         rightSlot={<SettingsLink />}
       />
       <div className="space-y-5">
         <WhyStrip />
+        <ReEntryBanner />
         {!todayPlan ? (
           <>
             <SeasonProgressCard />
@@ -2189,33 +2324,33 @@ function TodayScreen() {
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-2">
                     <p className="text-xs font-bold text-monk-muted uppercase tracking-widest">
-                      {isRest ? "Rest day" : "Today's focus"}
+                      {isRest ? t("today.restDay") : t("today.todaysFocus")}
                     </p>
                     <span className={`rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide ${statusClass}`}>
                       {statusLabel}
                     </span>
                   </div>
                   <h2 className="mt-2 text-2xl font-bold leading-8">
-                    {isRest ? "Quiet recovery" : goal?.title ?? "One theme"}
+                    {isRest ? t("today.quietRecovery") : goal?.title ?? t("today.oneTheme")}
                   </h2>
                   {!isRest && goal?.why ? (
                     <p className="mt-1 text-sm leading-5 text-monk-accent/90 line-clamp-2">
-                      Because {goal.why}
+                      {t("today.because", { why: goal.why })}
                     </p>
                   ) : null}
                   {allocation ? (
                     <p className="mt-1 text-xs text-monk-muted">
-                      {allocation.completedCount}/{allocation.targetCount} days on this goal this week
+                      {t("today.daysOnGoal", { done: allocation.completedCount, target: allocation.targetCount })}
                     </p>
                   ) : (
                     <p className="mt-1 text-xs text-monk-muted">
-                      {isRest ? "Protect recovery. Direction stays." : "Stay with one thing."}
+                      {isRest ? t("today.protectRecovery") : t("today.stayWithOne")}
                     </p>
                   )}
                 </div>
                 <button
                   type="button"
-                  aria-label={isDone ? "Mark incomplete" : "Mark complete"}
+                  aria-label={isDone ? t("today.markIncomplete") : t("today.markComplete")}
                   className={`flex min-h-12 min-w-12 shrink-0 items-center justify-center rounded-full border-2 transition active:scale-90 ${
                     isDone
                       ? "border-monk-success bg-monk-success text-monk-bg"
@@ -2236,13 +2371,13 @@ function TodayScreen() {
                 <div
                   className="mt-4 flex flex-wrap gap-1.5"
                   role="list"
-                  aria-label={`Day checklist ${checklistDone} of ${checklist.length}`}
+                  aria-label={t("today.checklistAria", { done: checklistDone, total: checklist.length })}
                 >
                   {checklist.map((item) => (
                     <span
                       key={item.id}
                       role="listitem"
-                      aria-label={`${item.label}: ${item.done ? "done" : "not done"}`}
+                      aria-label={`${item.label}: ${item.done ? t("today.checklistDone") : t("today.checklistNotDone")}`}
                       className={`rounded-full border px-2.5 py-1 text-xs font-medium ${
                         item.done
                           ? "border-monk-success/30 bg-monk-success-soft text-monk-success"
@@ -2258,7 +2393,7 @@ function TodayScreen() {
               <div className="mt-5 rounded-2xl border border-monk-border bg-monk-bg p-4">
                 <div className="flex items-center justify-between gap-2">
                   <p className="text-xs font-medium uppercase tracking-[0.16em] text-monk-text-soft">
-                    {isRest ? "Rest note" : "One action"}
+                    {isRest ? t("today.restNote") : t("today.oneAction")}
                   </p>
                   {!editingAction && !isRest && !isDone ? (
                     <button
@@ -2269,7 +2404,7 @@ function TodayScreen() {
                         setEditingAction(true);
                       }}
                     >
-                      Edit
+                      {t("today.edit")}
                     </button>
                   ) : null}
                 </div>
@@ -2281,17 +2416,17 @@ function TodayScreen() {
                       return (
                         <>
                           <TextInput
-                            label="When…"
+                            label={t("today.when")}
                             value={parsed.when}
                             onChange={(e) => setActionInput(formatIntention(e.target.value, parsed.action))}
-                            placeholder="I sit down after coffee"
+                            placeholder={t("today.whenPlaceholder")}
                             autoFocus
                           />
                           <TextInput
-                            label="I will…"
+                            label={t("today.iWill")}
                             value={parsed.action}
                             onChange={(e) => setActionInput(formatIntention(parsed.when, e.target.value))}
-                            placeholder="work 45 minutes on the keystone"
+                            placeholder={t("today.actionPlaceholder")}
                           />
                         </>
                       );
@@ -2302,7 +2437,7 @@ function TodayScreen() {
                         className="text-xs font-semibold text-monk-muted hover:underline"
                         onClick={() => setEditingAction(false)}
                       >
-                        Cancel
+                        {t("today.cancel")}
                       </button>
                       <button
                         type="button"
@@ -2318,21 +2453,21 @@ function TodayScreen() {
                           }
                         }}
                       >
-                        Save
+                        {t("today.save")}
                       </button>
                     </div>
                   </div>
                 ) : isRest ? (
                   <p className="mt-1.5 text-sm font-semibold leading-5">
-                    Recharge without leaving your direction.
+                    {t("today.rechargeNote")}
                   </p>
                 ) : (() => {
                   const shown = parseIntention(todayPlan.mainAction || "");
                   if (shown.when && shown.action) {
                     return (
                       <div className="mt-1.5 space-y-1">
-                        <p className="text-xs text-monk-muted">When {shown.when}</p>
-                        <p className="text-sm font-semibold leading-5">I will {shown.action}</p>
+                        <p className="text-xs text-monk-muted">{t("today.whenShown", { when: shown.when })}</p>
+                        <p className="text-sm font-semibold leading-5">{t("today.iWillShown", { action: shown.action })}</p>
                       </div>
                     );
                   }
@@ -2380,12 +2515,12 @@ function TodayScreen() {
                 <div className="mt-4 flex flex-wrap gap-3 text-xs text-monk-muted">
                   {focusMinutes > 0 ? (
                     <span className="rounded-full border border-monk-border bg-monk-bg px-2.5 py-1 font-mono">
-                      {focusMinutes}m focus
+                      {t("today.focusMinutes", { n: focusMinutes })}
                     </span>
                   ) : null}
                   {hasLearning ? (
                     <span className="rounded-full border border-monk-border bg-monk-bg px-2.5 py-1 font-mono">
-                      {learningSessions.length} learn
+                      {t("today.learnCount", { n: learningSessions.length })}
                     </span>
                   ) : null}
                 </div>
@@ -2394,7 +2529,7 @@ function TodayScreen() {
               {isDone ? (
                 <p className="mt-4 flex items-center gap-1.5 text-xs font-semibold text-monk-success">
                   <span className="inline-block h-1.5 w-1.5 rounded-full bg-monk-success" />
-                  Today moved. Keep this space quiet.
+                  {t("today.movedQuiet")}
                 </p>
               ) : (
                 <div className="mt-4 flex justify-end">
@@ -2403,7 +2538,7 @@ function TodayScreen() {
                     className="text-[11px] font-semibold text-monk-text-soft hover:text-monk-accent hover:underline"
                     onClick={() => store.clearDayPlan(today)}
                   >
-                    Change today's theme
+                    {t("today.changeTheme")}
                   </button>
                 </div>
               )}
@@ -2411,7 +2546,57 @@ function TodayScreen() {
 
             <DefenseChips compact />
 
-            {isRest ? (
+            {showMorningNudge ? (
+              <Card className="border-monk-accent/25 bg-monk-accent-soft/30 p-4">
+                <p className="text-sm font-semibold">{t("today.nudge.morningTitle")}</p>
+                <p className="mt-1 text-sm text-monk-muted">{t("today.nudge.morningBody")}</p>
+                <div className="mt-3">
+                  <PrimaryButton onClick={() => navigate(`${routes.journal}?tab=morning`)}>
+                    {t("today.nudge.morningCta")}
+                  </PrimaryButton>
+                </div>
+              </Card>
+            ) : null}
+
+            {preferCloseDayEvening && isRest ? (
+              <div className="space-y-3">
+                {!dayClosed ? (
+                  <CloseDayCard onSkip={() => setCloseDaySkipped(true)} />
+                ) : null}
+                <Card className="border-monk-rest/25 bg-monk-rest-soft/30 p-5">
+                  <div className="flex items-start gap-3">
+                    <div className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-monk-surface text-monk-rest">
+                      <Moon size={18} strokeWidth={1.5} />
+                    </div>
+                    <div>
+                      <p className="font-semibold">{t("today.restPathTitle")}</p>
+                      <p className="mt-1 text-sm leading-6 text-monk-muted">
+                        {t("today.restPathBody")}
+                      </p>
+                    </div>
+                  </div>
+                </Card>
+                {dayClosed ? (
+                  closeDaySkipped && !hasReflection ? (
+                    <Card className="border-monk-border bg-monk-soft/50 p-5 text-center">
+                      <p className="font-semibold text-monk-text">{t("today.closeDay.skippedTitle")}</p>
+                      <p className="mt-1 text-sm text-monk-muted">{t("today.closeDay.skippedBody")}</p>
+                    </Card>
+                  ) : (
+                    <div className="rounded-2xl border border-monk-success bg-monk-success-soft px-4 py-2.5 text-center text-xs font-medium text-monk-success">
+                      {t("today.restHeldLogged")}
+                    </div>
+                  )
+                ) : null}
+                <EnergyCheck
+                  value={todayPlan.energyLevel}
+                  onChange={(level) => {
+                    store.updateTodayEnergy(level);
+                    store.logEnergy(level);
+                  }}
+                />
+              </div>
+            ) : isRest ? (
               <div className="space-y-3">
                 <Card className="border-monk-rest/25 bg-monk-rest-soft/30 p-5">
                   <div className="flex items-start gap-3">
@@ -2419,18 +2604,23 @@ function TodayScreen() {
                       <Moon size={18} strokeWidth={1.5} />
                     </div>
                     <div>
-                      <p className="font-semibold">Rest is part of the path</p>
+                      <p className="font-semibold">{t("today.restPathTitle")}</p>
                       <p className="mt-1 text-sm leading-6 text-monk-muted">
-                        No focus blocks today. Light walk, early sleep, fewer inputs.
+                        {t("today.restPathBody")}
                       </p>
                     </div>
                   </div>
                 </Card>
-                {!hasJournal ? (
-                  <PrimaryButton onClick={() => navigate(routes.journal)}>Reflect lightly</PrimaryButton>
+                {!dayClosed ? (
+                  <CloseDayCard onSkip={() => setCloseDaySkipped(true)} />
+                ) : closeDaySkipped && !hasReflection ? (
+                  <Card className="border-monk-border bg-monk-soft/50 p-5 text-center">
+                    <p className="font-semibold text-monk-text">{t("today.closeDay.skippedTitle")}</p>
+                    <p className="mt-1 text-sm text-monk-muted">{t("today.closeDay.skippedBody")}</p>
+                  </Card>
                 ) : (
                   <div className="rounded-2xl border border-monk-success bg-monk-success-soft px-4 py-2.5 text-center text-xs font-medium text-monk-success">
-                    Rest held · reflection logged.
+                    {t("today.restHeldLogged")}
                   </div>
                 )}
                 <EnergyCheck
@@ -2441,9 +2631,9 @@ function TodayScreen() {
                   }}
                 />
               </div>
-            ) : !isDone ? (
-              <>
-                {/* Primary: focus */}
+            ) : preferCloseDayEvening && !isDone ? (
+              <div className="space-y-3">
+                <CloseDayCard onSkip={() => setCloseDaySkipped(true)} />
                 {activeSession ? (
                   <FocusSessionPanel
                     session={activeSession}
@@ -2456,7 +2646,32 @@ function TodayScreen() {
                 )}
                 {energy === "low" ? (
                   <div className="rounded-xl border border-monk-danger/20 bg-monk-danger/5 px-3 py-2 text-xs text-monk-danger/80">
-                    Low energy — shorter sessions still serve your why.
+                    {t("today.lowEnergy")}
+                  </div>
+                ) : null}
+                <EnergyCheck
+                  value={todayPlan.energyLevel}
+                  onChange={(level) => {
+                    store.updateTodayEnergy(level);
+                    store.logEnergy(level);
+                  }}
+                />
+              </div>
+            ) : !isDone ? (
+              <>
+                {activeSession ? (
+                  <FocusSessionPanel
+                    session={activeSession}
+                    mainAction={todayPlan.mainAction}
+                    compact
+                    onOpenFocus={() => navigate(routes.focus)}
+                  />
+                ) : (
+                  <FocusSessionStarter compact />
+                )}
+                {energy === "low" ? (
+                  <div className="rounded-xl border border-monk-danger/20 bg-monk-danger/5 px-3 py-2 text-xs text-monk-danger/80">
+                    {t("today.lowEnergy")}
                   </div>
                 ) : null}
                 <EnergyCheck
@@ -2469,15 +2684,17 @@ function TodayScreen() {
               </>
             ) : (
               <div className="space-y-3">
-                {!hasJournal || !todayEntry?.answers.whatMovedToday?.trim() ? (
-                  <>
-                    <p className="text-center text-xs text-monk-muted">Focus done. Close the loop.</p>
-                    <PrimaryButton onClick={() => navigate(routes.journal)}>Reflect today</PrimaryButton>
-                  </>
+                {!dayClosed ? (
+                  <CloseDayCard onSkip={() => setCloseDaySkipped(true)} />
+                ) : closeDaySkipped && !hasReflection ? (
+                  <Card className="border-monk-border bg-monk-soft/50 p-5 text-center">
+                    <p className="font-semibold text-monk-text">{t("today.closeDay.skippedTitle")}</p>
+                    <p className="mt-1 text-sm text-monk-muted">{t("today.closeDay.skippedBody")}</p>
+                  </Card>
                 ) : (
                   <Card className="border-monk-success/30 bg-monk-success-soft/40 p-5 text-center">
-                    <p className="font-semibold text-monk-success">Day held.</p>
-                    <p className="mt-1 text-sm text-monk-muted">Optional: learning, morning pages, or rest.</p>
+                    <p className="font-semibold text-monk-success">{t("today.dayHeld")}</p>
+                    <p className="mt-1 text-sm text-monk-muted">{t("today.dayHeldOptional")}</p>
                   </Card>
                 )}
                 <EnergyCheck
@@ -2494,7 +2711,7 @@ function TodayScreen() {
             <details className="group rounded-monk border border-monk-border bg-monk-surface">
               <summary className="cursor-pointer list-none px-4 py-3 text-xs font-semibold text-monk-muted marker:content-none [&::-webkit-details-marker]:hidden">
                 <span className="flex items-center justify-between">
-                  More for today
+                  {t("today.moreForToday")}
                   <ChevronRight size={14} className="transition group-open:rotate-90" />
                 </span>
               </summary>
@@ -2506,9 +2723,9 @@ function TodayScreen() {
                 >
                   <span className="flex items-center gap-2">
                     <Sun size={14} className="text-monk-accent" />
-                    Morning pages
+                    {t("today.check.morning")}
                   </span>
-                  <span className="text-[11px] text-monk-muted">{hasMorningPages ? "Edit" : "Write"}</span>
+                  <span className="text-[11px] text-monk-muted">{hasMorningPages ? t("today.edit") : t("today.write")}</span>
                 </button>
                 {!isRest ? (
                   <button
@@ -2518,10 +2735,10 @@ function TodayScreen() {
                   >
                     <span className="flex items-center gap-2">
                       <BookOpen size={14} className="text-monk-accent" />
-                      Learning
+                      {t("today.check.learn")}
                     </span>
                     <span className="text-[11px] text-monk-muted">
-                      {hasLearning ? `${learningSessions.length} logged` : "Add"}
+                      {hasLearning ? t("today.logged", { n: learningSessions.length }) : t("today.add")}
                     </span>
                   </button>
                 ) : null}
@@ -2531,8 +2748,8 @@ function TodayScreen() {
                     className="flex w-full items-center justify-between rounded-xl border border-monk-border bg-monk-soft px-3 py-2.5 text-left text-sm"
                     onClick={() => navigate(routes.journal)}
                   >
-                    <span>Edit reflection</span>
-                    <span className="text-[11px] text-monk-muted">Open</span>
+                    <span>{t("today.editReflection")}</span>
+                    <span className="text-[11px] text-monk-muted">{t("today.open")}</span>
                   </button>
                 ) : null}
                 <button
@@ -2540,7 +2757,7 @@ function TodayScreen() {
                   className="flex w-full items-center justify-between rounded-xl border border-monk-border bg-monk-soft px-3 py-2.5 text-left text-sm text-monk-muted"
                   onClick={() => navigate(routes.relapse)}
                 >
-                  <span>Log drift gently</span>
+                  <span>{t("today.logDrift")}</span>
                   <span className="text-[11px]">→</span>
                 </button>
               </div>
@@ -2612,6 +2829,7 @@ function FrictionWhy({ className = "" }: { className?: string }) {
 
 /** Anti-goals + obstacles from season — soft defenses. */
 function DefenseChips({ compact = false }: { compact?: boolean }) {
+  const t = useT();
   const season = useMonkStore((s) => s.activeSeason);
   const anti = (season?.antiGoals ?? []).filter(Boolean).slice(0, compact ? 2 : 4);
   const obs = (season?.obstacles ?? []).filter(Boolean).slice(0, compact ? 2 : 4);
@@ -2619,11 +2837,11 @@ function DefenseChips({ compact = false }: { compact?: boolean }) {
   return (
     <Card className="p-4">
       <p className="text-[10px] font-bold uppercase tracking-widest text-monk-muted">
-        {compact ? "Guardrails" : "What to avoid · what to watch"}
+        {compact ? t("today.guardrails") : t("today.avoidWatch")}
       </p>
       {anti.length ? (
         <div className="mt-2">
-          <p className="text-[11px] font-semibold text-monk-text-soft">Avoid</p>
+          <p className="text-[11px] font-semibold text-monk-text-soft">{t("today.avoid")}</p>
           <div className="mt-1.5 flex flex-wrap gap-1.5">
             {anti.map((item) => (
               <span
@@ -2638,7 +2856,7 @@ function DefenseChips({ compact = false }: { compact?: boolean }) {
       ) : null}
       {obs.length ? (
         <div className={anti.length ? "mt-3" : "mt-2"}>
-          <p className="text-[11px] font-semibold text-monk-text-soft">Watch for</p>
+          <p className="text-[11px] font-semibold text-monk-text-soft">{t("today.watchFor")}</p>
           <div className="mt-1.5 flex flex-wrap gap-1.5">
             {obs.map((item) => (
               <span
@@ -3096,6 +3314,7 @@ function EnergyCheck({ value, onChange }: { value?: EnergyLevel; onChange: (valu
 function WeekScreen() {
   const navigate = useNavigate();
   const store = useMonkStore();
+  const t = useT();
   const weeklyPlan = selectCurrentWeeklyPlan(store);
   const goals = selectActiveGoals(store);
   const today = getTodayDateString();
@@ -3129,23 +3348,48 @@ function WeekScreen() {
 
   const remainingDays = weekDates.filter((d) => d >= today).length;
 
+  const focusMinutes = useMemo(() => {
+    if (!weeklyPlan) return 0;
+    return Math.round(
+      weekDates.reduce((sum, date) => sum + selectTotalFocusSecondsForDate(store, date), 0) / 60
+    );
+  }, [weeklyPlan, weekDates, store.focusSessions]);
+
+  const hasJournalThisWeek = useMemo(() => {
+    if (!weeklyPlan) return false;
+    const set = new Set(weekDates);
+    return store.journalEntries.some((e) => set.has(e.date));
+  }, [weeklyPlan, weekDates, store.journalEntries]);
+
+  const showWeekWrap = !!weeklyPlan && !!stats && (
+    stats.focusDone > 0 || stats.rest > 0 || stats.completed > 0 || stats.partial > 0 || hasJournalThisWeek
+  );
+  const heldDays = stats ? stats.completed + stats.partial + stats.rest : 0;
+  const wrapWin = stats
+    ? stats.focusDone > 0
+      ? t("week.wrap.winFocus")
+      : stats.rest > 0
+      ? t("week.wrap.winRest")
+      : t("week.wrap.winSoft")
+    : "";
+
   return (
     <>
       <PageHeader
-        title={weeklyPlan ? `Week ${weeklyPlan.weekNumber}` : "Week"}
+        title={weeklyPlan ? t("week.weekN", { n: weeklyPlan.weekNumber }) : t("week.title")}
         subtitle={
           weeklyPlan
             ? `${formatHumanDate(weeklyPlan.startDate)} – ${formatHumanDate(weeklyPlan.endDate)}`
-            : "Six focus days. One rest day."
+            : t("week.defaultSubtitle")
         }
         rightSlot={<SettingsLink />}
       />
       <div className="space-y-5">
         {!weeklyPlan || !stats ? (
           <EmptyState
-            title="Shape this week."
-            description="Your weekly rhythm appears once a season is active."
-            actionLabel="Open Today"
+            title={t("week.emptyTitle")}
+            description={t("week.emptyDesc")}
+            actionLabel={t("week.openToday")}
             onAction={() => navigate(routes.today)}
           />
         ) : (
@@ -3154,18 +3398,18 @@ function WeekScreen() {
             <Card className="p-5">
               <div className="mb-4 flex items-end justify-between gap-3">
                 <div>
-                  <p className="text-xs font-bold uppercase tracking-[0.18em] text-monk-muted">Weekly rhythm</p>
+                  <p className="text-xs font-bold uppercase tracking-[0.18em] text-monk-muted">{t("week.rhythm")}</p>
                   <p className="mt-1 text-2xl font-bold tabular-nums tracking-tight">
                     {stats.focusDone}
                     <span className="text-base font-semibold text-monk-muted">/{stats.targetFocus}</span>
                   </p>
-                  <p className="mt-0.5 text-xs text-monk-muted">focus days complete</p>
+                  <p className="mt-0.5 text-xs text-monk-muted">{t("week.focusComplete")}</p>
                 </div>
                 <div className="text-right text-xs text-monk-muted space-y-0.5">
-                  {stats.rest > 0 ? <p>{stats.rest} rest</p> : null}
-                  {stats.partial > 0 ? <p>{stats.partial} partial</p> : null}
-                  {stats.missed > 0 ? <p className="text-monk-danger/80">{stats.missed} missed</p> : null}
-                  <p>{remainingDays} day{remainingDays === 1 ? "" : "s"} left</p>
+                  {stats.rest > 0 ? <p>{t("week.restCount", { n: stats.rest })}</p> : null}
+                  {stats.partial > 0 ? <p>{t("week.partialCount", { n: stats.partial })}</p> : null}
+                  {stats.missed > 0 ? <p className="text-monk-danger/80">{t("week.missedCount", { n: stats.missed })}</p> : null}
+                  <p>{remainingDays === 1 ? t("week.daysLeft", { n: remainingDays }) : t("week.daysLeftPlural", { n: remainingDays })}</p>
                 </div>
               </div>
 
@@ -3176,7 +3420,15 @@ function WeekScreen() {
                 />
               </div>
 
-              <div className="flex items-stretch justify-between gap-1.5" role="list" aria-label="Days this week">
+              {stats.completed + stats.partial + stats.rest > 0 ? (
+                <p className="mb-4 text-xs leading-5 text-monk-muted">
+                  {stats.missed === 0
+                    ? t("week.softWin.held")
+                    : t("week.softWin.body")}
+                </p>
+              ) : null}
+
+              <div className="flex items-stretch justify-between gap-1.5" role="list" aria-label={t("week.daysAria")}>
                 {weekDates.map((date) => {
                   const dayPlan = store.dayPlans.find((d) => d.date === date);
                   const weekday = new Date(date + "T00:00:00").toLocaleDateString("en-US", { weekday: "short" });
@@ -3196,12 +3448,25 @@ function WeekScreen() {
                     energyLevel === "low" ? "bg-monk-danger" : "bg-transparent";
                   const goalTitle = dayPlan?.goalId
                     ? goals.find((g) => g.id === dayPlan.goalId)?.title
-                    : isRest ? "Rest" : undefined;
+                    : isRest ? t("week.rest") : undefined;
+                  const statusWord = isCompleted
+                    ? t("week.completed")
+                    : isPartial
+                    ? t("week.partial")
+                    : isRest
+                    ? t("week.rest")
+                    : isMissed
+                    ? t("week.missed")
+                    : isRelapse
+                    ? t("week.relapse")
+                    : isFuture
+                    ? t("week.upcoming")
+                    : t("week.open");
                   const label = [
                     weekday,
                     dayNum,
-                    isToday ? "today" : "",
-                    isCompleted ? "completed" : isPartial ? "partial" : isRest ? "rest" : isMissed ? "missed" : isRelapse ? "relapse" : isFuture ? "upcoming" : "open",
+                    isToday ? t("week.today") : "",
+                    statusWord,
                     goalTitle ?? ""
                   ].filter(Boolean).join(", ");
 
@@ -3272,6 +3537,18 @@ function WeekScreen() {
                 </span>
               </div>
             </Card>
+
+            {showWeekWrap ? (
+              <Card className="p-4">
+                <p className="text-xs font-bold uppercase tracking-[0.18em] text-monk-muted">{t("week.wrap.title")}</p>
+                <div className="mt-2 space-y-1 text-sm text-monk-text">
+                  <p>{t("week.wrap.focus", { n: focusMinutes })}</p>
+                  <p>{t("week.wrap.held", { n: heldDays })}</p>
+                  {stats.rest > 0 ? <p>{t("week.wrap.rest", { n: stats.rest })}</p> : null}
+                  <p className="text-monk-muted">{wrapWin}</p>
+                </div>
+              </Card>
+            ) : null}
 
             {!todayPlan ? (
               <Card className="p-4 border-monk-accent/30 bg-monk-accent-soft/40">
@@ -3551,9 +3828,17 @@ function WeeklyReviewCard({
 function FocusScreen() {
   const navigate = useNavigate();
   const store = useMonkStore();
+  const t = useT();
   const plan = selectTodayPlan(store);
   const goal = plan?.goalId ? store.goals.find((item) => item.id === plan.goalId) : undefined;
   const [musicOn, setMusicOn] = useState(false);
+  const today = getTodayDateString();
+  const todayEntry = store.journalEntries.find(
+    (entry) => entry.seasonId === store.activeSeason?.id && entry.date === today
+  );
+  const hasReflection = !!todayEntry?.answers.whatMovedToday?.trim();
+  const closeDaySkipped = isCloseDaySkipped(today);
+  const focusMinutes = Math.round(selectTotalFocusSecondsForDate(store, today) / 60);
 
   const activeSession = store.focusSessions.find(
     (session) => session.dayPlanId === plan?.id && ["running", "paused"].includes(session.status)
@@ -3572,11 +3857,11 @@ function FocusScreen() {
   if (!plan) {
     return (
       <>
-        <PageHeader title="Focus" subtitle="Choose today first." />
+        <PageHeader title={t("focus.title")} subtitle={t("focus.chooseFirst")} />
         <EmptyState
-          title="Choose what deserves today."
-          description="One theme is enough. Pick Today first, then start a quiet session."
-          actionLabel="Pick Today"
+          title={t("focus.emptyTitle")}
+          description={t("focus.emptyDesc")}
+          actionLabel={t("focus.pickToday")}
           onAction={() => navigate(routes.today)}
         />
       </>
@@ -3584,12 +3869,17 @@ function FocusScreen() {
   }
 
   const intention = parseIntention(plan.mainAction || "");
+  const showCloseDayNudge =
+    !activeSession &&
+    (plan.status === "completed" || focusMinutes > 0) &&
+    !hasReflection &&
+    !closeDaySkipped;
 
   return (
     <>
       <PageHeader
-        title={activeSession ? "In session" : "Focus"}
-        subtitle={goal?.title ?? "Quiet recovery"}
+        title={activeSession ? t("focus.inSession") : t("focus.title")}
+        subtitle={goal?.title ?? t("today.quietRecovery")}
         rightSlot={
           <button
             type="button"
@@ -3599,7 +3889,7 @@ function FocusScreen() {
                 ? "border-monk-accent/40 bg-monk-accent-soft text-monk-accent"
                 : "border-monk-border bg-monk-surface text-monk-muted hover:border-monk-accent hover:text-monk-accent"
             }`}
-            aria-label={musicOn ? "Turn ambient sound off" : "Turn ambient sound on"}
+            aria-label={musicOn ? t("focus.musicOff") : t("focus.musicOn")}
           >
             {musicOn ? <Volume2 size={18} strokeWidth={1.5} /> : <VolumeX size={18} strokeWidth={1.5} />}
           </button>
@@ -3608,17 +3898,26 @@ function FocusScreen() {
 
       {!activeSession && plan.dayType === "goal" ? (
         <Card className="mb-5 border-monk-border bg-monk-soft p-4">
-          <p className="text-[10px] font-bold uppercase tracking-wider text-monk-muted">Today's action</p>
+          <p className="text-[10px] font-bold uppercase tracking-wider text-monk-muted">{t("focus.todaysAction")}</p>
           {intention.when && intention.action ? (
             <div className="mt-1.5 space-y-0.5">
-              <p className="text-xs text-monk-muted">When {intention.when}</p>
-              <p className="text-sm font-semibold text-monk-text">I will {intention.action}</p>
+              <p className="text-xs text-monk-muted">{t("today.whenShown", { when: intention.when })}</p>
+              <p className="text-sm font-semibold text-monk-text">{t("today.iWillShown", { action: intention.action })}</p>
             </div>
           ) : (
             <p className="mt-1.5 text-sm font-semibold text-monk-text">
-              {plan.mainAction || "One action is enough."}
+              {plan.mainAction || t("focus.oneActionEnough")}
             </p>
           )}
+        </Card>
+      ) : null}
+
+      {showCloseDayNudge ? (
+        <Card className="mb-5 border-monk-accent/25 bg-monk-accent-soft/30 p-4">
+          <p className="text-sm text-monk-muted">{t("focus.closeDayNudge")}</p>
+          <SecondaryButton className="mt-3" onClick={() => navigate(routes.today)}>
+            {t("focus.closeDayCta")}
+          </SecondaryButton>
         </Card>
       ) : null}
 
@@ -3626,7 +3925,7 @@ function FocusScreen() {
         <div className="space-y-5">
           <FocusSessionPanel session={activeSession} mainAction={plan.mainAction} />
           <GhostButton className="w-full min-h-11" onClick={() => navigate(routes.today)}>
-            Return to Today
+            {t("focus.returnToday")}
           </GhostButton>
         </div>
       ) : (
@@ -3639,6 +3938,8 @@ function FocusScreen() {
 function JournalEntryScreen() {
   const navigate = useNavigate();
   const store = useMonkStore();
+  const t = useT();
+  const lang = (store.appSettings.language ?? "id") as AppLanguage;
   const [searchParams, setSearchParams] = useSearchParams();
 
   const todayPlan = selectTodayPlan(store);
@@ -3653,19 +3954,22 @@ function JournalEntryScreen() {
 
   const [answers, setAnswers] = useState<JournalAnswers>(initial);
   const [saved, setSaved] = useState(false);
+  const [tomorrow, setTomorrow] = useState("");
+  const [tomorrowSaved, setTomorrowSaved] = useState(false);
 
   useEffect(() => { window.scrollTo(0, 0); }, []);
 
   useEffect(() => {
     setAnswers(initial);
     setSaved(false);
+    setTomorrowSaved(false);
   }, [initial]);
 
   useEffect(() => {
     localStorage.setItem(journalDraftKey, JSON.stringify(answers));
   }, [answers, journalDraftKey]);
 
-  const activePrompt = useMemo(() => getDailyJournalPromptForDate(dateSeed), [dateSeed]);
+  const activePrompt = useMemo(() => getDailyJournalPromptForDate(lang, dateSeed), [lang, dateSeed]);
 
   const now = new Date();
   const isEvening = now.getHours() >= 17;
@@ -3696,15 +4000,15 @@ function JournalEntryScreen() {
   return (
     <>
       <PageHeader
-        title="Journal"
-        subtitle={isEvening ? "How did today really go?" : "Set the tone before the day begins."}
+        title={t("journal.title")}
+        subtitle={isEvening ? t("journal.subtitleEvening") : t("journal.subtitleMorning")}
         rightSlot={
           <div className="flex items-center gap-2">
             <button
               type="button"
               onClick={() => navigate(routes.library)}
               className="grid h-9 w-9 place-items-center rounded-full border border-monk-border bg-monk-surface text-monk-muted hover:text-monk-accent hover:border-monk-accent transition active:scale-90"
-              aria-label="View journal library"
+              aria-label={t("journal.ariaLibrary")}
             >
               <BookOpen size={16} strokeWidth={1.5} />
             </button>
@@ -3712,7 +4016,7 @@ function JournalEntryScreen() {
           </div>
         }
       />
-      {!todayPlan ? <CalmAlert type="warning" title="Pick today's focus before saving reflection." /> : null}
+      {!todayPlan ? <CalmAlert type="warning" title={t("journal.needFocus")} /> : null}
 
       <div className="flex rounded-xl bg-monk-soft p-1 mb-5 border border-monk-border/40">
         <button
@@ -3724,7 +4028,7 @@ function JournalEntryScreen() {
           }`}
           onClick={() => setTab("morning")}
         >
-          Morning
+          {t("journal.tabMorning")}
           {answers.morningPages?.trim() && <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full bg-monk-accent" />}
         </button>
         <button
@@ -3736,7 +4040,7 @@ function JournalEntryScreen() {
           }`}
           onClick={() => setTab("reflection")}
         >
-          Reflection
+          {t("journal.tabReflection")}
           {answers.whatMovedToday?.trim() && <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full bg-monk-success" />}
         </button>
       </div>
@@ -3744,9 +4048,9 @@ function JournalEntryScreen() {
       {currentTab === "morning" ? (
         <div className="mt-4 space-y-3">
           <div className="flex items-center justify-between px-1">
-            <span className="text-[10px] uppercase tracking-widest text-monk-text-soft font-mono">Morning Pages</span>
+            <span className="text-[10px] uppercase tracking-widest text-monk-text-soft font-mono">{t("journal.morningLabel")}</span>
             <span className={`text-[10px] font-mono ${wordCount >= 750 ? "text-monk-success" : "text-monk-text-soft"}`}>
-              {wordCount > 0 ? `${wordCount} words${wordCount >= 750 ? " ✦" : ""}` : "0 words"}
+              {t("journal.words", { n: wordCount })}{wordCount >= 750 ? " ✦" : ""}
             </span>
           </div>
           {wordCount > 0 && (
@@ -3761,13 +4065,13 @@ function JournalEntryScreen() {
             <textarea
               id="morningPages"
               value={answers.morningPages ?? ""}
-              placeholder="Start writing — anything on your mind..."
+              placeholder={t("journal.morningPlaceholder")}
               className="morning-page-textarea"
               onChange={(event) => setAnswers((value) => ({ ...value, morningPages: event.target.value }))}
             />
           </div>
           <p className="text-[11px] text-monk-text-soft text-center leading-relaxed px-2">
-            Free-form. Stream of consciousness. No prompts, no pressure.
+            {t("journal.morningHelper")}
           </p>
         </div>
       ) : (
@@ -3775,7 +4079,7 @@ function JournalEntryScreen() {
           {/* Main Required Question */}
           <Card>
             <div className="mb-3 space-y-1">
-              <div className="text-[10px] uppercase tracking-widest text-monk-text-soft font-mono">Today's prompt · {formatHumanDate(dateSeed)}</div>
+              <div className="text-[10px] uppercase tracking-widest text-monk-text-soft font-mono">{t("journal.promptChrome", { date: formatHumanDate(dateSeed) })}</div>
               <label className="block font-semibold text-base leading-relaxed text-monk-text" htmlFor="whatMovedToday">
                 {activePrompt}
               </label>
@@ -3783,22 +4087,33 @@ function JournalEntryScreen() {
             <Textarea
               id="whatMovedToday"
               value={answers.whatMovedToday ?? ""}
-              placeholder="Write your honest reflection..."
+              placeholder={t("journal.reflectionPlaceholder")}
               onChange={(event) => setAnswers((value) => ({ ...value, whatMovedToday: event.target.value }))}
             />
-            <p className="text-[11px] text-monk-text-soft mt-3">One honest answer is enough.</p>
+            <p className="text-[11px] text-monk-text-soft mt-3">{t("journal.reflectionHelper")}</p>
           </Card>
+          <TextInput
+            label={t("today.closeDay.tomorrowLabel")}
+            placeholder={t("today.closeDay.tomorrowPlaceholder")}
+            value={tomorrow}
+            onChange={(event) => setTomorrow(event.target.value)}
+          />
         </div>
       )}
 
       <div className="mt-6 space-y-3">
         {(currentTab === "reflection" || currentTab === "morning") ? <>
-        {saved ? <CalmAlert type="success" title="Saved successfully." /> : null}
+        {saved ? (
+          <CalmAlert
+            type="success"
+            title={tomorrowSaved ? t("journal.tomorrowSaved") : t("journal.saved")}
+          />
+        ) : null}
         {!canSave && todayPlan ? (
           <p className="text-xs text-monk-text-soft text-center">
             {currentTab === "morning"
-              ? "Write something in your morning pages before saving."
-              : "Write at least one reflection before saving."}
+              ? t("journal.needWriteMorning")
+              : t("journal.needWriteReflection")}
           </p>
         ) : null}
         <PrimaryButton
@@ -3806,13 +4121,33 @@ function JournalEntryScreen() {
           onClick={() => {
             store.saveJournalEntry(answers);
             localStorage.removeItem(journalDraftKey);
+            let wroteTomorrow = false;
+            if (currentTab === "reflection") {
+              const tomorrowText = tomorrow.trim();
+              if (tomorrowText) {
+                const tomorrowDate = addDaysToDate(dateSeed, 1);
+                const isRest = todayPlan?.dayType === "rest";
+                if (isRest) {
+                  store.createOrUpdateDayPlan(tomorrowDate, { dayType: "rest" });
+                  wroteTomorrow = true;
+                } else if (todayPlan?.goalId) {
+                  store.createOrUpdateDayPlan(tomorrowDate, {
+                    dayType: "goal",
+                    goalId: todayPlan.goalId,
+                    mainAction: tomorrowText
+                  });
+                  wroteTomorrow = true;
+                }
+              }
+            }
+            setTomorrowSaved(wroteTomorrow);
             setSaved(true);
             setTimeout(() => {
               navigate(routes.today);
             }, 800);
           }}
         >
-          {currentTab === "morning" ? "Save Morning Pages" : "Save Reflection"}
+          {currentTab === "morning" ? t("journal.saveMorning") : t("journal.saveReflection")}
         </PrimaryButton>
       </> : null}
       </div>
@@ -3827,8 +4162,8 @@ function JournalEntryScreen() {
           <div className="w-6 h-6 rounded-full bg-monk-accent-soft flex items-center justify-center mb-2">
             <FileText size={14} strokeWidth={1.5} className="text-monk-accent" />
           </div>
-          <span className="block text-xs font-semibold text-monk-text mb-0.5">Notebook</span>
-          <span className="block text-[10px] text-monk-text-soft">Free notes</span>
+          <span className="block text-xs font-semibold text-monk-text mb-0.5">{t("journal.shortcut.notebook")}</span>
+          <span className="block text-[10px] text-monk-text-soft">{t("journal.shortcut.notebookDesc")}</span>
         </button>
         <button
           type="button"
@@ -3838,8 +4173,8 @@ function JournalEntryScreen() {
           <div className="w-6 h-6 rounded-full bg-monk-success-soft flex items-center justify-center mb-2">
             <BookOpen size={14} strokeWidth={1.5} className="text-monk-success" />
           </div>
-          <span className="block text-xs font-semibold text-monk-text mb-0.5">Packs</span>
-          <span className="block text-[10px] text-monk-text-soft">Guided themes</span>
+          <span className="block text-xs font-semibold text-monk-text mb-0.5">{t("journal.shortcut.packs")}</span>
+          <span className="block text-[10px] text-monk-text-soft">{t("journal.shortcut.packsDesc")}</span>
         </button>
       </div>
     </>
@@ -4102,6 +4437,7 @@ function LearningScreen() {
 function RelapseScreen() {
   const navigate = useNavigate();
   const store = useMonkStore();
+  const t = useT();
   const why = store.activeSeason?.why;
   const obstacles = (store.activeSeason?.obstacles ?? []).filter(Boolean).slice(0, 4);
   const [trigger, setTrigger] = useState<"boredom" | "stress" | "fatigue" | "loneliness" | "trigger_app" | "no_clear_plan" | "other">("boredom");
@@ -4109,31 +4445,51 @@ function RelapseScreen() {
   const [recoveryAction, setRecoveryAction] = useState("");
   const [saved, setSaved] = useState(false);
   const triggers = [
-    ["boredom", "Boredom"],
-    ["stress", "Stress"],
-    ["fatigue", "Fatigue"],
-    ["loneliness", "Loneliness"],
-    ["trigger_app", "Trigger app"],
-    ["no_clear_plan", "No clear plan"],
-    ["other", "Other"]
+    "boredom",
+    "stress",
+    "fatigue",
+    "loneliness",
+    "trigger_app",
+    "no_clear_plan",
+    "other"
   ] as const;
+
+  const startCustom = (minutes: number) => {
+    store.startFocusSession("custom", minutes);
+    navigate(routes.focus);
+  };
 
   if (saved) {
     return (
       <>
-        <PageHeader title="Logged. Now re-anchor." subtitle="Drift is data. Why still stands." />
+        <PageHeader title={t("relapse.savedTitle")} subtitle={t("relapse.savedSubtitle")} />
         <FrictionWhy className="mb-4" />
         {why?.identity || why?.consequenceOfInaction ? null : (
           <Card className="mb-4 p-4">
-            <p className="text-sm text-monk-muted">No why set yet — add one so the next drift has something to hold onto.</p>
+            <p className="text-sm text-monk-muted">{t("relapse.noWhy")}</p>
             <SecondaryButton className="mt-3" onClick={() => navigate(routes.timeline)}>
-              Add why on Timeline
+              {t("relapse.addWhy")}
             </SecondaryButton>
           </Card>
         )}
-        <PrimaryButton onClick={() => navigate(routes.today)}>Back to today</PrimaryButton>
-        <GhostButton className="mt-2 w-full" onClick={() => navigate(routes.focus)}>
-          Start a short focus block
+        <Card className="mb-4 space-y-2 p-4">
+          <p className="text-sm font-semibold">{t("relapse.chooseNext")}</p>
+          <PrimaryButton onClick={() => startCustom(10)}>{t("relapse.ten")}</PrimaryButton>
+          <SecondaryButton className="w-full" onClick={() => startCustom(25)}>
+            {t("relapse.twentyFive")}
+          </SecondaryButton>
+          <SecondaryButton
+            className="w-full"
+            onClick={() => {
+              store.createOrUpdateDayPlan(getTodayDateString(), { dayType: "rest" });
+              navigate(routes.today);
+            }}
+          >
+            {t("relapse.rest")}
+          </SecondaryButton>
+        </Card>
+        <GhostButton className="w-full" onClick={() => navigate(routes.today)}>
+          {t("relapse.backToday")}
         </GhostButton>
       </>
     );
@@ -4141,19 +4497,24 @@ function RelapseScreen() {
 
   return (
     <>
-      <PageHeader title="You drifted. Learn from it." subtitle="This is data, not a verdict." />
+      <PageHeader title={t("relapse.title")} subtitle={t("relapse.subtitle")} />
       <FrictionWhy className="mb-4" />
       <Card>
-        <p className="mb-3 font-semibold">What pulled you away?</p>
+        <p className="mb-3 font-semibold">{t("relapse.whatPulled")}</p>
         <div className="flex flex-wrap gap-2">
-          {triggers.map(([value, label]) => (
-            <ChoiceChip key={value} label={label} selected={trigger === value} onClick={() => setTrigger(value)} />
+          {triggers.map((value) => (
+            <ChoiceChip
+              key={value}
+              label={t(`relapse.trigger.${value}`)}
+              selected={trigger === value}
+              onClick={() => setTrigger(value)}
+            />
           ))}
         </div>
       </Card>
       {obstacles.length ? (
         <Card className="mt-4 p-4">
-          <p className="text-[10px] font-bold uppercase tracking-widest text-monk-muted">Known obstacles</p>
+          <p className="text-[10px] font-bold uppercase tracking-widest text-monk-muted">{t("relapse.knownObstacles")}</p>
           <div className="mt-2 flex flex-wrap gap-1.5">
             {obstacles.map((item) => (
               <button
@@ -4173,9 +4534,9 @@ function RelapseScreen() {
         </Card>
       ) : null}
       <div className="mt-5 space-y-4">
-        <Textarea placeholder="What happened?" value={note} onChange={(event) => setNote(event.target.value)} />
+        <Textarea placeholder={t("relapse.whatHappened")} value={note} onChange={(event) => setNote(event.target.value)} />
         <Textarea
-          placeholder="What can you make harder tomorrow?"
+          placeholder={t("relapse.harderTomorrow")}
           value={recoveryAction}
           onChange={(event) => setRecoveryAction(event.target.value)}
         />
@@ -4185,7 +4546,7 @@ function RelapseScreen() {
             setSaved(true);
           }}
         >
-          Save Insight
+          {t("relapse.save")}
         </PrimaryButton>
       </div>
     </>
@@ -4307,7 +4668,8 @@ function TimelineEventRow({ event }: { event: TimelineEvent }) {
   const journalRecord = event.type === "journal_entry"
     ? store.journalEntries.find((entry) => entry.id === event.sourceId)
     : undefined;
-  const journalItems = journalRecord ? getJournalAnswerItems(journalRecord.answers, journalRecord.date) : [];
+  const journalLang = (store.appSettings.language ?? "id") as AppLanguage;
+  const journalItems = journalRecord ? getJournalAnswerItems(journalLang, journalRecord.answers, journalRecord.date) : [];
   const displayDescription = event.type === "focus_session" && normalizedFocusRecord
     ? formatFocusSessionTimelineDescription(normalizedFocusRecord, focusCompleted ? undefined : "saved")
     : event.type === "journal_entry" && journalItems.length > 0
@@ -4395,9 +4757,10 @@ function TimelineEventRow({ event }: { event: TimelineEvent }) {
 function TimelineScreen() {
   const navigate = useNavigate();
   const store = useMonkStore();
+  const t = useT();
   const season = store.activeSeason!;
   const activeGoals = selectActiveGoals(store);
-  
+
   const [retroDate, setRetroDate] = useState<string | null>(null);
   const [retroGoalId, setRetroGoalId] = useState<string>("");
   const [retroDayType, setRetroDayType] = useState<"goal" | "rest">("goal");
@@ -4439,7 +4802,7 @@ function TimelineScreen() {
 
   return (
     <>
-      <PageHeader title="Timeline" subtitle="Your path, one day at a time." rightSlot={<SettingsLink />} />
+      <PageHeader title={t("timeline.title")} subtitle={t("timeline.subtitle")} rightSlot={<SettingsLink />} />
       <div className="space-y-5">
         <WhyCard />
         <SeasonProgressCard />
@@ -4510,8 +4873,8 @@ function TimelineScreen() {
                           key={date}
                           role={isEligible ? "button" : undefined}
                           tabIndex={isEligible ? 0 : undefined}
-                          title={`Day ${dayNum} · ${status}${isEligible ? " · Tap to log" : ""}`}
-                          aria-label={`Day ${dayNum} · ${status}${isEligible ? " · Tap to log" : ""}`}
+                          title={t("timeline.dayTitle", { n: dayNum, status }) + (isEligible ? t("timeline.tapToLog") : "")}
+                          aria-label={t("timeline.dayTitle", { n: dayNum, status }) + (isEligible ? t("timeline.tapToLog") : "")}
                           onClick={isEligible ? () => setRetroDate(date) : undefined}
                           onKeyDown={isEligible ? (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setRetroDate(date); }} : undefined}
                           className={`h-6 w-6 rounded-full transition-all duration-300 ${dotStyle(date)} ${isToday ? "scale-110 ring-2 ring-monk-accent/40" : ""} ${isEligible ? "cursor-pointer hover:scale-110 hover:ring-2 hover:ring-monk-accent/40" : ""} flex items-center justify-center text-[8px] font-bold text-monk-text/60`}
@@ -4813,6 +5176,9 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 function JournalLibraryScreen() {
   const store = useMonkStore();
   const navigate = useNavigate();
+  const t = useT();
+  const lang = useLanguage();
+  const dateLocale = lang === "id" ? "id-ID" : "en-US";
   const season = store.activeSeason;
   const journalEntries = store.journalEntries.filter(e => e.seasonId === season?.id);
   const notebookEntries = store.notebookEntries;
@@ -4821,19 +5187,25 @@ function JournalLibraryScreen() {
 
   const [libTab, setLibTab] = useState<"reflections" | "notebook" | "packs">("reflections");
 
-  const catName = (id: string) => categories.find((c) => c.id === id)?.name ?? "Unknown";
+  const catName = (id: string) => categories.find((c) => c.id === id)?.name ?? t("library.unknown");
+  const subtitle =
+    libTab === "reflections"
+      ? t("library.reflectionsCount", { n: journalEntries.length })
+      : libTab === "notebook"
+        ? t("library.notesCount", { n: notebookEntries.length })
+        : t("library.packSessionsCount", { n: packSessions.length });
 
   return (
     <>
       <PageHeader
-        title="Journal Library"
-        subtitle={libTab === "reflections" ? `${journalEntries.length} reflections` : libTab === "notebook" ? `${notebookEntries.length} notes` : `${packSessions.length} pack sessions`}
+        title={t("library.title")}
+        subtitle={subtitle}
         rightSlot={<SettingsLink />}
       />
       <div className="flex rounded-xl bg-monk-soft p-1 mb-5 border border-monk-border/40 overflow-x-auto">
-        <button type="button" className={`flex-1 rounded-lg py-2 text-xs font-semibold tracking-wide transition whitespace-nowrap px-2 ${libTab === "reflections" ? "bg-monk-surface text-monk-text border border-monk-border-strong shadow-sm" : "text-monk-muted hover:text-monk-text"}`} onClick={() => setLibTab("reflections")}>Reflections</button>
-        <button type="button" className={`flex-1 rounded-lg py-2 text-xs font-semibold tracking-wide transition whitespace-nowrap px-2 ${libTab === "notebook" ? "bg-monk-surface text-monk-text border border-monk-border-strong shadow-sm" : "text-monk-muted hover:text-monk-text"}`} onClick={() => setLibTab("notebook")}>Notebook</button>
-        <button type="button" className={`flex-1 rounded-lg py-2 text-xs font-semibold tracking-wide transition whitespace-nowrap px-2 ${libTab === "packs" ? "bg-monk-surface text-monk-text border border-monk-border-strong shadow-sm" : "text-monk-muted hover:text-monk-text"}`} onClick={() => setLibTab("packs")}>Packs</button>
+        <button type="button" className={`flex-1 rounded-lg py-2 text-xs font-semibold tracking-wide transition whitespace-nowrap px-2 ${libTab === "reflections" ? "bg-monk-surface text-monk-text border border-monk-border-strong shadow-sm" : "text-monk-muted hover:text-monk-text"}`} onClick={() => setLibTab("reflections")}>{t("library.tab.reflections")}</button>
+        <button type="button" className={`flex-1 rounded-lg py-2 text-xs font-semibold tracking-wide transition whitespace-nowrap px-2 ${libTab === "notebook" ? "bg-monk-surface text-monk-text border border-monk-border-strong shadow-sm" : "text-monk-muted hover:text-monk-text"}`} onClick={() => setLibTab("notebook")}>{t("library.tab.notebook")}</button>
+        <button type="button" className={`flex-1 rounded-lg py-2 text-xs font-semibold tracking-wide transition whitespace-nowrap px-2 ${libTab === "packs" ? "bg-monk-surface text-monk-text border border-monk-border-strong shadow-sm" : "text-monk-muted hover:text-monk-text"}`} onClick={() => setLibTab("packs")}>{t("library.tab.packs")}</button>
       </div>
       <div className="space-y-4 pb-8">
 
@@ -4841,9 +5213,9 @@ function JournalLibraryScreen() {
           notebookEntries.length === 0
             ? (
               <EmptyState
-                title="Notebook is empty"
-                description="Capture free thoughts that don't fit a daily reflection."
-                actionLabel="Open Notebook"
+                title={t("library.empty.notebook.title")}
+                description={t("library.empty.notebook.desc")}
+                actionLabel={t("library.empty.notebook.action")}
                 onAction={() => navigate(routes.notebook)}
               />
             )
@@ -4852,20 +5224,20 @@ function JournalLibraryScreen() {
               .map((entry) => (
                 <div key={entry.id} className="p-4 bg-monk-surface border border-monk-border/40 rounded-xl transition hover:border-monk-accent">
                   <div className="flex items-center justify-between mb-1">
-                    <span className="text-sm font-semibold text-monk-text truncate mr-2">{entry.title || "Untitled"}</span>
+                    <span className="text-sm font-semibold text-monk-text truncate mr-2">{entry.title || t("library.untitled")}</span>
                     <span className="text-xs font-bold uppercase tracking-wider text-monk-accent bg-monk-accent-soft px-2 py-0.5 rounded-full shrink-0">{catName(entry.categoryId)}</span>
                   </div>
                   <p className="text-xs text-monk-muted mt-1 line-clamp-2">{entry.body.replace(/\n/g, " ").slice(0, 200)}</p>
-                  <p className="text-xs text-monk-text-soft mt-1">{new Date(entry.updatedAt).toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" })}</p>
+                  <p className="text-xs text-monk-text-soft mt-1">{new Date(entry.updatedAt).toLocaleDateString(dateLocale, { day: "numeric", month: "short", year: "numeric" })}</p>
                 </div>
               ))
         ) : libTab === "packs" ? (
           packSessions.length === 0
             ? (
               <EmptyState
-                title="No pack sessions yet"
-                description="Guided packs help you reflect with a clear prompt sequence."
-                actionLabel="Browse packs"
+                title={t("library.empty.packs.title")}
+                description={t("library.empty.packs.desc")}
+                actionLabel={t("library.empty.packs.action")}
                 onAction={() => navigate(routes.packs)}
               />
             )
@@ -4877,11 +5249,19 @@ function JournalLibraryScreen() {
                   <div key={session.id} className="p-4 bg-monk-surface border border-monk-border/40 rounded-xl transition hover:border-monk-accent">
                     <div className="flex items-center gap-2 mb-1">
                       <span className="text-sm">🧭</span>
-                      <span className="text-sm font-semibold text-monk-text">{pack?.title ?? "Unknown Pack"}</span>
+                      <span className="text-sm font-semibold text-monk-text">{pack?.title ?? t("library.unknownPack")}</span>
                     </div>
-                    <p className="text-xs text-monk-muted mt-1">{session.answers.length} answers</p>
+                    <p className="text-xs text-monk-muted mt-1">{t("library.answersCount", { n: session.answers.length })}</p>
                     <p className="text-xs text-monk-text-soft mt-1">
-                      {session.completedAt ? `Completed ${new Date(session.completedAt).toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" })}` : ""}
+                      {session.completedAt
+                        ? t("library.completed", {
+                            date: new Date(session.completedAt).toLocaleDateString(dateLocale, {
+                              day: "numeric",
+                              month: "short",
+                              year: "numeric",
+                            }),
+                          })
+                        : ""}
                     </p>
                   </div>
                 );
@@ -4890,9 +5270,9 @@ function JournalLibraryScreen() {
           journalEntries.length === 0
             ? (
               <EmptyState
-                title="No reflections yet"
-                description="Morning pages and evening reflections collect here as you write."
-                actionLabel="Write today"
+                title={t("library.empty.reflections.title")}
+                description={t("library.empty.reflections.desc")}
+                actionLabel={t("library.empty.reflections.action")}
                 onAction={() => navigate(routes.journal)}
               />
             )
@@ -4918,7 +5298,7 @@ function JournalLibraryScreen() {
               })
         )}
         <GhostButton className="w-full mt-4" onClick={() => navigate(routes.journal)}>
-          Write new entry
+          {t("library.writeNew")}
         </GhostButton>
       </div>
     </>
@@ -4927,12 +5307,13 @@ function JournalLibraryScreen() {
 
 function NotebookPage() {
   const navigate = useNavigate();
+  const t = useT();
   return (
     <div className="notebook-page-bg -mx-6 min-h-[calc(100dvh-120px)] px-6 pb-8 pt-2">
       <div className="mb-5 flex items-start justify-between gap-3">
         <div>
-          <h1 className="font-handwriting text-[2rem] leading-none text-monk-text">Notebook</h1>
-          <p className="mt-1 text-sm text-monk-muted">Jurnal bebas. Tanpa prompt.</p>
+          <h1 className="font-handwriting text-[2rem] leading-none text-monk-text">{t("notebook.title")}</h1>
+          <p className="mt-1 text-sm text-monk-muted">{t("notebook.subtitle")}</p>
         </div>
         <div className="flex items-center gap-1 pt-1">
           <button
@@ -4941,7 +5322,7 @@ function NotebookPage() {
             className="flex min-h-10 items-center gap-1 rounded-full px-2.5 text-xs font-semibold text-monk-text-soft transition hover:text-monk-accent"
           >
             <BookOpen size={13} strokeWidth={1.5} />
-            Library
+            {t("library.nav")}
           </button>
           <button
             type="button"
@@ -4949,7 +5330,7 @@ function NotebookPage() {
             className="flex min-h-10 items-center gap-1 rounded-full px-2.5 text-xs font-semibold text-monk-text-soft transition hover:text-monk-accent"
           >
             <FileText size={13} strokeWidth={1.5} />
-            Journal
+            {t("nav.journal")}
           </button>
         </div>
       </div>
@@ -4960,11 +5341,12 @@ function NotebookPage() {
 
 function PacksPage() {
   const navigate = useNavigate();
+  const t = useT();
   return (
     <>
       <PageHeader
-        title="Packs"
-        subtitle="Themed questions for deeper reflection"
+        title={t("packs.title")}
+        subtitle={t("packs.subtitle")}
         rightSlot={
           <div className="flex items-center gap-2">
             <button
@@ -4972,14 +5354,14 @@ function PacksPage() {
               onClick={() => navigate(routes.library)}
               className="inline-flex items-center gap-1 text-xs font-semibold text-monk-text-soft transition hover:text-monk-accent"
             >
-              <BookOpen size={12} strokeWidth={1.5} /> Library
+              <BookOpen size={12} strokeWidth={1.5} /> {t("library.nav")}
             </button>
             <button
               type="button"
               onClick={() => navigate(routes.journal)}
               className="inline-flex items-center gap-1 text-xs font-semibold text-monk-text-soft transition hover:text-monk-accent"
             >
-              <FileText size={12} strokeWidth={1.5} /> Journal
+              <FileText size={12} strokeWidth={1.5} /> {t("nav.journal")}
             </button>
           </div>
         }
@@ -5028,6 +5410,9 @@ function SettingsScreen() {
   const store = useMonkStore();
   const navigate = useNavigate();
   const [exported, setExported] = useState("");
+  const tUI = useT();
+  const lang = (store.appSettings.language ?? "id") as AppLanguage;
+  const labels = getJournalQuestionLabels(lang);
 
   const downloadReminderIcs = () => {
     const icsContent = [
@@ -5053,6 +5438,19 @@ function SettingsScreen() {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
+  const downloadBackup = () => {
+    const json = exportStateAsJson();
+    const blob = new Blob([json], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `zendo-backup-${new Date().toISOString().slice(0, 10)}.json`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
     URL.revokeObjectURL(url);
   };
 
@@ -5095,11 +5493,11 @@ function SettingsScreen() {
       ...store.journalEntries.map(j => {
         return [
           `### Reflection for ${j.date}`,
-          `- **${getDailyJournalPromptForDate(j.date)}**: ${j.answers.whatMovedToday || "-"}`,
-          j.answers.whatDistractedMe ? `- **What distracted me?**: ${j.answers.whatDistractedMe}` : "",
-          j.answers.whatDidILearn ? `- **What did I learn?**: ${j.answers.whatDidILearn}` : "",
-          j.answers.whatShouldBeEasierTomorrow ? `- **What should be easier tomorrow?**: ${j.answers.whatShouldBeEasierTomorrow}` : "",
-          j.answers.whatShouldBeHarderTomorrow ? `- **What should be harder tomorrow?**: ${j.answers.whatShouldBeHarderTomorrow}` : ""
+          `- **${getDailyJournalPromptForDate(lang, j.date)}**: ${j.answers.whatMovedToday || "-"}`,
+          j.answers.whatDistractedMe ? `- **${labels.whatDistractedMe}**: ${j.answers.whatDistractedMe}` : "",
+          j.answers.whatDidILearn ? `- **${labels.whatDidILearn}**: ${j.answers.whatDidILearn}` : "",
+          j.answers.whatShouldBeEasierTomorrow ? `- **${labels.whatShouldBeEasierTomorrow}**: ${j.answers.whatShouldBeEasierTomorrow}` : "",
+          j.answers.whatShouldBeHarderTomorrow ? `- **${labels.whatShouldBeHarderTomorrow}**: ${j.answers.whatShouldBeHarderTomorrow}` : ""
         ].filter(Boolean).join("\n");
       }),
       "",
@@ -5123,19 +5521,39 @@ function SettingsScreen() {
 
   return (
     <>
-      <PageHeader title="Settings" subtitle="Customize your experience." />
+      <PageHeader title={tUI("settings.title")} subtitle={tUI("settings.subtitle")} />
       <div className="space-y-6 pb-8">
 
         {/* Preferences */}
         <div>
-          <p className="mb-2 px-1 text-xs font-bold uppercase tracking-widest text-monk-muted">Preferences</p>
+          <p className="mb-2 px-1 text-xs font-bold uppercase tracking-widest text-monk-muted">{tUI("settings.prefs")}</p>
           <Card className="divide-y divide-monk-border/40 overflow-hidden p-0">
-            <SettingsRow title="Notifications" description="Gentle daily reminder to reflect.">
+            <SettingsRow title={tUI("settings.language")} description={tUI("settings.languageDesc")}>
+              <div className="flex rounded-full bg-monk-soft p-0.5 border border-monk-border/40 shrink-0">
+                {(["id", "en"] as const).map((code) => (
+                  <button
+                    key={code}
+                    type="button"
+                    onClick={() => store.updateSettings({ language: code })}
+                    className={`min-w-11 min-h-9 px-3 rounded-full text-xs font-semibold transition ${
+                      lang === code
+                        ? "bg-monk-surface text-monk-text border border-monk-border-strong shadow-sm"
+                        : "text-monk-muted hover:text-monk-text"
+                    }`}
+                    aria-pressed={lang === code}
+                    aria-label={code === "id" ? tUI("settings.lang.id") : tUI("settings.lang.en")}
+                  >
+                    {code === "id" ? tUI("settings.lang.id") : tUI("settings.lang.en")}
+                  </button>
+                ))}
+              </div>
+            </SettingsRow>
+            <SettingsRow title={tUI("settings.notifications")} description={tUI("settings.notificationsDesc")}>
               <button
                 type="button"
                 role="switch"
                 aria-checked={store.appSettings.notificationEnabled}
-                aria-label="Toggle notifications"
+                aria-label={tUI("settings.notifications")}
                 onClick={async () => {
                   if ("Notification" in window && Notification.permission !== "granted") {
                     await Notification.requestPermission();
@@ -5147,12 +5565,12 @@ function SettingsScreen() {
                 <span className={`inline-block h-4 w-4 rounded-full bg-white shadow transition-transform ${store.appSettings.notificationEnabled ? "translate-x-[22px]" : "translate-x-1"}`} />
               </button>
             </SettingsRow>
-            <SettingsRow title="Digital detox guide" description="Mark the grey-mode onboarding guide as complete.">
+            <SettingsRow title={tUI("settings.detox")} description={tUI("settings.detoxDesc")}>
               <button
                 type="button"
                 role="switch"
                 aria-checked={store.appSettings.greyModeGuideCompleted}
-                aria-label="Toggle digital detox guide completed"
+                aria-label={tUI("settings.detox")}
                 onClick={() => store.updateSettings({ greyModeGuideCompleted: !store.appSettings.greyModeGuideCompleted })}
                 className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors ${store.appSettings.greyModeGuideCompleted ? "bg-monk-accent" : "bg-monk-border"}`}
               >
@@ -5164,13 +5582,16 @@ function SettingsScreen() {
 
         {/* Data & Export */}
         <div>
-          <p className="mb-2 px-1 text-xs font-bold uppercase tracking-widest text-monk-muted">Data & Export</p>
+          <p className="mb-2 px-1 text-xs font-bold uppercase tracking-widest text-monk-muted">{tUI("settings.data")}</p>
           <Card className="divide-y divide-monk-border/40 p-0 overflow-hidden">
-            <SettingsRow title="Calendar Reminder" description="Download .ics file — import into Google Calendar, Apple Calendar, or Outlook.">
-              <GhostButton onClick={downloadReminderIcs}>Export .ics</GhostButton>
+            <SettingsRow title={tUI("settings.calendar")} description={tUI("settings.calendarDesc")}>
+              <GhostButton onClick={downloadReminderIcs}>{tUI("settings.downloadIcs")}</GhostButton>
             </SettingsRow>
-            <SettingsRow title="Season Log" description="Download full season history as Markdown.">
-              <GhostButton onClick={downloadSeasonLogMd}>Export .md</GhostButton>
+            <SettingsRow title={tUI("settings.seasonLog")} description={tUI("settings.seasonLogDesc")}>
+              <GhostButton onClick={downloadSeasonLogMd}>{tUI("settings.downloadMd")}</GhostButton>
+            </SettingsRow>
+            <SettingsRow title={tUI("settings.backup")} description={tUI("settings.backupDesc")}>
+              <GhostButton onClick={downloadBackup}>{tUI("settings.downloadBackup")}</GhostButton>
             </SettingsRow>
             <SettingsRow title="Data (JSON)" description="Export or import your full data.">
               <div className="flex gap-2 shrink-0">
@@ -5252,27 +5673,27 @@ function SettingsScreen() {
 
         {/* Danger Zone */}
         <div>
-          <p className="text-[10px] font-bold uppercase tracking-widest text-monk-danger/60 px-1 mb-2">Danger Zone</p>
+          <p className="text-[10px] font-bold uppercase tracking-widest text-monk-danger/60 px-1 mb-2">{tUI("settings.danger")}</p>
           <Card className="border-monk-danger/20 p-0 overflow-hidden">
-            <SettingsRow title="Factory Reset" description="Permanently delete all logs, goals, and history from this device.">
+            <SettingsRow title={tUI("settings.reset")} description={tUI("settings.resetDesc")}>
               <button
                 type="button"
                 className="shrink-0 text-xs font-bold text-monk-danger border border-monk-danger/30 hover:border-monk-danger bg-monk-danger/5 px-3 py-1.5 rounded-full transition active:scale-95"
                 onClick={() => {
-                  if (window.confirm("WARNING: Wiping will permanently delete all your season logs, goals, and history. Wiped data cannot be recovered. Are you sure?")) {
+                  if (window.confirm(tUI("settings.wipeConfirm"))) {
                     localStorage.clear();
                     window.location.href = "/";
                   }
                 }}
               >
-                Wipe All Data
+                {tUI("settings.wipe")}
               </button>
             </SettingsRow>
           </Card>
         </div>
 
         {/* About */}
-        <p className="text-center text-xs text-monk-muted/50 pb-2">Zendo — a quiet space for deep focus and intentional progress.</p>
+        <p className="text-center text-xs text-monk-muted/50 pb-2">{tUI("settings.about")}</p>
       </div>
     </>
   );
@@ -5408,7 +5829,7 @@ function LibraryScreen() {
                       </div>
                     </div>
                     <div className="space-y-2">
-                      {getJournalAnswerItems(j.answers, j.date).map((item) => (
+                      {getJournalAnswerItems((store.appSettings.language ?? "id") as AppLanguage, j.answers, j.date).map((item) => (
                         <div key={item.id}>
                           <span className="block text-xs font-bold uppercase tracking-wider text-monk-muted">{item.question}</span>
                           <p className="mt-0.5 text-xs font-medium leading-relaxed text-monk-text">{item.answer}</p>

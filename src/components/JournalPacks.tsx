@@ -3,6 +3,7 @@ import { useMonkStore } from "../store/useMonkStore";
 import { Card, PrimaryButton, SecondaryButton, GhostButton, EmptyState } from "./ui";
 import { Lock, ChevronLeft, Check } from "lucide-react";
 import type { JournalPack, JournalPackSession } from "../types/app";
+import { useT, useLanguage } from "../i18n";
 
 export default function JournalPacks() {
   const store = useMonkStore();
@@ -39,6 +40,7 @@ function PackList({
   onPurchase: (packId: string) => void;
 }) {
   const store = useMonkStore();
+  const t = useT();
   const purchased = store.purchasedPackIds;
 
   const sorted = useMemo(() => {
@@ -70,8 +72,8 @@ function PackList({
   if (!packs.length) {
     return (
       <EmptyState
-        title="No packs yet"
-        description="Themed reflection packs will appear here."
+        title={t("packs.empty.title")}
+        description={t("packs.empty.desc")}
       />
     );
   }
@@ -83,7 +85,7 @@ function PackList({
     <div className="space-y-6">
       {inProgress.length ? (
         <section className="space-y-3">
-          <p className="text-[10px] font-bold uppercase tracking-widest text-monk-muted">Continue</p>
+          <p className="text-[10px] font-bold uppercase tracking-widest text-monk-muted">{t("packs.continue")}</p>
           {inProgress.map((item) => (
             <PackCard
               key={item.pack.id}
@@ -98,7 +100,7 @@ function PackList({
 
       <section className="space-y-3">
         {inProgress.length ? (
-          <p className="text-[10px] font-bold uppercase tracking-widest text-monk-muted">All packs</p>
+          <p className="text-[10px] font-bold uppercase tracking-widest text-monk-muted">{t("packs.all")}</p>
         ) : null}
         {rest.map((item) => (
           <PackCard
@@ -132,6 +134,9 @@ function PackCard({
   onPurchase: (id: string) => void;
 }) {
   const store = useMonkStore();
+  const t = useT();
+  const lang = useLanguage();
+  const dateLocale = lang === "id" ? "id-ID" : "en-US";
   const progress = activeSession?.progress ?? 0;
   const inProgress = !!activeSession && progress < 100;
   const locked = !!pack.isPremium && !purchased;
@@ -155,26 +160,31 @@ function PackCard({
             <p className="font-semibold text-monk-text">{pack.title}</p>
             {locked ? (
               <span className="inline-flex items-center gap-0.5 rounded-full border border-monk-accent/30 bg-monk-accent-soft px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-monk-accent">
-                <Lock size={9} /> Premium
+                <Lock size={9} /> {t("packs.premium")}
               </span>
             ) : null}
             {completedCount > 0 && !inProgress ? (
               <span className="rounded-full border border-monk-success/30 bg-monk-success-soft px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-monk-success">
-                {completedCount}× done
+                {t("packs.doneCount", { n: completedCount })}
               </span>
             ) : null}
           </div>
           <p className="mt-1 text-sm leading-5 text-monk-muted">{pack.description}</p>
 
           <div className="mt-2 flex flex-wrap items-center gap-2 text-[11px] text-monk-text-soft">
-            <span>{pack.questions.length} questions</span>
+            <span>{t("packs.questions", { n: pack.questions.length })}</span>
             <span aria-hidden>·</span>
-            <span>~{pack.estimatedMinutes} min</span>
+            <span>{t("packs.minutes", { n: pack.estimatedMinutes })}</span>
             {lastCompleted ? (
               <>
                 <span aria-hidden>·</span>
                 <span>
-                  Last {new Date(lastCompleted).toLocaleDateString("id-ID", { day: "numeric", month: "short" })}
+                  {t("packs.last", {
+                    date: new Date(lastCompleted).toLocaleDateString(dateLocale, {
+                      day: "numeric",
+                      month: "short",
+                    }),
+                  })}
                 </span>
               </>
             ) : null}
@@ -183,7 +193,7 @@ function PackCard({
           {inProgress ? (
             <div className="mt-3">
               <div className="mb-1 flex items-center justify-between text-[10px] text-monk-muted">
-                <span>In progress</span>
+                <span>{t("packs.inProgress")}</span>
                 <span className="font-mono">{progress}%</span>
               </div>
               <div className="h-1.5 overflow-hidden rounded-full bg-monk-soft">
@@ -202,7 +212,7 @@ function PackCard({
             onClick={() => onPurchase(pack.id)}
             className="shrink-0 rounded-monk border border-monk-accent/40 bg-monk-soft px-3 py-2 text-xs font-semibold text-monk-accent transition active:scale-95 hover:bg-monk-accent-soft"
           >
-            Unlock
+            {t("packs.unlock")}
           </button>
         ) : (
           <button
@@ -213,7 +223,7 @@ function PackCard({
             }}
             className="shrink-0 rounded-monk bg-monk-accent px-3.5 py-2 text-xs font-semibold text-white transition active:scale-95 hover:opacity-90"
           >
-            {inProgress ? "Continue" : completedCount > 0 ? "Again" : "Start"}
+            {inProgress ? t("packs.continue") : completedCount > 0 ? t("packs.again") : t("packs.start")}
           </button>
         )}
       </div>
@@ -223,6 +233,7 @@ function PackCard({
 
 function PackSession({ pack, onBack }: { pack: JournalPack; onBack: () => void }) {
   const store = useMonkStore();
+  const t = useT();
   const session =
     store.journalPackSessions.find((s) => s.packId === pack.id && !s.completedAt) ??
     store.journalPackSessions.find((s) => s.packId === pack.id);
@@ -249,7 +260,7 @@ function PackSession({ pack, onBack }: { pack: JournalPack; onBack: () => void }
 
   if (!session) {
     return (
-      <div className="py-12 text-center text-sm text-monk-muted">Opening pack…</div>
+      <div className="py-12 text-center text-sm text-monk-muted">{t("packs.opening")}</div>
     );
   }
 
@@ -259,12 +270,12 @@ function PackSession({ pack, onBack }: { pack: JournalPack; onBack: () => void }
         <div className="mx-auto mb-4 grid h-12 w-12 place-items-center rounded-full border border-monk-success/30 bg-monk-success-soft text-monk-success">
           <Check size={22} strokeWidth={2.5} />
         </div>
-        <p className="text-xl font-semibold text-monk-text">Well done.</p>
+        <p className="text-xl font-semibold text-monk-text">{t("packs.wellDone")}</p>
         <p className="mt-2 text-sm text-monk-muted">
-          You completed <span className="font-semibold text-monk-text">{pack.title}</span>
+          {t("packs.completedPack", { title: pack.title })}
         </p>
         <PrimaryButton className="mt-6" onClick={onBack}>
-          Back to Packs
+          {t("packs.backToPacks")}
         </PrimaryButton>
       </Card>
     );
@@ -302,14 +313,17 @@ function PackSession({ pack, onBack }: { pack: JournalPack; onBack: () => void }
           onClick={onBack}
           className="inline-flex items-center gap-1 text-xs font-semibold text-monk-muted transition hover:text-monk-accent"
         >
-          <ChevronLeft size={14} /> Back
+          <ChevronLeft size={14} /> {t("packs.back")}
         </button>
         <span className="text-[11px] font-mono text-monk-text-soft">
           {currentIndex + 1}/{pack.questions.length}
         </span>
       </div>
 
-      <div className="flex gap-1.5" aria-label={`Progress ${answeredCount} of ${pack.questions.length}`}>
+      <div
+        className="flex gap-1.5"
+        aria-label={t("packs.progressAria", { done: answeredCount, total: pack.questions.length })}
+      >
         {pack.questions.map((q, i) => {
           const answered = session.answers.some((a) => a.questionId === q.id && a.answer.trim());
           return (
@@ -339,7 +353,7 @@ function PackSession({ pack, onBack }: { pack: JournalPack; onBack: () => void }
         <textarea
           value={input}
           onChange={(e) => setInput(e.target.value)}
-          placeholder="Write your answer…"
+          placeholder={t("packs.answerPlaceholder")}
           className="min-h-[200px] w-full resize-none bg-transparent text-sm leading-7 text-monk-text outline-none placeholder:text-monk-muted"
           style={{
             backgroundImage:
@@ -348,14 +362,14 @@ function PackSession({ pack, onBack }: { pack: JournalPack; onBack: () => void }
         />
       </Card>
 
-      {saved ? <p className="text-center text-xs text-monk-success">Saved ✓</p> : null}
+      {saved ? <p className="text-center text-xs text-monk-success">{t("packs.saved")}</p> : null}
 
       <div className="flex gap-3 pb-4">
         <GhostButton className="flex-1" onClick={handleSave}>
-          Save
+          {t("packs.save")}
         </GhostButton>
         <PrimaryButton className="flex-1" disabled={!input.trim()} onClick={handleNext}>
-          {currentIndex < pack.questions.length - 1 ? "Next" : "Complete"}
+          {currentIndex < pack.questions.length - 1 ? t("packs.next") : t("packs.complete")}
         </PrimaryButton>
       </div>
     </div>
@@ -364,6 +378,7 @@ function PackSession({ pack, onBack }: { pack: JournalPack; onBack: () => void }
 
 function PurchaseModal({ packId, onClose }: { packId: string; onClose: () => void }) {
   const store = useMonkStore();
+  const t = useT();
   const pack = store.journalPacks.find((p) => p.id === packId);
   const [processing, setProcessing] = useState(false);
   const [done, setDone] = useState(false);
@@ -393,10 +408,10 @@ function PurchaseModal({ packId, onClose }: { packId: string; onClose: () => voi
             <div className="mx-auto mb-3 grid h-12 w-12 place-items-center rounded-full border border-monk-success/30 bg-monk-success-soft text-monk-success">
               <Check size={20} />
             </div>
-            <p className="font-semibold text-monk-text">Pack unlocked</p>
-            <p className="mt-1 text-sm text-monk-muted">You can start “{pack.title}”</p>
+            <p className="font-semibold text-monk-text">{t("packs.unlocked")}</p>
+            <p className="mt-1 text-sm text-monk-muted">{t("packs.canStart", { title: pack.title })}</p>
             <PrimaryButton className="mt-5" onClick={onClose}>
-              Start writing
+              {t("packs.startWriting")}
             </PrimaryButton>
           </div>
         ) : (
@@ -405,25 +420,25 @@ function PurchaseModal({ packId, onClose }: { packId: string; onClose: () => voi
               <div className="mx-auto mb-3 grid h-12 w-12 place-items-center rounded-full border border-monk-accent/30 bg-monk-accent-soft text-monk-accent">
                 <Lock size={18} />
               </div>
-              <p className="font-semibold text-monk-text">Unlock premium pack</p>
+              <p className="font-semibold text-monk-text">{t("packs.unlockTitle")}</p>
               <p className="mt-1 text-sm text-monk-muted">{pack.title}</p>
             </div>
 
             <div className="mb-5 space-y-1 rounded-monk border border-monk-border bg-monk-soft p-4 text-sm text-monk-text-soft">
-              <p>{pack.questions.length} deep journaling questions</p>
-              <p>~{pack.estimatedMinutes} minutes of reflection</p>
-              <p className="pt-1 font-semibold text-monk-accent">One-time · $2.99</p>
+              <p>{t("packs.deepQuestions", { n: pack.questions.length })}</p>
+              <p>{t("packs.reflectMinutes", { n: pack.estimatedMinutes })}</p>
+              <p className="pt-1 font-semibold text-monk-accent">{t("packs.price")}</p>
             </div>
 
             {processing ? (
-              <div className="py-3 text-center text-sm text-monk-muted">Processing…</div>
+              <div className="py-3 text-center text-sm text-monk-muted">{t("packs.processing")}</div>
             ) : (
               <div className="flex gap-3">
                 <SecondaryButton className="flex-1" onClick={onClose}>
-                  Not now
+                  {t("packs.notNow")}
                 </SecondaryButton>
                 <PrimaryButton className="flex-1" onClick={handlePurchase}>
-                  Mock $2.99
+                  {t("packs.mockBuy")}
                 </PrimaryButton>
               </div>
             )}

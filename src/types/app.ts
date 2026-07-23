@@ -25,9 +25,12 @@ export type UserProfile = {
   updatedAt: ISODateString;
 };
 
+export type AppLanguage = "en" | "id";
+
 export type AppSettings = {
   id: string;
   theme: "light" | "dark" | "system";
+  language: AppLanguage;
   reducedMotion: boolean;
   notificationEnabled: boolean;
   greyModeGuideCompleted: boolean;

@@ -33,6 +33,7 @@ export function createDefaultSettings(): AppSettings {
   return {
     id: createId("settings"),
     theme: "light",
+    language: "id",
     reducedMotion: false,
     notificationEnabled: false,
     greyModeGuideCompleted: false,

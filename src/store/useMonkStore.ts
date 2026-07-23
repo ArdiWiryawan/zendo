@@ -31,6 +31,7 @@ import {
 } from "../lib/date";
 import { createId } from "../lib/ids";
 import { loadState, saveState } from "../lib/storage";
+import { t } from "../i18n";
 import type {
   AppSettings,
   BadHabit,
@@ -123,6 +124,7 @@ type MonkActions = {
   resumeFocusSession: (sessionId: string) => void;
   completeFocusSession: (sessionId: string, completeMainAction?: boolean) => void;
   abandonFocusSession: (sessionId: string) => void;
+  bumpFocusDistraction: (sessionId: string) => void;
   saveLearningEntry: (input: LearningInput) => void;
   saveLearningSession: (session: LearningSession) => void;
   addTimelineEvent: (event: TimelineEvent) => void;
@@ -1277,6 +1279,18 @@ export const useMonkStore = create<MonkStore>((set, get) => ({
     });
   },
 
+  bumpFocusDistraction: (sessionId) => {
+    const state = get();
+    withPersist(set, get, {
+      focusSessions: state.focusSessions.map((s) => {
+        if (s.id !== sessionId) return s;
+        const prev = /^distractions:(\d+)/.exec(s.note ?? "");
+        const n = (prev ? Number(prev[1]) : 0) + 1;
+        return { ...s, note: `distractions:${n}`, updatedAt: nowIso() };
+      })
+    });
+  },
+
   saveLearningEntry: (input) => {
     const state = get();
     if (!state.activeSeason || !input.title.trim()) return;
@@ -1327,19 +1341,20 @@ export const useMonkStore = create<MonkStore>((set, get) => ({
       : [...state.journalEntries, entry];
 
     // Create journal entry timeline event
+    const lang = state.appSettings.language ?? "id";
     const hasReflection = !!answers.whatMovedToday?.trim();
     const hasMorningPages = !!answers.morningPages?.trim();
-    let eventTitle = "Wrote reflection";
+    let eventTitle = t(lang, "timeline.wroteReflection");
     let eventDesc = "";
 
     if (hasMorningPages && hasReflection) {
-      eventTitle = "Completed morning pages & reflection";
-      eventDesc = `Morning Pages:\n${answers.morningPages}\n\nReflection:\n${answers.whatMovedToday}`;
+      eventTitle = t(lang, "timeline.wroteBoth");
+      eventDesc = `${t(lang, "timeline.morningPagesLabel")}:\n${answers.morningPages}\n\n${t(lang, "timeline.reflectionLabel")}:\n${answers.whatMovedToday}`;
     } else if (hasMorningPages) {
-      eventTitle = "Wrote morning pages";
+      eventTitle = t(lang, "timeline.wroteMorning");
       eventDesc = answers.morningPages || "";
     } else if (hasReflection) {
-      eventTitle = "Wrote journal reflection";
+      eventTitle = t(lang, "timeline.wroteReflection");
       eventDesc = answers.whatMovedToday || "";
     }
 

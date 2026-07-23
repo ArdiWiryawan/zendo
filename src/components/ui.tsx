@@ -4,6 +4,7 @@ import { ArrowLeft, ArrowRight, BookOpen, Calendar, Check, Flag, Grid3X3, Settin
 import { hapticPress } from "../lib/haptics";
 import { NavLink, useLocation } from "react-router-dom";
 import { routes } from "../constants/routes";
+import { useT } from "../i18n";
 
 export function ScreenContainer({
   children,
@@ -419,10 +420,11 @@ export function EmptyState({
 }
 
 export function SettingsLink() {
+  const t = useT();
   return (
     <NavLink
       to={routes.settings}
-      aria-label="Settings"
+      aria-label={t("nav.settings")}
       className="grid h-12 w-12 place-items-center rounded-full border border-monk-border bg-monk-surface text-monk-muted transition duration-150 hover:border-monk-border-strong hover:text-monk-text"
     >
       <Settings size={20} strokeWidth={1.5} />
@@ -432,14 +434,15 @@ export function SettingsLink() {
 
 function BottomNav() {
   const location = useLocation();
+  const t = useT();
   const tabs = [
-    { to: routes.today, label: "Today", icon: Sun },
-    { to: routes.week, label: "Week", icon: Calendar },
-    { to: routes.timeline, label: "Timeline", icon: Grid3X3 },
-    { to: routes.journal, label: "Journal", icon: BookOpen }
+    { to: routes.today, label: t("nav.today"), icon: Sun },
+    { to: routes.week, label: t("nav.week"), icon: Calendar },
+    { to: routes.timeline, label: t("nav.timeline"), icon: Grid3X3 },
+    { to: routes.journal, label: t("nav.journal"), icon: BookOpen }
   ];
   return (
-    <nav aria-label="Main">
+    <nav aria-label={t("nav.main")}>
       <div className="mx-auto grid h-[58px] max-w-[360px] grid-cols-4 rounded-full border border-monk-border-strong bg-monk-surface/95 p-1 shadow-soft backdrop-blur-sm">
         {tabs.map((tab) => {
           const Icon = tab.icon;
