@@ -178,8 +178,8 @@ const JOURNAL_QUESTION_LABELS: Record<keyof JournalAnswers, string> = {
 };
 
 function getDailyJournalPromptForDate(date: string) {
-  const sum = date.split("-").reduce((acc, char) => acc + char.charCodeAt(0), 0);
-  return promptsDailyJournal[Math.abs(sum) % promptsDailyJournal.length];
+  const dayNumber = getDayNumber(date);
+  return promptsDailyJournal[dayNumber % promptsDailyJournal.length];
 }
 
 function getJournalAnswerItems(answers: JournalAnswers, date?: string) {
