@@ -152,6 +152,7 @@ export const en = {
   "today.nudge.morningCta": "Write morning pages",
   "today.primary.startFocus": "Start focus",
   "today.primary.focusHint": "One quiet block. Length on the next screen.",
+  "today.primary.chooseLength": "Choose length",
   "today.primary.quickTen": "Quick 10 min",
   "today.primary.intentionTitle": "Name today's intention",
   "today.primary.intentionBody": "One action is enough. When + what.",
@@ -387,6 +388,8 @@ export const en = {
   "toast.energyLogged": "Energy noted.",
   "toast.intentionSaved": "Intention set.",
   "toast.daySkipped": "Day set down.",
+  "toast.planCleared": "Theme cleared.",
+  "toast.undo": "Undo",
 
   "focus.prepareFirst": "Prepare first (optional)",
 } as const;

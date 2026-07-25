@@ -88,3 +88,37 @@ export function exportStateAsJson(): string {
   const state = loadState();
   return JSON.stringify(state, null, 2);
 }
+
+export const LAST_FOCUS_KEY = "zendo.focus.lastPreset";
+
+export type LastFocusChoice = {
+  preset: "deep_work" | "pomodoro" | "custom";
+  customMinutes: number;
+};
+
+export function loadLastFocus(): LastFocusChoice | null {
+  if (typeof localStorage === "undefined") return null;
+  try {
+    const raw = localStorage.getItem(LAST_FOCUS_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as LastFocusChoice;
+    if (!parsed?.preset) return null;
+    const customMinutes = Math.max(5, Math.round(Number(parsed.customMinutes) || 50));
+    if (!["deep_work", "pomodoro", "custom"].includes(parsed.preset)) return null;
+    return { preset: parsed.preset, customMinutes };
+  } catch {
+    return null;
+  }
+}
+
+export function saveLastFocus(preset: LastFocusChoice["preset"], customMinutes: number) {
+  if (typeof localStorage === "undefined") return;
+  try {
+    localStorage.setItem(
+      LAST_FOCUS_KEY,
+      JSON.stringify({ preset, customMinutes: Math.max(5, Math.round(customMinutes || 50)) })
+    );
+  } catch {
+    /* ignore */
+  }
+}

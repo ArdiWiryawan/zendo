@@ -73,7 +73,7 @@ import {
 import { createId } from "../lib/ids";
 import { formatIntention, parseIntention } from "../lib/implementationIntention";
 import { capacityCheck, planStrengthLabel, scorePlan } from "../lib/planScoring";
-import { exportStateAsJson, JOURNAL_DRAFT_KEY } from "../lib/storage";
+import { exportStateAsJson, JOURNAL_DRAFT_KEY, loadLastFocus, saveLastFocus } from "../lib/storage";
 import {
   validateFocusGoalSelection,
   validateGoalBrainDump,
@@ -603,10 +603,16 @@ function FocusSessionStarter({ compact = false }: { compact?: boolean }) {
   const store = useMonkStore();
   const t = useT();
   const lowEnergy = selectEnergyForDate(store, getTodayDateString()) === "low";
-  const [selectedPreset, setSelectedPreset] = useState<FocusSessionPreset>(() =>
-    lowEnergy ? "custom" : "deep_work"
-  );
-  const [customMinutes, setCustomMinutes] = useState(() => (lowEnergy ? 10 : 50));
+  const [selectedPreset, setSelectedPreset] = useState<FocusSessionPreset>(() => {
+    if (lowEnergy) return "custom";
+    const last = loadLastFocus();
+    return last?.preset ?? "deep_work";
+  });
+  const [customMinutes, setCustomMinutes] = useState(() => {
+    if (lowEnergy) return 10;
+    const last = loadLastFocus();
+    return last?.customMinutes ?? 50;
+  });
   const [showChecklist, setShowChecklist] = useState(false);
   const [checked, setChecked] = useState<Set<string>>(new Set());
   const selected = FOCUS_PRESETS[selectedPreset];
@@ -620,6 +626,15 @@ function FocusSessionStarter({ compact = false }: { compact?: boolean }) {
     t("focus.check.desk"),
   ];
   const checklistDone = checked.size;
+
+  function beginSession() {
+    unlockAudio();
+    if ("Notification" in window && Notification.permission === "default") {
+      Notification.requestPermission();
+    }
+    saveLastFocus(selectedPreset, customMinutes);
+    store.startFocusSession(selectedPreset, customMinutes);
+  }
 
   function toggleItem(item: string) {
     setChecked((prev) => {
@@ -672,16 +687,7 @@ function FocusSessionStarter({ compact = false }: { compact?: boolean }) {
               );
             })}
           </div>
-          <PrimaryButton
-            className="min-h-12"
-            onClick={() => {
-              unlockAudio();
-              if ("Notification" in window && Notification.permission === "default") {
-                Notification.requestPermission();
-              }
-              store.startFocusSession(selectedPreset, customMinutes);
-            }}
-          >
+          <PrimaryButton className="min-h-12" onClick={beginSession}>
             {t("focus.beginWith", { label: selected.shortLabel })}
           </PrimaryButton>
           <GhostButton className="mt-2 w-full min-h-11" onClick={() => setShowChecklist(false)}>
@@ -779,13 +785,7 @@ function FocusSessionStarter({ compact = false }: { compact?: boolean }) {
           </div>
 
           {!canStart ? <CalmAlert type="warning" title={t("focus.min5")} /> : null}
-          <PrimaryButton className="min-h-12" disabled={!canStart} onClick={() => {
-            unlockAudio();
-            if ("Notification" in window && Notification.permission === "default") {
-              Notification.requestPermission();
-            }
-            store.startFocusSession(selectedPreset, customMinutes);
-          }}>
+          <PrimaryButton className="min-h-12" disabled={!canStart} onClick={beginSession}>
             {t("focus.beginWith", { label: selected.shortLabel })}
           </PrimaryButton>
           <GhostButton className="mt-2 w-full min-h-11" disabled={!canStart} onClick={() => setShowChecklist(true)}>
@@ -2252,6 +2252,13 @@ function TodayScreen() {
   const [editingAction, setEditingAction] = useState(false);
   const [actionInput, setActionInput] = useState("");
   const [closeDaySkipped, setCloseDaySkipped] = useState(() => isCloseDaySkipped(today));
+  const [undoPlan, setUndoPlan] = useState<null | {
+    dayType: "goal" | "rest";
+    goalId?: string;
+    mainAction?: string;
+    energyLevel?: EnergyLevel;
+    status?: "active" | "completed" | "planned" | "missed";
+  }>(null);
 
   useEffect(() => {
     if (todayPlan?.mainAction) {
@@ -2267,6 +2274,12 @@ function TodayScreen() {
     setCloseDaySkipped(isCloseDaySkipped(today));
   }, [today]);
 
+  useEffect(() => {
+    if (!undoPlan) return;
+    const timer = setTimeout(() => setUndoPlan(null), 8000);
+    return () => clearTimeout(timer);
+  }, [undoPlan]);
+
   const goal = todayPlan?.goalId ? store.goals.find((item) => item.id === todayPlan.goalId) : undefined;
   const daysLeft = getDaysLeft(season.endDate);
   const isRest = todayPlan?.dayType === "rest";
@@ -2280,11 +2293,10 @@ function TodayScreen() {
     : undefined;
   const showMorningNudge =
     dayPart === "morning" && !!todayPlan && !hasMorningPages && !dayClosed;
-  const preferCloseDayEvening =
-    dayPart === "evening" &&
+  const preferCloseDay =
     !!todayPlan &&
     !dayClosed &&
-    (isDone || isRest || focusMinutes > 0);
+    (isDone || focusMinutes > 0 || (dayPart === "evening" && isRest));
 
   type TodayPrimaryKind =
     | "pick"
@@ -2302,7 +2314,7 @@ function TodayScreen() {
     ? "resume"
     : dayClosed && (isDone || isRest)
     ? "held"
-    : !dayClosed && (isDone || preferCloseDayEvening || (isRest && dayPart === "evening"))
+    : !dayClosed && preferCloseDay
     ? "close"
     : isRest
     ? "rest"
@@ -2590,7 +2602,21 @@ function TodayScreen() {
                   <button
                     type="button"
                     className="text-[11px] font-semibold text-monk-text-soft hover:text-monk-accent hover:underline"
-                    onClick={() => store.clearDayPlan(today)}
+                    onClick={() => {
+                      if (!todayPlan) return;
+                      const restoreStatus =
+                        todayPlan.status === "completed" || todayPlan.status === "planned" || todayPlan.status === "missed"
+                          ? todayPlan.status
+                          : "active";
+                      setUndoPlan({
+                        dayType: todayPlan.dayType,
+                        goalId: todayPlan.goalId,
+                        mainAction: todayPlan.mainAction,
+                        energyLevel: todayPlan.energyLevel,
+                        status: restoreStatus,
+                      });
+                      store.clearDayPlan(today);
+                    }}
                   >
                     {t("today.changeTheme")}
                   </button>
@@ -2728,19 +2754,59 @@ function TodayScreen() {
                     </div>
                   ) : null}
                   <div className="mt-3 space-y-2">
-                    <PrimaryButton onClick={() => navigate(routes.focus)}>
-                      {t("today.primary.startFocus")}
-                    </PrimaryButton>
-                    <div className="flex justify-center">
-                      <GhostButton
-                        onClick={() => {
-                          store.startFocusSession("custom", 10);
-                          navigate(routes.focus);
-                        }}
-                      >
-                        {t("today.primary.quickTen")}
-                      </GhostButton>
-                    </div>
+                    {(() => {
+                      const last = loadLastFocus();
+                      if (last) {
+                        return (
+                          <>
+                            <PrimaryButton
+                              onClick={() => {
+                                unlockAudio();
+                                saveLastFocus(last.preset, last.customMinutes);
+                                store.startFocusSession(last.preset, last.customMinutes);
+                                navigate(routes.focus);
+                              }}
+                            >
+                              {t("focus.beginWith", { label: FOCUS_PRESETS[last.preset].shortLabel })}
+                            </PrimaryButton>
+                            <div className="flex flex-wrap items-center justify-center gap-2">
+                              <GhostButton onClick={() => navigate(routes.focus)}>
+                                {t("today.primary.chooseLength")}
+                              </GhostButton>
+                              <GhostButton
+                                onClick={() => {
+                                  unlockAudio();
+                                  saveLastFocus("custom", 10);
+                                  store.startFocusSession("custom", 10);
+                                  navigate(routes.focus);
+                                }}
+                              >
+                                {t("today.primary.quickTen")}
+                              </GhostButton>
+                            </div>
+                          </>
+                        );
+                      }
+                      return (
+                        <>
+                          <PrimaryButton onClick={() => navigate(routes.focus)}>
+                            {t("today.primary.startFocus")}
+                          </PrimaryButton>
+                          <div className="flex justify-center">
+                            <GhostButton
+                              onClick={() => {
+                                unlockAudio();
+                                saveLastFocus("custom", 10);
+                                store.startFocusSession("custom", 10);
+                                navigate(routes.focus);
+                              }}
+                            >
+                              {t("today.primary.quickTen")}
+                            </GhostButton>
+                          </div>
+                        </>
+                      );
+                    })()}
                   </div>
                 </Card>
               ) : null}
@@ -2818,6 +2884,29 @@ function TodayScreen() {
           </>
         )}
       </div>
+      {undoPlan ? (
+        <div className="pointer-events-none fixed inset-x-0 bottom-[calc(env(safe-area-inset-bottom)+88px)] z-[60] flex justify-center px-6">
+          <div className="pointer-events-auto flex items-center gap-3 rounded-full border border-monk-border-strong bg-monk-surface/95 px-4 py-2.5 text-sm font-medium text-monk-text shadow-calm backdrop-blur-md">
+            <span>{t("toast.planCleared")}</span>
+            <button
+              type="button"
+              className="font-bold text-monk-accent hover:underline"
+              onClick={() => {
+                store.createOrUpdateDayPlan(today, {
+                  dayType: undoPlan.dayType,
+                  goalId: undoPlan.goalId,
+                  mainAction: undoPlan.mainAction,
+                  energyLevel: undoPlan.energyLevel,
+                  status: undoPlan.status,
+                });
+                setUndoPlan(null);
+              }}
+            >
+              {t("toast.undo")}
+            </button>
+          </div>
+        </div>
+      ) : null}
       {toast.Toast()}
     </>
   );
@@ -3445,7 +3534,7 @@ function WeekScreen() {
         ) : (
           <>
             <DefenseChips />
-            <Card className="p-5">
+            <Card className="overflow-hidden p-4 sm:p-5">
               <div className="mb-4 flex items-end justify-between gap-3">
                 <div>
                   <p className="text-xs font-bold uppercase tracking-[0.18em] text-monk-muted">{t("week.rhythm")}</p>
@@ -3478,7 +3567,12 @@ function WeekScreen() {
                 </p>
               ) : null}
 
-              <div className="flex items-stretch justify-between gap-1.5" role="list" aria-label={t("week.daysAria")}>
+              {/* Mobile: 7×44px + ring-offset overflows card; shrink + inset ring */}
+              <div
+                className="flex min-w-0 items-stretch justify-between gap-0.5 sm:gap-1.5 px-0.5"
+                role="list"
+                aria-label={t("week.daysAria")}
+              >
                 {weekDates.map((date) => {
                   const dayPlan = store.dayPlans.find((d) => d.date === date);
                   const weekday = new Date(date + "T00:00:00").toLocaleDateString("en-US", { weekday: "short" });
@@ -3537,13 +3631,13 @@ function WeekScreen() {
                   const DayInner = (
                     <>
                       <div
-                        className={`grid h-11 w-11 place-items-center rounded-full border-2 text-[11px] font-mono font-bold transition-colors ${circleClass} ${
-                          isToday ? "ring-2 ring-monk-accent/60 ring-offset-2 ring-offset-monk-bg" : ""
+                        className={`grid h-9 w-9 sm:h-11 sm:w-11 shrink-0 place-items-center rounded-full border-2 text-[10px] sm:text-[11px] font-mono font-bold transition-colors ${circleClass} ${
+                          isToday ? "ring-2 ring-inset ring-monk-accent/70" : ""
                         }`}
                       >
-                        {isCompleted ? <Check size={16} strokeWidth={2.5} /> : isRest ? <Moon size={14} strokeWidth={1.75} /> : dayNum}
+                        {isCompleted ? <Check size={14} strokeWidth={2.5} /> : isRest ? <Moon size={12} strokeWidth={1.75} /> : dayNum}
                       </div>
-                      <span className={`text-[11px] font-semibold uppercase tracking-wide ${
+                      <span className={`text-[10px] sm:text-[11px] font-semibold uppercase tracking-wide ${
                         isToday ? "text-monk-accent" : "text-monk-text-soft/60"
                       }`}>
                         {weekday.slice(0, 2)}
@@ -3560,7 +3654,7 @@ function WeekScreen() {
                         role="listitem"
                         aria-label={label}
                         onClick={() => navigate(routes.today)}
-                        className="flex flex-1 flex-col items-center gap-1.5 rounded-xl py-1 transition active:scale-95"
+                        className="flex min-w-0 flex-1 flex-col items-center gap-1 rounded-xl py-1 transition active:scale-95"
                       >
                         {DayInner}
                       </button>
@@ -3568,7 +3662,7 @@ function WeekScreen() {
                   }
 
                   return (
-                    <div key={date} role="listitem" aria-label={label} className="flex flex-1 flex-col items-center gap-1.5 py-1">
+                    <div key={date} role="listitem" aria-label={label} className="flex min-w-0 flex-1 flex-col items-center gap-1 py-1">
                       {DayInner}
                     </div>
                   );
