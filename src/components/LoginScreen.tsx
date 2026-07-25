@@ -33,15 +33,25 @@ export default function LoginScreen() {
   };
 
   return (
-    <div className="flex min-h-dvh flex-col items-center justify-center px-6 py-10">
-      <div className="w-full max-w-sm space-y-6">
-        <div className="text-center">
-          <p className="mb-2 text-xs font-bold uppercase tracking-[0.2em] text-monk-accent">Zendo</p>
+    <div className="relative flex min-h-dvh flex-col items-center justify-center px-6 py-10">
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top,theme(colors.monk-accent/5),transparent_55%)]"
+      />
+      <div className="relative z-10 w-full max-w-sm space-y-6">
+        <div className="space-y-2 text-center">
+          <p className="text-xs font-bold uppercase tracking-[0.2em] text-monk-accent">
+            <span className="mr-1.5 inline-block h-1.5 w-1.5 rounded-full bg-monk-accent/70 align-middle" aria-hidden />
+            Zendo
+          </p>
           <h1 className="text-3xl font-bold tracking-tight">Welcome back</h1>
-          <p className="mt-2 text-sm text-monk-muted">Sign in to continue your season.</p>
+          <p className="text-sm text-monk-muted">Sign in to continue your season.</p>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form
+          onSubmit={handleSubmit}
+          className="space-y-4 rounded-monk border border-monk-border bg-monk-surface/80 p-5 shadow-soft backdrop-blur-sm"
+        >
           <TextInput
             label="Email"
             type="email"
@@ -69,7 +79,7 @@ export default function LoginScreen() {
           </PrimaryButton>
         </form>
 
-        <GhostButton className="w-full text-monk-accent" onClick={() => navigate("/signup")}>
+        <GhostButton className="w-full text-sm text-monk-accent" onClick={() => navigate("/signup")}>
           Don't have an account? Sign up
         </GhostButton>
       </div>

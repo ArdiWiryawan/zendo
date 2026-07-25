@@ -127,7 +127,7 @@ export function PageHeader({
   return (
     <header className="mb-6 flex items-start justify-between gap-4">
       <div>
-        <h1 className="text-3xl font-bold leading-10 tracking-tight">{title}</h1>
+        <h1 className="text-[1.75rem] font-bold leading-10 tracking-tight sm:text-3xl">{title}</h1>
         {subtitle ? <p className="mt-1 text-sm leading-6 text-monk-muted">{subtitle}</p> : null}
       </div>
       {rightSlot}
@@ -156,7 +156,9 @@ export function Card({
   return (
     <div
       className={`border bg-monk-surface ${
-        important ? "rounded-monk-lg border-monk-border-strong bg-monk-soft p-6" : "rounded-monk border-monk-border p-5"
+        important
+          ? "rounded-monk-lg border-monk-border-strong bg-monk-soft p-6 shadow-soft"
+          : "rounded-monk border-monk-border p-5 shadow-soft"
       } ${className}`}
     >
       {children}
@@ -174,7 +176,7 @@ export function PrimaryButton({
       {...props}
       type={type}
       onClick={(e) => { hapticPress("medium"); onClick?.(e); }}
-      className={`min-h-12 w-full rounded-monk px-6 text-base font-bold bg-monk-accent text-monk-bg transition duration-150 ease-monk active:scale-[0.98] enabled:hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-40 ${className}`}
+      className={`min-h-12 w-full rounded-monk px-6 text-base font-bold bg-monk-accent text-monk-bg transition duration-150 ease-monk active:scale-[0.98] enabled:hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-monk-accent/50 focus-visible:ring-offset-2 focus-visible:ring-offset-monk-bg ${className}`}
     />
   );
 }
@@ -190,7 +192,7 @@ export function SecondaryButton({
       {...props}
       type={type}
       onClick={(e) => { hapticPress("light"); onClick?.(e); }}
-      className={`min-h-12 w-full rounded-monk border border-monk-border bg-monk-soft px-6 text-sm font-semibold text-monk-text transition duration-150 ease-monk active:scale-[0.98] enabled:hover:border-monk-border-strong enabled:hover:bg-monk-raised disabled:opacity-45 ${className}`}
+      className={`min-h-12 w-full rounded-monk border border-monk-border bg-monk-soft px-6 text-sm font-semibold text-monk-text transition duration-150 ease-monk active:scale-[0.98] enabled:hover:border-monk-border-strong enabled:hover:bg-monk-raised disabled:opacity-45 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-monk-accent/50 focus-visible:ring-offset-2 focus-visible:ring-offset-monk-bg ${className}`}
     />
   );
 }
@@ -206,7 +208,7 @@ export function GhostButton({
       {...props}
       type={type}
       onClick={(e) => { hapticPress("light"); onClick?.(e); }}
-      className={`min-h-11 rounded-full px-4 text-sm font-medium text-monk-muted transition duration-150 ease-monk active:scale-[0.98] enabled:hover:text-monk-text disabled:opacity-45 ${className}`}
+      className={`min-h-11 rounded-full px-4 text-sm font-medium text-monk-muted transition duration-150 ease-monk active:scale-[0.98] enabled:hover:text-monk-text disabled:opacity-45 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-monk-accent/50 focus-visible:ring-offset-2 focus-visible:ring-offset-monk-bg ${className}`}
     />
   );
 }
@@ -234,7 +236,7 @@ export function TextInput({
         {...props}
         value={value}
         minLength={minLength}
-        className={`min-h-12 w-full rounded-xl border border-monk-border bg-monk-surface px-4 text-sm text-monk-text placeholder:text-monk-text-soft transition-colors focus:border-monk-accent focus:outline-none [scroll-margin-bottom:200px] ${className}`}
+        className={`min-h-12 w-full rounded-xl border border-monk-border bg-monk-surface px-4 text-sm text-monk-text placeholder:text-monk-text-soft transition-colors focus:border-monk-accent focus:outline-none focus:ring-1 focus:ring-monk-accent/40 [scroll-margin-bottom:200px] ${className}`}
       />
       {showCharCount && min > 0 && (
         <div
@@ -271,7 +273,7 @@ export function Textarea({
         {...props}
         value={value}
         minLength={minLength}
-        className={`min-h-[120px] w-full resize-none rounded-xl border border-monk-border bg-monk-surface p-4 text-sm leading-6 text-monk-text placeholder:text-monk-text-soft transition-colors focus:border-monk-accent focus:outline-none [scroll-margin-bottom:200px] ${className}`}
+        className={`min-h-[120px] w-full resize-none rounded-xl border border-monk-border bg-monk-surface p-4 text-sm leading-6 text-monk-text placeholder:text-monk-text-soft transition-colors focus:border-monk-accent focus:outline-none focus:ring-1 focus:ring-monk-accent/40 [scroll-margin-bottom:200px] ${className}`}
       />
       {showCharCount && min > 0 && (
         <div
@@ -302,7 +304,7 @@ export function ChoiceChip({
       disabled={disabled}
       aria-pressed={selected}
       onClick={() => { hapticPress("light"); onClick(); }}
-      className={`min-h-11 rounded-full border px-4 text-sm transition-colors duration-150 disabled:opacity-45 ${
+      className={`min-h-11 rounded-full border px-4 text-sm transition-colors duration-150 active:scale-[0.98] disabled:opacity-45 ${
         selected
           ? "border-monk-accent bg-monk-accent-soft font-semibold text-monk-accent"
           : "border-monk-border bg-monk-surface text-monk-muted hover:border-monk-border-strong"
@@ -329,7 +331,7 @@ export function ChoiceCard({
       type="button"
       aria-pressed={selected}
       onClick={() => { hapticPress("light"); onClick(); }}
-      className={`relative w-full rounded-monk border p-4 min-h-14 text-left transition-colors duration-150 ${
+      className={`relative w-full rounded-monk border p-4 min-h-14 text-left transition-colors duration-150 active:scale-[0.98] ${
         selected
           ? "border-monk-accent bg-monk-accent-soft"
           : "border-monk-border bg-monk-surface hover:border-monk-border-strong"
@@ -407,7 +409,7 @@ export function EmptyState({
   onAction?: () => void;
 }) {
   return (
-    <Card className="bg-monk-soft text-center">
+    <Card className="bg-monk-soft px-5 py-8 text-center">
       <p className="font-semibold text-monk-text">{title}</p>
       {description ? <p className="mt-2 text-sm leading-6 text-monk-muted">{description}</p> : null}
       {actionLabel && onAction ? (
@@ -425,7 +427,7 @@ export function SettingsLink() {
     <NavLink
       to={routes.settings}
       aria-label={t("nav.settings")}
-      className="grid h-12 w-12 place-items-center rounded-full border border-monk-border bg-monk-surface text-monk-muted transition duration-150 hover:border-monk-border-strong hover:text-monk-text"
+      className="grid h-12 w-12 place-items-center rounded-full border border-monk-border bg-monk-surface text-monk-muted transition duration-150 hover:border-monk-border-strong hover:text-monk-text active:scale-95"
     >
       <Settings size={20} strokeWidth={1.5} />
     </NavLink>
@@ -443,7 +445,7 @@ function BottomNav() {
   ];
   return (
     <nav aria-label={t("nav.main")}>
-      <div className="mx-auto grid h-[58px] max-w-[360px] grid-cols-4 rounded-full border border-monk-border-strong bg-monk-surface/95 p-1 shadow-soft backdrop-blur-sm">
+      <div className="monk-glass mx-auto grid h-[58px] max-w-[360px] grid-cols-4 rounded-full border border-monk-border-strong bg-monk-surface/90 p-1 shadow-calm backdrop-blur-md">
         {tabs.map((tab) => {
           const Icon = tab.icon;
           const active = location.pathname === tab.to || location.pathname.startsWith(`${tab.to}/`);
@@ -453,7 +455,7 @@ function BottomNav() {
               to={tab.to}
               aria-current={active ? "page" : undefined}
               className={`flex min-h-12 flex-col items-center justify-center gap-0.5 rounded-full text-xs font-medium transition duration-150 ${
-                active ? "bg-monk-accent-soft text-monk-accent" : "text-monk-text-soft hover:text-monk-muted"
+                active ? "bg-monk-accent-soft text-monk-accent shadow-sm" : "text-monk-text-soft hover:text-monk-muted"
               }`}
             >
               <Icon size={18} strokeWidth={active ? 2 : 1.5} />
@@ -566,4 +568,33 @@ export function useScrollNav() {
   }, []);
 
   return visible;
+}
+
+export function CalmToast({ message, visible }: { message: string; visible: boolean }) {
+  if (!visible || !message) return null;
+  return (
+    <div
+      role="status"
+      aria-live="polite"
+      className="pointer-events-none fixed inset-x-0 bottom-[calc(env(safe-area-inset-bottom)+88px)] z-[60] flex justify-center px-6"
+    >
+      <div className="rounded-full border border-monk-border-strong bg-monk-surface/95 px-4 py-2.5 text-sm font-medium text-monk-text shadow-calm backdrop-blur-md">
+        {message}
+      </div>
+    </div>
+  );
+}
+
+export function useCalmToast(durationMs = 2000) {
+  const [message, setMessage] = useState("");
+  const [visible, setVisible] = useState(false);
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const show = (msg: string) => {
+    if (timer.current) clearTimeout(timer.current);
+    setMessage(msg);
+    setVisible(true);
+    timer.current = setTimeout(() => setVisible(false), durationMs);
+  };
+  useEffect(() => () => { if (timer.current) clearTimeout(timer.current); }, []);
+  return { message, visible, show, Toast: () => <CalmToast message={message} visible={visible} /> };
 }

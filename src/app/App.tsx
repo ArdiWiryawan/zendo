@@ -44,7 +44,8 @@ import {
   SectionHeader,
   SettingsLink,
   TextInput,
-  Textarea
+  Textarea,
+  useCalmToast
 } from "../components/ui";
 import { habitOptions, learningTypes, defaultWeeklyTargets } from "../constants/defaultData";
 import { DAILY_STATUS_LABELS, getDailyStatusHelper, resolveDailyActivityStatus } from "../constants/dailyActivityStatus";
@@ -445,6 +446,12 @@ function FocusSessionPanel({
       important
       className={`relative text-center border-monk-border-strong ${compact ? "p-5" : "p-7"} ${
         isBreak ? "bg-monk-rest-soft/40" : "bg-monk-soft"
+      } ${
+        isPaused
+          ? "opacity-95"
+          : !isBreak
+            ? "shadow-[0_0_40px_rgba(164,139,94,0.08)]"
+            : ""
       }`}
     >
       <div className="flex items-center justify-center gap-2">
@@ -475,7 +482,7 @@ function FocusSessionPanel({
           color={ringColor}
           bgColor="var(--color-border)"
         >
-          <p className={`${compact ? "text-3xl" : "text-[44px]"} font-mono font-bold leading-none tabular-nums text-monk-text`}>
+          <p className={`${compact ? "text-3xl" : "text-[44px]"} font-mono font-bold leading-none tracking-tight tabular-nums text-monk-text`}>
             {formatTimer(remaining)}
           </p>
           <p className="mt-2 text-[10px] font-bold uppercase tracking-wider text-monk-muted">
@@ -772,9 +779,18 @@ function FocusSessionStarter({ compact = false }: { compact?: boolean }) {
           </div>
 
           {!canStart ? <CalmAlert type="warning" title={t("focus.min5")} /> : null}
-          <PrimaryButton className="min-h-12" disabled={!canStart} onClick={() => setShowChecklist(true)}>
-            {t("focus.continueWith", { label: selected.shortLabel })}
+          <PrimaryButton className="min-h-12" disabled={!canStart} onClick={() => {
+            unlockAudio();
+            if ("Notification" in window && Notification.permission === "default") {
+              Notification.requestPermission();
+            }
+            store.startFocusSession(selectedPreset, customMinutes);
+          }}>
+            {t("focus.beginWith", { label: selected.shortLabel })}
           </PrimaryButton>
+          <GhostButton className="mt-2 w-full min-h-11" disabled={!canStart} onClick={() => setShowChecklist(true)}>
+            {t("focus.prepareFirst")}
+          </GhostButton>
         </>
       )}
     </Card>
@@ -2056,6 +2072,7 @@ function CloseDayCard({ onSkip }: { onSkip?: () => void }) {
   const navigate = useNavigate();
   const store = useMonkStore();
   const t = useT();
+  const toast = useCalmToast();
   const season = store.activeSeason!;
   const today = getTodayDateString();
   const todayPlan = selectTodayPlan(store);
@@ -2121,6 +2138,7 @@ function CloseDayCard({ onSkip }: { onSkip?: () => void }) {
           }
           setError("");
           setSaved(true);
+          toast.show(t("toast.saved"));
         }}
       >
         {t("today.closeDay.save")}
@@ -2130,6 +2148,7 @@ function CloseDayCard({ onSkip }: { onSkip?: () => void }) {
         onClick={() => {
           skipCloseDay(today);
           onSkip?.();
+          toast.show(t("toast.daySkipped"));
         }}
       >
         {t("today.closeDay.skip")}
@@ -2137,6 +2156,7 @@ function CloseDayCard({ onSkip }: { onSkip?: () => void }) {
       <GhostButton className="w-full" onClick={() => navigate(routes.journal)}>
         {t("today.closeDay.full")}
       </GhostButton>
+      {toast.Toast()}
     </Card>
   );
 }
@@ -2180,7 +2200,7 @@ function ReEntryBanner() {
       {whyLine ? (
         <p className="mt-1.5 text-xs leading-5 text-monk-muted/90">{t("today.reentry.why", { why: whyLine })}</p>
       ) : null}
-      <div className="mt-3 flex flex-wrap gap-2">
+      <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:flex-wrap">
         <SecondaryButton onClick={() => startMinutes(10)}>{t("today.reentry.ten")}</SecondaryButton>
         <SecondaryButton onClick={() => startMinutes(25)}>{t("today.reentry.twentyFive")}</SecondaryButton>
         <SecondaryButton
@@ -2208,6 +2228,7 @@ function TodayScreen() {
   const navigate = useNavigate();
   const store = useMonkStore();
   const t = useT();
+  const toast = useCalmToast();
   const season = store.activeSeason!;
   const today = getTodayDateString();
   const todayPlan = selectTodayPlan(store);
@@ -2265,6 +2286,32 @@ function TodayScreen() {
     !dayClosed &&
     (isDone || isRest || focusMinutes > 0);
 
+  type TodayPrimaryKind =
+    | "pick"
+    | "resume"
+    | "held"
+    | "close"
+    | "rest"
+    | "morning"
+    | "intention"
+    | "focus";
+  const hasIntention = !!(todayPlan?.mainAction?.trim());
+  const primaryKind: TodayPrimaryKind = !todayPlan
+    ? "pick"
+    : activeSession
+    ? "resume"
+    : dayClosed && (isDone || isRest)
+    ? "held"
+    : !dayClosed && (isDone || preferCloseDayEvening || (isRest && dayPart === "evening"))
+    ? "close"
+    : isRest
+    ? "rest"
+    : showMorningNudge
+    ? "morning"
+    : !hasIntention
+    ? "intention"
+    : "focus";
+
   const statusLabel = !todayPlan
     ? t("today.status.open")
     : isDone
@@ -2320,7 +2367,13 @@ function TodayScreen() {
                 isDone ? "border-monk-success/30" : isRest ? "border-monk-rest/25" : ""
               }`}
             >
-              <div className="flex items-start justify-between gap-4">
+              {!isDone && !isRest ? (
+                <div
+                  className="pointer-events-none absolute inset-0 bg-gradient-to-b from-monk-accent/8 to-transparent"
+                  aria-hidden
+                />
+              ) : null}
+              <div className="relative flex items-start justify-between gap-4">
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-2">
                     <p className="text-xs font-bold text-monk-muted uppercase tracking-widest">
@@ -2450,6 +2503,7 @@ function TodayScreen() {
                               mainAction: actionInput.trim()
                             });
                             setEditingAction(false);
+                            toast.show(t("toast.intentionSaved"));
                           }
                         }}
                       >
@@ -2514,12 +2568,12 @@ function TodayScreen() {
               {(focusMinutes > 0 || hasLearning) ? (
                 <div className="mt-4 flex flex-wrap gap-3 text-xs text-monk-muted">
                   {focusMinutes > 0 ? (
-                    <span className="rounded-full border border-monk-border bg-monk-bg px-2.5 py-1 font-mono">
+                    <span className="rounded-full border border-monk-border-strong bg-monk-soft px-2.5 py-1 font-mono">
                       {t("today.focusMinutes", { n: focusMinutes })}
                     </span>
                   ) : null}
                   {hasLearning ? (
-                    <span className="rounded-full border border-monk-border bg-monk-bg px-2.5 py-1 font-mono">
+                    <span className="rounded-full border border-monk-border-strong bg-monk-soft px-2.5 py-1 font-mono">
                       {t("today.learnCount", { n: learningSessions.length })}
                     </span>
                   ) : null}
@@ -2544,39 +2598,19 @@ function TodayScreen() {
               )}
             </Card>
 
-            <DefenseChips compact />
+            {/* Primary zone — one CTA by day-part / state */}
+            <div className="space-y-3">
+              {primaryKind === "resume" && activeSession ? (
+                <FocusSessionPanel
+                  session={activeSession}
+                  mainAction={todayPlan.mainAction}
+                  compact
+                  onOpenFocus={() => navigate(routes.focus)}
+                />
+              ) : null}
 
-            {showMorningNudge ? (
-              <Card className="border-monk-accent/25 bg-monk-accent-soft/30 p-4">
-                <p className="text-sm font-semibold">{t("today.nudge.morningTitle")}</p>
-                <p className="mt-1 text-sm text-monk-muted">{t("today.nudge.morningBody")}</p>
-                <div className="mt-3">
-                  <PrimaryButton onClick={() => navigate(`${routes.journal}?tab=morning`)}>
-                    {t("today.nudge.morningCta")}
-                  </PrimaryButton>
-                </div>
-              </Card>
-            ) : null}
-
-            {preferCloseDayEvening && isRest ? (
-              <div className="space-y-3">
-                {!dayClosed ? (
-                  <CloseDayCard onSkip={() => setCloseDaySkipped(true)} />
-                ) : null}
-                <Card className="border-monk-rest/25 bg-monk-rest-soft/30 p-5">
-                  <div className="flex items-start gap-3">
-                    <div className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-monk-surface text-monk-rest">
-                      <Moon size={18} strokeWidth={1.5} />
-                    </div>
-                    <div>
-                      <p className="font-semibold">{t("today.restPathTitle")}</p>
-                      <p className="mt-1 text-sm leading-6 text-monk-muted">
-                        {t("today.restPathBody")}
-                      </p>
-                    </div>
-                  </div>
-                </Card>
-                {dayClosed ? (
+              {primaryKind === "held" ? (
+                isRest ? (
                   closeDaySkipped && !hasReflection ? (
                     <Card className="border-monk-border bg-monk-soft/50 p-5 text-center">
                       <p className="font-semibold text-monk-text">{t("today.closeDay.skippedTitle")}</p>
@@ -2587,105 +2621,6 @@ function TodayScreen() {
                       {t("today.restHeldLogged")}
                     </div>
                   )
-                ) : null}
-                <EnergyCheck
-                  value={todayPlan.energyLevel}
-                  onChange={(level) => {
-                    store.updateTodayEnergy(level);
-                    store.logEnergy(level);
-                  }}
-                />
-              </div>
-            ) : isRest ? (
-              <div className="space-y-3">
-                <Card className="border-monk-rest/25 bg-monk-rest-soft/30 p-5">
-                  <div className="flex items-start gap-3">
-                    <div className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-monk-surface text-monk-rest">
-                      <Moon size={18} strokeWidth={1.5} />
-                    </div>
-                    <div>
-                      <p className="font-semibold">{t("today.restPathTitle")}</p>
-                      <p className="mt-1 text-sm leading-6 text-monk-muted">
-                        {t("today.restPathBody")}
-                      </p>
-                    </div>
-                  </div>
-                </Card>
-                {!dayClosed ? (
-                  <CloseDayCard onSkip={() => setCloseDaySkipped(true)} />
-                ) : closeDaySkipped && !hasReflection ? (
-                  <Card className="border-monk-border bg-monk-soft/50 p-5 text-center">
-                    <p className="font-semibold text-monk-text">{t("today.closeDay.skippedTitle")}</p>
-                    <p className="mt-1 text-sm text-monk-muted">{t("today.closeDay.skippedBody")}</p>
-                  </Card>
-                ) : (
-                  <div className="rounded-2xl border border-monk-success bg-monk-success-soft px-4 py-2.5 text-center text-xs font-medium text-monk-success">
-                    {t("today.restHeldLogged")}
-                  </div>
-                )}
-                <EnergyCheck
-                  value={todayPlan.energyLevel}
-                  onChange={(level) => {
-                    store.updateTodayEnergy(level);
-                    store.logEnergy(level);
-                  }}
-                />
-              </div>
-            ) : preferCloseDayEvening && !isDone ? (
-              <div className="space-y-3">
-                <CloseDayCard onSkip={() => setCloseDaySkipped(true)} />
-                {activeSession ? (
-                  <FocusSessionPanel
-                    session={activeSession}
-                    mainAction={todayPlan.mainAction}
-                    compact
-                    onOpenFocus={() => navigate(routes.focus)}
-                  />
-                ) : (
-                  <FocusSessionStarter compact />
-                )}
-                {energy === "low" ? (
-                  <div className="rounded-xl border border-monk-danger/20 bg-monk-danger/5 px-3 py-2 text-xs text-monk-danger/80">
-                    {t("today.lowEnergy")}
-                  </div>
-                ) : null}
-                <EnergyCheck
-                  value={todayPlan.energyLevel}
-                  onChange={(level) => {
-                    store.updateTodayEnergy(level);
-                    store.logEnergy(level);
-                  }}
-                />
-              </div>
-            ) : !isDone ? (
-              <>
-                {activeSession ? (
-                  <FocusSessionPanel
-                    session={activeSession}
-                    mainAction={todayPlan.mainAction}
-                    compact
-                    onOpenFocus={() => navigate(routes.focus)}
-                  />
-                ) : (
-                  <FocusSessionStarter compact />
-                )}
-                {energy === "low" ? (
-                  <div className="rounded-xl border border-monk-danger/20 bg-monk-danger/5 px-3 py-2 text-xs text-monk-danger/80">
-                    {t("today.lowEnergy")}
-                  </div>
-                ) : null}
-                <EnergyCheck
-                  value={todayPlan.energyLevel}
-                  onChange={(level) => {
-                    store.updateTodayEnergy(level);
-                    store.logEnergy(level);
-                  }}
-                />
-              </>
-            ) : (
-              <div className="space-y-3">
-                {!dayClosed ? (
-                  <CloseDayCard onSkip={() => setCloseDaySkipped(true)} />
                 ) : closeDaySkipped && !hasReflection ? (
                   <Card className="border-monk-border bg-monk-soft/50 p-5 text-center">
                     <p className="font-semibold text-monk-text">{t("today.closeDay.skippedTitle")}</p>
@@ -2696,26 +2631,140 @@ function TodayScreen() {
                     <p className="font-semibold text-monk-success">{t("today.dayHeld")}</p>
                     <p className="mt-1 text-sm text-monk-muted">{t("today.dayHeldOptional")}</p>
                   </Card>
-                )}
-                <EnergyCheck
-                  value={todayPlan.energyLevel}
-                  onChange={(level) => {
-                    store.updateTodayEnergy(level);
-                    store.logEnergy(level);
-                  }}
-                />
-              </div>
-            )}
+                )
+              ) : null}
+
+              {primaryKind === "close" ? (
+                <>
+                  <CloseDayCard onSkip={() => setCloseDaySkipped(true)} />
+                  {!isDone && !isRest ? (
+                    <div className="flex justify-center">
+                      <GhostButton onClick={() => navigate(routes.focus)}>
+                        {t("today.primary.continueFocus")}
+                      </GhostButton>
+                    </div>
+                  ) : isRest ? (
+                    <Card className="border-monk-rest/25 bg-monk-rest-soft/30 p-5">
+                      <div className="flex items-start gap-3">
+                        <div className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-monk-surface text-monk-rest">
+                          <Moon size={18} strokeWidth={1.5} />
+                        </div>
+                        <div>
+                          <p className="font-semibold">{t("today.restPathTitle")}</p>
+                          <p className="mt-1 text-sm leading-6 text-monk-muted">
+                            {t("today.restPathBody")}
+                          </p>
+                        </div>
+                      </div>
+                    </Card>
+                  ) : null}
+                </>
+              ) : null}
+
+              {primaryKind === "rest" ? (
+                <>
+                  <Card className="border-monk-rest/25 bg-monk-rest-soft/30 p-5">
+                    <div className="flex items-start gap-3">
+                      <div className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-monk-surface text-monk-rest">
+                        <Moon size={18} strokeWidth={1.5} />
+                      </div>
+                      <div>
+                        <p className="font-semibold">{t("today.restPathTitle")}</p>
+                        <p className="mt-1 text-sm leading-6 text-monk-muted">
+                          {t("today.restPathBody")}
+                        </p>
+                      </div>
+                    </div>
+                  </Card>
+                  {!dayClosed ? (
+                    <CloseDayCard onSkip={() => setCloseDaySkipped(true)} />
+                  ) : null}
+                </>
+              ) : null}
+
+              {primaryKind === "morning" ? (
+                <Card className="border-monk-accent/25 bg-monk-accent-soft/30 p-4">
+                  <p className="text-sm font-semibold">{t("today.nudge.morningTitle")}</p>
+                  <p className="mt-1 text-sm text-monk-muted">{t("today.nudge.morningBody")}</p>
+                  <div className="mt-3 space-y-2">
+                    <PrimaryButton onClick={() => navigate(`${routes.journal}?tab=morning`)}>
+                      {t("today.nudge.morningCta")}
+                    </PrimaryButton>
+                    <div className="flex justify-center">
+                      <GhostButton onClick={() => navigate(routes.focus)}>
+                        {t("today.primary.skipToFocus")}
+                      </GhostButton>
+                    </div>
+                  </div>
+                </Card>
+              ) : null}
+
+              {primaryKind === "intention" ? (
+                <Card className="border-monk-accent/25 bg-monk-accent-soft/20 p-4">
+                  <p className="text-sm font-semibold">{t("today.primary.intentionTitle")}</p>
+                  <p className="mt-1 text-sm text-monk-muted">{t("today.primary.intentionBody")}</p>
+                  <div className="mt-3">
+                    <PrimaryButton
+                      onClick={() => {
+                        if (!actionInput.trim()) {
+                          setActionInput(goal?.keystoneAction ?? "");
+                        }
+                        setEditingAction(true);
+                      }}
+                    >
+                      {t("today.primary.intentionCta")}
+                    </PrimaryButton>
+                  </div>
+                </Card>
+              ) : null}
+
+              {primaryKind === "focus" ? (
+                <Card className="border-monk-border bg-monk-surface p-4">
+                  <p className="text-sm font-semibold">{t("focus.title")}</p>
+                  <p className="mt-1 text-sm text-monk-muted">{t("today.primary.focusHint")}</p>
+                  {energy === "low" ? (
+                    <div className="mt-2 rounded-xl border border-monk-danger/20 bg-monk-danger/5 px-3 py-2 text-xs text-monk-danger/80">
+                      {t("today.lowEnergy")}
+                    </div>
+                  ) : null}
+                  <div className="mt-3 space-y-2">
+                    <PrimaryButton onClick={() => navigate(routes.focus)}>
+                      {t("today.primary.startFocus")}
+                    </PrimaryButton>
+                    <div className="flex justify-center">
+                      <GhostButton
+                        onClick={() => {
+                          store.startFocusSession("custom", 10);
+                          navigate(routes.focus);
+                        }}
+                      >
+                        {t("today.primary.quickTen")}
+                      </GhostButton>
+                    </div>
+                  </div>
+                </Card>
+              ) : null}
+
+              <EnergyCheck
+                value={todayPlan.energyLevel}
+                onChange={(level) => {
+                  store.updateTodayEnergy(level);
+                  store.logEnergy(level);
+                  toast.show(t("toast.energyLogged"));
+                }}
+              />
+            </div>
 
             {/* Secondary — collapsed */}
             <details className="group rounded-monk border border-monk-border bg-monk-surface">
-              <summary className="cursor-pointer list-none px-4 py-3 text-xs font-semibold text-monk-muted marker:content-none [&::-webkit-details-marker]:hidden">
+              <summary className="cursor-pointer list-none px-4 py-3 text-xs font-semibold text-monk-muted hover:text-monk-text marker:content-none [&::-webkit-details-marker]:hidden">
                 <span className="flex items-center justify-between">
                   {t("today.moreForToday")}
                   <ChevronRight size={14} className="transition group-open:rotate-90" />
                 </span>
               </summary>
               <div className="space-y-3 border-t border-monk-border/50 px-4 pb-4 pt-3">
+                <DefenseChips compact />
                 <button
                   type="button"
                   className="flex w-full items-center justify-between rounded-xl border border-monk-border bg-monk-soft px-3 py-2.5 text-left text-sm"
@@ -2769,6 +2818,7 @@ function TodayScreen() {
           </>
         )}
       </div>
+      {toast.Toast()}
     </>
   );
 }
@@ -3884,7 +3934,7 @@ function FocusScreen() {
           <button
             type="button"
             onClick={toggleMusicHandler}
-            className={`grid min-h-11 min-w-11 place-items-center rounded-full border transition active:scale-90 ${
+            className={`grid min-h-11 min-w-11 place-items-center rounded-full border transition duration-150 ease-monk active:scale-90 ${
               musicOn
                 ? "border-monk-accent/40 bg-monk-accent-soft text-monk-accent"
                 : "border-monk-border bg-monk-surface text-monk-muted hover:border-monk-accent hover:text-monk-accent"
@@ -3898,7 +3948,7 @@ function FocusScreen() {
 
       {!activeSession && plan.dayType === "goal" ? (
         <Card className="mb-5 border-monk-border bg-monk-soft p-4">
-          <p className="text-[10px] font-bold uppercase tracking-wider text-monk-muted">{t("focus.todaysAction")}</p>
+          <p className="text-[10px] font-bold uppercase tracking-wide text-monk-muted">{t("focus.todaysAction")}</p>
           {intention.when && intention.action ? (
             <div className="mt-1.5 space-y-0.5">
               <p className="text-xs text-monk-muted">{t("today.whenShown", { when: intention.when })}</p>

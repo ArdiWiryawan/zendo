@@ -32,7 +32,6 @@ body,
 #root {
   min-height: 100dvh;
   min-height: -webkit-fill-available;
-  background: var(--color-bg);
 }
 
 body {
@@ -42,6 +41,9 @@ body {
   overscroll-behavior: none;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
+  background:
+    radial-gradient(ellipse 90% 55% at 50% -8%, rgba(164, 139, 94, 0.05), transparent 58%),
+    var(--color-bg);
 }
 
 ::selection {
@@ -53,6 +55,7 @@ body {
 #root {
   display: flex;
   flex-direction: column;
+  background: transparent;
 }
 
 #root > * {
@@ -111,6 +114,14 @@ button {
 button {
   -webkit-tap-highlight-color: transparent;
   touch-action: manipulation;
+}
+
+/* Glass surface for floating chrome (nav, overlays) */
+.monk-glass {
+  background-color: color-mix(in srgb, var(--color-surface) 90%, transparent);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.28);
 }
 
 /* Skeleton pulse for calm loading states */

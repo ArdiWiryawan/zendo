@@ -45,7 +45,7 @@ export function CircularProgress({
           fill="none"
           stroke={bgColor}
           strokeWidth={strokeWidth}
-          className="opacity-50"
+          className="opacity-40"
         />
         <circle
           cx={size / 2}

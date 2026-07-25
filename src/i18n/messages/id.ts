@@ -152,6 +152,14 @@ export const id: Record<MessageKey, string> = {
   "today.nudge.morningTitle": "Mulai dari tulisan pagi",
   "today.nudge.morningBody": "Beberapa baris tenang membersihkan noise sebelum fokus.",
   "today.nudge.morningCta": "Tulis halaman pagi",
+  "today.primary.startFocus": "Mulai fokus",
+  "today.primary.focusHint": "Satu blok tenang. Durasi di layar berikutnya.",
+  "today.primary.quickTen": "Cepat 10 mnt",
+  "today.primary.intentionTitle": "Tulis niat hari ini",
+  "today.primary.intentionBody": "Satu aksi cukup. Kapan + apa.",
+  "today.primary.intentionCta": "Isi niat",
+  "today.primary.skipToFocus": "Langsung fokus",
+  "today.primary.continueFocus": "Fokus lagi",
 
   "relapse.savedTitle": "Tercatat. Re-anchor.",
   "relapse.savedSubtitle": "Drift itu data. Why-mu tetap ada.",
@@ -376,4 +384,11 @@ export const id: Record<MessageKey, string> = {
   "packs.processing": "Memproses…",
   "packs.notNow": "Nanti saja",
   "packs.mockBuy": "Mock $2.99",
+
+  "toast.saved": "Tersimpan.",
+  "toast.energyLogged": "Energi dicatat.",
+  "toast.intentionSaved": "Niat diset.",
+  "toast.daySkipped": "Hari diletakkan.",
+
+  "focus.prepareFirst": "Siapkan dulu (opsional)",
 };

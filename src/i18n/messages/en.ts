@@ -150,6 +150,14 @@ export const en = {
   "today.nudge.morningTitle": "Start with morning pages",
   "today.nudge.morningBody": "A few quiet lines clear the noise before focus.",
   "today.nudge.morningCta": "Write morning pages",
+  "today.primary.startFocus": "Start focus",
+  "today.primary.focusHint": "One quiet block. Length on the next screen.",
+  "today.primary.quickTen": "Quick 10 min",
+  "today.primary.intentionTitle": "Name today's intention",
+  "today.primary.intentionBody": "One action is enough. When + what.",
+  "today.primary.intentionCta": "Set intention",
+  "today.primary.skipToFocus": "Skip to focus",
+  "today.primary.continueFocus": "More focus",
 
   "relapse.savedTitle": "Logged. Now re-anchor.",
   "relapse.savedSubtitle": "Drift is data. Your why still stands.",
@@ -374,6 +382,13 @@ export const en = {
   "packs.processing": "Processing…",
   "packs.notNow": "Not now",
   "packs.mockBuy": "Mock $2.99",
+
+  "toast.saved": "Saved.",
+  "toast.energyLogged": "Energy noted.",
+  "toast.intentionSaved": "Intention set.",
+  "toast.daySkipped": "Day set down.",
+
+  "focus.prepareFirst": "Prepare first (optional)",
 } as const;
 
 export type MessageKey = keyof typeof en;
