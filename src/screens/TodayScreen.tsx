@@ -28,6 +28,7 @@ import {
 import { FocusSessionPanel, FocusSessionStarter } from "../screens/FocusSession";
 import { CoachHint, PlanTomorrow, WeeklyStatusIndicators } from "./OnboardingSteps";
 import { SeasonProgressCard, WhyEditor } from "../components/SeasonWidgets";
+import { EnergyCheck, WhyStrip } from "./TodayScreen.components";
 import type { EnergyLevel } from "../types/app";
 
 function CloseDayCard({ onSkip }: { onSkip?: () => void }) {
@@ -402,7 +403,7 @@ export function TodayScreen() {
           <>
             <Card
               important
-              className={`today-primary-anchor relative overflow-hidden ${
+              className={`today-primary-anchor relative overflow-hidden p-5 ${
                 isDone ? "border-monk-success/30" : isRest ? "border-monk-rest/25" : ""
               }`}
             >
@@ -415,14 +416,14 @@ export function TodayScreen() {
               <div className="relative flex items-start justify-between gap-4">
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-2">
-                    <p className="text-xs font-bold text-monk-muted uppercase tracking-widest">
+                    <p className="text-xs font-bold uppercase tracking-widest text-monk-muted">
                       {isRest ? t("today.restDay") : t("today.todaysFocus")}
                     </p>
-                    <span className={`rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide ${statusClass}`}>
+                    <span className={`rounded-full border px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider ${statusClass}`}>
                       {statusLabel}
                     </span>
                   </div>
-                  <h2 className="mt-2 text-2xl font-bold leading-8">
+                  <h2 className="mt-2 text-3xl font-bold leading-9 tracking-tight">
                     {isRest ? t("today.quietRecovery") : goal?.title ?? t("today.oneTheme")}
                   </h2>
                   {!isRest && goal?.why ? (
@@ -445,8 +446,8 @@ export function TodayScreen() {
                   aria-label={isDone ? t("today.markIncomplete") : t("today.markComplete")}
                   className={`flex min-h-12 min-w-12 shrink-0 items-center justify-center rounded-full border-2 transition active:scale-90 ${
                     isDone
-                      ? "border-monk-success bg-monk-success text-monk-bg"
-                      : "border-monk-border bg-monk-surface hover:border-monk-success text-monk-success"
+                      ? "border-monk-success bg-monk-success text-monk-bg shadow-[inset_0_1px_0_rgba(255,255,255,0.15),0_4px_12px_-4px_rgba(100,123,94,0.5)]"
+                      : "border-monk-border bg-monk-surface hover:border-monk-success text-monk-success shadow-sm"
                   }`}
                   onClick={() => {
                     unlockAudio();
@@ -461,28 +462,29 @@ export function TodayScreen() {
 
               {checklist.length ? (
                 <div
-                  className="mt-4 flex flex-wrap gap-1.5"
+                  className="mt-5 grid grid-cols-2 gap-3"
                   role="list"
                   aria-label={t("today.checklistAria", { done: checklistDone, total: checklist.length })}
                 >
                   {checklist.map((item) => (
-                    <span
+                    <div
                       key={item.id}
                       role="listitem"
                       aria-label={`${item.label}: ${item.done ? t("today.checklistDone") : t("today.checklistNotDone")}`}
-                      className={`rounded-full border px-2.5 py-1 text-xs font-medium ${
+                      className={`flex items-center gap-2.5 rounded-xl border p-2.5 pr-3 text-[11px] font-semibold ${
                         item.done
-                          ? "border-monk-success/30 bg-monk-success-soft text-monk-success"
-                          : "border-monk-border/60 bg-monk-bg text-monk-text-soft"
+                          ? "border-monk-success/30 bg-monk-success-soft text-monk-success shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]"
+                          : "border-monk-border/60 bg-monk-soft text-monk-text-soft"
                       }`}
                     >
-                      {item.done ? "✓ " : ""}{item.label}
-                    </span>
+                      {item.id === 'morning' ? <Sun size={14} /> : item.id === 'focus' ? <Check size={14} /> : item.id === 'learn' ? <BookOpen size={14} /> : <Moon size={14} />}
+                      <span>{item.label}</span>
+                    </div>
                   ))}
                 </div>
               ) : null}
 
-              <div className="mt-5 rounded-2xl border border-monk-border bg-monk-bg p-4">
+              <div className="mt-5 rounded-xl border border-monk-border bg-monk-bg p-4">
                 <div className="flex items-center justify-between gap-2">
                   <p className="text-xs font-medium uppercase tracking-[0.16em] text-monk-text-soft">
                     {isRest ? t("today.restNote") : t("today.oneAction")}
@@ -490,7 +492,7 @@ export function TodayScreen() {
                   {!editingAction && !isRest && !isDone ? (
                     <button
                       type="button"
-                      className="text-xs font-bold text-monk-accent hover:underline"
+                      className="text-xs font-bold text-monk-accent hover:underline active:scale-95"
                       onClick={() => {
                         setActionInput(todayPlan.mainAction || goal?.keystoneAction || "");
                         setEditingAction(true);
@@ -772,7 +774,7 @@ export function TodayScreen() {
               ) : null}
 
               {primaryKind === "focus" ? (
-                <Card className="border-monk-border bg-monk-surface p-4">
+                <Card className="border-monk-border bg-monk-surface p-5">
                   <p className="text-sm font-semibold">{t("focus.title")}</p>
                   <p className="mt-1 text-sm text-monk-muted">{t("today.primary.focusHint")}</p>
                   {energy === "low" ? (
@@ -849,14 +851,12 @@ export function TodayScreen() {
             </div>
 
             {/* Secondary — collapsed */}
-            <details className="group rounded-monk border border-monk-border bg-monk-surface">
-              <summary className="cursor-pointer list-none px-4 py-3 text-xs font-semibold text-monk-muted hover:text-monk-text marker:content-none [&::-webkit-details-marker]:hidden">
-                <span className="flex items-center justify-between">
-                  {t("today.moreForToday")}
-                  <ChevronRight size={14} className="transition group-open:rotate-90" />
-                </span>
+            <details className="group mt-5 rounded-monk border border-monk-border bg-monk-surface transition-all duration-200 ease-monk hover:border-monk-border-strong open:border-monk-border-strong">
+              <summary className="flex cursor-pointer list-none items-center justify-between p-4 text-sm font-semibold text-monk-muted hover:text-monk-text marker:content-none [&::-webkit-details-marker]:hidden">
+                <span>{t("today.moreForToday")}</span>
+                <ChevronRight size={16} className="transition-transform duration-200 group-open:rotate-90" />
               </summary>
-              <div className="space-y-3 border-t border-monk-border/50 px-4 pb-4 pt-3">
+              <div className="space-y-3 border-t border-monk-border px-4 pb-4 pt-3">
                 <DefenseChips compact />
                 <button
                   type="button"
@@ -985,98 +985,6 @@ export function DefenseChips({ compact = false }: { compact?: boolean }) {
   );
 }
 
-/** Compact why reminder — Today. Empty state invites add. */
-function WhyStrip() {
-  const store = useMonkStore();
-  const why = store.activeSeason?.why;
-  const [open, setOpen] = useState(false);
-  const [editing, setEditing] = useState(false);
-  const hasWhy = !!(why?.identity || why?.consequenceOfInaction);
-
-  if (editing) {
-    return (
-      <Card className="border-monk-accent/25 bg-monk-accent-soft/30 p-4">
-        <p className="mb-3 text-[10px] font-bold uppercase tracking-widest text-monk-accent">
-          {hasWhy ? "Edit why" : "Add your why"}
-        </p>
-        <WhyEditor
-          initial={why}
-          onCancel={() => setEditing(false)}
-          onSave={(next) => {
-            store.updateSeasonWhy(next);
-            setEditing(false);
-            setOpen(true);
-          }}
-        />
-      </Card>
-    );
-  }
-
-  if (!hasWhy) {
-    return (
-      <button
-        type="button"
-        onClick={() => setEditing(true)}
-        className="w-full rounded-monk border border-dashed border-monk-accent/30 bg-monk-accent-soft/20 px-4 py-3 text-left transition active:scale-[0.99]"
-      >
-        <p className="text-[10px] font-bold uppercase tracking-widest text-monk-accent">Why you started</p>
-        <p className="mt-1 text-sm text-monk-muted">Add your identity + what you lose if you stop.</p>
-      </button>
-    );
-  }
-
-  const line = why!.identity || why!.consequenceOfInaction;
-  return (
-    <div className="rounded-monk border border-monk-accent/20 bg-monk-accent-soft/40 px-4 py-3">
-      <button
-        type="button"
-        onClick={() => setOpen((v) => !v)}
-        className="w-full text-left"
-        aria-expanded={open}
-      >
-        <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0 flex-1">
-            <p className="text-[10px] font-bold uppercase tracking-widest text-monk-accent">Why you started</p>
-            <p className={`mt-1 text-sm leading-5 text-monk-text ${open ? "" : "line-clamp-2"}`}>{line}</p>
-            {open && why!.consequenceOfInaction && why!.identity ? (
-              <p className="mt-2 text-xs leading-5 text-monk-muted">
-                If you stop: {why!.consequenceOfInaction}
-              </p>
-            ) : null}
-            {open && why!.protectValues?.length ? (
-              <div className="mt-2 flex flex-wrap gap-1.5">
-                {why!.protectValues.map((id) => {
-                  const v = CORE_VALUES.find((c) => c.id === id);
-                  return (
-                    <span
-                      key={id}
-                      className="rounded-full border border-monk-border bg-monk-bg px-2 py-0.5 text-[10px] font-medium text-monk-muted"
-                    >
-                      {v?.label ?? id}
-                    </span>
-                  );
-                })}
-              </div>
-            ) : null}
-          </div>
-          <ChevronRight
-            size={14}
-            className={`mt-1 shrink-0 text-monk-muted transition ${open ? "rotate-90" : ""}`}
-          />
-        </div>
-      </button>
-      {open ? (
-        <button
-          type="button"
-          onClick={() => setEditing(true)}
-          className="mt-3 text-xs font-semibold text-monk-accent transition hover:opacity-80"
-        >
-          Edit why
-        </button>
-      ) : null}
-    </div>
-  );
-}
 
 function FlowPickToday({ goals }: { goals: ReturnType<typeof selectActiveGoals> }) {
   const store = useMonkStore();
@@ -1176,93 +1084,4 @@ function FlowPickToday({ goals }: { goals: ReturnType<typeof selectActiveGoals> 
   );
 }
 
-function EnergyCheck({ value, onChange }: { value?: EnergyLevel; onChange: (value: EnergyLevel) => void }) {
-  const store = useMonkStore();
-  const today = getTodayDateString();
-  const past7 = Array.from({ length: 7 }, (_, i) => {
-    const d = new Date(today + "T00:00:00");
-    d.setDate(d.getDate() - (6 - i));
-    return getTodayDateString(d);
-  });
-
-  const labels: Record<EnergyLevel, string> = {
-    low: "Low",
-    medium: "Steady",
-    high: "High"
-  };
-
-  return (
-    <Card className="p-4">
-      <div className="mb-3 flex items-center justify-between gap-3">
-        <div>
-          <p className="font-semibold text-sm">Energy</p>
-          <p className="mt-0.5 text-xs text-monk-muted">How full is the tank today?</p>
-        </div>
-        {value ? (
-          <span className={`rounded-full border px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide ${
-            value === "high"
-              ? "border-monk-success/30 bg-monk-success-soft text-monk-success"
-              : value === "medium"
-              ? "border-monk-accent/30 bg-monk-accent-soft text-monk-accent"
-              : "border-monk-danger/30 bg-monk-danger-soft text-monk-danger"
-          }`}>
-            {labels[value]}
-          </span>
-        ) : null}
-      </div>
-      <div className="grid grid-cols-3 gap-2">
-        {(["low", "medium", "high"] as EnergyLevel[]).map((level) => {
-          const selected = value === level;
-          const tone =
-            level === "high"
-              ? selected
-                ? "border-monk-success bg-monk-success-soft text-monk-success"
-                : "border-monk-border text-monk-muted hover:border-monk-success/40"
-              : level === "medium"
-              ? selected
-                ? "border-monk-accent bg-monk-accent-soft text-monk-accent"
-                : "border-monk-border text-monk-muted hover:border-monk-accent/40"
-              : selected
-              ? "border-monk-danger bg-monk-danger-soft text-monk-danger"
-              : "border-monk-border text-monk-muted hover:border-monk-danger/40";
-          return (
-            <button
-              key={level}
-              type="button"
-              aria-pressed={selected}
-              onClick={() => onChange(level)}
-              className={`min-h-12 rounded-monk border text-sm font-semibold transition active:scale-95 ${tone}`}
-            >
-              {labels[level]}
-            </button>
-          );
-        })}
-      </div>
-      <div className="mt-4">
-        <p className="mb-1.5 text-[10px] font-medium uppercase tracking-wider text-monk-muted">7-day trend</p>
-        <div className="flex items-end gap-1.5" aria-label="Energy trend last 7 days">
-          {past7.map((date) => {
-            const log = store.energyLogs?.find((l) => l.date === date);
-            const isToday = date === today;
-            const h = log?.level === "high" ? "h-5" : log?.level === "medium" ? "h-3.5" : log?.level === "low" ? "h-2" : "h-1.5";
-            const color = log?.level === "high"
-              ? "bg-monk-success"
-              : log?.level === "medium"
-              ? "bg-monk-accent"
-              : log?.level === "low"
-              ? "bg-monk-danger"
-              : "bg-monk-border/40";
-            return (
-              <span
-                key={date}
-                title={`${date}${log ? ` · ${log.level}` : ""}`}
-                className={`inline-block w-full rounded-sm ${h} ${color} ${isToday ? "ring-1 ring-monk-accent/50" : ""}`}
-              />
-            );
-          })}
-        </div>
-      </div>
-    </Card>
-  );
-}
 

@@ -1,6 +1,7 @@
 import { useEffect, useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { Check, Moon } from "lucide-react";
+import { motion } from "framer-motion";
 import { useMonkStore } from "../store/useMonkStore";
 import { useT } from "../i18n";
 import { getTodayDateString, datesInRange, formatHumanDate } from "../lib/date";
@@ -109,8 +110,9 @@ export function WeekScreen() {
         ) : (
           <>
             <DefenseChips />
-            <Card className="overflow-hidden p-4 sm:p-5">
-              <div className="mb-4 flex items-end justify-between gap-3">
+            <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35, ease: "easeOut" }}>
+            <Card className="p-4 sm:p-5">
+              <div className="flex items-end justify-between gap-3">
                 <div>
                   <p className="text-xs font-bold uppercase tracking-[0.18em] text-monk-muted">{t("week.rhythm")}</p>
                   <p className="mt-1 text-2xl font-bold tabular-nums tracking-tight">
@@ -127,21 +129,17 @@ export function WeekScreen() {
                 </div>
               </div>
 
-              <div className="mb-4 h-1.5 rounded-full bg-monk-soft overflow-hidden" aria-hidden="true">
-                <div
-                  className="h-full rounded-full bg-monk-accent transition-all"
-                  style={{ width: `${Math.min(100, Math.round((stats.focusDone / Math.max(1, stats.targetFocus)) * 100))}%` }}
+              <div className="mt-4 h-1.5 rounded-full bg-monk-soft overflow-hidden" aria-hidden="true">
+                <motion.div
+                  className="h-full rounded-full bg-monk-accent"
+                  initial={{ width: 0 }}
+                  animate={{ width: `${Math.min(100, Math.round((stats.focusDone / Math.max(1, stats.targetFocus)) * 100))}%` }}
+                  transition={{ duration: 0.6, delay: 0.2, ease: "easeOut" }}
                 />
               </div>
-
-              {stats.completed + stats.partial + stats.rest > 0 ? (
-                <p className="mb-4 text-xs leading-5 text-monk-muted">
-                  {stats.missed === 0
-                    ? t("week.softWin.held")
-                    : t("week.softWin.body")}
-                </p>
-              ) : null}
-
+            </Card>
+            </motion.div>
+            <Card className="overflow-hidden p-4 sm:p-5">
               {/* Mobile: 7×44px + ring-offset overflows card; shrink + inset ring */}
               <div
                 className="flex min-w-0 items-stretch justify-between gap-0.5 sm:gap-1.5 px-0.5"
@@ -260,12 +258,10 @@ export function WeekScreen() {
             {showWeekWrap ? (
               <Card className="p-4">
                 <p className="text-xs font-bold uppercase tracking-[0.18em] text-monk-muted">{t("week.wrap.title")}</p>
-                <div className="mt-2 space-y-1 text-sm text-monk-text">
-                  <p>{t("week.wrap.focus", { n: focusMinutes })}</p>
-                  <p>{t("week.wrap.held", { n: heldDays })}</p>
-                  {stats.rest > 0 ? <p>{t("week.wrap.rest", { n: stats.rest })}</p> : null}
-                  <p className="text-monk-muted">{wrapWin}</p>
-                </div>
+                <p className="mt-2 text-sm font-semibold">{t("week.wrap.focus", { n: focusMinutes })}</p>
+                <p className="mt-1 text-sm">{t("week.wrap.held", { n: heldDays })}</p>
+                {stats.rest > 0 ? <p className="mt-1 text-sm">{t("week.wrap.rest", { n: stats.rest })}</p> : null}
+                <p className="mt-2 text-sm text-monk-muted">{wrapWin}</p>
               </Card>
             ) : null}
 
@@ -313,7 +309,7 @@ export function WeekScreen() {
             <div>
               <SectionHeader title="Goals this week" subtitle="Touch every goal at least once." />
               <div className="space-y-3">
-                {weeklyPlan.goalAllocations.map((allocation) => {
+                {weeklyPlan.goalAllocations.map((allocation, index) => {
                   const goal = goals.find((item) => item.id === allocation.goalId);
                   const progress = allocation.targetCount > 0
                     ? Math.min(100, Math.round((allocation.completedCount / allocation.targetCount) * 100))
@@ -321,7 +317,7 @@ export function WeekScreen() {
                   const complete = allocation.completedCount >= allocation.targetCount;
                   const remaining = Math.max(0, allocation.targetCount - allocation.completedCount);
                   const behind = !complete && remaining > remainingDays;
-                  const statusLabel = complete ? "Done" : behind ? "Behind" : allocation.completedCount > 0 ? "In progress" : "Not started";
+                  const statusLabel = complete ? "Target Met" : behind ? "Behind Schedule" : allocation.completedCount > 0 ? "In Progress" : "Not Started";
                   const statusClass = complete
                     ? "text-monk-success border-monk-success/30 bg-monk-success-soft"
                     : behind
@@ -331,7 +327,8 @@ export function WeekScreen() {
                     : "text-monk-muted border-monk-border bg-monk-soft";
 
                   return (
-                    <Card key={allocation.goalId} className="p-4">
+                    <motion.div key={allocation.goalId} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3, delay: index * 0.05 }}>
+                    <Card className="p-4">
                       <div className="flex items-start justify-between gap-3">
                         <div className="min-w-0 flex-1">
                           <p className="text-sm font-semibold truncate">{goal?.title ?? "Goal"}</p>
@@ -361,6 +358,7 @@ export function WeekScreen() {
                       </div>
                       {goal ? <GoalWhyInline goalId={goal.id} why={goal.why} /> : null}
                     </Card>
+                    </motion.div>
                   );
                 })}
 
