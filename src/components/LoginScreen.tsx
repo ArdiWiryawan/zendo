@@ -1,12 +1,14 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase as getSupabase } from "../lib/supabase";
+import { useT } from "../i18n";
 import { CalmAlert, GhostButton, PrimaryButton, TextInput } from "./ui";
 
 const sb = getSupabase();
 
 export default function LoginScreen() {
   const navigate = useNavigate();
+  const t = useT();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -25,7 +27,7 @@ export default function LoginScreen() {
       if (authError) throw authError;
       navigate("/today", { replace: true });
     } catch (err: unknown) {
-      const msg = (err as { message?: string })?.message || "Login failed";
+      const msg = (err as { message?: string })?.message || t("auth.login.failed");
       setError(msg);
     } finally {
       setLoading(false);
@@ -42,10 +44,10 @@ export default function LoginScreen() {
         <div className="space-y-2 text-center">
           <p className="text-xs font-bold uppercase tracking-[0.2em] text-monk-accent">
             <span className="mr-1.5 inline-block h-1.5 w-1.5 rounded-full bg-monk-accent/70 align-middle" aria-hidden />
-            Zendo
+            {t("auth.brand")}
           </p>
-          <h1 className="text-3xl font-bold tracking-tight">Welcome back</h1>
-          <p className="text-sm text-monk-muted">Sign in to continue your season.</p>
+          <h1 className="text-3xl font-bold tracking-tight">{t("auth.login.title")}</h1>
+          <p className="text-sm text-monk-muted">{t("auth.login.subtitle")}</p>
         </div>
 
         <form
@@ -53,20 +55,20 @@ export default function LoginScreen() {
           className="space-y-4 rounded-monk border border-monk-border bg-monk-surface/80 p-5 shadow-soft backdrop-blur-sm"
         >
           <TextInput
-            label="Email"
+            label={t("auth.email")}
             type="email"
             value={email}
-            placeholder="you@email.com"
+            placeholder={t("auth.emailPlaceholder")}
             autoComplete="email"
             autoFocus
             required
             onChange={(e) => setEmail(e.target.value)}
           />
           <TextInput
-            label="Password"
+            label={t("auth.password")}
             type="password"
             value={password}
-            placeholder="••••••••"
+            placeholder={t("auth.passwordPlaceholder")}
             autoComplete="current-password"
             required
             onChange={(e) => setPassword(e.target.value)}
@@ -75,12 +77,12 @@ export default function LoginScreen() {
           {error ? <CalmAlert type="danger" title={error} /> : null}
 
           <PrimaryButton type="submit" disabled={loading || !email || !password}>
-            {loading ? "Signing in…" : "Sign In"}
+            {loading ? t("auth.login.loading") : t("auth.login.submit")}
           </PrimaryButton>
         </form>
 
         <GhostButton className="w-full text-sm text-monk-accent" onClick={() => navigate("/signup")}>
-          Don't have an account? Sign up
+          {t("auth.login.switch")}
         </GhostButton>
       </div>
     </div>

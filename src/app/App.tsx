@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, Navigate, Route, Routes, useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { supabase as getSupabase } from "../lib/supabase";
 import { startMusic, stopMusic, toggleMusic } from "../lib/focusMusic";
@@ -2025,6 +2025,10 @@ function reentryDismissKey(date: string) {
   return `zendo.reentry.dismissed.${date}`;
 }
 
+function reentryChipHideKey(date: string) {
+  return `zendo.reentry.chipHidden.${date}`;
+}
+
 function isReentryDismissed(date: string): boolean {
   try {
     const raw = localStorage.getItem(reentryDismissKey(date));
@@ -2043,6 +2047,31 @@ function dismissReentry(date: string) {
   } catch {
     /* ignore */
   }
+}
+
+function isReentryChipHidden(date: string): boolean {
+  try {
+    return localStorage.getItem(reentryChipHideKey(date)) === "1";
+  } catch {
+    return false;
+  }
+}
+
+function hideReentryChip(date: string) {
+  try {
+    localStorage.setItem(reentryChipHideKey(date), "1");
+  } catch {
+    /* ignore */
+  }
+}
+
+function shouldOfferReentry(store: ReturnType<typeof useMonkStore.getState>, seasonStart: string, today: string): boolean {
+  const yesterday = addDaysToDate(today, -1);
+  if (yesterday < seasonStart) return false;
+  const yStatus = getDailyStatusForDate(store, yesterday);
+  const yPlan = store.dayPlans.find((plan) => plan.date === yesterday);
+  const softMiss = yStatus === "not_started" && !!yPlan;
+  return yStatus === "missed" || yStatus === "relapse" || softMiss;
 }
 
 function isCloseDaySkipped(date: string) {
@@ -2167,7 +2196,6 @@ function ReEntryBanner() {
   const t = useT();
   const season = store.activeSeason;
   const today = getTodayDateString();
-  const yesterday = addDaysToDate(today, -1);
   const todayPlan = selectTodayPlan(store);
   const isDone = todayPlan?.status === "completed";
   const todayEntry = store.journalEntries.find(
@@ -2175,23 +2203,43 @@ function ReEntryBanner() {
   );
   const hasReflection = !!todayEntry?.answers.whatMovedToday?.trim();
   const [dismissed, setDismissed] = useState(() => isReentryDismissed(today));
+  const [chipHidden, setChipHidden] = useState(() => isReentryChipHidden(today));
 
-  if (!season || dismissed || isDone || hasReflection) return null;
-  if (yesterday < season.startDate) return null;
-
-  const yStatus = getDailyStatusForDate(store, yesterday);
-  const yPlan = store.dayPlans.find((plan) => plan.date === yesterday);
-  const softMiss = yStatus === "not_started" && !!yPlan;
-  const show = yStatus === "missed" || yStatus === "relapse" || softMiss;
-  if (!show) return null;
-
-  const whyRaw = season.why?.identity || season.why?.consequenceOfInaction || "";
-  const whyLine = whyRaw.length > 120 ? `${whyRaw.slice(0, 120)}…` : whyRaw;
+  if (!season || isDone || hasReflection) return null;
+  if (!shouldOfferReentry(store, season.startDate, today)) return null;
 
   const startMinutes = (minutes: number) => {
     store.startFocusSession("custom", minutes);
     navigate(routes.focus);
   };
+
+  // After full banner dismiss: soft chip stays (unless user hides chip too)
+  if (dismissed) {
+    if (chipHidden) return null;
+    return (
+      <div className="flex items-center gap-2 rounded-full border border-monk-accent/25 bg-monk-accent-soft/30 px-3 py-2">
+        <button
+          type="button"
+          className="min-h-11 flex-1 text-left text-sm font-semibold text-monk-accent"
+          onClick={() => startMinutes(10)}
+        >
+          {t("today.reentry.chip")}
+        </button>
+        <GhostButton
+          className="shrink-0 px-2 text-xs"
+          onClick={() => {
+            hideReentryChip(today);
+            setChipHidden(true);
+          }}
+        >
+          {t("today.reentry.chipDismiss")}
+        </GhostButton>
+      </div>
+    );
+  }
+
+  const whyRaw = season.why?.identity || season.why?.consequenceOfInaction || "";
+  const whyLine = whyRaw.length > 120 ? `${whyRaw.slice(0, 120)}…` : whyRaw;
 
   return (
     <Card className="border-monk-accent/25 bg-monk-accent-soft/30 p-4">
@@ -4100,6 +4148,9 @@ function JournalEntryScreen() {
   const [saved, setSaved] = useState(false);
   const [tomorrow, setTomorrow] = useState("");
   const [tomorrowSaved, setTomorrowSaved] = useState(false);
+  const [draftSaved, setDraftSaved] = useState(false);
+  const draftSkipRef = useRef(true);
+  const draftTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => { window.scrollTo(0, 0); }, []);
 
@@ -4107,10 +4158,27 @@ function JournalEntryScreen() {
     setAnswers(initial);
     setSaved(false);
     setTomorrowSaved(false);
+    setDraftSaved(false);
+    draftSkipRef.current = true;
   }, [initial]);
 
   useEffect(() => {
-    localStorage.setItem(journalDraftKey, JSON.stringify(answers));
+    if (draftSkipRef.current) {
+      draftSkipRef.current = false;
+      return;
+    }
+    if (draftTimerRef.current) clearTimeout(draftTimerRef.current);
+    draftTimerRef.current = setTimeout(() => {
+      try {
+        localStorage.setItem(journalDraftKey, JSON.stringify(answers));
+        setDraftSaved(true);
+      } catch {
+        /* ignore */
+      }
+    }, 600);
+    return () => {
+      if (draftTimerRef.current) clearTimeout(draftTimerRef.current);
+    };
   }, [answers, journalDraftKey]);
 
   const activePrompt = useMemo(() => getDailyJournalPromptForDate(lang, dateSeed), [lang, dateSeed]);
@@ -4217,6 +4285,11 @@ function JournalEntryScreen() {
           <p className="text-[11px] text-monk-text-soft text-center leading-relaxed px-2">
             {t("journal.morningHelper")}
           </p>
+          {draftSaved ? (
+            <p className="text-center text-[11px] font-medium text-monk-muted" aria-live="polite">
+              {t("journal.draftSaved")}
+            </p>
+          ) : null}
         </div>
       ) : (
         <div className="mt-5 space-y-4">
@@ -4235,6 +4308,11 @@ function JournalEntryScreen() {
               onChange={(event) => setAnswers((value) => ({ ...value, whatMovedToday: event.target.value }))}
             />
             <p className="text-[11px] text-monk-text-soft mt-3">{t("journal.reflectionHelper")}</p>
+            {draftSaved ? (
+              <p className="mt-2 text-[11px] font-medium text-monk-muted" aria-live="polite">
+                {t("journal.draftSaved")}
+              </p>
+            ) : null}
           </Card>
           <TextInput
             label={t("today.closeDay.tomorrowLabel")}
