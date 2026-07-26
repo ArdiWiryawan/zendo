@@ -29,7 +29,20 @@ export const id: Record<MessageKey, string> = {
   "settings.resetDesc": "Hapus permanen semua log, tujuan, dan riwayat di perangkat ini.",
   "settings.wipe": "Hapus semua data",
   "settings.wipeConfirm": "PERINGATAN: Ini menghapus permanen log season, tujuan, dan riwayat. Tidak bisa dibatalkan. Lanjut?",
+  "settings.importConfirm": "Impor akan digabung dengan data saat ini. Lanjut?",
+  "settings.importConfirmTitle": "Impor data?",
+  "settings.wipeConfirmTitle": "Hapus semua data?",
   "settings.about": "Zendo — ruang tenang untuk fokus dalam dan kemajuan yang disengaja.",
+
+  "sync.synced": "Tersinkron",
+  "sync.syncing": "Menyimpan…",
+  "sync.offline": "Offline",
+  "sync.error": "Gagal sinkron",
+  "sync.idle": "Siap",
+
+  "dialog.cancel": "Batal",
+  "dialog.confirm": "Lanjut",
+  "dialog.delete": "Hapus",
 
   "journal.title": "Jurnal",
   "journal.subtitleMorning": "Mulai hari dengan kepala yang lebih jernih.",
@@ -416,4 +429,37 @@ export const id: Record<MessageKey, string> = {
   "toast.undo": "Urungkan",
 
   "focus.prepareFirst": "Siapkan dulu (opsional)",
+
+  "pwa.installTitle": "Pasang Zendo",
+  "pwa.installBody": "Tambahkan ke layar utama agar tampil penuh dan lebih tenang.",
+  "pwa.installCta": "Pasang",
+  "pwa.dismiss": "Nanti saja",
+
+  "nudge.evening.title": "Tutup hari",
+  "nudge.evening.body": "Refleksi singkat menjaga musim tetap jujur.",
+
+  "coach.pickTheme.title": "Mulai dengan satu tema",
+  "coach.pickTheme.body": "Pilih satu tujuan yang pantas untuk hari ini. Satu saja cukup.",
+  "coach.pickTheme.cta": "Pilih tema",
+  "coach.pickTheme.dismiss": "Mengerti",
+  "coach.intention.title": "Tulis niat kecil",
+  "coach.intention.body": "Satu aksi konkret — kapan dan apa — biar hari tetap jernih.",
+  "coach.intention.cta": "Set niat",
+  "coach.intention.dismiss": "Mengerti",
+  "coach.focus.title": "Coba blok fokus singkat",
+  "coach.focus.body": "Sepuluh menit tenang lebih baik dari rencana kosong. Mulai kecil.",
+  "coach.focus.cta": "Mulai fokus",
+  "coach.focus.dismiss": "Mengerti",
+  "coach.close.title": "Tutup hari dengan lembut",
+  "coach.close.body": "Satu baris refleksi menutup hari. Lalu istirahat.",
+  "coach.close.cta": "Tutup hari",
+  "coach.close.dismiss": "Mengerti",
+
+  "onboarding.preview.title": "Yang terjadi di Today",
+  "onboarding.preview.body": "Loop harian yang tenang. Empat langkah kecil.",
+  "onboarding.preview.step1": "Pilih satu tema hari ini",
+  "onboarding.preview.step2": "Tulis satu niat",
+  "onboarding.preview.step3": "Jalankan blok fokus tenang",
+  "onboarding.preview.step4": "Tutup hari dengan satu baris",
+  "onboarding.preview.cta": "Masuk Season",
 };

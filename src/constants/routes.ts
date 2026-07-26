@@ -11,6 +11,7 @@ export const routes = {
   onboardingKeystone: "/onboarding/keystone",
   onboardingDefenses: "/onboarding/defenses",
   onboardingWeekSetup: "/onboarding/week-setup",
+  onboardingPreview: "/onboarding/preview",
   onboardingHabits: "/onboarding/habits",
   onboardingRemove: "/onboarding/remove",
   onboardingGreyMode: "/onboarding/grey-mode",
@@ -58,5 +59,6 @@ export const onboardingOrder = [
   routes.onboardingVision,
   routes.onboardingNarrow,
   routes.onboardingKeystone,
-  routes.onboardingWeekSetup
+  routes.onboardingWeekSetup,
+  routes.onboardingPreview
 ] as const;

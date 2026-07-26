@@ -397,6 +397,106 @@ export function CalmAlert({
   );
 }
 
+export function CalmDialog({
+  open,
+  title,
+  description,
+  confirmLabel,
+  cancelLabel,
+  danger = false,
+  onConfirm,
+  onCancel
+}: {
+  open: boolean;
+  title: string;
+  description?: string;
+  confirmLabel: string;
+  cancelLabel: string;
+  danger?: boolean;
+  onConfirm: () => void;
+  onCancel: () => void;
+}) {
+  const dialogRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const prev = document.activeElement as HTMLElement | null;
+    const root = dialogRef.current;
+    const focusable = root?.querySelectorAll<HTMLElement>(
+      'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+    );
+    focusable?.[0]?.focus();
+
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        e.preventDefault();
+        onCancel();
+        return;
+      }
+      if (e.key !== "Tab" || !focusable || focusable.length === 0) return;
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (e.shiftKey && document.activeElement === first) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault();
+        first.focus();
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      prev?.focus?.();
+    };
+  }, [open, onCancel]);
+
+  if (!open) return null;
+
+  return (
+    <div className="fixed inset-0 z-[70] flex items-center justify-center px-6">
+      <button
+        type="button"
+        aria-label={cancelLabel}
+        className="absolute inset-0 bg-monk-bg/70 backdrop-blur-[2px]"
+        onClick={onCancel}
+      />
+      <div
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="calm-dialog-title"
+        className="relative w-full max-w-[360px] rounded-monk-lg border border-monk-border bg-monk-surface p-5 shadow-calm"
+      >
+        <h2 id="calm-dialog-title" className="text-base font-semibold text-monk-text">
+          {title}
+        </h2>
+        {description ? (
+          <p className="mt-2 text-sm leading-6 text-monk-muted">{description}</p>
+        ) : null}
+        <div className="mt-5 flex items-center justify-end gap-2">
+          <GhostButton type="button" onClick={onCancel}>
+            {cancelLabel}
+          </GhostButton>
+          {danger ? (
+            <button
+              type="button"
+              onClick={onConfirm}
+              className="min-h-11 rounded-full border border-monk-danger/40 bg-monk-danger/10 px-4 text-sm font-bold text-monk-danger transition active:scale-95"
+            >
+              {confirmLabel}
+            </button>
+          ) : (
+            <PrimaryButton type="button" className="!w-auto px-5" onClick={onConfirm}>
+              {confirmLabel}
+            </PrimaryButton>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function EmptyState({
   title,
   description,

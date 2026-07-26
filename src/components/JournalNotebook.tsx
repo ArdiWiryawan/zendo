@@ -1,6 +1,6 @@
 import { useState, useMemo, useRef, useEffect, useCallback } from "react";
 import { useMonkStore } from "../store/useMonkStore";
-import { PrimaryButton, SecondaryButton, GhostButton } from "./ui";
+import { PrimaryButton, SecondaryButton, GhostButton, CalmDialog } from "./ui";
 import { createId } from "../lib/ids";
 import { nowIso } from "../lib/date";
 import type { NotebookEntry } from "../types/app";
@@ -61,6 +61,9 @@ export default function JournalNotebook() {
   const [editEntry, setEditEntry] = useState<NotebookEntry | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [filterCat, setFilterCat] = useState<string | null>(null);
+  const [confirmKind, setConfirmKind] = useState<null | "delete-list">(null);
+  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
+  const [pendingDeleteTitle, setPendingDeleteTitle] = useState("");
 
   const sorted = useMemo(() => {
     let list = [...entries];
@@ -269,15 +272,9 @@ export default function JournalNotebook() {
                     type="button"
                     aria-label={t("notebook.deleteAria")}
                     onClick={() => {
-                      if (
-                        window.confirm(
-                          t("notebook.deleteConfirm", {
-                            title: entry.title || t("notebook.thisNote"),
-                          })
-                        )
-                      ) {
-                        store.deleteNotebookEntry(entry.id);
-                      }
+                      setPendingDeleteId(entry.id);
+                      setPendingDeleteTitle(entry.title || t("notebook.thisNote"));
+                      setConfirmKind("delete-list");
                     }}
                     className="grid min-h-10 min-w-10 place-items-center rounded-full text-monk-muted transition hover:bg-monk-danger-soft hover:text-monk-danger"
                   >
@@ -298,6 +295,24 @@ export default function JournalNotebook() {
       >
         <Plus size={24} strokeWidth={2} />
       </button>
+
+      <CalmDialog
+        open={confirmKind === "delete-list"}
+        title={t("notebook.delete")}
+        description={t("notebook.deleteConfirm", { title: pendingDeleteTitle })}
+        confirmLabel={t("dialog.delete")}
+        cancelLabel={t("dialog.cancel")}
+        danger
+        onCancel={() => {
+          setConfirmKind(null);
+          setPendingDeleteId(null);
+        }}
+        onConfirm={() => {
+          if (pendingDeleteId) store.deleteNotebookEntry(pendingDeleteId);
+          setConfirmKind(null);
+          setPendingDeleteId(null);
+        }}
+      />
     </div>
   );
 }
@@ -324,6 +339,7 @@ export function NotebookEditor({
   const [newCatName, setNewCatName] = useState("");
   const [dirty, setDirty] = useState(false);
   const [savedFlash, setSavedFlash] = useState(false);
+  const [confirmKind, setConfirmKind] = useState<"leave" | "delete-editor" | null>(null);
   const entryIdRef = useRef(entry?.id ?? createId("nb_entry"));
   const createdAtRef = useRef(entry?.createdAt ?? nowIso());
 
@@ -383,11 +399,8 @@ export function NotebookEditor({
 
   const handleBack = () => {
     if (dirty && canSave) {
-      const ok = window.confirm(t("notebook.saveBeforeLeave"));
-      if (ok) {
-        handleSave(true);
-        return;
-      }
+      setConfirmKind("leave");
+      return;
     }
     onBack();
   };
@@ -541,18 +554,7 @@ export function NotebookEditor({
             {entry ? (
               <GhostButton
                 className="text-monk-danger"
-                onClick={() => {
-                  if (
-                    window.confirm(
-                      t("notebook.deleteConfirm", {
-                        title: entry.title || t("notebook.thisNote"),
-                      })
-                    )
-                  ) {
-                    store.deleteNotebookEntry(entry.id);
-                    onBack();
-                  }
-                }}
+                onClick={() => setConfirmKind("delete-editor")}
               >
                 {t("notebook.delete")}
               </GhostButton>
@@ -566,6 +568,38 @@ export function NotebookEditor({
           </div>
         </div>
       </div>
+
+      <CalmDialog
+        open={confirmKind === "leave"}
+        title={t("notebook.save")}
+        description={t("notebook.saveBeforeLeave")}
+        confirmLabel={t("dialog.confirm")}
+        cancelLabel={t("dialog.cancel")}
+        onCancel={() => {
+          setConfirmKind(null);
+          onBack();
+        }}
+        onConfirm={() => {
+          setConfirmKind(null);
+          handleSave(true);
+        }}
+      />
+      <CalmDialog
+        open={confirmKind === "delete-editor"}
+        title={t("notebook.delete")}
+        description={t("notebook.deleteConfirm", {
+          title: entry?.title || t("notebook.thisNote"),
+        })}
+        confirmLabel={t("dialog.delete")}
+        cancelLabel={t("dialog.cancel")}
+        danger
+        onCancel={() => setConfirmKind(null)}
+        onConfirm={() => {
+          if (entry) store.deleteNotebookEntry(entry.id);
+          setConfirmKind(null);
+          onBack();
+        }}
+      />
     </div>
   );
 }

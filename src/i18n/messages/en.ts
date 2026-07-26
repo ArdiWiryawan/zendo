@@ -27,7 +27,20 @@ export const en = {
   "settings.resetDesc": "Permanently delete all logs, goals, and history on this device.",
   "settings.wipe": "Wipe all data",
   "settings.wipeConfirm": "WARNING: This permanently deletes your season logs, goals, and history. It cannot be undone. Continue?",
+  "settings.importConfirm": "Import will merge with current data. Continue?",
+  "settings.importConfirmTitle": "Import data?",
+  "settings.wipeConfirmTitle": "Wipe all data?",
   "settings.about": "Zendo — a quiet space for deep focus and intentional progress.",
+
+  "sync.synced": "Synced",
+  "sync.syncing": "Saving…",
+  "sync.offline": "Offline",
+  "sync.error": "Sync error",
+  "sync.idle": "Ready",
+
+  "dialog.cancel": "Cancel",
+  "dialog.confirm": "Continue",
+  "dialog.delete": "Delete",
 
   "journal.title": "Journal",
   "journal.subtitleMorning": "Clear your head before the day starts.",
@@ -414,6 +427,39 @@ export const en = {
   "toast.undo": "Undo",
 
   "focus.prepareFirst": "Prepare first (optional)",
+
+  "pwa.installTitle": "Install Zendo",
+  "pwa.installBody": "Add to your home screen for a quieter, full-screen temple.",
+  "pwa.installCta": "Install",
+  "pwa.dismiss": "Not now",
+
+  "nudge.evening.title": "Close the day",
+  "nudge.evening.body": "A short reflection keeps the season honest.",
+
+  "coach.pickTheme.title": "Start with one theme",
+  "coach.pickTheme.body": "Pick the one goal that deserves today. One is enough.",
+  "coach.pickTheme.cta": "Pick theme",
+  "coach.pickTheme.dismiss": "Got it",
+  "coach.intention.title": "Name a small intention",
+  "coach.intention.body": "One concrete action — when and what — keeps the day clear.",
+  "coach.intention.cta": "Set intention",
+  "coach.intention.dismiss": "Got it",
+  "coach.focus.title": "Try a short focus block",
+  "coach.focus.body": "Ten quiet minutes beats an empty plan. Start small.",
+  "coach.focus.cta": "Start focus",
+  "coach.focus.dismiss": "Got it",
+  "coach.close.title": "Close the day gently",
+  "coach.close.body": "One line of reflection seals the day. Then rest.",
+  "coach.close.cta": "Close day",
+  "coach.close.dismiss": "Got it",
+
+  "onboarding.preview.title": "What happens on Today",
+  "onboarding.preview.body": "A quiet daily loop. Four small moves.",
+  "onboarding.preview.step1": "Pick one theme for the day",
+  "onboarding.preview.step2": "Name a single intention",
+  "onboarding.preview.step3": "Hold a quiet focus block",
+  "onboarding.preview.step4": "Close the day in one line",
+  "onboarding.preview.cta": "Enter Season",
 } as const;
 
 export type MessageKey = keyof typeof en;

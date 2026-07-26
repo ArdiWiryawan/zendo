@@ -4,6 +4,8 @@ import { supabase as getSupabase } from "../lib/supabase";
 import { startMusic, stopMusic, toggleMusic } from "../lib/focusMusic";
 import LoginScreen from "../components/LoginScreen";
 import SignupScreen from "../components/SignupScreen";
+import PwaInstallBanner from "../components/PwaInstallBanner";
+import { startEveningNudgeWatcher } from "../lib/eveningNudge";
 import {
   ArrowLeft,
   BookOpen,
@@ -30,6 +32,7 @@ import {
 import {
   AppShell,
   CalmAlert,
+  CalmDialog,
   Card,
   ChoiceCard,
   ChoiceChip,
@@ -47,6 +50,7 @@ import {
   Textarea,
   useCalmToast
 } from "../components/ui";
+import { useSyncStatus, type SyncStatus } from "../lib/syncStatus";
 import { habitOptions, learningTypes, defaultWeeklyTargets } from "../constants/defaultData";
 import { DAILY_STATUS_LABELS, getDailyStatusHelper, resolveDailyActivityStatus } from "../constants/dailyActivityStatus";
 import { FOCUS_PRESETS, getCompletedSeconds, getCurrentFocusPhase } from "../constants/focusPresets";
@@ -73,6 +77,7 @@ import {
 import { createId } from "../lib/ids";
 import { formatIntention, parseIntention } from "../lib/implementationIntention";
 import { capacityCheck, planStrengthLabel, scorePlan } from "../lib/planScoring";
+import { dismissCoachStep, getCoachStep, type CoachStepId } from "../lib/coach";
 import { exportStateAsJson, JOURNAL_DRAFT_KEY, loadLastFocus, saveLastFocus } from "../lib/storage";
 import {
   validateFocusGoalSelection,
@@ -120,6 +125,11 @@ export default function App() {
     recordOpen();
     setReady(true);
   }, [hydrate, recordOpen]);
+
+  useEffect(() => {
+    if (!ready) return;
+    return startEveningNudgeWatcher();
+  }, [ready]);
 
   useEffect(() => {
     if (!activeSession || activeSession.status !== "running") return;
@@ -177,25 +187,28 @@ export default function App() {
   }
 
   return (
-    <Routes>
-      <Route path={routes.root} element={<RootRedirect />} />
-      <Route path="/onboarding/*" element={<OnboardingGate />} />
-      <Route path={routes.today} element={<ProtectedMain><TodayScreen /></ProtectedMain>} />
-      <Route path={routes.week} element={<ProtectedMain><WeekScreen /></ProtectedMain>} />
-      <Route path={routes.timeline} element={<ProtectedMain><TimelineScreen /></ProtectedMain>} />
-      <Route path={routes.journal} element={<ProtectedMain><JournalEntryScreen /></ProtectedMain>} />
-      <Route path={routes.focus} element={<ProtectedMain><FocusScreen /></ProtectedMain>} />
-      <Route path={routes.learn} element={<ProtectedMain><LearningScreen /></ProtectedMain>} />
-      <Route path={routes.relapse} element={<ProtectedMain><RelapseScreen /></ProtectedMain>} />
-      <Route path={routes.seasonEnd} element={<ProtectedMain allowEnded><SeasonEndScreen /></ProtectedMain>} />
-      <Route path={routes.settings} element={<ProtectedMain><SettingsScreen /></ProtectedMain>} />
-      <Route path={routes.login} element={<LoginScreen />} />
-      <Route path={routes.signup} element={<SignupScreen />} />
-      <Route path={routes.library} element={<ProtectedMain><JournalLibraryScreen /></ProtectedMain>} />
-      <Route path={routes.notebook} element={<ProtectedMain><NotebookPage /></ProtectedMain>} />
-      <Route path={routes.packs} element={<ProtectedMain><PacksPage /></ProtectedMain>} />
-      <Route path="*" element={<Navigate to={routes.root} replace />} />
-    </Routes>
+    <>
+      <PwaInstallBanner />
+      <Routes>
+        <Route path={routes.root} element={<RootRedirect />} />
+        <Route path="/onboarding/*" element={<OnboardingGate />} />
+        <Route path={routes.today} element={<ProtectedMain><TodayScreen /></ProtectedMain>} />
+        <Route path={routes.week} element={<ProtectedMain><WeekScreen /></ProtectedMain>} />
+        <Route path={routes.timeline} element={<ProtectedMain><TimelineScreen /></ProtectedMain>} />
+        <Route path={routes.journal} element={<ProtectedMain><JournalEntryScreen /></ProtectedMain>} />
+        <Route path={routes.focus} element={<ProtectedMain><FocusScreen /></ProtectedMain>} />
+        <Route path={routes.learn} element={<ProtectedMain><LearningScreen /></ProtectedMain>} />
+        <Route path={routes.relapse} element={<ProtectedMain><RelapseScreen /></ProtectedMain>} />
+        <Route path={routes.seasonEnd} element={<ProtectedMain allowEnded><SeasonEndScreen /></ProtectedMain>} />
+        <Route path={routes.settings} element={<ProtectedMain><SettingsScreen /></ProtectedMain>} />
+        <Route path={routes.login} element={<LoginScreen />} />
+        <Route path={routes.signup} element={<SignupScreen />} />
+        <Route path={routes.library} element={<ProtectedMain><JournalLibraryScreen /></ProtectedMain>} />
+        <Route path={routes.notebook} element={<ProtectedMain><NotebookPage /></ProtectedMain>} />
+        <Route path={routes.packs} element={<ProtectedMain><PacksPage /></ProtectedMain>} />
+        <Route path="*" element={<Navigate to={routes.root} replace />} />
+      </Routes>
+    </>
   );
 }
 
@@ -853,7 +866,8 @@ function OnboardingScreen({ path }: { path: string }) {
       {path === routes.onboardingSeason ? <SeasonSetup onNext={goNext} /> : null}
       {path === routes.onboardingNarrow ? <NarrowGoals onNext={goNext} /> : null}
       {path === routes.onboardingKeystone ? <KeystoneSetup onNext={goNext} /> : null}
-      {path === routes.onboardingWeekSetup ? <WeekSetup /> : null}
+      {path === routes.onboardingWeekSetup ? <WeekSetup onNext={goNext} /> : null}
+      {path === routes.onboardingPreview ? <TodayPreviewStep /> : null}
     </OnboardingShell>
   );
 }
@@ -1712,9 +1726,8 @@ function KeystoneSetup({ onNext }: { onNext: () => void }) {
   );
 }
 
-function WeekSetup() {
-  const navigate = useNavigate();
-  const { onboarding, setWeeklyAllocation, createSeasonFromOnboarding, updateOnboarding } = useMonkStore();
+function WeekSetup({ onNext }: { onNext: () => void }) {
+  const { onboarding, setWeeklyAllocation, updateOnboarding } = useMonkStore();
   const goals = onboarding.goalDrafts.filter((goal) => onboarding.selectedFocusGoalIds.includes(goal.id));
   const goalIdsJson = JSON.stringify(goals.map((g) => g.id));
 
@@ -1892,15 +1905,101 @@ function WeekSetup() {
         ) : null}
         <PrimaryButton
           disabled={!result.valid}
+          onClick={onNext}
+        >
+          Continue
+        </PrimaryButton>
+      </div>
+    </>
+  );
+}
+
+function TodayPreviewStep() {
+  const navigate = useNavigate();
+  const t = useT();
+  const { createSeasonFromOnboarding } = useMonkStore();
+  const steps = [
+    t("onboarding.preview.step1"),
+    t("onboarding.preview.step2"),
+    t("onboarding.preview.step3"),
+    t("onboarding.preview.step4")
+  ] as const;
+
+  return (
+    <>
+      <ScreenIntro title={t("onboarding.preview.title")} subtitle={t("onboarding.preview.body")} />
+      <Card className="space-y-3 p-4">
+        <ol className="space-y-3">
+          {steps.map((label, index) => (
+            <li key={label} className="flex gap-3 text-sm leading-6 text-monk-text">
+              <span className="mt-0.5 grid h-6 w-6 shrink-0 place-items-center rounded-full bg-monk-accent-soft text-xs font-bold text-monk-accent">
+                {index + 1}
+              </span>
+              <span>{label}</span>
+            </li>
+          ))}
+        </ol>
+      </Card>
+      <div className="mt-auto space-y-3 pt-8">
+        <PrimaryButton
           onClick={() => {
             createSeasonFromOnboarding();
             navigate(routes.today, { replace: true });
           }}
         >
-          Enter Season
+          {t("onboarding.preview.cta")}
         </PrimaryButton>
       </div>
     </>
+  );
+}
+
+function CoachHint({
+  step,
+  onDismiss,
+  onCta
+}: {
+  step: CoachStepId;
+  onDismiss: () => void;
+  onCta?: () => void;
+}) {
+  const t = useT();
+  const copy = {
+    pickTheme: {
+      title: t("coach.pickTheme.title"),
+      body: t("coach.pickTheme.body"),
+      cta: t("coach.pickTheme.cta"),
+      dismiss: t("coach.pickTheme.dismiss")
+    },
+    intention: {
+      title: t("coach.intention.title"),
+      body: t("coach.intention.body"),
+      cta: t("coach.intention.cta"),
+      dismiss: t("coach.intention.dismiss")
+    },
+    focus: {
+      title: t("coach.focus.title"),
+      body: t("coach.focus.body"),
+      cta: t("coach.focus.cta"),
+      dismiss: t("coach.focus.dismiss")
+    },
+    close: {
+      title: t("coach.close.title"),
+      body: t("coach.close.body"),
+      cta: t("coach.close.cta"),
+      dismiss: t("coach.close.dismiss")
+    }
+  }[step];
+
+  return (
+    <Card className="border-monk-accent/20 bg-monk-soft/60 p-4">
+      <p className="text-sm font-semibold text-monk-text">{copy.title}</p>
+      <p className="mt-1 text-sm leading-6 text-monk-muted">{copy.body}</p>
+      <div className="mt-3 flex flex-wrap gap-2">
+        {onCta ? <SecondaryButton onClick={onCta}>{copy.cta}</SecondaryButton> : null}
+        <GhostButton onClick={onDismiss}>{copy.dismiss}</GhostButton>
+      </div>
+    </Card>
   );
 }
 
@@ -2114,6 +2213,7 @@ function CloseDayCard({ onSkip }: { onSkip?: () => void }) {
   const [saved, setSaved] = useState(false);
 
   return (
+    <div id="today-close">
     <Card className="space-y-3 p-5">
       <div>
         <p className="text-xs font-bold uppercase tracking-widest text-monk-muted">{t("today.closeDay.title")}</p>
@@ -2187,6 +2287,7 @@ function CloseDayCard({ onSkip }: { onSkip?: () => void }) {
       </GhostButton>
       {toast.Toast()}
     </Card>
+    </div>
   );
 }
 
@@ -2300,6 +2401,7 @@ function TodayScreen() {
   const [editingAction, setEditingAction] = useState(false);
   const [actionInput, setActionInput] = useState("");
   const [closeDaySkipped, setCloseDaySkipped] = useState(() => isCloseDaySkipped(today));
+  const [coachTick, setCoachTick] = useState(0);
   const [undoPlan, setUndoPlan] = useState<null | {
     dayType: "goal" | "rest";
     goalId?: string;
@@ -2403,6 +2505,37 @@ function TodayScreen() {
     : [];
   const checklistDone = checklist.filter((c) => c.done).length;
 
+  const coachStep = getCoachStep({
+    seasonStartDate: season.startDate,
+    seasonStatus: season.status,
+    today,
+    hasPlan: !!todayPlan,
+    hasIntention: isRest || hasIntention,
+    hasFocus: isRest || focusMinutes > 0 || isDone,
+    dayClosed
+  });
+  void coachTick;
+
+  const coachCta = () => {
+    if (!coachStep) return;
+    if (coachStep === "pickTheme") {
+      document.querySelector(".today-primary-anchor")?.scrollIntoView({ behavior: "smooth", block: "start" });
+      return;
+    }
+    if (coachStep === "intention") {
+      setEditingAction(true);
+      document.querySelector(".today-primary-anchor")?.scrollIntoView({ behavior: "smooth", block: "start" });
+      return;
+    }
+    if (coachStep === "focus") {
+      navigate(routes.focus);
+      return;
+    }
+    if (coachStep === "close") {
+      document.getElementById("today-close")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  };
+
   return (
     <>
       <PageHeader
@@ -2413,17 +2546,29 @@ function TodayScreen() {
       <div className="space-y-5">
         <WhyStrip />
         <ReEntryBanner />
+        {coachStep ? (
+          <CoachHint
+            step={coachStep}
+            onDismiss={() => {
+              dismissCoachStep(coachStep);
+              setCoachTick((n) => n + 1);
+            }}
+            onCta={coachCta}
+          />
+        ) : null}
         {!todayPlan ? (
           <>
-            <SeasonProgressCard />
-            <FlowPickToday goals={activeGoals} />
+            <div className="today-primary-anchor space-y-5">
+              <SeasonProgressCard />
+              <FlowPickToday goals={activeGoals} />
+            </div>
             <WeeklyStatusIndicators />
           </>
         ) : (
           <>
             <Card
               important
-              className={`relative overflow-hidden ${
+              className={`today-primary-anchor relative overflow-hidden ${
                 isDone ? "border-monk-success/30" : isRest ? "border-monk-rest/25" : ""
               }`}
             >
@@ -5593,8 +5738,18 @@ function PacksPage() {
   );
 }
 
+function syncLabel(status: SyncStatus, tUI: (k: any) => string) {
+  if (status === "syncing") return tUI("sync.syncing");
+  if (status === "offline") return tUI("sync.offline");
+  if (status === "error") return tUI("sync.error");
+  if (status === "synced") return tUI("sync.synced");
+  return tUI("sync.idle");
+}
+
 function AccountStatus() {
   const navigate = useNavigate();
+  const tUI = useT();
+  const syncStatus = useSyncStatus();
   const [session, setSession] = useState<{ email?: string } | null>(null);
   const sb = typeof getSupabase === "function" ? (getSupabase as () => any)() : null;
 
@@ -5611,19 +5766,31 @@ function AccountStatus() {
     setSession(null);
   };
 
+  const chip = (
+    <span className="text-xs text-monk-muted" aria-live="polite">
+      {syncLabel(syncStatus, tUI)}
+    </span>
+  );
+
   if (session?.email) {
     return (
-      <div className="flex items-center justify-between gap-2">
-        <span className="text-xs text-monk-muted">{session.email}</span>
-        <GhostButton onClick={handleLogout}>Logout</GhostButton>
+      <div className="flex flex-col items-end gap-1">
+        <div className="flex items-center justify-between gap-2 w-full">
+          <span className="text-xs text-monk-muted">{session.email}</span>
+          <GhostButton onClick={handleLogout}>Logout</GhostButton>
+        </div>
+        {chip}
       </div>
     );
   }
 
   return (
-    <div className="flex items-center justify-between gap-2">
-      <span className="text-sm text-monk-muted">Not connected</span>
-      <GhostButton onClick={() => navigate(routes.login)}>Connect Account</GhostButton>
+    <div className="flex flex-col items-end gap-1">
+      <div className="flex items-center justify-between gap-2 w-full">
+        <span className="text-sm text-monk-muted">Not connected</span>
+        <GhostButton onClick={() => navigate(routes.login)}>Connect Account</GhostButton>
+      </div>
+      {chip}
     </div>
   );
 }
@@ -5632,9 +5799,29 @@ function SettingsScreen() {
   const store = useMonkStore();
   const navigate = useNavigate();
   const [exported, setExported] = useState("");
+  const [confirmKind, setConfirmKind] = useState<null | "import" | "wipe">(null);
+  const [pendingImport, setPendingImport] = useState<Record<string, unknown> | null>(null);
   const tUI = useT();
   const lang = (store.appSettings.language ?? "id") as AppLanguage;
   const labels = getJournalQuestionLabels(lang);
+
+  const applyImport = (data: Record<string, unknown>) => {
+    const separateKeys = new Set(["focusSessions", "learningSessions", "timelineEvents"]);
+    const mainState: Record<string, unknown> = {};
+    Object.entries(data).forEach(([key, value]) => {
+      if (separateKeys.has(key)) {
+        localStorage.setItem(key, JSON.stringify(value));
+      } else {
+        mainState[key] = value;
+      }
+    });
+    if (Object.keys(mainState).length > 0) {
+      const existing = localStorage.getItem("monk_mode_pwa_state_v1");
+      const base = existing ? JSON.parse(existing) : {};
+      localStorage.setItem("monk_mode_pwa_state_v1", JSON.stringify({ ...base, ...mainState }));
+    }
+    setExported("✓ Imported successfully. Reload to apply.");
+  };
 
   const downloadReminderIcs = () => {
     const icsContent = [
@@ -5841,23 +6028,8 @@ function SettingsScreen() {
                       try {
                         const data = JSON.parse(ev.target?.result as string);
                         if (data.userProfile || data.activeSeason || data.goals) {
-                          if (window.confirm("Import will merge with current data. Continue?")) {
-                            const separateKeys = new Set(["focusSessions", "learningSessions", "timelineEvents"]);
-                            const mainState: Record<string, unknown> = {};
-                            Object.entries(data).forEach(([key, value]) => {
-                              if (separateKeys.has(key)) {
-                                localStorage.setItem(key, JSON.stringify(value));
-                              } else {
-                                mainState[key] = value;
-                              }
-                            });
-                            if (Object.keys(mainState).length > 0) {
-                              const existing = localStorage.getItem("monk_mode_pwa_state_v1");
-                              const base = existing ? JSON.parse(existing) : {};
-                              localStorage.setItem("monk_mode_pwa_state_v1", JSON.stringify({ ...base, ...mainState }));
-                            }
-                            setExported("✓ Imported successfully. Reload to apply.");
-                          }
+                          setPendingImport(data);
+                          setConfirmKind("import");
                         } else {
                           alert("Invalid Zendo backup file.");
                         }
@@ -5901,12 +6073,7 @@ function SettingsScreen() {
               <button
                 type="button"
                 className="shrink-0 text-xs font-bold text-monk-danger border border-monk-danger/30 hover:border-monk-danger bg-monk-danger/5 px-3 py-1.5 rounded-full transition active:scale-95"
-                onClick={() => {
-                  if (window.confirm(tUI("settings.wipeConfirm"))) {
-                    localStorage.clear();
-                    window.location.href = "/";
-                  }
-                }}
+                onClick={() => setConfirmKind("wipe")}
               >
                 {tUI("settings.wipe")}
               </button>
@@ -5917,6 +6084,36 @@ function SettingsScreen() {
         {/* About */}
         <p className="text-center text-xs text-monk-muted/50 pb-2">{tUI("settings.about")}</p>
       </div>
+
+      <CalmDialog
+        open={confirmKind === "import"}
+        title={tUI("settings.importConfirmTitle")}
+        description={tUI("settings.importConfirm")}
+        confirmLabel={tUI("dialog.confirm")}
+        cancelLabel={tUI("dialog.cancel")}
+        onCancel={() => {
+          setConfirmKind(null);
+          setPendingImport(null);
+        }}
+        onConfirm={() => {
+          if (pendingImport) applyImport(pendingImport);
+          setConfirmKind(null);
+          setPendingImport(null);
+        }}
+      />
+      <CalmDialog
+        open={confirmKind === "wipe"}
+        title={tUI("settings.wipeConfirmTitle")}
+        description={tUI("settings.wipeConfirm")}
+        confirmLabel={tUI("settings.wipe")}
+        cancelLabel={tUI("dialog.cancel")}
+        danger
+        onCancel={() => setConfirmKind(null)}
+        onConfirm={() => {
+          localStorage.clear();
+          window.location.href = "/";
+        }}
+      />
     </>
   );
 }
