@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { Suspense, lazy, useEffect, useMemo, useRef, useState } from "react";
 import { Link, Navigate, Route, Routes, useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { supabase as getSupabase } from "../lib/supabase";
 import { startMusic, stopMusic, toggleMusic } from "../lib/focusMusic";
@@ -106,17 +106,20 @@ import {
 } from "../i18n/prompts";
 import type { AppLanguage } from "../types/app";
 
-import FocusScreen from "../screens/FocusScreen";
-import TimelineScreen from "../screens/TimelineScreen";
-import SettingsScreen from "../screens/SettingsScreen";
+// ponytail: TodayScreen + FocusScreen loaded eagerly (primary screens); others lazy-split
+const FocusScreen = lazy(() => import("../screens/FocusScreen"));
+const TimelineScreen = lazy(() => import("../screens/TimelineScreen"));
+const SettingsScreen = lazy(() => import("../screens/SettingsScreen"));
+const WeekScreenLazy = lazy(() => import("../screens/WeekScreen").then(m => ({ default: m.WeekScreen })));
+const JournalEntryScreenLazy = lazy(() => import("../screens/JournalEntryScreen").then(m => ({ default: m.JournalEntryScreen })));
+const LearningScreenLazy = lazy(() => import("../screens/LearningScreen").then(m => ({ default: m.LearningScreen })));
+const RelapseScreenLazy = lazy(() => import("../screens/RelapseScreen").then(m => ({ default: m.RelapseScreen })));
+const SeasonEndScreenLazy = lazy(() => import("../screens/SeasonEndScreen").then(m => ({ default: m.SeasonEndScreen })));
+const JournalLibraryScreenLazy = lazy(() => import("../screens/LibraryScreen").then(m => ({ default: m.JournalLibraryScreen })));
+const NotebookPageLazy = lazy(() => import("../screens/LibraryScreen").then(m => ({ default: m.NotebookPage })));
+const PacksPageLazy = lazy(() => import("../screens/LibraryScreen").then(m => ({ default: m.PacksPage })));
 import { TodayScreen, DefenseChips } from "../screens/TodayScreen";
 import { FocusSessionPanel, FocusSessionStarter } from "../screens/FocusSession";
-import { WeekScreen } from "../screens/WeekScreen";
-import { JournalEntryScreen } from "../screens/JournalEntryScreen";
-import { LearningScreen } from "../screens/LearningScreen";
-import { RelapseScreen } from "../screens/RelapseScreen";
-import { SeasonEndScreen } from "../screens/SeasonEndScreen";
-import { JournalLibraryScreen, NotebookPage, PacksPage, LibraryScreen, CalendarCell, TimelineLegend } from "../screens/LibraryScreen";
 import { FrictionWhy, SeasonProgressCard, WhyEditor } from "../components/SeasonWidgets";
 import {
   getDailyActivity,
@@ -222,19 +225,19 @@ export default function App() {
         <Route path={routes.root} element={<RootRedirect />} />
         <Route path="/onboarding/*" element={<OnboardingGate />} />
         <Route path={routes.today} element={<ProtectedMain><TodayScreen /></ProtectedMain>} />
-        <Route path={routes.week} element={<ProtectedMain><WeekScreen /></ProtectedMain>} />
-        <Route path={routes.timeline} element={<ProtectedMain><TimelineScreen /></ProtectedMain>} />
-        <Route path={routes.journal} element={<ProtectedMain><JournalEntryScreen /></ProtectedMain>} />
-        <Route path={routes.focus} element={<ProtectedMain><FocusScreen /></ProtectedMain>} />
-        <Route path={routes.learn} element={<ProtectedMain><LearningScreen /></ProtectedMain>} />
-        <Route path={routes.relapse} element={<ProtectedMain><RelapseScreen /></ProtectedMain>} />
-        <Route path={routes.seasonEnd} element={<ProtectedMain allowEnded><SeasonEndScreen /></ProtectedMain>} />
-        <Route path={routes.settings} element={<ProtectedMain><SettingsScreen /></ProtectedMain>} />
+        <Route path={routes.week} element={<ProtectedMain><Suspense><WeekScreenLazy /></Suspense></ProtectedMain>} />
+        <Route path={routes.timeline} element={<ProtectedMain><Suspense><TimelineScreen /></Suspense></ProtectedMain>} />
+        <Route path={routes.journal} element={<ProtectedMain><Suspense><JournalEntryScreenLazy /></Suspense></ProtectedMain>} />
+        <Route path={routes.focus} element={<ProtectedMain><Suspense><FocusScreen /></Suspense></ProtectedMain>} />
+        <Route path={routes.learn} element={<ProtectedMain><Suspense><LearningScreenLazy /></Suspense></ProtectedMain>} />
+        <Route path={routes.relapse} element={<ProtectedMain><Suspense><RelapseScreenLazy /></Suspense></ProtectedMain>} />
+        <Route path={routes.seasonEnd} element={<ProtectedMain allowEnded><Suspense><SeasonEndScreenLazy /></Suspense></ProtectedMain>} />
+        <Route path={routes.settings} element={<ProtectedMain><Suspense><SettingsScreen /></Suspense></ProtectedMain>} />
         <Route path={routes.login} element={<LoginScreen />} />
         <Route path={routes.signup} element={<SignupScreen />} />
-        <Route path={routes.library} element={<ProtectedMain><JournalLibraryScreen /></ProtectedMain>} />
-        <Route path={routes.notebook} element={<ProtectedMain><NotebookPage /></ProtectedMain>} />
-        <Route path={routes.packs} element={<ProtectedMain><PacksPage /></ProtectedMain>} />
+        <Route path={routes.library} element={<ProtectedMain><Suspense><JournalLibraryScreenLazy /></Suspense></ProtectedMain>} />
+        <Route path={routes.notebook} element={<ProtectedMain><Suspense><NotebookPageLazy /></Suspense></ProtectedMain>} />
+        <Route path={routes.packs} element={<ProtectedMain><Suspense><PacksPageLazy /></Suspense></ProtectedMain>} />
         <Route path="*" element={<Navigate to={routes.root} replace />} />
       </Routes>
     </>
