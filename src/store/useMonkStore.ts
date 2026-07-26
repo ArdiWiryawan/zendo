@@ -380,7 +380,7 @@ export const useMonkStore = create<MonkStore>()(
             createdAt: stored.activeSeason.createdAt || nowIso()
           });
         }
-        stored.goals.forEach((g) => {
+        (stored.goals ?? []).forEach((g) => {
           timelineEvents.push({
             id: `legacy_goal_${g.id}`,
             type: "goal_created",
@@ -393,7 +393,7 @@ export const useMonkStore = create<MonkStore>()(
             createdAt: g.createdAt || nowIso()
           });
         });
-        stored.journalEntries.forEach((j) => {
+        (stored.journalEntries ?? []).forEach((j) => {
           timelineEvents.push({
             id: `legacy_journal_${j.id}`,
             type: "journal_entry",
@@ -407,7 +407,7 @@ export const useMonkStore = create<MonkStore>()(
         });
         focusSessions.forEach((s) => {
           if (resolveFocusSessionStatus(s) === "completed") {
-            const goal = stored.goals.find((g) => g.id === s.goalId);
+            const goal = (stored.goals ?? []).find((g) => g.id === s.goalId);
             timelineEvents.push({
               id: `legacy_focus_${s.id}`,
               type: "focus_session",
@@ -1708,8 +1708,10 @@ export const useMonkStore = create<MonkStore>()(
         getItem: () => null, // hydrate action handles reads
         setItem: (name, value) => {
           if (typeof localStorage === "undefined") return;
-          localStorage.setItem(name, JSON.stringify(value));
-          const state = value as MonkMVPState;
+          // zustand wraps persisted data as { state, version }; loadState expects the raw
+          // state object under STORAGE_KEY, so unwrap before writing.
+          const state = ((value as { state?: MonkMVPState })?.state ?? value) as unknown as MonkMVPState;
+          localStorage.setItem(name, JSON.stringify(state));
           if (state.focusSessions) localStorage.setItem("focusSessions", JSON.stringify(state.focusSessions));
           if (state.learningSessions) localStorage.setItem("learningSessions", JSON.stringify(state.learningSessions));
           if (state.timelineEvents) localStorage.setItem("timelineEvents", JSON.stringify(state.timelineEvents));

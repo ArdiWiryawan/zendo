@@ -1,20 +1,24 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useMonkStore } from "../store/useMonkStore";
 import { useT } from "../i18n";
-import { useCalmToast } from "../components/ui";
-import { getTodayDateString } from "../lib/date";
+import { getTodayDateString, nowIso } from "../lib/date";
 import { routes } from "../constants/routes";
-import { selectActiveGoals } from "../store/selectors";
+import { createId } from "../lib/ids";
+import { selectActiveGoals, selectTodayPlan } from "../store/selectors";
 import { habitOptions, learningTypes } from "../constants/defaultData";
 import {
   Card,
+  CalmAlert,
+  ChoiceChip,
   GhostButton,
   PageHeader,
   PrimaryButton,
   TextInput,
   Textarea,
+  useCalmToast,
 } from "../components/ui";
+import type { LearningSession, LearningSourceType } from "../types/app";
 
 export function LearningScreen() {
   const navigate = useNavigate();

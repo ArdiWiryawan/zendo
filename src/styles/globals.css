@@ -42,8 +42,10 @@ body {
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
   background:
-    radial-gradient(ellipse 90% 55% at 50% -8%, rgba(164, 139, 94, 0.05), transparent 58%),
+    radial-gradient(ellipse 95% 42% at 50% -6%, rgba(164, 139, 94, 0.08), transparent 60%),
+    radial-gradient(ellipse 120% 60% at 50% 108%, rgba(90, 103, 114, 0.05), transparent 62%),
     var(--color-bg);
+  background-attachment: fixed;
 }
 
 ::selection {
@@ -118,10 +120,49 @@ button {
 
 /* Glass surface for floating chrome (nav, overlays) */
 .monk-glass {
-  background-color: color-mix(in srgb, var(--color-surface) 90%, transparent);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.28);
+  background-color: color-mix(in srgb, var(--color-surface) 82%, transparent);
+  backdrop-filter: blur(16px) saturate(1.1);
+  -webkit-backdrop-filter: blur(16px) saturate(1.1);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.05),
+    0 10px 34px rgba(0, 0, 0, 0.42);
+}
+
+/* Layered depth for surfaces — a hairline top highlight + soft ambient shadow
+   makes flat dark cards read as physically stacked planes. */
+.monk-depth {
+  background-image: linear-gradient(180deg, rgba(255, 255, 255, 0.022), transparent 42%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.045),
+    0 1px 2px rgba(0, 0, 0, 0.32),
+    0 14px 30px -18px rgba(0, 0, 0, 0.7);
+}
+
+/* Elevated / important surface — warmer top sheen + faint accent lift. */
+.monk-depth-raised {
+  background-image: linear-gradient(180deg, rgba(164, 139, 94, 0.05), transparent 46%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    0 2px 4px rgba(0, 0, 0, 0.34),
+    0 22px 44px -22px rgba(0, 0, 0, 0.72);
+}
+
+/* Primary action — subtle vertical sheen + grounded accent glow. */
+.monk-btn-primary {
+  background-image: linear-gradient(180deg, color-mix(in srgb, var(--color-accent) 100%, white 10%), var(--color-accent));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.22),
+    0 6px 18px -6px rgba(164, 139, 94, 0.45);
+}
+.monk-btn-primary:enabled:hover {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.28),
+    0 8px 22px -6px rgba(164, 139, 94, 0.6);
+}
+.monk-btn-primary:enabled:active {
+  box-shadow:
+    inset 0 1px 2px rgba(0, 0, 0, 0.25),
+    0 3px 10px -6px rgba(164, 139, 94, 0.4);
 }
 
 /* Skeleton pulse for calm loading states */

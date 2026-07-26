@@ -35,6 +35,7 @@ declare const _default: {
                 mono: [string, string, string, string];
             };
             boxShadow: {
+                soft: string;
                 calm: string;
             };
         };

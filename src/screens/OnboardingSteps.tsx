@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
+import { Check, EyeOff, Minus, Moon, Plus } from "lucide-react";
 import { useMonkStore } from "../store/useMonkStore";
 import { useT } from "../i18n";
 import { useCalmToast } from "../components/ui";
@@ -9,7 +10,18 @@ import { habitOptions, defaultWeeklyTargets, frictionActionsForHabit, createDefa
 import { onboardingOrder } from "../constants/routes";
 import { getTodayDateString, addDaysToDate, getDayNumber, getSeasonProgress, getDaysLeft, getDaysPassed, getSeasonDayLabel, formatHumanDate } from "../lib/date";
 import { createId } from "../lib/ids";
-import { formatIntention } from "../lib/implementationIntention";
+import { formatIntention, parseIntention } from "../lib/implementationIntention";
+import { capacityCheck, planStrengthLabel, scorePlan } from "../lib/planScoring";
+import {
+  validateFocusGoalSelection,
+  validateGoalBrainDump,
+  validateGoalElimination,
+  validateHabitAudit,
+  validateKeystoneActions,
+  validateNarrowGoals,
+  validateSeasonDuration,
+  validateWeeklyAllocation,
+} from "../lib/validation";
 import { selectActiveGoals, selectCurrentWeeklyPlan, selectTodayPlan } from "../store/selectors";
 import { FOCUS_PRESETS } from "../constants/focusPresets";
 import {
@@ -35,7 +47,7 @@ import { SeasonProgressCard, WhyEditor, FrictionWhy } from "../components/Season
 import { DefenseChips } from "./TodayScreen";
 import { FocusSessionStarter } from "./FocusSession";
 import { CircularProgress } from "../components/CircularProgress";
-import { dismissCoachStep, getCoachStep } from "../lib/coach";
+import { dismissCoachStep, getCoachStep, type CoachStepId } from "../lib/coach";
 import { isCloseDaySkipped, skipCloseDay, getDayPart } from "../lib/dailyActivity";
 import { playZenBell } from "../lib/audio";
 import type { EnergyLevel, BadHabitCategory, Goal, GoalAllocation, MonkMVPState, OnboardingState, SeasonDurationPreset, WeeklyMode } from "../types/app";

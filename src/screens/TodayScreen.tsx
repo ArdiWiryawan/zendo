@@ -1,18 +1,19 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Moon } from "lucide-react";
+import { Moon, BookOpen, Check, ChevronRight, Sun } from "lucide-react";
 import { useMonkStore } from "../store/useMonkStore";
 import { useT } from "../i18n";
-import { useCalmToast } from "../lib/calmToast";
-import { getTodayDateString, addDaysToDate } from "../lib/date";
+import { useCalmToast } from "../components/ui";
+import { getTodayDateString, addDaysToDate, getSeasonDayLabel, getDaysLeft } from "../lib/date";
+import { CORE_VALUES } from "../constants/whyValues";
 import { routes } from "../constants/routes";
 import { FOCUS_PRESETS } from "../constants/focusPresets";
 import { formatIntention, parseIntention } from "../lib/implementationIntention";
-import { playZenBell } from "../lib/audio";
+import { playZenBell, unlockAudio } from "../lib/audio";
 import { loadLastFocus, saveLastFocus } from "../lib/storage";
 import { getCoachStep, dismissCoachStep } from "../lib/coach";
 import { isCloseDaySkipped, skipCloseDay, getDayPart, isReentryDismissed, dismissReentry, isReentryChipHidden, hideReentryChip, shouldOfferReentry } from "../lib/dailyActivity";
-import { selectTodayPlan, selectActiveGoals, selectCurrentWeeklyPlan } from "../store/selectors";
+import { selectTodayPlan, selectActiveGoals, selectCurrentWeeklyPlan, selectEnergyForDate, selectTodayLearningSessions, selectTotalFocusSecondsForDate } from "../store/selectors";
 import {
   Card,
   EmptyState,
@@ -20,10 +21,12 @@ import {
   PageHeader,
   PrimaryButton,
   SecondaryButton,
+  SettingsLink,
   TextInput,
   Textarea,
 } from "../components/ui";
 import { FocusSessionPanel, FocusSessionStarter } from "../screens/FocusSession";
+import { CoachHint, PlanTomorrow, WeeklyStatusIndicators } from "./OnboardingSteps";
 import { SeasonProgressCard, WhyEditor } from "../components/SeasonWidgets";
 import type { EnergyLevel } from "../types/app";
 

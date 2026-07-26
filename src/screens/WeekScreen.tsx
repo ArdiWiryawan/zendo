@@ -1,12 +1,12 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
+import { Check, Moon } from "lucide-react";
 import { useMonkStore } from "../store/useMonkStore";
 import { useT } from "../i18n";
-import { useCalmToast } from "../components/ui";
-import { getTodayDateString } from "../lib/date";
+import { getTodayDateString, datesInRange, formatHumanDate } from "../lib/date";
 import { routes } from "../constants/routes";
 import { DefenseChips } from "./TodayScreen";
-import { selectTodayPlan, selectActiveGoals, selectCurrentWeeklyPlan, selectEnergyForDate } from "../store/selectors";
+import { selectTodayPlan, selectActiveGoals, selectCurrentWeeklyPlan, selectEnergyForDate, selectTotalFocusSecondsForDate } from "../store/selectors";
 import {
   Card,
   EmptyState,
@@ -14,8 +14,11 @@ import {
   PageHeader,
   PrimaryButton,
   SecondaryButton,
+  SectionHeader,
+  SettingsLink,
   TextInput,
   Textarea,
+  useCalmToast,
 } from "../components/ui";
 import { FocusSessionStarter } from "./FocusSession";
 import { SeasonProgressCard } from "../components/SeasonWidgets";

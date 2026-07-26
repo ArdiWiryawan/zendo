@@ -7,11 +7,14 @@ import { getTodayDateString } from "../lib/date";
 import { routes } from "../constants/routes";
 import {
   Card,
+  ChoiceChip,
   GhostButton,
   PageHeader,
   PrimaryButton,
+  SecondaryButton,
   Textarea,
 } from "../components/ui";
+import { FrictionWhy } from "../components/SeasonWidgets";
 
 export function RelapseScreen() {
   const navigate = useNavigate();

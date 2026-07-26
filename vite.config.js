@@ -1,3 +1,4 @@
+/// <reference types="vitest/config" />
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import { VitePWA } from "vite-plugin-pwa";
@@ -57,5 +58,9 @@ export default defineConfig({
                 globPatterns: ["**/*.{js,css,html,ico,png,svg,webmanifest}"]
             }
         })
-    ]
+    ],
+    test: {
+        environment: "node",
+        include: ["src/**/*.test.ts"]
+    }
 });

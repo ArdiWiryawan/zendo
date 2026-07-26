@@ -157,8 +157,8 @@ export function Card({
     <div
       className={`border bg-monk-surface ${
         important
-          ? "rounded-monk-lg border-monk-border-strong bg-monk-soft p-6 shadow-soft"
-          : "rounded-monk border-monk-border p-5 shadow-soft"
+          ? "rounded-monk-lg border-monk-border-strong bg-monk-soft p-6 monk-depth-raised"
+          : "rounded-monk border-monk-border p-5 monk-depth"
       } ${className}`}
     >
       {children}
@@ -176,7 +176,7 @@ export function PrimaryButton({
       {...props}
       type={type}
       onClick={(e) => { hapticPress("medium"); onClick?.(e); }}
-      className={`min-h-12 w-full rounded-monk px-6 text-base font-bold bg-monk-accent text-monk-bg transition duration-150 ease-monk active:scale-[0.98] enabled:hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-monk-accent/50 focus-visible:ring-offset-2 focus-visible:ring-offset-monk-bg ${className}`}
+      className={`monk-btn-primary min-h-12 w-full rounded-monk px-6 text-base font-bold bg-monk-accent text-monk-bg transition duration-150 ease-monk active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40 disabled:shadow-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-monk-accent/50 focus-visible:ring-offset-2 focus-visible:ring-offset-monk-bg ${className}`}
     />
   );
 }
@@ -192,7 +192,7 @@ export function SecondaryButton({
       {...props}
       type={type}
       onClick={(e) => { hapticPress("light"); onClick?.(e); }}
-      className={`min-h-12 w-full rounded-monk border border-monk-border bg-monk-soft px-6 text-sm font-semibold text-monk-text transition duration-150 ease-monk active:scale-[0.98] enabled:hover:border-monk-border-strong enabled:hover:bg-monk-raised disabled:opacity-45 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-monk-accent/50 focus-visible:ring-offset-2 focus-visible:ring-offset-monk-bg ${className}`}
+      className={`min-h-12 w-full rounded-monk border border-monk-border bg-monk-soft px-6 text-sm font-semibold text-monk-text shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] transition duration-150 ease-monk active:scale-[0.98] enabled:hover:border-monk-border-strong enabled:hover:bg-monk-raised disabled:opacity-45 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-monk-accent/50 focus-visible:ring-offset-2 focus-visible:ring-offset-monk-bg ${className}`}
     />
   );
 }
@@ -331,10 +331,10 @@ export function ChoiceCard({
       type="button"
       aria-pressed={selected}
       onClick={() => { hapticPress("light"); onClick(); }}
-      className={`relative w-full rounded-monk border p-4 min-h-14 text-left transition-colors duration-150 active:scale-[0.98] ${
+      className={`relative w-full rounded-monk border p-4 min-h-14 text-left transition duration-150 ease-monk active:scale-[0.98] ${
         selected
-          ? "border-monk-accent bg-monk-accent-soft"
-          : "border-monk-border bg-monk-surface hover:border-monk-border-strong"
+          ? "border-monk-accent bg-monk-accent-soft shadow-[inset_0_1px_0_rgba(255,255,255,0.05),0_10px_24px_-14px_rgba(164,139,94,0.55)]"
+          : "border-monk-border bg-monk-surface shadow-[inset_0_1px_0_rgba(255,255,255,0.03)] hover:border-monk-border-strong"
       }`}
     >
       <div className="flex items-start gap-3 pr-1">
@@ -366,8 +366,8 @@ export function StepIndicator({ currentStep, totalSteps }: { currentStep: number
         <p className="text-xs text-monk-muted">Step {currentStep} of {totalSteps}</p>
         <p className="text-xs font-semibold tabular-nums text-monk-text-soft">{Math.round(width)}%</p>
       </div>
-      <div className="h-1.5 w-full overflow-hidden rounded-full bg-monk-soft">
-        <div className="h-1.5 rounded-full bg-monk-accent transition-all duration-300 ease-out" style={{ width: `${width}%` }} />
+      <div className="h-1.5 w-full overflow-hidden rounded-full bg-monk-soft shadow-[inset_0_1px_2px_rgba(0,0,0,0.4)]">
+        <div className="h-1.5 rounded-full bg-monk-accent shadow-[0_0_8px_rgba(164,139,94,0.45)] transition-all duration-500 ease-monk" style={{ width: `${width}%` }} />
       </div>
     </div>
   );
@@ -555,7 +555,7 @@ function BottomNav() {
               to={tab.to}
               aria-current={active ? "page" : undefined}
               className={`flex min-h-12 flex-col items-center justify-center gap-0.5 rounded-full text-xs font-medium transition duration-150 ${
-                active ? "bg-monk-accent-soft text-monk-accent shadow-sm" : "text-monk-text-soft hover:text-monk-muted"
+                active ? "bg-monk-accent-soft text-monk-accent ring-1 ring-monk-accent/20 shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]" : "text-monk-text-soft hover:text-monk-muted"
               }`}
             >
               <Icon size={18} strokeWidth={active ? 2 : 1.5} />

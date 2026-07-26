@@ -1,19 +1,26 @@
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useState, useEffect, useMemo, useRef } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import { BookOpen, FileText } from "lucide-react";
 import { useMonkStore } from "../store/useMonkStore";
 import { useT } from "../i18n";
-import { useCalmToast } from "../components/ui";
-import { getTodayDateString } from "../lib/date";
-import { routes } from "../constants/routes";
-import { selectJournalEntryForToday } from "../store/selectors";
+import { getDailyJournalPromptForDate } from "../i18n/prompts";
 import {
   Card,
+  CalmAlert,
   GhostButton,
   PageHeader,
   PrimaryButton,
+  SettingsLink,
+  TextInput,
   Textarea,
+  useCalmToast,
 } from "../components/ui";
+import { getTodayDateString, addDaysToDate, formatHumanDate } from "../lib/date";
+import { routes } from "../constants/routes";
+import { JOURNAL_DRAFT_KEY } from "../lib/storage";
+import { selectJournalEntryForToday, selectTodayPlan } from "../store/selectors";
 import { WhyEditor } from "../components/SeasonWidgets";
+import type { AppLanguage, JournalAnswers } from "../types/app";
 
 export function JournalEntryScreen() {
   const navigate = useNavigate();

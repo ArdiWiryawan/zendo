@@ -1,25 +1,33 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
+import { ArrowLeft, BookOpen, FileText, History } from "lucide-react";
 import { useMonkStore } from "../store/useMonkStore";
-import { useT } from "../i18n";
-import { useCalmToast } from "../components/ui";
-import { getTodayDateString } from "../lib/date";
+import { useT, useLanguage } from "../i18n";
+import { getJournalAnswerItems } from "../i18n/prompts";
+import { getTodayDateString, formatHumanDate } from "../lib/date";
 import { routes } from "../constants/routes";
+import { DAILY_STATUS_LABELS, resolveDailyActivityStatus } from "../constants/dailyActivityStatus";
+import { FOCUS_PRESETS } from "../constants/focusPresets";
+import { getDailyActivity, getDailyHelperForDate, getFocusSummaryForDate, getLearningSummaryForDate } from "../lib/dailyActivity";
 import { selectActiveGoals } from "../store/selectors";
 import { DefenseChips } from "./TodayScreen";
 import {
   Card,
+  EmptyState,
   GhostButton,
   PageHeader,
   PrimaryButton,
   SecondaryButton,
+  SettingsLink,
   TextInput,
   Textarea,
+  useCalmToast,
 } from "../components/ui";
 import JournalNotebook, { NotebookEditor } from "./JournalNotebook";
 import JournalPacks from "./JournalPacks";
 import { SeasonProgressCard } from "../components/SeasonWidgets";
 import { CircularProgress } from "../components/CircularProgress";
+import type { AppLanguage, TimelineStatus } from "../types/app";
 
 export function CalendarCell({
   date,
