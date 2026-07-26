@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { Check, EyeOff, Minus, Moon, Plus } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import { Check, EyeOff, Minus, Moon, Plus, Target, Award, Clock, Zap, Gamepad2, Youtube, MessagesSquare, ShoppingBag, MoreHorizontal, Apple, Monitor, Smartphone, FastForward, Calendar, Mountain, Sliders, ListTodo, ShieldCheck, BookOpen, Coffee } from "lucide-react";
 import { useMonkStore } from "../store/useMonkStore";
 import { useT } from "../i18n";
 import { useCalmToast } from "../components/ui";
@@ -50,6 +51,7 @@ import { CircularProgress } from "../components/CircularProgress";
 import { dismissCoachStep, getCoachStep, type CoachStepId } from "../lib/coach";
 import { isCloseDaySkipped, skipCloseDay, getDayPart } from "../lib/dailyActivity";
 import { playZenBell } from "../lib/audio";
+import { hapticPress } from "../lib/haptics";
 import type { EnergyLevel, BadHabitCategory, Goal, GoalAllocation, MonkMVPState, OnboardingState, SeasonDurationPreset, WeeklyMode } from "../types/app";
 
 export function ScreenIntro({ title, subtitle }: { title: string; subtitle: string }) {
@@ -79,51 +81,57 @@ export function ValuesStep({ onNext }: { onNext: () => void }) {
   return (
     <>
       <ScreenIntro title="Values" subtitle="What matters most right now?" />
-      <div className="mb-3 flex items-center justify-between">
-        <p className="text-sm font-semibold">Protect (pick 3):</p>
-        <span className="rounded-full bg-monk-soft px-2.5 py-1 text-xs font-bold text-monk-muted">
-          {protect.length}/3
-        </span>
-      </div>
-      <div className="mb-6 grid grid-cols-1 gap-2">
-        {CORE_VALUES.map(v => (
-          <ChoiceCard
-            key={v.id}
-            title={v.label}
-            selected={protect.includes(v.id)}
-            onClick={() => {
-              if (protect.includes(v.id)) {
-                setProtect(protect.filter(x => x !== v.id));
-              } else if (protect.length < 3) {
-                setProtect([...protect, v.id]);
-              }
-            }}
-          />
-        ))}
+      <div className="grid grid-cols-1 md:grid-cols-2 md:gap-6">
+        <div className="rounded-monk border border-monk-border bg-monk-surface p-4">
+          <div className="mb-3 flex items-center justify-between">
+            <p className="text-sm font-semibold">Protect (pick 3):</p>
+            <span className="rounded-full bg-monk-soft px-2.5 py-1 text-xs font-bold text-monk-muted">
+              {protect.length}/3
+            </span>
+          </div>
+          <div className="grid grid-cols-1 gap-2">
+            {CORE_VALUES.map(v => (
+              <ChoiceCard
+                key={v.id}
+                title={v.label}
+                selected={protect.includes(v.id)}
+                onClick={() => {
+                  if (protect.includes(v.id)) {
+                    setProtect(protect.filter(x => x !== v.id));
+                  } else if (protect.length < 3) {
+                    setProtect([...protect, v.id]);
+                  }
+                }}
+              />
+            ))}
+          </div>
+        </div>
+        <div className="mt-6 rounded-monk border border-monk-border bg-monk-surface p-4 md:mt-0">
+          <div className="mb-3 flex items-center justify-between">
+            <p className="text-sm font-semibold">Defer for now (pick 3):</p>
+            <span className="rounded-full bg-monk-soft px-2.5 py-1 text-xs font-bold text-monk-muted">
+              {sacrifice.length}/3
+            </span>
+          </div>
+          <div className="grid grid-cols-1 gap-2">
+            {CORE_VALUES.filter(v => !protect.includes(v.id)).map(v => (
+              <ChoiceCard
+                key={v.id}
+                title={v.label}
+                selected={sacrifice.includes(v.id)}
+                onClick={() => {
+                  if (sacrifice.includes(v.id)) {
+                    setSacrifice(sacrifice.filter(x => x !== v.id));
+                  } else if (sacrifice.length < 3) {
+                    setSacrifice([...sacrifice, v.id]);
+                  }
+                }}
+              />
+            ))}
+          </div>
+        </div>
       </div>
 
-      <div className="mb-3 flex items-center justify-between">
-        <p className="text-sm font-semibold">Defer for now (pick 3):</p>
-        <span className="rounded-full bg-monk-soft px-2.5 py-1 text-xs font-bold text-monk-muted">
-          {sacrifice.length}/3
-        </span>
-      </div>
-      <div className="mb-6 grid grid-cols-1 gap-2">
-        {CORE_VALUES.filter(v => !protect.includes(v.id)).map(v => (
-          <ChoiceCard
-            key={v.id}
-            title={v.label}
-            selected={sacrifice.includes(v.id)}
-            onClick={() => {
-              if (sacrifice.includes(v.id)) {
-                setSacrifice(sacrifice.filter(x => x !== v.id));
-              } else if (sacrifice.length < 3) {
-                setSacrifice([...sacrifice, v.id]);
-              }
-            }}
-          />
-        ))}
-      </div>
 
       <div className="mb-6">
         <Textarea
@@ -168,25 +176,41 @@ export function VisionStep({ onNext }: { onNext: () => void }) {
   return (
     <>
       <ScreenIntro title="Vision" subtitle="Picture the end of this season" />
-      <div className="mb-6">
-        <Textarea
-          label={`${days} days from now, what change are you proud of?`}
-          value={vision}
-          onChange={e => setVision(e.target.value)}
-          rows={3}
-          showCharCount
-          minLength={20}
-        />
-      </div>
-      <div className="mb-6">
-        <Textarea
-          label="If you stay the same, what do you lose?"
-          value={consequence}
-          onChange={e => setConsequence(e.target.value)}
-          rows={3}
-          showCharCount
-          minLength={10}
-        />
+      <div className="grid grid-cols-1 md:grid-cols-2 md:gap-6">
+        <div className="rounded-monk border border-monk-border bg-monk-surface p-4">
+          <div className="flex items-center gap-3">
+            <div className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-monk-accent-soft text-monk-accent">
+              <Award size={20} strokeWidth={2} />
+            </div>
+            <p className="font-semibold">A change to be proud of</p>
+          </div>
+          <Textarea
+            label={`${days} days from now, what change are you proud of?`}
+            value={vision}
+            onChange={e => setVision(e.target.value)}
+            rows={5}
+            showCharCount
+            minLength={20}
+            className="mt-4"
+          />
+        </div>
+        <div className="mt-6 rounded-monk border border-monk-border bg-monk-surface p-4 md:mt-0">
+          <div className="flex items-center gap-3">
+            <div className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-monk-warning-soft text-monk-warning">
+              <Target size={20} strokeWidth={2} />
+            </div>
+            <p className="font-semibold">The cost of inaction</p>
+          </div>
+          <Textarea
+            label="If you stay the same, what do you lose?"
+            value={consequence}
+            onChange={e => setConsequence(e.target.value)}
+            rows={5}
+            showCharCount
+            minLength={10}
+            className="mt-4"
+          />
+        </div>
       </div>
       <div className="mt-auto space-y-3 pt-8">
         {!canContinue ? <CalmAlert type="warning" title="Complete both reflections to continue." /> : null}
@@ -223,44 +247,51 @@ export function RealityCheck({ onNext }: { onNext: () => void }) {
     <>
       <ScreenIntro title="Reality Check" subtitle="Ground your plan in real capacity, not ideal days." />
 
-      <Card>
-        <TextInput
-          label="Free hours per day"
-          type="number"
-          min={1}
-          max={24}
-          inputMode="numeric"
-          value={String(hours)}
-          onChange={e => setHours(Math.min(24, Math.max(0, Number(e.target.value) || 0)))}
-        />
-        <p className="mt-2 text-xs leading-5 text-monk-muted">After work and obligations. Honest estimate.</p>
-      </Card>
-
-      <Card className="mt-6">
-        <div className="mb-1 flex items-center justify-between gap-3">
-          <p className="text-sm font-semibold">Peak energy blocks</p>
-          <span className="rounded-full bg-monk-soft px-2.5 py-1 text-xs font-bold text-monk-muted">
-            {blocks.length} selected
-          </span>
+      <div className="grid grid-cols-1 md:grid-cols-2 md:gap-6">
+        <div className="rounded-monk border border-monk-border bg-monk-surface p-4">
+          <div className="flex items-center gap-3">
+            <div className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-monk-accent-soft text-monk-accent">
+              <Clock size={20} strokeWidth={2} />
+            </div>
+            <p className="font-semibold">Free hours per day</p>
+          </div>
+          <TextInput
+            type="number"
+            min={1}
+            max={24}
+            inputMode="numeric"
+            value={String(hours)}
+            onChange={e => setHours(Math.min(24, Math.max(0, Number(e.target.value) || 0)))}
+            className="mt-4"
+          />
+          <p className="mt-2 text-xs leading-5 text-monk-muted">After work and obligations. Honest estimate.</p>
         </div>
-        <p className="mb-3 text-xs text-monk-muted">When focus usually feels easiest.</p>
-        <div className="flex flex-wrap gap-2">
-          {timeBlocks.map(tb => (
-            <ChoiceChip
-              key={tb.id}
-              label={tb.label}
-              selected={blocks.includes(tb.id)}
-              onClick={() => {
-                if (blocks.includes(tb.id)) {
-                  setBlocks(blocks.filter(x => x !== tb.id));
-                } else {
-                  setBlocks([...blocks, tb.id]);
-                }
-              }}
-            />
-          ))}
+        <div className="mt-6 rounded-monk border border-monk-border bg-monk-surface p-4 md:mt-0">
+          <div className="mb-1 flex items-center justify-between gap-3">
+            <p className="text-sm font-semibold">Peak energy blocks</p>
+            <span className="rounded-full bg-monk-soft px-2.5 py-1 text-xs font-bold text-monk-muted">
+              {blocks.length} selected
+            </span>
+          </div>
+          <p className="mb-3 text-xs text-monk-muted">When focus usually feels easiest.</p>
+          <div className="flex flex-wrap gap-2">
+            {timeBlocks.map(tb => (
+              <ChoiceChip
+                key={tb.id}
+                label={tb.label}
+                selected={blocks.includes(tb.id)}
+                onClick={() => {
+                  if (blocks.includes(tb.id)) {
+                    setBlocks(blocks.filter(x => x !== tb.id));
+                  } else {
+                    setBlocks([...blocks, tb.id]);
+                  }
+                }}
+              />
+            ))}
+          </div>
         </div>
-      </Card>
+      </div>
 
       <Textarea
         label="When do you usually crash?"
@@ -272,7 +303,6 @@ export function RealityCheck({ onNext }: { onNext: () => void }) {
         showCharCount
         minLength={20}
       />
-      <p className="mt-2 text-xs text-monk-muted">Helps plan around low-energy periods.</p>
 
       <div className="mt-auto space-y-3 pt-8">
         {!canContinue ? <CalmAlert type="warning" title="Add free hours, peak energy, and crash pattern." /> : null}
@@ -326,19 +356,29 @@ export function PastObstacles({ onNext }: { onNext: () => void }) {
       <p className="mt-2 text-xs text-monk-muted">Press Enter or tap + to add · {obstacles.length}/5</p>
 
       <div className="mt-6 space-y-2">
-        {obstacles.map((obs, i) => (
-          <div key={`${obs}-${i}`} className="flex items-center justify-between rounded-lg border border-monk-border bg-monk-surface p-3 transition-colors hover:border-monk-border-strong hover:bg-monk-soft">
-            <span className="pr-3 text-sm">{obs}</span>
-            <button
-              type="button"
-              onClick={() => setObstacles(obstacles.filter((_, idx) => idx !== i))}
-              className="grid min-h-12 min-w-12 shrink-0 place-items-center rounded-full text-monk-muted hover:bg-monk-soft"
-              aria-label={`Remove ${obs}`}
+        <AnimatePresence>
+          {obstacles.map((obs, i) => (
+            <motion.div
+              key={`${obs}-${i}`}
+              layout
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, x: -20 }}
+              transition={{ duration: 0.2 }}
+              className="flex items-center justify-between rounded-lg border border-monk-border bg-monk-surface p-3 transition-colors hover:border-monk-border-strong hover:bg-monk-soft"
             >
-              <Minus size={16} strokeWidth={1.5} />
-            </button>
-          </div>
-        ))}
+              <span className="pr-3 text-sm">{obs}</span>
+              <button
+                type="button"
+                onClick={() => setObstacles(obstacles.filter((_, idx) => idx !== i))}
+                className="grid min-h-12 min-w-12 shrink-0 place-items-center rounded-full text-monk-muted hover:bg-monk-soft"
+                aria-label={`Remove ${obs}`}
+              >
+                <Minus size={16} strokeWidth={1.5} />
+              </button>
+            </motion.div>
+          ))}
+        </AnimatePresence>
       </div>
 
       <div className="mt-auto space-y-3 pt-8">
@@ -364,11 +404,12 @@ export function HabitAudit({ onNext }: { onNext: () => void }) {
           {selectedCount === 0 ? "1+ required" : `${selectedCount} selected`}
         </span>
       </div>
-      <div className="flex flex-wrap gap-2">
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
         {habitOptions.map((habit) => (
           <ChoiceChip
             key={habit.category}
             label={habit.label}
+            icon={habit.icon}
             selected={onboarding.selectedHabits.some((item) => item.category === habit.category)}
             onClick={() => toggleHabit(habit.category, habit.label)}
           />
@@ -419,19 +460,34 @@ export function RemoveDistractions({ onNext }: { onNext: () => void }) {
             <p className="font-semibold">{habit.customName || habit.name}</p>
             <div className="mt-4 space-y-2">
               {(onboarding.frictionActions[habit.id] ?? []).map((action) => (
-                <button
+                <motion.button
                   key={action.id}
                   type="button"
+                  layout
                   onClick={() => toggleFrictionAction(habit.id, action.id)}
-                  className="flex min-h-12 w-full items-center gap-3 rounded-2xl text-left text-sm"
+                  className="flex min-h-12 w-full items-center gap-3 rounded-2xl p-3 text-left text-sm transition-colors hover:bg-monk-soft"
                 >
-                  <span className={`grid h-6 w-6 place-items-center rounded-full border ${
-                    action.completed ? "border-monk-success bg-monk-success-soft" : "border-monk-border"
-                  }`}>
-                    {action.completed ? <Check size={14} strokeWidth={1.5} /> : null}
-                  </span>
+                  <motion.div
+                    layout
+                    className={`grid h-6 w-6 shrink-0 place-items-center rounded-full border ${
+                      action.completed ? "border-monk-success bg-monk-success-soft" : "border-monk-border"
+                    }`}
+                  >
+                    <AnimatePresence>
+                      {action.completed && (
+                        <motion.div
+                          initial={{ scale: 0, opacity: 0 }}
+                          animate={{ scale: 1, opacity: 1 }}
+                          exit={{ scale: 0, opacity: 0 }}
+                          transition={{ duration: 0.2, ease: "easeOut" }}
+                        >
+                          <Check size={14} strokeWidth={2} />
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </motion.div>
                   {action.label}
-                </button>
+                </motion.button>
               ))}
             </div>
           </Card>
@@ -460,14 +516,15 @@ export function GreyMode({ onNext }: { onNext: () => void }) {
     else setPlatform("other");
   }, []);
 
-  const platformInstructions: Record<string, { steps: string[]; hint?: string }> = {
+  const platformInstructions: Record<string, { steps: string[]; hint?: string; icon: React.ElementType }> = {
     ios: {
       steps: [
         "Settings → Accessibility → Display & Text Size",
         "Tap Color Filters",
         "Toggle Color Filters ON, select Grayscale"
       ],
-      hint: "You can add a shortcut: Accessibility → Accessibility Shortcut → Color Filters"
+      hint: "You can add a shortcut: Accessibility → Accessibility Shortcut → Color Filters",
+      icon: Apple
     },
     android: {
       steps: [
@@ -475,7 +532,8 @@ export function GreyMode({ onNext }: { onNext: () => void }) {
         "Tap Color correction",
         "Toggle ON, select Grayscale"
       ],
-      hint: "Some Samsung devices: Settings → Accessibility → Visibility enhancements → Color adjustment"
+      hint: "Some Samsung devices: Settings → Accessibility → Visibility enhancements → Color adjustment",
+      icon: Smartphone
     },
     mac: {
       steps: [
@@ -483,7 +541,8 @@ export function GreyMode({ onNext }: { onNext: () => void }) {
         "Click Color Filters",
         "Toggle Color Filters ON, select Grayscale"
       ],
-      hint: "Or use keyboard shortcut: Ctrl + Cmd + Option + 5 (if configured)"
+      hint: "Or use keyboard shortcut: Ctrl + Cmd + Option + 5 (if configured)",
+      icon: Monitor
     },
     windows: {
       steps: [
@@ -491,27 +550,32 @@ export function GreyMode({ onNext }: { onNext: () => void }) {
         "Toggle Color filters ON",
         "Select Grayscale"
       ],
-      hint: "Shortcut: Win + Ctrl + C to toggle quickly"
+      hint: "Shortcut: Win + Ctrl + C to toggle quickly",
+      icon: Monitor
     },
     other: {
       steps: [
         "Open Accessibility settings",
         "Find Color filters / Grayscale",
         "Turn it on"
-      ]
+      ],
+      icon: Smartphone
     }
   };
 
   const currentInstructions = platformInstructions[platform];
+  const PlatformIcon = currentInstructions.icon || EyeOff;
 
   return (
     <>
       <ScreenIntro title="Grey mode" subtitle="Make distracting apps less magnetic." />
       <Card important>
-        <div className="mb-4 grid h-11 w-11 place-items-center rounded-full bg-monk-soft">
-          <EyeOff size={22} strokeWidth={1.5} />
+        <div className="mb-4 flex items-center gap-3">
+          <div className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-monk-soft">
+            <PlatformIcon size={22} strokeWidth={1.5} />
+          </div>
+          <p className="font-semibold">{platform === "ios" ? "iOS" : platform === "android" ? "Android" : platform === "mac" ? "macOS" : platform === "windows" ? "Windows" : "Manual guide"}</p>
         </div>
-        <p className="font-semibold">{platform === "ios" ? "iOS" : platform === "android" ? "Android" : platform === "mac" ? "macOS" : platform === "windows" ? "Windows" : "Manual guide"}</p>
         <ol className="mt-3 list-decimal space-y-2 pl-5 text-sm leading-6 text-monk-muted">
           {currentInstructions.steps.map((step, i) => (
             <li key={i}>{step}</li>
@@ -557,27 +621,37 @@ export function GoalBrainDump({ onNext }: { onNext: () => void }) {
         </span>
       </div>
       <div className="space-y-3">
-        {onboarding.goalDrafts.map((goal, index) => (
-          <div key={goal.id} className="flex gap-2">
-            <TextInput
-              aria-label={`Goal ${index + 1}`}
-              placeholder="Example: Build a study routine, finish a course…"
-              value={goal.title}
-              maxLength={100}
-              onChange={(event) => updateGoalDraft(goal.id, event.target.value.slice(0, 100))}
-            />
-            {onboarding.goalDrafts.length > 5 ? (
-              <button
-                type="button"
-                aria-label="Remove goal"
-                onClick={() => removeGoalDraft(goal.id)}
-                className="grid min-h-12 min-w-12 shrink-0 place-items-center rounded-xl border border-monk-border bg-monk-surface text-monk-muted"
-              >
-                <Minus size={18} strokeWidth={1.5} />
-              </button>
-            ) : null}
-          </div>
-        ))}
+        <AnimatePresence>
+          {onboarding.goalDrafts.map((goal, index) => (
+            <motion.div
+              key={goal.id}
+              layout
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, x: -20 }}
+              transition={{ duration: 0.2 }}
+              className="flex gap-2"
+            >
+              <TextInput
+                aria-label={`Goal ${index + 1}`}
+                placeholder="Example: Build a study routine, finish a course…"
+                value={goal.title}
+                maxLength={100}
+                onChange={(event) => updateGoalDraft(goal.id, event.target.value.slice(0, 100))}
+              />
+              {onboarding.goalDrafts.length > 5 ? (
+                <button
+                  type="button"
+                  aria-label="Remove goal"
+                  onClick={() => removeGoalDraft(goal.id)}
+                  className="grid min-h-12 min-w-12 shrink-0 place-items-center rounded-xl border border-monk-border bg-monk-surface text-monk-muted"
+                >
+                  <Minus size={18} strokeWidth={1.5} />
+                </button>
+              ) : null}
+            </motion.div>
+          ))}
+        </AnimatePresence>
       </div>
       {onboarding.goalDrafts.length < 10 ? (
         <GhostButton className="mt-4" onClick={addGoalDraft}>
@@ -603,17 +677,26 @@ export function GoalElimination({ onNext }: { onNext: () => void }) {
         {goals.map((goal) => {
           const released = onboarding.releasedGoalIds.includes(goal.id);
           return (
-            <button
+            <motion.button
               type="button"
               key={goal.id}
-              onClick={() => toggleReleasedGoal(goal.id)}
-              className={`flex min-h-[64px] w-full items-center justify-between rounded-monk border p-4 text-left transition ${
-                released ? "border-monk-danger bg-monk-danger-soft text-monk-muted line-through" : "border-monk-border bg-monk-surface"
+              layout
+              animate={{
+                opacity: released ? 0.5 : 1,
+                backgroundColor: released ? "var(--color-danger-soft)" : "var(--color-surface)",
+              }}
+              transition={{ duration: 0.3 }}
+              onClick={() => {
+                hapticPress("light");
+                toggleReleasedGoal(goal.id);
+              }}
+              className={`flex min-h-[64px] w-full items-center justify-between rounded-monk border p-4 text-left ${
+                released ? "border-monk-danger text-monk-muted line-through" : "border-monk-border"
               }`}
             >
               <span>{goal.title}</span>
               <span className="text-sm text-monk-muted">{released ? "Released" : "Release"}</span>
-            </button>
+            </motion.button>
           );
         })}
       </div>
@@ -635,26 +718,36 @@ export function FocusGoals({ onNext }: { onNext: () => void }) {
     <>
       <ScreenIntro title="What feels important in this season?" subtitle="Write one to three focus goals. Fewer is stronger." />
       <div className="space-y-3">
-        {onboarding.goalDrafts.map((goal, index) => (
-          <div key={goal.id} className="flex gap-2">
-            <TextInput
-              aria-label={`Goal ${index + 1}`}
-              placeholder="Write a goal"
-              value={goal.title}
-              onChange={(event) => store.updateGoalDraft(goal.id, event.target.value)}
-            />
-            {onboarding.goalDrafts.length > 1 ? (
-              <button
-                type="button"
-                aria-label="Remove goal"
-                onClick={() => store.removeGoalDraft(goal.id)}
-                className="grid h-[52px] w-[52px] shrink-0 place-items-center rounded-full border border-monk-border bg-monk-surface text-monk-muted"
-              >
-                <Minus size={18} strokeWidth={1.5} />
-              </button>
-            ) : null}
-          </div>
-        ))}
+        <AnimatePresence>
+          {onboarding.goalDrafts.map((goal, index) => (
+            <motion.div
+              key={goal.id}
+              layout
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, x: -20 }}
+              transition={{ duration: 0.2 }}
+              className="flex gap-2"
+            >
+              <TextInput
+                aria-label={`Goal ${index + 1}`}
+                placeholder="Write a goal"
+                value={goal.title}
+                onChange={(event) => store.updateGoalDraft(goal.id, event.target.value)}
+              />
+              {onboarding.goalDrafts.length > 1 ? (
+                <button
+                  type="button"
+                  aria-label="Remove goal"
+                  onClick={() => store.removeGoalDraft(goal.id)}
+                  className="grid h-[52px] w-[52px] shrink-0 place-items-center rounded-full border border-monk-border bg-monk-surface text-monk-muted"
+                >
+                  <Minus size={18} strokeWidth={1.5} />
+                </button>
+              ) : null}
+            </motion.div>
+          ))}
+        </AnimatePresence>
       </div>
       {onboarding.goalDrafts.length < 3 ? (
         <GhostButton className="mt-4" onClick={store.addGoalDraft}>
@@ -706,6 +799,7 @@ export function SeasonSetup({ onNext }: { onNext: () => void }) {
           title="7 Days"
           badge="Quick reset"
           description="Best for restarting, testing a routine, or getting back on track."
+          icon={FastForward}
           selected={preset === "7_days"}
           onClick={() => selectPreset("7_days", 7)}
         />
@@ -713,6 +807,7 @@ export function SeasonSetup({ onNext }: { onNext: () => void }) {
           title="30 Days"
           badge="Recommended"
           description="Best for building consistency and daily momentum."
+          icon={Calendar}
           selected={preset === "30_days"}
           onClick={() => selectPreset("30_days", 30)}
         />
@@ -720,6 +815,7 @@ export function SeasonSetup({ onNext }: { onNext: () => void }) {
           title="90 Days"
           badge="Deep season"
           description="Best for meaningful progress on bigger life goals."
+          icon={Mountain}
           selected={preset === "90_days"}
           onClick={() => selectPreset("90_days", 90)}
         />
@@ -727,6 +823,7 @@ export function SeasonSetup({ onNext }: { onNext: () => void }) {
           title="Custom"
           badge="Set your own length"
           description="Choose the number of days that fits your season."
+          icon={Sliders}
           selected={preset === "custom"}
           onClick={() => {
             updateOnboarding({ durationPreset: "custom" });
@@ -781,32 +878,27 @@ export function NarrowGoals({ onNext }: { onNext: () => void }) {
         Keep this season · {selectedCount}/3 selected
       </p>
       <div className="space-y-3">
-        {goals.map((goal) => {
-          const isSelected = onboarding.selectedFocusGoalIds.includes(goal.id);
-          return (
-            <button
-              type="button"
-              key={goal.id}
-              onClick={() => toggleFocusGoal(goal.id)}
-              className={`flex min-h-14 w-full items-center justify-between gap-3 rounded-monk border px-4 py-3 text-left transition-colors duration-150 ${
-                isSelected
-                  ? "border-monk-accent bg-monk-accent-soft text-monk-text"
-                  : "border-monk-border bg-monk-surface text-monk-text hover:border-monk-border-strong"
-              }`}
-            >
-              <span className={isSelected ? "font-semibold" : ""}>{goal.title}</span>
-              <span
-                className={`grid h-6 w-6 shrink-0 place-items-center rounded-full border ${
-                  isSelected
-                    ? "border-monk-accent bg-monk-accent text-white"
-                    : "border-transparent bg-transparent text-transparent"
-                }`}
+        <AnimatePresence>
+          {goals.map((goal) => {
+            const isSelected = onboarding.selectedFocusGoalIds.includes(goal.id);
+            return (
+              <motion.div
+                key={goal.id}
+                layout
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+                transition={{ duration: 0.2 }}
               >
-                {isSelected ? <Check size={14} strokeWidth={2.5} /> : null}
-              </span>
-            </button>
-          );
-        })}
+                <ChoiceCard
+                  title={goal.title}
+                  selected={isSelected}
+                  onClick={() => toggleFocusGoal(goal.id)}
+                />
+              </motion.div>
+            );
+          })}
+        </AnimatePresence>
       </div>
       <div className="mt-auto space-y-3 pt-8">
         {!result.valid ? <CalmAlert type="warning" title={result.message!} /> : null}
@@ -858,42 +950,35 @@ export function KeystoneSetup({ onNext }: { onNext: () => void }) {
                 Goal {index + 1}
               </p>
               <p className="mb-3 font-semibold text-monk-text">{goal.title}</p>
-              <div className="space-y-3">
-                <div>
-                  <TextInput
-                    label="When"
-                    id={`keystone-when-${goal.id}`}
-                    placeholder={whenPh}
-                    value={parsed.when}
-                    onChange={(event) => commit(event.target.value, parsed.action)}
-                  />
-                  <p className="mt-1 text-xs text-monk-muted">e.g., "after breakfast", "at 9pm", "before checking email"</p>
-                </div>
-                <div>
-                  <TextInput
-                    label="I will"
-                    id={`keystone-action-${goal.id}`}
-                    placeholder={actionPh}
-                    value={parsed.action}
-                    onChange={(event) => commit(parsed.when, event.target.value)}
-                  />
-                  <p className="mt-1 text-xs text-monk-muted">One specific, repeatable action</p>
-                </div>
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                 <TextInput
-                  label="Why this goal (optional)"
-                  id={`goal-why-${goal.id}`}
-                  placeholder="Because…"
-                  value={goalWhy}
-                  onChange={(event) =>
-                    updateOnboarding({
-                      goalWhys: { ...onboarding.goalWhys, [goal.id]: event.target.value }
-                    })
-                  }
+                  label="When"
+                  id={`keystone-when-${goal.id}`}
+                  placeholder={whenPh}
+                  value={parsed.when}
+                  onChange={(event) => commit(event.target.value, parsed.action)}
                 />
-                <p className="text-xs text-monk-text-soft">
-                  Smallest repeatable proof this goal is moving.
-                </p>
+                <TextInput
+                  label="I will"
+                  id={`keystone-action-${goal.id}`}
+                  placeholder={actionPh}
+                  value={parsed.action}
+                  onChange={(event) => commit(parsed.when, event.target.value)}
+                />
               </div>
+              <p className="mt-2 text-xs text-monk-muted">One specific, repeatable action.</p>
+              <TextInput
+                label="Why this goal (optional)"
+                id={`goal-why-${goal.id}`}
+                placeholder="Because…"
+                value={goalWhy}
+                onChange={(event) =>
+                  updateOnboarding({
+                    goalWhys: { ...onboarding.goalWhys, [goal.id]: event.target.value }
+                  })
+                }
+                className="mt-4"
+              />
             </Card>
           );
         })}
@@ -1018,25 +1103,27 @@ export function WeekSetup({ onNext }: { onNext: () => void }) {
                   <p className="mt-1 text-xs text-monk-muted">Focus days this week</p>
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
-                  <button
+                  <motion.button
                     type="button"
                     aria-label={`Decrease ${goal.title}`}
                     disabled={count <= 1}
                     className="grid min-h-11 min-w-11 place-items-center rounded-full border border-monk-border bg-monk-bg text-monk-text transition active:scale-95 disabled:opacity-30"
                     onClick={() => setWeeklyAllocation(goal.id, count - 1)}
+                    whileTap={{ scale: 0.9 }}
                   >
                     <Minus size={16} />
-                  </button>
+                  </motion.button>
                   <span className="w-8 text-center text-lg font-bold tabular-nums">{count}</span>
-                  <button
+                  <motion.button
                     type="button"
                     aria-label={`Increase ${goal.title}`}
                     disabled={allocatedDays >= 6}
                     className="grid min-h-11 min-w-11 place-items-center rounded-full border border-monk-border bg-monk-bg text-monk-text transition active:scale-95 disabled:opacity-30"
                     onClick={() => setWeeklyAllocation(goal.id, count + 1)}
+                    whileTap={{ scale: 0.9 }}
                   >
                     <Plus size={16} />
-                  </button>
+                  </motion.button>
                 </div>
               </div>
             </Card>
@@ -1061,9 +1148,11 @@ export function WeekSetup({ onNext }: { onNext: () => void }) {
           <span className={`text-sm font-bold ${strengthColor}`}>{strength} · {planScore.total}</span>
         </div>
         <div className="mt-3 h-1.5 rounded-full bg-monk-soft overflow-hidden">
-          <div
-            className="h-full rounded-full bg-monk-accent transition-all"
-            style={{ width: `${Math.min(100, planScore.total)}%` }}
+          <motion.div
+            className="h-full rounded-full bg-monk-accent"
+            initial={{ width: 0 }}
+            animate={{ width: `${Math.min(100, planScore.total)}%` }}
+            transition={{ duration: 0.5, ease: "easeOut" }}
           />
         </div>
         <div className="mt-3 grid grid-cols-2 gap-y-1.5 gap-x-3 text-xs text-monk-muted">
@@ -1099,26 +1188,26 @@ export function TodayPreviewStep() {
   const t = useT();
   const { createSeasonFromOnboarding } = useMonkStore();
   const steps = [
-    t("onboarding.preview.step1"),
-    t("onboarding.preview.step2"),
-    t("onboarding.preview.step3"),
-    t("onboarding.preview.step4")
-  ] as const;
+    { label: t("onboarding.preview.step1"), icon: ListTodo },
+    { label: t("onboarding.preview.step2"), icon: ShieldCheck },
+    { label: t("onboarding.preview.step3"), icon: BookOpen },
+    { label: t("onboarding.preview.step4"), icon: Coffee },
+  ];
 
   return (
     <>
       <ScreenIntro title={t("onboarding.preview.title")} subtitle={t("onboarding.preview.body")} />
       <Card className="space-y-3 p-4">
-        <ol className="space-y-3">
-          {steps.map((label, index) => (
-            <li key={label} className="flex gap-3 text-sm leading-6 text-monk-text">
-              <span className="mt-0.5 grid h-6 w-6 shrink-0 place-items-center rounded-full bg-monk-accent-soft text-xs font-bold text-monk-accent">
-                {index + 1}
-              </span>
-              <span>{label}</span>
-            </li>
-          ))}
-        </ol>
+        {steps.map((step, index) => (
+          <div key={index} className="flex items-start gap-4">
+            <div className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-monk-accent-soft text-monk-accent">
+              <step.icon size={16} strokeWidth={2} />
+            </div>
+            <div className="flex-1">
+              <p className="font-semibold text-monk-text">{step.label}</p>
+            </div>
+          </div>
+        ))}
       </Card>
       <div className="mt-auto space-y-3 pt-8">
         <PrimaryButton

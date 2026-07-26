@@ -12,7 +12,6 @@ import {
   Calendar,
   Check,
   ChevronRight,
-  Circle,
   Volume2,
   VolumeX,
   EyeOff,
@@ -121,6 +120,7 @@ const PacksPageLazy = lazy(() => import("../screens/LibraryScreen").then(m => ({
 import { TodayScreen, DefenseChips } from "../screens/TodayScreen";
 import { FocusSessionPanel, FocusSessionStarter } from "../screens/FocusSession";
 import { FrictionWhy, SeasonProgressCard, WhyEditor } from "../components/SeasonWidgets";
+import { WelcomeScreen } from "../screens/WelcomeScreen";
 import {
   ScreenIntro,
   ValuesStep,
@@ -350,25 +350,7 @@ function OnboardingScreen({ path }: { path: string }) {
   if (path === routes.onboardingWelcome) {
     return (
       <OnboardingShell>
-        <div className="flex flex-1 flex-col justify-center">
-          <div className="relative mx-auto mb-10">
-            <div className="absolute left-1/2 top-1/2 h-28 w-28 -translate-x-1/2 -translate-y-1/2 rounded-full bg-monk-accent/10 blur-2xl" aria-hidden />
-            <div className="relative grid h-20 w-20 place-items-center rounded-full border border-monk-accent/30 bg-monk-soft text-monk-accent">
-              <Circle size={28} strokeWidth={1.5} />
-            </div>
-          </div>
-          <p className="mb-3 text-center text-xs font-medium uppercase tracking-widest text-monk-accent">ZENDO</p>
-          <h1 className="text-center text-[40px] font-bold leading-[48px] tracking-tight">
-            Make space for what matters.
-          </h1>
-          <p className="mx-auto mt-5 max-w-[300px] text-center text-base leading-6 text-monk-muted">
-            Choose fewer goals. Build quiet momentum. One season at a time.
-          </p>
-          <p className="mx-auto mt-4 text-center text-xs font-medium text-monk-text-soft">
-            About 8–12 minutes · progress saves as you go
-          </p>
-        </div>
-        <PrimaryButton className="mt-8" onClick={goNext}>Begin</PrimaryButton>
+        <WelcomeScreen onNext={goNext} />
       </OnboardingShell>
     );
   }

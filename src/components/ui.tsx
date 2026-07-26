@@ -289,11 +289,13 @@ export function Textarea({
 
 export function ChoiceChip({
   label,
+  icon: Icon,
   selected,
   onClick,
   disabled
 }: {
   label: string;
+  icon?: React.ElementType;
   selected: boolean;
   onClick: () => void;
   disabled?: boolean;
@@ -304,12 +306,13 @@ export function ChoiceChip({
       disabled={disabled}
       aria-pressed={selected}
       onClick={() => { hapticPress("light"); onClick(); }}
-      className={`min-h-11 rounded-full border px-4 text-sm transition-colors duration-150 active:scale-[0.98] disabled:opacity-45 ${
+      className={`flex min-h-11 items-center gap-2 rounded-full border px-4 text-sm transition-colors duration-150 active:scale-[0.98] disabled:opacity-45 ${
         selected
           ? "border-monk-accent bg-monk-accent-soft font-semibold text-monk-accent"
           : "border-monk-border bg-monk-surface text-monk-muted hover:border-monk-border-strong"
       }`}
     >
+      {Icon && <Icon size={16} strokeWidth={1.5} />}
       {label}
     </button>
   );
@@ -572,12 +575,14 @@ export function DurationCard({
   title,
   badge,
   description,
+  icon: Icon,
   selected,
   onClick
 }: {
   title: string;
   badge: string;
   description: string;
+  icon?: React.ElementType;
   selected: boolean;
   onClick: () => void;
 }) {
@@ -591,13 +596,19 @@ export function DurationCard({
       }`}
     >
       <div className="flex items-center justify-between gap-2">
-        <span className="text-base font-semibold">{title}</span>
+        <div className="flex items-center gap-3">
+          {Icon && (
+            <div className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-monk-soft">
+              <Icon size={16} strokeWidth={1.5} />
+            </div>
+          )}
+          <span className="text-base font-semibold">{title}</span>
+        </div>
         <span className={`rounded-full px-2.5 py-0.5 text-xs font-bold uppercase tracking-wider ${
           selected ? "bg-monk-accent/15 text-monk-accent" : "bg-monk-soft text-monk-muted"
         }`}>
           {badge}
         </span>
-
       </div>
       <p className="mt-1.5 text-sm leading-relaxed text-monk-muted">{description}</p>
     </button>

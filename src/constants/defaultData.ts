@@ -8,16 +8,18 @@ import type {
   MonkMVPState,
   OnboardingState
 } from "../types/app";
+import { EyeOff, Gamepad2, MessagesSquare, Moon, MoreHorizontal, ShoppingBag, Youtube, Zap } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 
-export const habitOptions: Array<{ category: BadHabitCategory; label: string }> = [
-  { category: "doom_scrolling", label: "Doom scrolling" },
-  { category: "gaming", label: "Gaming" },
-  { category: "pmo", label: "PMO" },
-  { category: "random_youtube", label: "Random YouTube" },
-  { category: "late_night_content", label: "Late-night content" },
-  { category: "too_much_chatting", label: "Too much chatting" },
-  { category: "shopping_impulse", label: "Shopping impulse" },
-  { category: "other", label: "Other" }
+export const habitOptions: Array<{ category: BadHabitCategory; label: string; icon: LucideIcon }> = [
+  { category: "doom_scrolling", label: "Doom scrolling", icon: Zap },
+  { category: "gaming", label: "Gaming", icon: Gamepad2 },
+  { category: "pmo", label: "PMO", icon: EyeOff },
+  { category: "random_youtube", label: "Random YouTube", icon: Youtube },
+  { category: "late_night_content", label: "Late-night content", icon: Moon },
+  { category: "too_much_chatting", label: "Too much chatting", icon: MessagesSquare },
+  { category: "shopping_impulse", label: "Shopping impulse", icon: ShoppingBag },
+  { category: "other", label: "Other", icon: MoreHorizontal }
 ];
 
 export const learningTypes = [
