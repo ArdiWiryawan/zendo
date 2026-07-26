@@ -8,7 +8,7 @@ import {
   PageHeader,
   SecondaryButton,
 } from "../components/ui";
-import { FocusSessionPanel, FocusSessionStarter } from "../components/FocusSession";
+import { FocusSessionPanel, FocusSessionStarter } from "../screens/FocusSession";
 import { routes } from "../constants/routes";
 import { getTodayDateString } from "../lib/date";
 import { parseIntention } from "../lib/implementationIntention";

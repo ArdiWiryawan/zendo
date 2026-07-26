@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { persist } from "zustand/middleware";
 import {
   createDefaultOnboarding,
   createInitialState,
@@ -30,7 +31,7 @@ import {
   nowIso
 } from "../lib/date";
 import { createId } from "../lib/ids";
-import { loadState, saveState } from "../lib/storage";
+import { loadState } from "../lib/storage";
 import { t } from "../i18n";
 import type {
   AppSettings,
@@ -91,7 +92,6 @@ type RelapseInput = {
 
 type MonkActions = {
   hydrate: () => void;
-  persist: () => void;
   recordOpen: () => void;
   resetApp: () => void;
   ensureSeasonFresh: () => void;
@@ -157,6 +157,7 @@ type MonkActions = {
 
 export type MonkStore = StoreSnapshot & MonkActions;
 
+// ponytail: snapshot kept as internal helper for state construction; persist middleware handles localStorage writes
 function snapshot(state: MonkStore | MonkMVPState): MonkMVPState {
   return {
     userProfile: state.userProfile,
@@ -182,11 +183,6 @@ function snapshot(state: MonkStore | MonkMVPState): MonkMVPState {
     purchasedPackIds: state.purchasedPackIds,
     energyLogs: state.energyLogs
   };
-}
-
-function withPersist(set: (state: Partial<MonkStore>) => void, get: () => MonkStore, patch: Partial<MonkStore>) {
-  set(patch);
-  saveState(snapshot(get()));
 }
 
 function getActiveGoals(state: MonkMVPState) {
@@ -361,7 +357,9 @@ function updateAllocationCounts(state: MonkMVPState, weeklyPlanId: string): Week
   });
 }
 
-export const useMonkStore = create<MonkStore>((set, get) => ({
+export const useMonkStore = create<MonkStore>()(
+  persist(
+    (set, get) => ({
   ...createInitialState(),
 
   hydrate: () => {
@@ -459,11 +457,10 @@ export const useMonkStore = create<MonkStore>((set, get) => ({
     }
   },
 
-  persist: () => saveState(snapshot(get())),
 
   recordOpen: () => {
     const state = get();
-    withPersist(set, get, {
+    set({
       appSettings: {
         ...state.appSettings,
         openCount: (state.appSettings.openCount ?? 0) + 1,
@@ -473,28 +470,28 @@ export const useMonkStore = create<MonkStore>((set, get) => ({
   },
 
   resetApp: () => {
-    withPersist(set, get, createInitialState());
+    set(createInitialState());
   },
 
   ensureSeasonFresh: () => {
     const state = get();
     const season = state.activeSeason;
     if (!season || season.status !== "active" || !isSeasonEnded(season)) return;
-    withPersist(set, get, {
+    set({
       activeSeason: { ...season, status: "ended", updatedAt: nowIso() }
     });
   },
 
   updateOnboarding: (patch) => {
     const state = get();
-    withPersist(set, get, {
+    set({
       onboarding: { ...state.onboarding, ...patch }
     });
   },
 
   setOnboardingStep: (step) => {
     const state = get();
-    withPersist(set, get, {
+    set({
       onboarding: { ...state.onboarding, currentStep: step }
     });
   },
@@ -515,7 +512,7 @@ export const useMonkStore = create<MonkStore>((set, get) => ({
       const next = selectedHabits[selectedHabits.length - 1];
       frictionActions[next.id] = frictionActionsForHabit(next);
     }
-    withPersist(set, get, { onboarding: { ...state.onboarding, selectedHabits, frictionActions } });
+    set({ onboarding: { ...state.onboarding, selectedHabits, frictionActions } });
   },
 
   setCustomHabitName: (name) => {
@@ -529,7 +526,7 @@ export const useMonkStore = create<MonkStore>((set, get) => ({
       ...state.onboarding.selectedHabits.filter((habit) => habit.id !== other.id),
       nextHabit
     ];
-    withPersist(set, get, {
+    set({
       onboarding: {
         ...state.onboarding,
         selectedHabits,
@@ -544,7 +541,7 @@ export const useMonkStore = create<MonkStore>((set, get) => ({
   toggleFrictionAction: (habitId, actionId) => {
     const state = get();
     const actions = state.onboarding.frictionActions[habitId] ?? [];
-    withPersist(set, get, {
+    set({
       onboarding: {
         ...state.onboarding,
         frictionActions: {
@@ -559,7 +556,7 @@ export const useMonkStore = create<MonkStore>((set, get) => ({
 
   updateGoalDraft: (id, title) => {
     const state = get();
-    withPersist(set, get, {
+    set({
       onboarding: {
         ...state.onboarding,
         goalDrafts: state.onboarding.goalDrafts.map((goal) =>
@@ -572,7 +569,7 @@ export const useMonkStore = create<MonkStore>((set, get) => ({
   addGoalDraft: () => {
     const state = get();
     if (state.onboarding.goalDrafts.length >= 10) return;
-    withPersist(set, get, {
+    set({
       onboarding: {
         ...state.onboarding,
         goalDrafts: [...state.onboarding.goalDrafts, { id: createId("draft_goal"), title: "" }]
@@ -582,7 +579,7 @@ export const useMonkStore = create<MonkStore>((set, get) => ({
 
   removeGoalDraft: (id) => {
     const state = get();
-    withPersist(set, get, {
+    set({
       onboarding: {
         ...state.onboarding,
         goalDrafts: state.onboarding.goalDrafts.filter((goal) => goal.id !== id),
@@ -595,7 +592,7 @@ export const useMonkStore = create<MonkStore>((set, get) => ({
   toggleReleasedGoal: (id) => {
     const state = get();
     const released = state.onboarding.releasedGoalIds.includes(id);
-    withPersist(set, get, {
+    set({
       onboarding: {
         ...state.onboarding,
         releasedGoalIds: released
@@ -614,7 +611,7 @@ export const useMonkStore = create<MonkStore>((set, get) => ({
       ? state.onboarding.selectedFocusGoalIds.filter((goalId) => goalId !== id)
       : [...state.onboarding.selectedFocusGoalIds, id];
     const weeklyAllocations = defaultWeeklyTargets(selectedFocusGoalIds);
-    withPersist(set, get, {
+    set({
       onboarding: {
         ...state.onboarding,
         selectedFocusGoalIds,
@@ -626,7 +623,7 @@ export const useMonkStore = create<MonkStore>((set, get) => ({
   setSeasonDuration: (days) => {
     const state = get();
     const start = getTodayDateString();
-    withPersist(set, get, {
+    set({
       onboarding: {
         ...state.onboarding,
         seasonDurationDays: days,
@@ -639,7 +636,7 @@ export const useMonkStore = create<MonkStore>((set, get) => ({
 
   setKeystoneAction: (goalId, action) => {
     const state = get();
-    withPersist(set, get, {
+    set({
       onboarding: {
         ...state.onboarding,
         keystoneActions: { ...state.onboarding.keystoneActions, [goalId]: action }
@@ -649,7 +646,7 @@ export const useMonkStore = create<MonkStore>((set, get) => ({
 
   setWeeklyMode: (mode) => {
     const state = get();
-    withPersist(set, get, {
+    set({
       onboarding: { ...state.onboarding, weeklyMode: mode }
     });
   },
@@ -671,7 +668,7 @@ export const useMonkStore = create<MonkStore>((set, get) => ({
         { goalId, targetCount: Math.max(1, targetCount), completedCount: 0 }
       ];
     }
-    withPersist(set, get, {
+    set({
       onboarding: {
         ...state.onboarding,
         weeklyAllocations: newAllocations
@@ -798,7 +795,7 @@ export const useMonkStore = create<MonkStore>((set, get) => ({
       createdAt: timestamp
     }));
 
-    withPersist(set, get, {
+    set({
       userProfile: {
         id: createId("user"),
         onboardingCompleted: true,
@@ -824,7 +821,7 @@ export const useMonkStore = create<MonkStore>((set, get) => ({
 
   getOrCreateCurrentWeeklyPlan: () => {
     const { weeklyPlan, state } = getOrCreateWeekState(snapshot(get()));
-    withPersist(set, get, state);
+    set(state);
     return weeklyPlan;
   },
 
@@ -860,7 +857,7 @@ export const useMonkStore = create<MonkStore>((set, get) => ({
     };
     next = { ...next, weeklyPlans: updateAllocationCounts(next, weeklyPlan.id) };
     next = { ...next, timelineDays: updatedTimelineDays(next, dayPlan) };
-    withPersist(set, get, next);
+    set(next);
   },
 
   clearDayPlan: (dateString) => {
@@ -878,7 +875,7 @@ export const useMonkStore = create<MonkStore>((set, get) => ({
     next = { ...next, weeklyPlans: updateAllocationCounts(next, existing.weeklyPlanId) };
     const timelineDays = state.timelineDays.filter((day) => day.date !== dateString);
     next = { ...next, timelineDays };
-    withPersist(set, get, next);
+    set(next);
   },
 
   toggleTodayCompletion: () => {
@@ -898,7 +895,7 @@ export const useMonkStore = create<MonkStore>((set, get) => ({
       weeklyPlans: updateAllocationCounts(base, dayPlan.weeklyPlanId),
       timelineDays: updatedTimelineDays(base, dayPlan)
     };
-    withPersist(set, get, next);
+    set(next);
   },
 
   updateTodayEnergy: (energyLevel) => {
@@ -906,7 +903,7 @@ export const useMonkStore = create<MonkStore>((set, get) => ({
     const plan = findTodayPlan(state);
     if (!plan) return;
     const dayPlan = { ...plan, energyLevel, updatedAt: nowIso() };
-    withPersist(set, get, {
+    set({
       dayPlans: state.dayPlans.map((day) => (day.id === dayPlan.id ? dayPlan : day))
     });
   },
@@ -921,7 +918,7 @@ export const useMonkStore = create<MonkStore>((set, get) => ({
       level,
       createdAt: nowIso(),
     };
-    withPersist(set, get, {
+    set({
       energyLogs: [...existing, log]
     });
   },
@@ -940,7 +937,7 @@ export const useMonkStore = create<MonkStore>((set, get) => ({
       weeklyPlans: updateAllocationCounts(base, dayPlan.weeklyPlanId),
       timelineDays: updatedTimelineDays(base, dayPlan)
     };
-    withPersist(set, get, next);
+    set(next);
   },
 
   startFocusSession: (preset = "deep_work", customMinutes = 50) => {
@@ -985,7 +982,7 @@ export const useMonkStore = create<MonkStore>((set, get) => ({
       phases
     };
     const dayPlan = { ...plan, status: "active" as const, updatedAt: timestamp };
-    withPersist(set, get, {
+    set({
       focusSessions: [...state.focusSessions, session],
       dayPlans: state.dayPlans.map((day) => (day.id === dayPlan.id ? dayPlan : day))
     });
@@ -998,7 +995,7 @@ export const useMonkStore = create<MonkStore>((set, get) => ({
     if (!session) return;
     const dayPlan = current.dayPlans.find((d) => d.id === session.dayPlanId);
     if (!dayPlan) return;
-    withPersist(set, get, {
+    set({
       focusSessions: current.focusSessions.map((s) =>
         s.id === sessionId ? { ...s, elapsedSeconds, updatedAt: nowIso() } : s
       ),
@@ -1017,7 +1014,7 @@ export const useMonkStore = create<MonkStore>((set, get) => ({
     const totalFocusBlocks = phases.filter((phase) => phase.type === "focus").length;
     const totalBreakBlocks = phases.filter((phase) => phase.type === "break").length;
 
-    withPersist(set, get, {
+    set({
       focusSessions: state.focusSessions.map((item) =>
         item.id === sessionId
           ? {
@@ -1068,7 +1065,7 @@ export const useMonkStore = create<MonkStore>((set, get) => ({
     const currentPhase = updatedPhases[nextIndex];
     const completedFocusBlocks = updatedPhases.filter((phase) => phase.type === "focus" && phase.status === "completed").length;
     const completedBreakBlocks = updatedPhases.filter((phase) => phase.type === "break" && phase.status === "completed").length;
-    withPersist(set, get, {
+    set({
       focusSessions: state.focusSessions.map((session) =>
         session.id === sessionId
           ? {
@@ -1097,7 +1094,7 @@ export const useMonkStore = create<MonkStore>((set, get) => ({
       targetSeconds,
       Math.floor((Date.now() - new Date(session.startTime).getTime()) / 1000)
     );
-    withPersist(set, get, {
+    set({
       focusSessions: state.focusSessions.map((s) =>
         s.id === sessionId
           ? { ...s, status: "paused", elapsedSeconds: elapsed, updatedAt: nowIso() }
@@ -1113,7 +1110,7 @@ export const useMonkStore = create<MonkStore>((set, get) => ({
     const currentPhase = getCurrentFocusPhase(session);
     const phaseElapsed = currentPhase.plannedMinutes * 60 - Math.max(0, currentPhase.plannedMinutes * 60 - (session.elapsedSeconds ?? 0));
     const adjustedStart = new Date(Date.now() - phaseElapsed * 1000).toISOString();
-    withPersist(set, get, {
+    set({
       focusSessions: state.focusSessions.map((s) =>
         s.id === sessionId
           ? { ...s, status: "running" as const, startTime: adjustedStart, elapsedSeconds: phaseElapsed, updatedAt: nowIso() }
@@ -1186,7 +1183,7 @@ export const useMonkStore = create<MonkStore>((set, get) => ({
 
     const plan = state.dayPlans.find((day) => day.id === session.dayPlanId);
     if (!plan) {
-      withPersist(set, get, {
+      set({
         focusSessions,
         timelineEvents: [...state.timelineEvents, event]
       });
@@ -1207,7 +1204,7 @@ export const useMonkStore = create<MonkStore>((set, get) => ({
       focusSessions,
       dayPlans: state.dayPlans.map((day) => (day.id === dayPlan.id ? dayPlan : day))
     };
-    withPersist(set, get, {
+    set({
       ...base,
       weeklyPlans: updateAllocationCounts(base, dayPlan.weeklyPlanId),
       timelineDays: updatedTimelineDays(base, dayPlan),
@@ -1272,7 +1269,7 @@ export const useMonkStore = create<MonkStore>((set, get) => ({
 
     const plan = state.dayPlans.find((day) => day.id === session.dayPlanId);
     const base: MonkMVPState = { ...snapshot(state), focusSessions };
-    withPersist(set, get, {
+    set({
       focusSessions,
       timelineDays: plan ? updatedTimelineDays(base, plan) : state.timelineDays,
       timelineEvents: [...state.timelineEvents, event]
@@ -1281,7 +1278,7 @@ export const useMonkStore = create<MonkStore>((set, get) => ({
 
   bumpFocusDistraction: (sessionId) => {
     const state = get();
-    withPersist(set, get, {
+    set({
       focusSessions: state.focusSessions.map((s) => {
         if (s.id !== sessionId) return s;
         const prev = /^distractions:(\d+)/.exec(s.note ?? "");
@@ -1311,7 +1308,7 @@ export const useMonkStore = create<MonkStore>((set, get) => ({
       updatedAt: timestamp
     };
     const base = { ...snapshot(state), learningEntries: [...state.learningEntries, entry] };
-    withPersist(set, get, {
+    set({
       learningEntries: base.learningEntries,
       timelineDays: plan ? updatedTimelineDays(base, plan) : state.timelineDays
     });
@@ -1371,7 +1368,7 @@ export const useMonkStore = create<MonkStore>((set, get) => ({
     const updatedEvents = state.timelineEvents.filter((ev) => ev.sourceId !== entry.id);
 
     const base = { ...snapshot(state), journalEntries };
-    withPersist(set, get, {
+    set({
       journalEntries,
       timelineDays: updatedTimelineDays(base, plan),
       timelineEvents: [...updatedEvents, event]
@@ -1397,7 +1394,7 @@ export const useMonkStore = create<MonkStore>((set, get) => ({
     };
     const relapseLogs = [...state.relapseLogs, entry];
     const base = { ...snapshot(state), relapseLogs };
-    withPersist(set, get, {
+    set({
       relapseLogs,
       timelineDays: plan ? updatedTimelineDays(base, plan) : state.timelineDays
     });
@@ -1418,7 +1415,7 @@ export const useMonkStore = create<MonkStore>((set, get) => ({
       occurredAt: timestamp,
       createdAt: timestamp
     };
-    withPersist(set, get, {
+    set({
       activeSeason: { ...season, status: "archived", updatedAt: timestamp },
       userProfile: state.userProfile
         ? { ...state.userProfile, activeSeasonId: undefined, updatedAt: timestamp }
@@ -1430,7 +1427,7 @@ export const useMonkStore = create<MonkStore>((set, get) => ({
   startNewSeason: () => {
     const state = get();
     const timestamp = nowIso();
-    withPersist(set, get, {
+    set({
       activeSeason: state.activeSeason
         ? { ...state.activeSeason, status: "archived", updatedAt: timestamp }
         : null,
@@ -1451,7 +1448,7 @@ export const useMonkStore = create<MonkStore>((set, get) => ({
       consequenceOfInaction: why.consequenceOfInaction.trim(),
       protectValues: why.protectValues.slice(0, 3)
     };
-    withPersist(set, get, {
+    set({
       activeSeason: { ...season, why: next, updatedAt: timestamp }
     });
   },
@@ -1459,7 +1456,7 @@ export const useMonkStore = create<MonkStore>((set, get) => ({
   updateGoalWhy: (goalId, why) => {
     const state = get();
     const trimmed = why.trim();
-    withPersist(set, get, {
+    set({
       goals: state.goals.map((g) =>
         g.id === goalId
           ? { ...g, why: trimmed || undefined, updatedAt: nowIso() }
@@ -1503,7 +1500,7 @@ export const useMonkStore = create<MonkStore>((set, get) => ({
         ...base,
         dayPlans: state.dayPlans.map((day) => (day.id === dayPlan.id ? dayPlan : day))
       };
-      withPersist(set, get, {
+      set({
         learningSessions,
         dayPlans: baseWithDayPlan.dayPlans,
         timelineDays: updatedTimelineDays(baseWithDayPlan, dayPlan),
@@ -1512,7 +1509,7 @@ export const useMonkStore = create<MonkStore>((set, get) => ({
       return;
     }
 
-    withPersist(set, get, {
+    set({
       learningSessions,
       timelineEvents: [...state.timelineEvents, event]
     });
@@ -1520,14 +1517,14 @@ export const useMonkStore = create<MonkStore>((set, get) => ({
 
   addTimelineEvent: (event) => {
     const state = get();
-    withPersist(set, get, {
+    set({
       timelineEvents: [...state.timelineEvents, event]
     });
   },
 
   updateSettings: (patch) => {
     const state = get();
-    withPersist(set, get, {
+    set({
       appSettings: { ...state.appSettings, ...patch, updatedAt: nowIso() }
     });
   },
@@ -1544,14 +1541,14 @@ export const useMonkStore = create<MonkStore>((set, get) => ({
       isBuiltIn: false,
       sortOrder: maxSort + 1,
     };
-    withPersist(set, get, {
+    set({
       notebookCategories: [...state.notebookCategories, cat]
     });
   },
 
   renameNotebookCategory: (id, name) => {
     const state = get();
-    withPersist(set, get, {
+    set({
       notebookCategories: state.notebookCategories.map((c) =>
         c.id === id ? { ...c, name } : c
       )
@@ -1560,7 +1557,7 @@ export const useMonkStore = create<MonkStore>((set, get) => ({
 
   deleteNotebookCategory: (id) => {
     const state = get();
-    withPersist(set, get, {
+    set({
       notebookCategories: state.notebookCategories.filter((c) => c.id !== id),
       notebookEntries: state.notebookEntries.filter((e) => e.categoryId !== id)
     });
@@ -1570,7 +1567,7 @@ export const useMonkStore = create<MonkStore>((set, get) => ({
     const state = get();
     const existing = state.notebookEntries.find((e) => e.id === entry.id);
     const timestamp = nowIso();
-    withPersist(set, get, {
+    set({
       notebookEntries: existing
         ? state.notebookEntries.map((e) => e.id === entry.id ? { ...entry, updatedAt: timestamp } : e)
         : [...state.notebookEntries, { ...entry, createdAt: entry.createdAt || timestamp, updatedAt: timestamp }]
@@ -1579,14 +1576,14 @@ export const useMonkStore = create<MonkStore>((set, get) => ({
 
   deleteNotebookEntry: (id) => {
     const state = get();
-    withPersist(set, get, {
+    set({
       notebookEntries: state.notebookEntries.filter((e) => e.id !== id)
     });
   },
 
   togglePinNotebookEntry: (id) => {
     const state = get();
-    withPersist(set, get, {
+    set({
       notebookEntries: state.notebookEntries.map((e) =>
         e.id === id ? { ...e, isPinned: !e.isPinned, updatedAt: nowIso() } : e
       )
@@ -1610,7 +1607,7 @@ export const useMonkStore = create<MonkStore>((set, get) => ({
       completedAt: undefined,
       progress: 0,
     };
-    withPersist(set, get, {
+    set({
       journalPackSessions: [...state.journalPackSessions, session]
     });
     return session.id;
@@ -1627,7 +1624,7 @@ export const useMonkStore = create<MonkStore>((set, get) => ({
     // Find pack for progress calc
     const pack = state.journalPacks.find((p) => p.id === session.packId);
     const progress = pack ? Math.round((answers.filter((a) => a.answer.trim()).length / pack.questions.length) * 100) : 0;
-    withPersist(set, get, {
+    set({
       journalPackSessions: state.journalPackSessions.map((s) =>
         s.id === sessionId ? { ...s, answers, progress } : s
       )
@@ -1637,7 +1634,7 @@ export const useMonkStore = create<MonkStore>((set, get) => ({
   completeJournalPack: (sessionId) => {
     const state = get();
     const timestamp = nowIso();
-    withPersist(set, get, {
+    set({
       journalPackSessions: state.journalPackSessions.map((s) =>
         s.id === sessionId
           ? { ...s, completedAt: timestamp, progress: 100 }
@@ -1649,14 +1646,14 @@ export const useMonkStore = create<MonkStore>((set, get) => ({
   purchasePack: (packId) => {
     const state = get();
     if (state.purchasedPackIds.includes(packId)) return;
-    withPersist(set, get, {
+    set({
       purchasedPackIds: [...state.purchasedPackIds, packId]
     });
   },
 
   importState: (data) => {
     const state = get();
-    withPersist(set, get, {
+    set({
       userProfile: data.userProfile !== undefined ? data.userProfile : state.userProfile,
       appSettings: data.appSettings !== undefined ? { ...state.appSettings, ...data.appSettings } : state.appSettings,
       activeSeason: data.activeSeason !== undefined ? data.activeSeason : state.activeSeason,
@@ -1679,4 +1676,52 @@ export const useMonkStore = create<MonkStore>((set, get) => ({
       energyLogs: data.energyLogs !== undefined ? data.energyLogs : state.energyLogs,
     });
   }
-}));
+}),
+    {
+      name: "monk_mode_pwa_state_v1",
+      partialize: (state) => ({
+        userProfile: state.userProfile,
+        appSettings: state.appSettings,
+        activeSeason: state.activeSeason,
+        goals: state.goals,
+        badHabits: state.badHabits,
+        weeklyPlans: state.weeklyPlans,
+        dayPlans: state.dayPlans,
+        focusSessions: state.focusSessions,
+        learningEntries: state.learningEntries,
+        journalEntries: state.journalEntries,
+        relapseLogs: state.relapseLogs,
+        timelineDays: state.timelineDays,
+        notificationReminders: state.notificationReminders,
+        onboarding: state.onboarding,
+        learningSessions: state.learningSessions,
+        timelineEvents: state.timelineEvents,
+        notebookCategories: state.notebookCategories,
+        notebookEntries: state.notebookEntries,
+        journalPacks: state.journalPacks,
+        journalPackSessions: state.journalPackSessions,
+        purchasedPackIds: state.purchasedPackIds,
+        energyLogs: state.energyLogs
+      }),
+      // ponytail: custom storage adapter to keep multi-key writes + normalization; simplify when migration done
+      storage: {
+        getItem: () => null, // hydrate action handles reads
+        setItem: (name, value) => {
+          if (typeof localStorage === "undefined") return;
+          localStorage.setItem(name, JSON.stringify(value));
+          const state = value as MonkMVPState;
+          if (state.focusSessions) localStorage.setItem("focusSessions", JSON.stringify(state.focusSessions));
+          if (state.learningSessions) localStorage.setItem("learningSessions", JSON.stringify(state.learningSessions));
+          if (state.timelineEvents) localStorage.setItem("timelineEvents", JSON.stringify(state.timelineEvents));
+        },
+        removeItem: (name) => {
+          if (typeof localStorage === "undefined") return;
+          localStorage.removeItem(name);
+          localStorage.removeItem("focusSessions");
+          localStorage.removeItem("learningSessions");
+          localStorage.removeItem("timelineEvents");
+        }
+      }
+    }
+  )
+);

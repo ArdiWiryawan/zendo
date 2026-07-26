@@ -1,4 +1,5 @@
 import type { MonkMVPState, TimelineStatus } from "../types/app";
+import { addDaysToDate } from "./date";
 import { resolveDailyActivityStatus, getDailyStatusHelper } from "../constants/dailyActivityStatus";
 import { FOCUS_PRESETS } from "../constants/focusPresets";
 import {
@@ -63,4 +64,72 @@ export function getLearningSummaryForDate(store: MonkMVPState, date: string) {
   const entry = activity.legacyLearningEntries[0];
   if (entry) return `${entry.durationMinutes ?? 0} min · ${entry.title}`;
   return "Not done yet";
+}
+
+export function isCloseDaySkipped(date: string) {
+  try {
+    return localStorage.getItem(`zendo.closeday.skipped.${date}`) === "1";
+  } catch {
+    return false;
+  }
+}
+
+export function skipCloseDay(date: string) {
+  try {
+    localStorage.setItem(`zendo.closeday.skipped.${date}`, "1");
+  } catch {
+    /* ignore */
+  }
+}
+
+export function getDayPart(now = new Date()): "morning" | "afternoon" | "evening" {
+  const h = now.getHours();
+  if (h < 12) return "morning";
+  if (h < 18) return "afternoon";
+  return "evening";
+}
+
+export function isReentryDismissed(date: string): boolean {
+  try {
+    const raw = localStorage.getItem(`zendo.reentry.dismissed.${date}`);
+    if (!raw) return false;
+    const until = Number(raw);
+    if (!Number.isFinite(until)) return false;
+    return Date.now() < until;
+  } catch {
+    return false;
+  }
+}
+
+export function dismissReentry(date: string) {
+  try {
+    localStorage.setItem(`zendo.reentry.dismissed.${date}`, String(Date.now() + 24 * 60 * 60 * 1000));
+  } catch {
+    /* ignore */
+  }
+}
+
+export function isReentryChipHidden(date: string): boolean {
+  try {
+    return localStorage.getItem(`zendo.reentry.chipHidden.${date}`) === "1";
+  } catch {
+    return false;
+  }
+}
+
+export function hideReentryChip(date: string) {
+  try {
+    localStorage.setItem(`zendo.reentry.chipHidden.${date}`, "1");
+  } catch {
+    /* ignore */
+  }
+}
+
+export function shouldOfferReentry(store: { dayPlans: MonkMVPState["dayPlans"]; activeSeason: MonkMVPState["activeSeason"] }, seasonStart: string, today: string): boolean {
+  const yesterday = addDaysToDate(today, -1);
+  if (yesterday < seasonStart) return false;
+  const yStatus = getDailyStatusForDate(store as unknown as MonkMVPState, yesterday);
+  const yPlan = store.dayPlans.find((plan) => plan.date === yesterday);
+  const softMiss = yStatus === "not_started" && !!yPlan;
+  return yStatus === "missed" || yStatus === "relapse" || softMiss;
 }
