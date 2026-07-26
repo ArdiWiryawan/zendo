@@ -1,12 +1,18 @@
-import assert from "node:assert/strict";
+import { describe, expect, it } from "vitest";
 import { addDaysToDate, getDayNumber, getDaysPassed } from "./date";
 
-const startDate = "2026-06-28";
+describe("date", () => {
+  const startDate = "2026-06-28";
 
-assert.equal(getDayNumber("2026-06-28", startDate), 1);
-assert.equal(getDayNumber("2026-06-29", startDate), 2);
-assert.equal(getDayNumber("2026-06-30", startDate), 3);
-assert.equal(getDayNumber("2026-06-27", startDate), 0);
+  it("getDayNumber", () => {
+    expect(getDayNumber("2026-06-28", startDate)).toBe(1);
+    expect(getDayNumber("2026-06-29", startDate)).toBe(2);
+    expect(getDayNumber("2026-06-30", startDate)).toBe(3);
+    expect(getDayNumber("2026-06-27", startDate)).toBe(0);
+  });
 
-assert.equal(addDaysToDate(startDate, 1), "2026-06-29");
-assert.equal(getDaysPassed(startDate, "2026-06-30"), 3);
+  it("addDaysToDate / getDaysPassed", () => {
+    expect(addDaysToDate(startDate, 1)).toBe("2026-06-29");
+    expect(getDaysPassed(startDate, "2026-06-30")).toBe(3);
+  });
+});

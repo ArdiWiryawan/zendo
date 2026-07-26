@@ -11,7 +11,7 @@ const NUDGE_KEY = "zendo_evening_nudge_v1";
 const EVENING_HOUR = 19;
 const CHECK_MS = 20 * 60 * 1000;
 
-function isCloseDaySkipped(date: string): boolean {
+export function isCloseDaySkipped(date: string): boolean {
   try {
     return localStorage.getItem(`zendo.closeday.skipped.${date}`) === "1";
   } catch {

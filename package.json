@@ -8,6 +8,8 @@
     "build": "tsc -b && vite build",
     "preview": "vite preview --host 0.0.0.0",
     "lint": "tsc -b --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "testsprite": "testsprite"
   },
   "dependencies": {
@@ -31,6 +33,7 @@
     "postcss": "^8.4.49",
     "tailwindcss": "^3.4.17",
     "typescript": "^5.7.2",
-    "vite": "^6.0.5"
+    "vite": "^6.0.5",
+    "vitest": "^4.1.10"
   }
 }
