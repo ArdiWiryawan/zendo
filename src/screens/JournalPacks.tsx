@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from "react";
 import { useMonkStore } from "../store/useMonkStore";
-import { Card, PrimaryButton, SecondaryButton, GhostButton, EmptyState } from "./ui";
+import { Card, PrimaryButton, SecondaryButton, GhostButton, EmptyState } from "../components/ui";
 import { Lock, ChevronLeft, Check } from "lucide-react";
 import type { JournalPack, JournalPackSession } from "../types/app";
 import { useT, useLanguage } from "../i18n";

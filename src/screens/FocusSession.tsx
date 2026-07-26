@@ -6,18 +6,18 @@ import {
   GhostButton,
   PrimaryButton,
   SecondaryButton,
-} from "./ui";
+} from "../components/ui";
 import { FOCUS_PRESETS, getCompletedSeconds, getCurrentFocusPhase } from "../constants/focusPresets";
 import { loadLastFocus, saveLastFocus } from "../lib/storage";
 import { getTodayDateString } from "../lib/date";
 import { parseIntention } from "../lib/implementationIntention";
 import { unlockAudio } from "../lib/audio";
-import { CircularProgress } from "./CircularProgress";
+import { CircularProgress } from "../components/CircularProgress";
 import { selectEnergyForDate } from "../store/selectors";
 import { useMonkStore } from "../store/useMonkStore";
 import type { FocusSession, FocusSessionPreset } from "../types/app";
 import { useT } from "../i18n";
-import { FrictionWhy } from "./SeasonWidgets";
+import { FrictionWhy } from "../components/SeasonWidgets";
 
 export function formatTimer(seconds: number) {
   const safeSeconds = Math.max(0, seconds);

@@ -1,6 +1,6 @@
 import { useState, useMemo, useRef, useEffect, useCallback } from "react";
 import { useMonkStore } from "../store/useMonkStore";
-import { PrimaryButton, SecondaryButton, GhostButton, CalmDialog } from "./ui";
+import { PrimaryButton, SecondaryButton, GhostButton, CalmDialog } from "../components/ui";
 import { createId } from "../lib/ids";
 import { nowIso } from "../lib/date";
 import type { NotebookEntry } from "../types/app";

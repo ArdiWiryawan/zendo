@@ -1,0 +1,544 @@
+import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { useMonkStore } from "../store/useMonkStore";
+import { useT } from "../i18n";
+import { useCalmToast } from "../components/ui";
+import { getTodayDateString } from "../lib/date";
+import { routes } from "../constants/routes";
+import { DefenseChips } from "./TodayScreen";
+import { selectTodayPlan, selectActiveGoals, selectCurrentWeeklyPlan, selectEnergyForDate } from "../store/selectors";
+import {
+  Card,
+  EmptyState,
+  GhostButton,
+  PageHeader,
+  PrimaryButton,
+  SecondaryButton,
+  TextInput,
+  Textarea,
+} from "../components/ui";
+import { FocusSessionStarter } from "./FocusSession";
+import { SeasonProgressCard } from "../components/SeasonWidgets";
+import { CircularProgress } from "../components/CircularProgress";
+import type { EnergyLevel } from "../types/app";
+
+export function WeekScreen() {
+  const navigate = useNavigate();
+  const store = useMonkStore();
+  const t = useT();
+  const weeklyPlan = selectCurrentWeeklyPlan(store);
+  const goals = selectActiveGoals(store);
+  const today = getTodayDateString();
+  const todayPlan = selectTodayPlan(store);
+
+  useEffect(() => {
+    store.getOrCreateCurrentWeeklyPlan();
+  }, []);
+
+  const weekDates = useMemo(() => {
+    return weeklyPlan ? datesInRange(weeklyPlan.startDate, 7) : [];
+  }, [weeklyPlan?.startDate]);
+
+  const stats = useMemo(() => {
+    if (!weeklyPlan) return null;
+    const plans = weekDates.map((date) => store.dayPlans.find((d) => d.date === date));
+    const completed = plans.filter((p) => p?.status === "completed").length;
+    const partial = plans.filter((p) => p?.status === "partial").length;
+    const rest = plans.filter((p) => p?.dayType === "rest" || p?.status === "rest").length;
+    const missed = plans.filter((p) => p?.status === "missed" || p?.status === "relapse").length;
+    const targetFocus = weeklyPlan.goalAllocations.reduce((s, a) => s + a.targetCount, 0) || 6;
+    const focusDone = weeklyPlan.goalAllocations.reduce((s, a) => s + a.completedCount, 0);
+    const energyCounts = weekDates.reduce((acc, date) => {
+      const lvl = selectEnergyForDate(store, date);
+      if (lvl) acc[lvl] = (acc[lvl] ?? 0) + 1;
+      return acc;
+    }, {} as Record<EnergyLevel, number>);
+    const energyTotal = Object.values(energyCounts).reduce((a, b) => a + b, 0);
+    return { completed, partial, rest, missed, targetFocus, focusDone, energyCounts, energyTotal };
+  }, [weeklyPlan, weekDates, store.dayPlans, store.energyLogs]);
+
+  const remainingDays = weekDates.filter((d) => d >= today).length;
+
+  const focusMinutes = useMemo(() => {
+    if (!weeklyPlan) return 0;
+    return Math.round(
+      weekDates.reduce((sum, date) => sum + selectTotalFocusSecondsForDate(store, date), 0) / 60
+    );
+  }, [weeklyPlan, weekDates, store.focusSessions]);
+
+  const hasJournalThisWeek = useMemo(() => {
+    if (!weeklyPlan) return false;
+    const set = new Set(weekDates);
+    return store.journalEntries.some((e) => set.has(e.date));
+  }, [weeklyPlan, weekDates, store.journalEntries]);
+
+  const showWeekWrap = !!weeklyPlan && !!stats && (
+    stats.focusDone > 0 || stats.rest > 0 || stats.completed > 0 || stats.partial > 0 || hasJournalThisWeek
+  );
+  const heldDays = stats ? stats.completed + stats.partial + stats.rest : 0;
+  const wrapWin = stats
+    ? stats.focusDone > 0
+      ? t("week.wrap.winFocus")
+      : stats.rest > 0
+      ? t("week.wrap.winRest")
+      : t("week.wrap.winSoft")
+    : "";
+
+  return (
+    <>
+      <PageHeader
+        title={weeklyPlan ? t("week.weekN", { n: weeklyPlan.weekNumber }) : t("week.title")}
+        subtitle={
+          weeklyPlan
+            ? `${formatHumanDate(weeklyPlan.startDate)} – ${formatHumanDate(weeklyPlan.endDate)}`
+            : t("week.defaultSubtitle")
+        }
+        rightSlot={<SettingsLink />}
+      />
+      <div className="space-y-5">
+        {!weeklyPlan || !stats ? (
+          <EmptyState
+            title={t("week.emptyTitle")}
+            description={t("week.emptyDesc")}
+            actionLabel={t("week.openToday")}
+            onAction={() => navigate(routes.today)}
+          />
+        ) : (
+          <>
+            <DefenseChips />
+            <Card className="overflow-hidden p-4 sm:p-5">
+              <div className="mb-4 flex items-end justify-between gap-3">
+                <div>
+                  <p className="text-xs font-bold uppercase tracking-[0.18em] text-monk-muted">{t("week.rhythm")}</p>
+                  <p className="mt-1 text-2xl font-bold tabular-nums tracking-tight">
+                    {stats.focusDone}
+                    <span className="text-base font-semibold text-monk-muted">/{stats.targetFocus}</span>
+                  </p>
+                  <p className="mt-0.5 text-xs text-monk-muted">{t("week.focusComplete")}</p>
+                </div>
+                <div className="text-right text-xs text-monk-muted space-y-0.5">
+                  {stats.rest > 0 ? <p>{t("week.restCount", { n: stats.rest })}</p> : null}
+                  {stats.partial > 0 ? <p>{t("week.partialCount", { n: stats.partial })}</p> : null}
+                  {stats.missed > 0 ? <p className="text-monk-danger/80">{t("week.missedCount", { n: stats.missed })}</p> : null}
+                  <p>{remainingDays === 1 ? t("week.daysLeft", { n: remainingDays }) : t("week.daysLeftPlural", { n: remainingDays })}</p>
+                </div>
+              </div>
+
+              <div className="mb-4 h-1.5 rounded-full bg-monk-soft overflow-hidden" aria-hidden="true">
+                <div
+                  className="h-full rounded-full bg-monk-accent transition-all"
+                  style={{ width: `${Math.min(100, Math.round((stats.focusDone / Math.max(1, stats.targetFocus)) * 100))}%` }}
+                />
+              </div>
+
+              {stats.completed + stats.partial + stats.rest > 0 ? (
+                <p className="mb-4 text-xs leading-5 text-monk-muted">
+                  {stats.missed === 0
+                    ? t("week.softWin.held")
+                    : t("week.softWin.body")}
+                </p>
+              ) : null}
+
+              {/* Mobile: 7×44px + ring-offset overflows card; shrink + inset ring */}
+              <div
+                className="flex min-w-0 items-stretch justify-between gap-0.5 sm:gap-1.5 px-0.5"
+                role="list"
+                aria-label={t("week.daysAria")}
+              >
+                {weekDates.map((date) => {
+                  const dayPlan = store.dayPlans.find((d) => d.date === date);
+                  const weekday = new Date(date + "T00:00:00").toLocaleDateString("en-US", { weekday: "short" });
+                  const dayNum = date.slice(8);
+                  const isToday = date === today;
+                  const isFuture = date > today;
+                  const status = dayPlan?.status ?? "not_started";
+                  const isCompleted = status === "completed";
+                  const isPartial = status === "partial";
+                  const isRest = dayPlan?.dayType === "rest" || status === "rest";
+                  const isRelapse = status === "relapse";
+                  const isMissed = status === "missed";
+                  const energyLevel = selectEnergyForDate(store, date);
+                  const energyDot =
+                    energyLevel === "high" ? "bg-monk-success" :
+                    energyLevel === "medium" ? "bg-monk-accent" :
+                    energyLevel === "low" ? "bg-monk-danger" : "bg-transparent";
+                  const goalTitle = dayPlan?.goalId
+                    ? goals.find((g) => g.id === dayPlan.goalId)?.title
+                    : isRest ? t("week.rest") : undefined;
+                  const statusWord = isCompleted
+                    ? t("week.completed")
+                    : isPartial
+                    ? t("week.partial")
+                    : isRest
+                    ? t("week.rest")
+                    : isMissed
+                    ? t("week.missed")
+                    : isRelapse
+                    ? t("week.relapse")
+                    : isFuture
+                    ? t("week.upcoming")
+                    : t("week.open");
+                  const label = [
+                    weekday,
+                    dayNum,
+                    isToday ? t("week.today") : "",
+                    statusWord,
+                    goalTitle ?? ""
+                  ].filter(Boolean).join(", ");
+
+                  const circleClass = isCompleted
+                    ? "bg-monk-success/15 border-monk-success/50 text-monk-success"
+                    : isPartial
+                    ? "bg-monk-accent/15 border-monk-accent/40 text-monk-accent"
+                    : isRest
+                    ? "bg-monk-rest/15 border-monk-rest/40 text-monk-rest"
+                    : isRelapse
+                    ? "bg-monk-danger/10 border-monk-danger/40 text-monk-danger"
+                    : isMissed
+                    ? "bg-monk-text-soft/5 border-monk-text-soft/25 text-monk-text-soft/50"
+                    : isFuture
+                    ? "bg-transparent border-monk-border/30 text-monk-text-soft/40"
+                    : "bg-monk-soft border-monk-border text-monk-text-soft";
+
+                  const DayInner = (
+                    <>
+                      <div
+                        className={`grid h-9 w-9 sm:h-11 sm:w-11 shrink-0 place-items-center rounded-full border-2 text-[10px] sm:text-[11px] font-mono font-bold transition-colors ${circleClass} ${
+                          isToday ? "ring-2 ring-inset ring-monk-accent/70" : ""
+                        }`}
+                      >
+                        {isCompleted ? <Check size={14} strokeWidth={2.5} /> : isRest ? <Moon size={12} strokeWidth={1.75} /> : dayNum}
+                      </div>
+                      <span className={`text-[10px] sm:text-[11px] font-semibold uppercase tracking-wide ${
+                        isToday ? "text-monk-accent" : "text-monk-text-soft/60"
+                      }`}>
+                        {weekday.slice(0, 2)}
+                      </span>
+                      <span className={`h-1.5 w-1.5 rounded-full ${energyDot}`} aria-hidden="true" />
+                    </>
+                  );
+
+                  if (isToday) {
+                    return (
+                      <button
+                        key={date}
+                        type="button"
+                        role="listitem"
+                        aria-label={label}
+                        onClick={() => navigate(routes.today)}
+                        className="flex min-w-0 flex-1 flex-col items-center gap-1 rounded-xl py-1 transition active:scale-95"
+                      >
+                        {DayInner}
+                      </button>
+                    );
+                  }
+
+                  return (
+                    <div key={date} role="listitem" aria-label={label} className="flex min-w-0 flex-1 flex-col items-center gap-1 py-1">
+                      {DayInner}
+                    </div>
+                  );
+                })}
+              </div>
+
+              <div className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-monk-text-soft/70">
+                <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-sm bg-monk-success/80" />done</span>
+                <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-sm bg-monk-accent/70" />partial</span>
+                <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-sm bg-monk-rest/60" />rest</span>
+                <span className="ml-auto flex items-center gap-1.5">
+                  <span className="h-1.5 w-1.5 rounded-full bg-monk-success" />
+                  <span className="h-1.5 w-1.5 rounded-full bg-monk-accent" />
+                  <span className="h-1.5 w-1.5 rounded-full bg-monk-danger" />
+                  energy
+                </span>
+              </div>
+            </Card>
+
+            {showWeekWrap ? (
+              <Card className="p-4">
+                <p className="text-xs font-bold uppercase tracking-[0.18em] text-monk-muted">{t("week.wrap.title")}</p>
+                <div className="mt-2 space-y-1 text-sm text-monk-text">
+                  <p>{t("week.wrap.focus", { n: focusMinutes })}</p>
+                  <p>{t("week.wrap.held", { n: heldDays })}</p>
+                  {stats.rest > 0 ? <p>{t("week.wrap.rest", { n: stats.rest })}</p> : null}
+                  <p className="text-monk-muted">{wrapWin}</p>
+                </div>
+              </Card>
+            ) : null}
+
+            {!todayPlan ? (
+              <Card className="p-4 border-monk-accent/30 bg-monk-accent-soft/40">
+                <p className="text-sm font-semibold">Today is open</p>
+                <p className="mt-1 text-xs text-monk-muted">Pick one focus theme. One theme is enough.</p>
+                <PrimaryButton className="mt-4" onClick={() => navigate(routes.today)}>
+                  Plan Today
+                </PrimaryButton>
+              </Card>
+            ) : null}
+
+            {stats.energyTotal > 0 ? (
+              <Card className="p-4">
+                <div className="mb-3 flex items-center justify-between">
+                  <p className="text-xs font-bold uppercase tracking-[0.18em] text-monk-muted">Energy</p>
+                  <span className="text-xs text-monk-muted">{stats.energyTotal} logged</span>
+                </div>
+                <div className="flex h-2 overflow-hidden rounded-full bg-monk-soft">
+                  {(["high", "medium", "low"] as EnergyLevel[]).map((lvl) => {
+                    const n = stats.energyCounts[lvl] ?? 0;
+                    if (!n) return null;
+                    const color = lvl === "high" ? "bg-monk-success" : lvl === "medium" ? "bg-monk-accent" : "bg-monk-danger";
+                    return (
+                      <div
+                        key={lvl}
+                        className={color}
+                        style={{ width: `${(n / stats.energyTotal) * 100}%` }}
+                        title={`${n} ${lvl}`}
+                      />
+                    );
+                  })}
+                </div>
+                <div className="mt-2 flex flex-wrap gap-3 text-xs text-monk-muted">
+                  {(["high", "medium", "low"] as EnergyLevel[]).map((lvl) =>
+                    stats.energyCounts[lvl] ? (
+                      <span key={lvl} className="capitalize">{lvl} {stats.energyCounts[lvl]}d</span>
+                    ) : null
+                  )}
+                </div>
+              </Card>
+            ) : null}
+
+            <div>
+              <SectionHeader title="Goals this week" subtitle="Touch every goal at least once." />
+              <div className="space-y-3">
+                {weeklyPlan.goalAllocations.map((allocation) => {
+                  const goal = goals.find((item) => item.id === allocation.goalId);
+                  const progress = allocation.targetCount > 0
+                    ? Math.min(100, Math.round((allocation.completedCount / allocation.targetCount) * 100))
+                    : 0;
+                  const complete = allocation.completedCount >= allocation.targetCount;
+                  const remaining = Math.max(0, allocation.targetCount - allocation.completedCount);
+                  const behind = !complete && remaining > remainingDays;
+                  const statusLabel = complete ? "Done" : behind ? "Behind" : allocation.completedCount > 0 ? "In progress" : "Not started";
+                  const statusClass = complete
+                    ? "text-monk-success border-monk-success/30 bg-monk-success-soft"
+                    : behind
+                    ? "text-monk-warning border-monk-warning/30 bg-monk-warning-soft"
+                    : allocation.completedCount > 0
+                    ? "text-monk-accent border-monk-accent/30 bg-monk-accent-soft"
+                    : "text-monk-muted border-monk-border bg-monk-soft";
+
+                  return (
+                    <Card key={allocation.goalId} className="p-4">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm font-semibold truncate">{goal?.title ?? "Goal"}</p>
+                          {goal?.why ? (
+                            <p className="mt-1 text-xs text-monk-accent/90 line-clamp-2">Because {goal.why}</p>
+                          ) : null}
+                          {goal?.keystoneAction ? (
+                            <p className="mt-1 text-xs text-monk-muted line-clamp-2">{goal.keystoneAction}</p>
+                          ) : null}
+                        </div>
+                        <span className={`shrink-0 rounded-full border px-2 py-0.5 text-[11px] font-bold uppercase tracking-wide ${statusClass}`}>
+                          {statusLabel}
+                        </span>
+                      </div>
+                      <div className="mt-3 flex items-center gap-2">
+                        <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-monk-soft">
+                          <div
+                            className={`h-full rounded-full transition-all ${
+                              complete ? "bg-monk-success" : behind ? "bg-monk-warning" : "bg-monk-accent"
+                            }`}
+                            style={{ width: `${progress}%` }}
+                          />
+                        </div>
+                        <span className="shrink-0 text-xs font-mono tabular-nums text-monk-muted">
+                          {allocation.completedCount}/{allocation.targetCount}
+                        </span>
+                      </div>
+                      {goal ? <GoalWhyInline goalId={goal.id} why={goal.why} /> : null}
+                    </Card>
+                  );
+                })}
+
+                <Card className="bg-monk-soft/50 p-4">
+                  <div className="flex items-center gap-3">
+                    <div className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-monk-surface text-monk-rest">
+                      <Moon size={16} strokeWidth={1.5} />
+                    </div>
+                    <div>
+                      <p className="text-sm font-semibold">Rest day</p>
+                      <p className="mt-0.5 text-xs text-monk-muted">
+                        {stats.rest > 0 ? "Taken this week. Protect the recovery." : "Still open — rest is part of the path."}
+                      </p>
+                    </div>
+                  </div>
+                </Card>
+              </div>
+            </div>
+
+            <WeeklyReviewCard
+              weeklyPlan={weeklyPlan}
+              goals={goals}
+              stats={stats}
+              remainingDays={remainingDays}
+              weekDates={weekDates}
+              today={today}
+            />
+          </>
+        )}
+      </div>
+    </>
+  );
+}
+
+function GoalWhyInline({ goalId, why }: { goalId: string; why?: string }) {
+  const updateGoalWhy = useMonkStore((s) => s.updateGoalWhy);
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(why ?? "");
+
+  if (editing) {
+    return (
+      <div className="mt-3 space-y-2 border-t border-monk-border/40 pt-3">
+        <TextInput
+          label="Why this goal"
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          placeholder="Because…"
+        />
+        <div className="flex gap-2">
+          <GhostButton className="flex-1 min-h-9 text-xs" onClick={() => setEditing(false)}>
+            Cancel
+          </GhostButton>
+          <PrimaryButton
+            className="flex-1 min-h-9 text-xs"
+            onClick={() => {
+              updateGoalWhy(goalId, draft);
+              setEditing(false);
+            }}
+          >
+            Save
+          </PrimaryButton>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={() => {
+        setDraft(why ?? "");
+        setEditing(true);
+      }}
+      className="mt-2 text-[11px] font-semibold text-monk-accent hover:underline"
+    >
+      {why ? "Edit goal why" : "Add goal why"}
+    </button>
+  );
+}
+
+function WeeklyReviewCard({
+  weeklyPlan,
+  goals,
+  stats,
+  remainingDays,
+  weekDates,
+  today
+}: {
+  weeklyPlan: NonNullable<ReturnType<typeof selectCurrentWeeklyPlan>>;
+  goals: ReturnType<typeof selectActiveGoals>;
+  stats: {
+    completed: number;
+    partial: number;
+    rest: number;
+    missed: number;
+    targetFocus: number;
+    focusDone: number;
+  };
+  remainingDays: number;
+  weekDates: string[];
+  today: string;
+}) {
+  const navigate = useNavigate();
+  const why = useMonkStore((s) => s.activeSeason?.why);
+  const weekEnded = remainingDays === 0 || weekDates[weekDates.length - 1] < today;
+  const lateWeek = remainingDays <= 1 || weekEnded;
+
+  if (!lateWeek) return null;
+
+  const starved = weeklyPlan.goalAllocations
+    .map((a) => {
+      const goal = goals.find((g) => g.id === a.goalId);
+      return { goal, remaining: Math.max(0, a.targetCount - a.completedCount), done: a.completedCount, target: a.targetCount };
+    })
+    .filter((x) => x.remaining > 0)
+    .sort((a, b) => b.remaining - a.remaining);
+
+  const hitRate = stats.targetFocus > 0 ? Math.round((stats.focusDone / stats.targetFocus) * 100) : 0;
+
+  return (
+    <Card className="border-monk-accent/25 bg-monk-accent-soft/20 p-5">
+      <p className="text-[10px] font-bold uppercase tracking-widest text-monk-accent">
+        {weekEnded ? "Week review" : "Almost week-end"}
+      </p>
+      <p className="mt-2 text-sm font-semibold text-monk-text">
+        {stats.focusDone}/{stats.targetFocus} focus days · {hitRate}% of target
+      </p>
+      {stats.missed > 0 ? (
+        <p className="mt-1 text-xs text-monk-muted">{stats.missed} missed · data, not verdict.</p>
+      ) : (
+        <p className="mt-1 text-xs text-monk-muted">No missed days logged. Steady.</p>
+      )}
+
+      {starved.length ? (
+        <div className="mt-4">
+          <p className="text-[11px] font-bold uppercase tracking-wider text-monk-muted">Needs attention</p>
+          <ul className="mt-2 space-y-1.5">
+            {starved.slice(0, 3).map(({ goal, remaining, done, target }) => (
+              <li key={goal?.id ?? target} className="text-sm text-monk-text">
+                <span className="font-semibold">{goal?.title ?? "Goal"}</span>
+                <span className="text-monk-muted"> · {done}/{target} · {remaining} short</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : (
+        <p className="mt-3 text-sm text-monk-success">Every goal touched enough this week.</p>
+      )}
+
+      {why?.identity || why?.consequenceOfInaction ? (
+        <div className="mt-4 rounded-xl border border-monk-border/70 bg-monk-bg/50 p-3">
+          <p className="text-[10px] font-bold uppercase tracking-wider text-monk-muted">Still true?</p>
+          <p className="mt-1 text-sm leading-5 text-monk-text line-clamp-3">
+            {why.identity || why.consequenceOfInaction}
+          </p>
+          <button
+            type="button"
+            className="mt-2 text-[11px] font-semibold text-monk-accent hover:underline"
+            onClick={() => navigate(routes.timeline)}
+          >
+            Revisit why
+          </button>
+        </div>
+      ) : (
+        <button
+          type="button"
+          className="mt-4 text-xs font-semibold text-monk-accent hover:underline"
+          onClick={() => navigate(routes.timeline)}
+        >
+          Set your why before next week
+        </button>
+      )}
+
+      <p className="mt-4 text-xs leading-5 text-monk-muted">
+        Next week: protect starved goals first. One theme per day still wins.
+      </p>
+      <SecondaryButton className="mt-3" onClick={() => navigate(routes.today)}>
+        Plan tomorrow
+      </SecondaryButton>
+    </Card>
+  );
+}
+
+
