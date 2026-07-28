@@ -415,24 +415,18 @@ export function TodayScreen() {
       <div className="space-y-5">
         {/* Zone A — Focus card (compact or expanded) */}
         <motion.div layout transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}>
-        {!todayPlan ? (
-          <>
-            <div className="today-primary-anchor space-y-5">
-              <SeasonProgressCard />
-              <FlowPickToday goals={activeGoals} />
-            </div>
-            <WeeklyStatusIndicators />
-          </>
-        ) : (
-          <>
+        {todayPlan ? (
+          <div
+            className={`${focusExpanded ? "" : "cursor-pointer active:scale-[0.99]"} transition-transform duration-200`}
+            onClick={() => {
+              if (!focusExpanded) expandFocus();
+            }}
+          >
             <Card
               important
-              className={`today-primary-anchor relative overflow-hidden p-5 transition-transform duration-200 ${
+              className={`today-primary-anchor relative overflow-hidden p-5 ${
                 isDone ? "border-monk-success/30" : isRest ? "border-monk-rest/25" : ""
-              } ${focusExpanded ? "" : "cursor-pointer active:scale-[0.99]"}`}
-              onClick={() => {
-                if (!focusExpanded) expandFocus();
-              }}
+              }`}
             >
               {!focusExpanded ? (
                 <div className="flex flex-col gap-2">
@@ -473,7 +467,7 @@ export function TodayScreen() {
                     className="flex items-center gap-1 text-xs text-monk-muted hover:text-monk-text transition"
                   >
                     <ChevronDown size={12} />
-                    <span>{t("today.collapse") || "Collapse"}</span>
+                    <span>{"Collapse"}</span>
                   </button>
                 </div>
               {!isDone && !isRest ? (
@@ -723,6 +717,8 @@ export function TodayScreen() {
               </>
               )}
             </Card>
+          </div>
+        ) : null}
         </motion.div>
 
         {/* Zone B — Expanded content */}
