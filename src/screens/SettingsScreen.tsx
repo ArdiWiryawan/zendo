@@ -31,6 +31,7 @@ import { useMonkStore } from "../store/useMonkStore";
 import { useT } from "../i18n";
 import {
   getDailyJournalPromptForDate,
+  getJournalAnswerItems,
   getJournalQuestionLabels,
 } from "../i18n/prompts";
 import type { AppLanguage } from "../types/app";
@@ -53,7 +54,7 @@ function syncDotColor(status: SyncStatus) {
 
 const sectionReveal = {
   hidden: { opacity: 0, y: 16 },
-  visible: { opacity: 1, y: 0, transition: { duration: 0.4, ease: [0.16, 1, 0.3, 1] } },
+  visible: { opacity: 1, y: 0, transition: { duration: 0.4, ease: [0.16, 1, 0.3, 1] as any } },
 };
 
 export default function SettingsScreen() {
@@ -150,19 +151,15 @@ export default function SettingsScreen() {
       `Started: ${season.startDate} (${daysPassed} days)`,
       "",
       "## Goals",
-      ...store.goals.filter(g => !g.archived).map(g => `- **${g.title}** (${g.category}): ${g.progress}%`),
+      ...store.goals.filter(g => g.seasonId === season.id && g.status !== "released").map(g => `- **${g.title}** (Priority ${g.priority}): ${g.status}`),
       "",
       "## Journal",
       ...journal.map(j => {
-        const prompt = getDailyJournalPromptForDate(j.createdAt.slice(0, 10));
-        const questionTexts = prompt ? prompt.questions.map(q => q.text) : [];
+        const items = getJournalAnswerItems(lang, j.answers, j.createdAt.slice(0, 10));
         return [
           `### ${j.createdAt.slice(0, 10)}`,
-          j.answers.whatWentWell ? `- **${labels.whatWentWell}**: ${j.answers.whatWentWell}` : "",
-          j.answers.whatCouldBeBetter ? `- **${labels.whatCouldBeBetter}**: ${j.answers.whatCouldBeBetter}` : "",
-          j.answers.whatShouldBeEasierTomorrow ? `- **${labels.whatShouldBeEasierTomorrow}**: ${j.answers.whatShouldBeEasierTomorrow}` : "",
-          j.answers.whatShouldBeHarderTomorrow ? `- **${labels.whatShouldBeHarderTomorrow}**: ${j.answers.whatShouldBeHarderTomorrow}` : ""
-        ].filter(Boolean).join("\n");
+          ...items.map(item => `- **${item.question}**: ${item.answer}`)
+        ].join("\n");
       }),
       "",
       "## Learning Log",
@@ -423,7 +420,7 @@ export default function SettingsScreen() {
 
 /* ─── Redesigned Sub-components ─── */
 
-function SectionHeader({ icon: Icon, label, danger }: { icon: React.ComponentType<{ size?: number; strokeWidth?: number; className?: string }>; label: string; danger?: boolean }) {
+function SectionHeader({ icon: Icon, label, danger }: { icon: React.ComponentType<any>; label: string; danger?: boolean }) {
   const bg = danger ? "bg-monk-danger/10" : "bg-monk-accent/10";
   const border = danger ? "border border-monk-danger/20" : "border border-monk-accent/15";
   const iconColor = danger ? "text-monk-danger" : "text-monk-accent";
@@ -438,7 +435,7 @@ function SectionHeader({ icon: Icon, label, danger }: { icon: React.ComponentTyp
   );
 }
 
-function MonkToggle({ checked, ariaLabel, onToggle }: { checked: boolean; ariaLabel: string; onToggle: () => void }) {
+function MonkToggle({ checked, "aria-label": ariaLabel, onToggle }: { checked: boolean; "aria-label": string; onToggle: () => void }) {
   return (
     <button
       type="button"
@@ -457,7 +454,7 @@ function MonkToggle({ checked, ariaLabel, onToggle }: { checked: boolean; ariaLa
   );
 }
 
-function SettingsRow({ icon: Icon, title, description, children, danger }: { icon?: React.ComponentType<{ size?: number; strokeWidth?: number; className?: string }>; title: string; description?: string; children: React.ReactNode; danger?: boolean }) {
+function SettingsRow({ icon: Icon, title, description, children, danger }: { icon?: React.ComponentType<any>; title: string; description?: string; children: React.ReactNode; danger?: boolean }) {
   const iconBg = danger ? "bg-monk-danger/8" : "bg-monk-accent/8";
   const iconColor = danger ? "text-monk-danger/80" : "text-monk-accent/80";
   return (
