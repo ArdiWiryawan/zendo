@@ -46,7 +46,6 @@ body {
   color: var(--color-text);
   font-family: Outfit, ui-sans-serif, system-ui, sans-serif;
   overscroll-behavior: none;
-  overscroll-behavior-y: contain;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
   background:

@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Moon, BookOpen, Check, ChevronRight, ChevronDown, Sun } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
+import { Moon, BookOpen, Check, ChevronRight, Sun } from "lucide-react";
 import { useMonkStore } from "../store/useMonkStore";
 import { useT } from "../i18n";
 import { useCalmToast } from "../components/ui";
@@ -209,20 +208,6 @@ function ReEntryBanner() {
   );
 }
 
-function LiveClock() {
-  const [time, setTime] = useState(() =>
-    new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
-  );
-  useEffect(() => {
-    const id = setInterval(() => {
-      setTime(new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }));
-    }, 10000);
-    return () => clearInterval(id);
-  }, []);
-  // ponytail: no seconds shown, add when user requests
-  return <span>{time}</span>;
-}
-
 export function TodayScreen() {
   const navigate = useNavigate();
   const store = useMonkStore();
@@ -324,25 +309,6 @@ export function TodayScreen() {
     ? "intention"
     : "focus";
 
-  const [focusExpanded, setFocusExpanded] = useState(false);
-  useEffect(() => { setFocusExpanded(false) }, [today]);
-
-  const expandFocus = () => {
-    setFocusExpanded(true);
-    setTimeout(() => window.scrollTo({ top: 0, behavior: "smooth" }), 100);
-  };
-
-  const primaryCtaHint: Record<TodayPrimaryKind, string> = {
-    pick: "Choose focus",
-    resume: "Resume session",
-    held: "Day held",
-    close: "Close day",
-    rest: "Rest day",
-    morning: "Morning pages",
-    intention: "Set intention",
-    focus: "Start focus",
-  };
-
   const statusLabel = !todayPlan
     ? t("today.status.open")
     : isDone
@@ -413,63 +379,34 @@ export function TodayScreen() {
         rightSlot={<SettingsLink />}
       />
       <div className="space-y-5">
-        {/* Zone A — Focus card (compact or expanded) */}
-        <motion.div layout transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}>
-        {todayPlan ? (
-          <div
-            className={`${focusExpanded ? "" : "cursor-pointer active:scale-[0.99]"} transition-transform duration-200`}
-            onClick={() => {
-              if (!focusExpanded) expandFocus();
+        <WhyStrip />
+        <ReEntryBanner />
+        {coachStep ? (
+          <CoachHint
+            step={coachStep}
+            onDismiss={() => {
+              dismissCoachStep(coachStep);
+              setCoachTick((n) => n + 1);
             }}
-          >
+            onCta={coachCta}
+          />
+        ) : null}
+        {!todayPlan ? (
+          <>
+            <div className="today-primary-anchor space-y-5">
+              <SeasonProgressCard />
+              <FlowPickToday goals={activeGoals} />
+            </div>
+            <WeeklyStatusIndicators />
+          </>
+        ) : (
+          <>
             <Card
               important
               className={`today-primary-anchor relative overflow-hidden p-5 ${
                 isDone ? "border-monk-success/30" : isRest ? "border-monk-rest/25" : ""
               }`}
             >
-              {!focusExpanded ? (
-                <div className="flex flex-col gap-2">
-                  <div className="flex items-center justify-between">
-                    <div className="text-3xl font-bold tracking-tight text-monk-text">
-                      <LiveClock />
-                    </div>
-                    <span className={`rounded-full border px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider ${statusClass}`}>
-                      {statusLabel}
-                    </span>
-                  </div>
-                  <h2 className="text-xl font-bold tracking-tight line-clamp-1 truncate">
-                    {isRest
-                      ? t("today.quietRecovery")
-                      : goal?.title ?? t("today.oneTheme")}
-                  </h2>
-                  {todayPlan?.mainAction ? (
-                    <p className="mt-1 text-xs text-monk-muted truncate">
-                      {todayPlan.mainAction}
-                    </p>
-                  ) : null}
-                  <div className="mt-2 flex items-center justify-between border-t border-monk-border/40 pt-2">
-                    <span className="text-xs font-semibold text-monk-accent">
-                      {primaryCtaHint[primaryKind]}
-                    </span>
-                    <ChevronRight size={14} className="text-monk-muted" />
-                  </div>
-                </div>
-              ) : (
-              <>
-                <div className="flex justify-between items-center mb-4 border-b border-monk-border/40 pb-2">
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setFocusExpanded(false);
-                    }}
-                    className="flex items-center gap-1 text-xs text-monk-muted hover:text-monk-text transition"
-                  >
-                    <ChevronDown size={12} />
-                    <span>{"Collapse"}</span>
-                  </button>
-                </div>
               {!isDone && !isRest ? (
                 <div
                   className="pointer-events-none absolute inset-0 bg-gradient-to-b from-monk-accent/8 to-transparent"
@@ -714,46 +651,7 @@ export function TodayScreen() {
                   </button>
                 </div>
               )}
-              </>
-              )}
             </Card>
-          </div>
-        ) : null}
-        </motion.div>
-
-        {/* Zone B — Expanded content */}
-        <AnimatePresence>
-          {focusExpanded && (
-            <motion.div
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: "auto" }}
-              exit={{ opacity: 0, height: 0 }}
-              transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
-              className="overflow-hidden"
-            >
-              <div className="mt-5 space-y-5 overflow-x-hidden">
-                <WhyStrip />
-                <ReEntryBanner />
-                {coachStep ? (
-                  <CoachHint
-                    step={coachStep}
-                    onDismiss={() => {
-                      dismissCoachStep(coachStep);
-                      setCoachTick((n) => n + 1);
-                    }}
-                    onCta={coachCta}
-                  />
-                ) : null}
-                {!todayPlan ? (
-                  <>
-                    <div className="today-primary-anchor space-y-5">
-                      <SeasonProgressCard />
-                      <FlowPickToday goals={activeGoals} />
-                    </div>
-                    <WeeklyStatusIndicators />
-                  </>
-                ) : (
-                  <>
 
             {/* Primary zone — one CTA by day-part / state */}
             <div className="space-y-3">
@@ -1010,12 +908,8 @@ export function TodayScreen() {
             <SeasonProgressCard compact />
             <WeeklyStatusIndicators />
             <PlanTomorrow goals={activeGoals} />
-                  </>
-                )}
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
+          </>
+        )}
       </div>
       {undoPlan ? (
         <div className="pointer-events-none fixed inset-x-0 bottom-[calc(env(safe-area-inset-bottom)+88px)] z-[60] flex justify-center px-6">
