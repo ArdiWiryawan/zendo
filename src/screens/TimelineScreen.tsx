@@ -77,26 +77,26 @@ function TimelineStats() {
 
   return (
     <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35, ease: "easeOut" }} className="grid grid-cols-2 gap-4">
-      <div className="rounded-xl border border-monk-accent/25 bg-gradient-to-br from-monk-surface to-monk-surface/60 p-4 relative overflow-hidden transition hover:border-monk-accent/40">
+      <div className="rounded-xl border border-monk-accent/25 bg-gradient-to-br from-monk-surface to-monk-surface/60 p-4 relative overflow-hidden transition hover:border-monk-accent/40 monk-depth">
         <div className="flex items-start justify-between gap-2">
           <div>
             <p className="text-sm font-semibold uppercase tracking-wider text-monk-muted">Focus Time</p>
-            <p className="text-3xl font-bold mt-1 text-monk-accent tabular-nums leading-none">{totalFocusMinutes}<span className="text-base font-semibold text-monk-muted ml-1">min</span></p>
+            <p className="text-4xl font-bold mt-1 text-monk-accent tabular-nums leading-none">{totalFocusMinutes}<span className="text-base font-semibold text-monk-muted/50 ml-1">min</span></p>
             <p className="text-xs text-monk-muted mt-1">{totalFocusSessions} sessions</p>
           </div>
-          <div className="grid h-8 w-8 place-items-center rounded-full bg-monk-accent/10 shrink-0 mt-1">
+          <div className="grid h-8 w-8 place-items-center rounded-full bg-gradient-to-br from-monk-accent/20 to-monk-accent/5 border border-monk-accent/10 shrink-0 mt-1 shadow-[inset_0_1px_2px_rgba(0,0,0,0.2)]">
             <Timer size={14} strokeWidth={2} className="text-monk-accent" />
           </div>
         </div>
       </div>
-      <div className="rounded-xl border border-monk-success/25 bg-gradient-to-br from-monk-surface to-monk-surface/60 p-4 relative overflow-hidden transition hover:border-monk-success/40">
+      <div className="rounded-xl border border-monk-success/25 bg-gradient-to-br from-monk-surface to-monk-surface/60 p-4 relative overflow-hidden transition hover:border-monk-success/40 monk-depth">
         <div className="flex items-start justify-between gap-2">
           <div>
             <p className="text-sm font-semibold uppercase tracking-wider text-monk-muted">Consistency</p>
-            <p className="text-3xl font-bold mt-1 text-monk-success tabular-nums leading-none">{consistencyRate}<span className="text-base font-semibold text-monk-muted ml-1">%</span></p>
+            <p className="text-4xl font-bold mt-1 text-monk-success tabular-nums leading-none">{consistencyRate}<span className="text-base font-semibold text-monk-muted/50 ml-1">%</span></p>
             <p className="text-xs text-monk-muted mt-1">{completedDaysCount}/{totalPassedDays} days</p>
           </div>
-          <div className="grid h-8 w-8 place-items-center rounded-full bg-monk-success/10 shrink-0 mt-1">
+          <div className="grid h-8 w-8 place-items-center rounded-full bg-gradient-to-br from-monk-success/20 to-monk-success/5 border border-monk-success/10 shrink-0 mt-1 shadow-[inset_0_1px_2px_rgba(0,0,0,0.2)]">
             <Flame size={14} strokeWidth={2} className="text-monk-success" />
           </div>
         </div>
@@ -176,32 +176,32 @@ function TimelineEventRow({ event }: { event: TimelineEvent }) {
   return (
     <div className="flex gap-3">
       <div className="flex flex-col items-center">
-        <div className={`grid h-8 w-8 place-items-center rounded-full border ${bgClasses[event.type]}`}>
+        <div className={`grid h-9 w-9 place-items-center rounded-full border shadow-[inset_0_1px_2px_rgba(0,0,0,0.2)] ${bgClasses[event.type]}`}>
           {icons[event.type]}
         </div>
-        <div className={`w-[2px] flex-1 bg-gradient-to-b ${typeColors[event.type]} min-h-[20px]`} />
+        <div className={`w-[2px] flex-1 bg-gradient-to-b ${typeColors[event.type]} opacity-60 rounded-b-full min-h-[20px]`} />
       </div>
-        <div className="flex-1 pb-6">
-          <Card className={`p-4 bg-monk-surface/30 hover:bg-monk-surface/60 shadow-[inset_0_1px_0_rgba(255,255,255,0.02)] transition-all duration-150 border-l-4 ${leftAccent[event.type]} border-t border-r border-b border-monk-border/30`}>
-            <div className="flex justify-between items-start gap-2">
-              <h4 className="text-sm font-bold text-monk-text leading-tight">{displayTitle}</h4>
-              <span className="text-xs font-mono text-monk-muted/80 shrink-0 tabular-nums">{timeLabel}</span>
+      <div className="flex-1 pb-5">
+        <Card className={`p-4 bg-monk-soft/80 hover:bg-monk-raised/60 shadow-[0_1px_3px_rgba(0,0,0,0.3)] hover:shadow-[0_2px_8px_rgba(0,0,0,0.4)] transition-all duration-150 border-l-4 ${leftAccent[event.type]} border-t border-r border-b border-monk-border/20`}>
+          <div className="flex justify-between items-start gap-2">
+            <h4 className="text-sm font-bold text-monk-text leading-tight tracking-wide">{displayTitle}</h4>
+            <span className="text-xs font-mono text-monk-muted/80 bg-monk-surface/50 rounded-md px-1.5 py-0.5 shrink-0 tabular-nums">{timeLabel}</span>
+          </div>
+          {displayDescription && (
+            <p className="mt-2 text-sm text-monk-muted leading-relaxed whitespace-pre-line">{displayDescription}</p>
+          )}
+          {journalItems.length > 0 ? (
+            <div className="mt-3 space-y-3 border-t border-monk-border/20 pt-3">
+              {journalItems.map((item) => (
+                <div key={item.id}>
+                  <p className="text-xs font-semibold uppercase tracking-wider text-monk-text-soft">{item.question}</p>
+                  <p className="mt-1 text-sm font-medium leading-relaxed text-monk-text border-l-2 border-monk-accent/30 pl-2">{item.answer}</p>
+                </div>
+              ))}
             </div>
-            {displayDescription && (
-              <p className="mt-2 text-sm text-monk-muted leading-relaxed whitespace-pre-line">{displayDescription}</p>
-            )}
-            {journalItems.length > 0 ? (
-              <div className="mt-3 space-y-3">
-                {journalItems.map((item) => (
-                  <div key={item.id}>
-                    <p className="text-xs font-semibold uppercase tracking-wider text-monk-muted/70">{item.question}</p>
-                    <p className="mt-1 text-sm font-medium leading-relaxed text-monk-text">{item.answer}</p>
-                  </div>
-                ))}
-              </div>
-            ) : null}
-          </Card>
-        </div>
+          ) : null}
+        </Card>
+      </div>
     </div>
   );
 }
@@ -311,7 +311,7 @@ export default function TimelineScreen() {
                 </div>
                 {/* Heatmap: circles when early in season, grid when enough days */}
                 {todayDayNum <= 13 ? (
-                  <div className="flex flex-wrap justify-center gap-2">
+                  <div className="flex flex-wrap justify-center gap-1.5">
                     {dates.filter((date) => date <= today).map((date) => {
                       const isToday = date === today;
                       const status = getDailyStatusForDate(store, date);
@@ -340,18 +340,18 @@ export default function TimelineScreen() {
                 ) : (
                   <>
                     {/* Day-of-week header */}
-                    <div className="grid grid-cols-7 gap-2 px-0.5">
+                    <div className="grid grid-cols-7 gap-1.5 px-0.5">
                       {DOW.map((d, i) => (
-                        <span key={i} className="text-center text-[9px] font-bold uppercase text-monk-muted/50 tabular-nums">{d}</span>
+                        <span key={i} className="text-center text-[10px] font-bold uppercase tracking-wider text-monk-muted/50 tabular-nums">{d}</span>
                       ))}
                     </div>
                     {/* Heatmap rows */}
-                    <div className="space-y-2">
+                    <div className="space-y-1.5">
                       {chunks.map((week, wi) => {
                         const allFuture = week.every((d) => d > today);
                         if (allFuture) return null;
                         return (
-                          <div key={wi} className="grid grid-cols-7 gap-2">
+                          <div key={wi} className="grid grid-cols-7 gap-1.5">
                             {week.map((date) => {
                               const isFuture = date > today;
                               const isToday = date === today;
@@ -373,7 +373,7 @@ export default function TimelineScreen() {
                                   onKeyDown={isEligible ? (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setRetroDate(date); }} : undefined}
                                   className={`w-full aspect-square rounded-lg transition-all duration-300 ${
                                     isFuture ? "bg-monk-border/10" : dotStyle(date)
-                                  } ${isToday ? "ring-2 ring-monk-accent" : ""} ${isEligible ? "cursor-pointer hover:scale-105 hover:ring-2 hover:ring-monk-accent" : ""}`}
+                                  } ${isToday ? "ring-2 ring-monk-accent shadow-[inset_0_1px_2px_rgba(0,0,0,0.4)]" : ""} ${isEligible ? "cursor-pointer hover:scale-105 hover:ring-2 hover:ring-monk-accent" : ""}`}
                                 />
                               );
                             })}
@@ -386,9 +386,9 @@ export default function TimelineScreen() {
                 {/* Legend */}
                 <div className="flex items-center gap-x-4 gap-y-1 pt-1 flex-wrap">
                   {([["bg-monk-success/75", "Done"], ["bg-monk-accent/60", "Partial"], ["bg-monk-rest/45", "Rest"], ["bg-monk-danger/55", "Relapse"], ["bg-monk-text-soft/20", "Missed"]] as const).map(([cls, label]) => (
-                    <span key={label} className="flex items-center gap-1">
-                      <span className={`inline-block h-2 w-2 rounded-[3px] ${cls}`} aria-hidden />
-                      <span className="text-[10px] text-monk-muted/70">{label}</span>
+                    <span key={label} className="flex items-center gap-1.5">
+                      <span className={`inline-block h-2.5 w-2.5 rounded-[3px] ${cls}`} aria-hidden />
+                      <span className="text-[11px] text-monk-muted/70">{label}</span>
                     </span>
                   ))}
                 </div>
@@ -400,7 +400,7 @@ export default function TimelineScreen() {
         
         {/* Timeline Log Section */}
         <div className="space-y-4 pt-2">
-          <SectionHeader title="Activity" />
+          <SectionHeader title={t("timeline.activity")} subtitle={t("timeline.activitySubtitle")} />
           {groupedEvents.length === 0 ? (
             <EmptyState
               title="No activity yet"
@@ -417,9 +417,9 @@ export default function TimelineScreen() {
 
                 return (
                   <div key={group.date} className="space-y-3">
-                    <div className="sticky top-0 z-10 bg-monk-bg/90 backdrop-blur py-1.5 -mx-1 px-1 flex items-center gap-2">
+                    <div className="sticky top-0 z-10 bg-monk-bg/90 backdrop-blur pt-1.5 pb-1.5 -mx-1 px-1 flex items-center gap-2 border-b border-monk-border/30">
                       <p className="text-xs font-bold text-monk-accent uppercase tracking-wider">{groupTitle}</p>
-                      <span className="text-[10px] font-bold text-monk-muted bg-monk-surface/60 px-1.5 py-0.5 rounded-full">
+                      <span className="text-[10px] font-bold text-monk-muted bg-monk-raised/60 border border-monk-border/30 px-1.5 py-0.5 rounded-full">
                         {group.events.length}
                       </span>
                     </div>
@@ -445,8 +445,8 @@ export default function TimelineScreen() {
 
       {/* Retroactive Logging Modal Overlay */}
       {retroDate ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-[2px]">
-          <Card className="w-full max-w-sm p-6 bg-monk-bg border border-monk-border shadow-2xl space-y-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-[4px]">
+          <Card className="w-full max-w-sm p-6 bg-monk-bg border border-monk-border shadow-2xl space-y-4 rounded-monk-lg">
             <div>
               <p className="text-xs font-bold text-monk-accent uppercase tracking-widest">Retroactive Log</p>
               <h3 className="text-lg font-bold text-monk-text mt-1">Log for {formatHumanDate(retroDate)}</h3>
@@ -460,8 +460,8 @@ export default function TimelineScreen() {
                 type="button"
                 className={`flex-1 min-h-10 rounded-xl border text-xs font-semibold transition active:scale-[0.98] ${
                   retroDayType === "goal"
-                    ? "border-monk-accent bg-monk-accent-soft text-monk-accent"
-                    : "border-monk-border bg-monk-soft text-monk-muted"
+                    ? "border-monk-accent ring-1 ring-monk-accent/30 bg-monk-accent-soft text-monk-accent shadow-[inset_0_1px_0_rgba(255,255,255,0.05),0_4px_12px_rgba(164,139,94,0.15)]"
+                    : "border-monk-border bg-monk-soft text-monk-muted hover:border-monk-border-strong"
                 }`}
                 onClick={() => setRetroDayType("goal")}
               >
@@ -471,8 +471,8 @@ export default function TimelineScreen() {
                 type="button"
                 className={`flex-1 min-h-10 rounded-xl border text-xs font-semibold transition active:scale-[0.98] ${
                   retroDayType === "rest"
-                    ? "border-monk-accent bg-monk-accent-soft text-monk-accent"
-                    : "border-monk-border bg-monk-soft text-monk-muted"
+                    ? "border-monk-accent ring-1 ring-monk-accent/30 bg-monk-accent-soft text-monk-accent shadow-[inset_0_1px_0_rgba(255,255,255,0.05),0_4px_12px_rgba(164,139,94,0.15)]"
+                    : "border-monk-border bg-monk-soft text-monk-muted hover:border-monk-border-strong"
                 }`}
                 onClick={() => setRetroDayType("rest")}
               >
@@ -490,7 +490,7 @@ export default function TimelineScreen() {
                       type="button"
                       className={`w-full p-3 rounded-xl border text-xs text-left font-semibold transition active:scale-[0.98] ${
                         retroGoalId === goal.id
-                          ? "border-monk-accent bg-monk-accent-soft text-monk-accent"
+                          ? "border-monk-accent ring-1 ring-monk-accent/30 bg-monk-accent-soft text-monk-accent shadow-[inset_0_1px_0_rgba(255,255,255,0.05),0_4px_12px_rgba(164,139,94,0.15)]"
                           : "border-monk-border bg-monk-surface hover:border-monk-border-strong text-monk-text"
                       }`}
                       onClick={() => setRetroGoalId(goal.id)}

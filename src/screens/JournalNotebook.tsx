@@ -4,7 +4,7 @@ import { PrimaryButton, SecondaryButton, GhostButton, CalmDialog } from "../comp
 import { createId } from "../lib/ids";
 import { nowIso } from "../lib/date";
 import type { NotebookEntry } from "../types/app";
-import { Search, Plus, Pin, PinOff, Trash2, ArrowLeft, X } from "lucide-react";
+import { Search, Plus, Pin, PinOff, Trash2, ArrowLeft, X, BookOpen } from "lucide-react";
 import { useT, useLanguage, type MessageKey } from "../i18n";
 
 const CATEGORY_HEX: Record<string, string> = {
@@ -109,9 +109,10 @@ export default function JournalNotebook() {
     <div className="relative space-y-4 pb-24">
       <div className="flex items-end justify-between gap-3">
         <div>
-          <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-monk-muted">
-            {t("notebook.collection")}
-          </p>
+          <div className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-[0.18em] text-monk-muted">
+            <BookOpen size={12} strokeWidth={2.5} />
+            <span>{t("notebook.collection")}</span>
+          </div>
           <p className="mt-0.5 text-sm text-monk-text-soft">
             {entries.length === 0
               ? t("notebook.noneYet")
@@ -141,7 +142,7 @@ export default function JournalNotebook() {
           placeholder={t("notebook.searchPlaceholder")}
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          className="w-full min-h-11 rounded-monk border border-monk-border bg-monk-surface pl-9 pr-10 text-sm text-monk-text placeholder:text-monk-text-soft focus:border-monk-accent focus:outline-none"
+          className="w-full min-h-11 rounded-monk border border-monk-border bg-monk-surface pl-9 pr-10 text-sm text-monk-text placeholder:text-monk-text-soft transition focus:border-monk-accent focus:shadow-[0_0_0_2px_rgba(164,139,94,0.2)] focus:outline-none"
         />
         {searchQuery ? (
           <button
@@ -159,7 +160,7 @@ export default function JournalNotebook() {
         <button
           type="button"
           onClick={() => setFilterCat(null)}
-          className={`shrink-0 rounded-full border px-3 py-1.5 text-[11px] font-bold uppercase tracking-wider transition ${
+          className={`shrink-0 rounded-full border px-3 py-1.5 text-[11px] font-bold uppercase tracking-wider transition duration-200 active:scale-[0.97] ${
             !filterCat
               ? "border-monk-accent bg-monk-accent-soft text-monk-accent"
               : "border-monk-border text-monk-muted hover:border-monk-border-strong"
@@ -176,7 +177,7 @@ export default function JournalNotebook() {
               key={cat.id}
               type="button"
               onClick={() => setFilterCat(isActive ? null : cat.id)}
-              className="flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-1.5 text-[11px] font-bold uppercase tracking-wider transition"
+              className="flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-1.5 text-[11px] font-bold uppercase tracking-wider transition duration-200 active:scale-[0.97]"
               style={{
                 borderColor: isActive ? hex : undefined,
                 color: isActive ? hex : undefined,
@@ -194,7 +195,8 @@ export default function JournalNotebook() {
       </div>
 
       {sorted.length === 0 ? (
-        <div className="notebook-empty rounded-monk border border-monk-border bg-monk-surface/60 px-6 py-12 text-center">
+        <div className="notebook-empty rounded-monk border border-monk-border bg-monk-surface/60 px-6 py-12 text-center flex flex-col items-center justify-center">
+          <BookOpen size={40} className="mb-3 text-monk-text-soft opacity-30" strokeWidth={1.5} />
           <p className="font-handwriting text-3xl text-monk-text-soft/70">
             {searchQuery || filterCat ? t("notebook.empty.notFound") : t("notebook.empty.title")}
           </p>
@@ -227,7 +229,9 @@ export default function JournalNotebook() {
             return (
               <article
                 key={entry.id}
-                className="notebook-card group relative overflow-hidden rounded-monk p-4 transition hover:border-monk-border-strong"
+                className={`notebook-card group relative overflow-hidden rounded-monk p-4 transition duration-150 hover:border-monk-border-strong hover:-translate-y-0.5 active:scale-[0.98] ${
+                  entry.isPinned ? "pinned ring-1 ring-monk-accent/20" : ""
+                }`}
                 style={{ borderLeftColor: hex }}
               >
                 <button
@@ -264,7 +268,7 @@ export default function JournalNotebook() {
                     type="button"
                     aria-label={entry.isPinned ? t("notebook.unpin") : t("notebook.pin")}
                     onClick={() => store.togglePinNotebookEntry(entry.id)}
-                    className="grid min-h-10 min-w-10 place-items-center rounded-full text-monk-muted transition hover:bg-monk-soft hover:text-monk-accent"
+                    className="grid min-h-10 min-w-10 place-items-center rounded-full text-monk-muted transition duration-150 active:scale-95 hover:bg-monk-soft hover:text-monk-accent"
                   >
                     {entry.isPinned ? <PinOff size={15} /> : <Pin size={15} />}
                   </button>
@@ -276,7 +280,7 @@ export default function JournalNotebook() {
                       setPendingDeleteTitle(entry.title || t("notebook.thisNote"));
                       setConfirmKind("delete-list");
                     }}
-                    className="grid min-h-10 min-w-10 place-items-center rounded-full text-monk-muted transition hover:bg-monk-danger-soft hover:text-monk-danger"
+                    className="grid min-h-10 min-w-10 place-items-center rounded-full text-monk-muted transition duration-150 active:scale-95 hover:bg-monk-danger-soft hover:text-monk-danger"
                   >
                     <Trash2 size={15} />
                   </button>
@@ -290,7 +294,7 @@ export default function JournalNotebook() {
       <button
         type="button"
         onClick={openNew}
-        className="fixed bottom-[calc(env(safe-area-inset-bottom)+88px)] right-6 z-40 grid h-14 w-14 place-items-center rounded-full bg-monk-accent text-monk-bg shadow-[0_8px_24px_rgba(164,139,94,0.35)] transition active:scale-90"
+        className="fixed bottom-[calc(env(safe-area-inset-bottom)+88px)] right-6 z-40 grid h-14 w-14 place-items-center rounded-full bg-monk-accent text-monk-bg shadow-[0_8px_24px_rgba(164,139,94,0.35)] transition duration-200 hover:scale-[1.05] hover:shadow-[0_12px_32px_rgba(164,139,94,0.45)] active:scale-90"
         aria-label={t("notebook.newNoteAria")}
       >
         <Plus size={24} strokeWidth={2} />
@@ -407,7 +411,7 @@ export function NotebookEditor({
 
   return (
     <div className="space-y-0 pb-28">
-      <div className="mb-4 flex items-center justify-between border-b border-monk-border py-3">
+      <div className="sticky top-0 z-30 -mx-4 px-4 backdrop-blur-md bg-monk-bg/80 mb-4 flex items-center justify-between border-b border-monk-border py-3">
         <button
           type="button"
           onClick={handleBack}
@@ -418,9 +422,12 @@ export function NotebookEditor({
         </button>
         <div className="flex items-center gap-2 text-[10px] font-mono text-monk-text-soft">
           {savedFlash ? (
-            <span className="text-monk-success">{t("notebook.saved")}</span>
+            <span className="text-monk-success animate-scale-in">{t("notebook.saved")}</span>
           ) : dirty ? (
-            <span className="text-monk-warning">{t("notebook.unsaved")}</span>
+            <span className="flex items-center gap-1 text-monk-warning">
+              <span className="h-1.5 w-1.5 rounded-full bg-monk-warning animate-pulse" />
+              {t("notebook.unsaved")}
+            </span>
           ) : entry ? (
             <span>{formatRelative(entry.updatedAt, t, dateLocale)}</span>
           ) : (
@@ -461,7 +468,7 @@ export function NotebookEditor({
                 setCatId(cat.id);
                 markDirty();
               }}
-              className="flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-bold uppercase tracking-wider transition"
+              className="flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-bold uppercase tracking-wider transition duration-200 active:scale-[0.97]"
               style={{
                 borderColor: active ? hex : undefined,
                 color: active ? hex : undefined,
@@ -528,7 +535,7 @@ export function NotebookEditor({
       ) : null}
 
       <div
-        className="notebook-card rounded-monk p-0"
+        className="notebook-card rounded-monk p-0 transition-all duration-200 focus-within:ring-1 focus-within:ring-monk-accent/30"
         style={{ borderLeftWidth: 3, borderLeftColor: activeCatHex }}
       >
         <textarea
@@ -539,8 +546,8 @@ export function NotebookEditor({
             setBody(e.target.value);
             markDirty();
           }}
-          className="notebook-card-body min-h-[min(56vh,420px)] w-full resize-y border-none bg-transparent px-4 py-4 outline-none"
-          style={{ lineHeight: "2rem" }}
+          className="notebook-card-body min-h-[min(56vh,420px)] w-full resize-y border-none bg-transparent px-4 pt-4 pb-4 outline-none"
+          style={{ lineHeight: "24px" }}
         />
       </div>
 

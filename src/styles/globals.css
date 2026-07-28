@@ -22,6 +22,13 @@
   --color-danger-soft: #221412;
   --color-rest: #5A6772;
   --color-rest-soft: #14171A;
+  --notebook-bg: #1a1814;
+  --notebook-line: #25221c;
+  --notebook-card-bg: #1f1c17;
+  --notebook-card-line: #2a251e;
+  --notebook-text: #d4cdc0;
+  --notebook-text-title: #e5e2da;
+  --notebook-text-body: #c8c2b4;
 }
 html {
   min-height: -webkit-fill-available;
@@ -189,29 +196,45 @@ button {
 
 /* Dark parchment — analog feel that fits dark mode */
 .notebook-paper {
-  background-color: #1a1814;
+  background-color: var(--notebook-bg);
   background-image: repeating-linear-gradient(
     transparent,
     transparent 31px,
-    #25221c 31px,
-    #25221c 32px
+    var(--notebook-line) 31px,
+    var(--notebook-line) 32px
   );
-  color: #d4cdc0;
+  color: var(--notebook-text);
 }
 
 .notebook-card {
-  background-color: #1f1c17;
+  background-color: var(--notebook-card-bg);
   background-image: repeating-linear-gradient(
     transparent,
     transparent 23px,
-    #2a251e 23px,
-    #2a251e 24px
+    var(--notebook-card-line) 23px,
+    var(--notebook-card-line) 24px
   );
-  color: #d4cdc0;
-  border: 1px solid #2a251e;
+  color: var(--notebook-text);
+  border: 1px solid var(--notebook-card-line);
   border-left: 3px solid #6b9ac4;
   border-radius: 12px;
   box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+  transition: transform 0.15s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+.notebook-card:hover {
+  box-shadow: 0 4px 16px rgba(0,0,0,0.3), 0 0 1px 1px rgba(164, 139, 94, 0.15);
+  border-color: var(--color-border-strong);
+}
+
+.notebook-card.pinned {
+  box-shadow: 0 0 12px rgba(164, 139, 94, 0.15), 0 2px 8px rgba(0,0,0,0.2);
+  border-color: rgba(164, 139, 94, 0.4);
+}
+
+.notebook-card.pinned:hover {
+  box-shadow: 0 0 16px rgba(164, 139, 94, 0.25), 0 4px 16px rgba(0,0,0,0.3);
+  border-color: rgba(164, 139, 94, 0.6);
 }
 
 .font-handwriting {
@@ -222,19 +245,25 @@ button {
   font-family: 'Caveat', cursive;
   font-size: 1.35rem;
   line-height: 1.35;
-  color: #e5e2da;
+  color: var(--notebook-text-title);
+  transition: color 0.15s ease;
+}
+
+.notebook-card-title:hover {
+  color: var(--color-accent);
 }
 
 .notebook-card-body {
   font-size: 0.875rem;
-  line-height: 2rem;
-  color: #c8c2b4;
+  line-height: 24px;
+  color: var(--notebook-text-body);
+  padding-top: 4px; /* ponytail: align baseline to first rule line */
 }
 
 .notebook-page-bg {
   background:
-    radial-gradient(ellipse 80% 50% at 50% -10%, rgba(164, 139, 94, 0.06), transparent 55%),
-    #1a1814;
+    radial-gradient(ellipse 80% 50% at 50% -10%, rgba(164, 139, 94, 0.08), transparent 55%),
+    var(--notebook-bg);
   min-height: 100%;
 }
 
@@ -242,9 +271,10 @@ button {
   background-image: repeating-linear-gradient(
     transparent,
     transparent 23px,
-    #2a251e 23px,
-    #2a251e 24px
+    var(--notebook-card-line) 23px,
+    var(--notebook-card-line) 24px
   );
+  transition: background-color 0.3s ease, border-color 0.3s ease;
 }
 
 .scrollbar-none {
@@ -385,4 +415,19 @@ button {
   color: #4a4640;
   font-size: 0.625rem;
   letter-spacing: 0.15em;
+}
+
+@keyframes scaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.animate-scale-in {
+  animation: scaleIn 0.15s ease-out forwards;
 }

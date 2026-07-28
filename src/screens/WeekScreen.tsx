@@ -110,32 +110,35 @@ export function WeekScreen() {
         ) : (
           <>
             <DefenseChips />
-            <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35, ease: "easeOut" }}>
-            <Card className="p-4 sm:p-5">
-              <div className="flex items-end justify-between gap-3">
-                <div>
-                  <p className="text-xs font-bold uppercase tracking-[0.18em] text-monk-muted">{t("week.rhythm")}</p>
-                  <p className="mt-1 text-2xl font-bold tabular-nums tracking-tight">
-                    {stats.focusDone}
-                    <span className="text-base font-semibold text-monk-muted">/{stats.targetFocus}</span>
-                  </p>
-                  <p className="mt-0.5 text-xs text-monk-muted">{t("week.focusComplete")}</p>
+            <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}>
+            <Card className="relative p-5 sm:p-6 bg-monk-surface/40 backdrop-blur-sm shadow-[inset_0_1px_0_rgba(255,255,255,0.04),0_2px_12px_rgba(0,0,0,0.3)] border-monk-border/40 overflow-hidden">
+              <div className="absolute inset-0 bg-gradient-to-br from-white/[0.02] to-transparent pointer-events-none" />
+              <div className="relative">
+                <div className="flex items-end justify-between gap-4">
+                  <div>
+                    <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-monk-muted/80">{t("week.rhythm")}</p>
+                    <p className="mt-2 text-3xl font-bold tabular-nums tracking-tight text-monk-accent">
+                      {stats.focusDone}
+                      <span className="text-lg font-semibold text-monk-muted/70">/{stats.targetFocus}</span>
+                    </p>
+                    <p className="mt-1 text-xs text-monk-muted/90">{t("week.focusComplete")}</p>
+                  </div>
+                  <div className="text-right text-[11px] text-monk-muted/80 space-y-1">
+                    {stats.rest > 0 ? <p className="flex items-center gap-1.5 justify-end"><span className="h-1.5 w-1.5 rounded-full bg-monk-rest/70" />{t("week.restCount", { n: stats.rest })}</p> : null}
+                    {stats.partial > 0 ? <p className="flex items-center gap-1.5 justify-end"><span className="h-1.5 w-1.5 rounded-full bg-monk-accent/70" />{t("week.partialCount", { n: stats.partial })}</p> : null}
+                    {stats.missed > 0 ? <p className="flex items-center gap-1.5 justify-end text-monk-danger/80"><span className="h-1.5 w-1.5 rounded-full bg-monk-danger/70" />{t("week.missedCount", { n: stats.missed })}</p> : null}
+                    <p className="text-monk-muted/60">{remainingDays === 1 ? t("week.daysLeft", { n: remainingDays }) : t("week.daysLeftPlural", { n: remainingDays })}</p>
+                  </div>
                 </div>
-                <div className="text-right text-xs text-monk-muted space-y-0.5">
-                  {stats.rest > 0 ? <p>{t("week.restCount", { n: stats.rest })}</p> : null}
-                  {stats.partial > 0 ? <p>{t("week.partialCount", { n: stats.partial })}</p> : null}
-                  {stats.missed > 0 ? <p className="text-monk-danger/80">{t("week.missedCount", { n: stats.missed })}</p> : null}
-                  <p>{remainingDays === 1 ? t("week.daysLeft", { n: remainingDays }) : t("week.daysLeftPlural", { n: remainingDays })}</p>
-                </div>
-              </div>
 
-              <div className="mt-4 h-1.5 rounded-full bg-monk-soft overflow-hidden" aria-hidden="true">
-                <motion.div
-                  className="h-full rounded-full bg-monk-accent"
-                  initial={{ width: 0 }}
-                  animate={{ width: `${Math.min(100, Math.round((stats.focusDone / Math.max(1, stats.targetFocus)) * 100))}%` }}
-                  transition={{ duration: 0.6, delay: 0.2, ease: "easeOut" }}
-                />
+                <div className="mt-5 h-2 rounded-full bg-monk-surface/60 overflow-hidden shadow-inner" aria-hidden="true">
+                  <motion.div
+                    className="h-full rounded-full bg-gradient-to-r from-monk-accent to-monk-accent/80 shadow-[0_0_8px_rgba(164,139,94,0.4)]"
+                    initial={{ width: 0 }}
+                    animate={{ width: `${Math.min(100, Math.round((stats.focusDone / Math.max(1, stats.targetFocus)) * 100))}%` }}
+                    transition={{ duration: 0.8, delay: 0.2, ease: [0.16, 1, 0.3, 1] }}
+                  />
+                </div>
               </div>
             </Card>
             </motion.div>
@@ -256,13 +259,24 @@ export function WeekScreen() {
             </Card>
 
             {showWeekWrap ? (
-              <Card className="p-4">
-                <p className="text-xs font-bold uppercase tracking-[0.18em] text-monk-muted">{t("week.wrap.title")}</p>
-                <p className="mt-2 text-sm font-semibold">{t("week.wrap.focus", { n: focusMinutes })}</p>
-                <p className="mt-1 text-sm">{t("week.wrap.held", { n: heldDays })}</p>
-                {stats.rest > 0 ? <p className="mt-1 text-sm">{t("week.wrap.rest", { n: stats.rest })}</p> : null}
-                <p className="mt-2 text-sm text-monk-muted">{wrapWin}</p>
-              </Card>
+              <motion.div
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.4, delay: 0.1, ease: [0.16, 1, 0.3, 1] }}
+              >
+                <Card className="relative p-5 bg-monk-surface/30 backdrop-blur-sm shadow-[inset_0_1px_0_rgba(255,255,255,0.03),0_2px_10px_rgba(0,0,0,0.25)] border-monk-border/30 overflow-hidden">
+                  <div className="absolute inset-0 bg-gradient-to-br from-monk-accent/[0.02] to-transparent pointer-events-none" />
+                  <div className="relative">
+                    <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-monk-muted/70">{t("week.wrap.title")}</p>
+                    <div className="mt-3 space-y-2">
+                      <p className="text-sm font-semibold text-monk-text/95">{t("week.wrap.focus", { n: focusMinutes })}</p>
+                      <p className="text-sm text-monk-muted/90">{t("week.wrap.held", { n: heldDays })}</p>
+                      {stats.rest > 0 ? <p className="text-sm text-monk-muted/90">{t("week.wrap.rest", { n: stats.rest })}</p> : null}
+                    </div>
+                    <p className="mt-3 text-sm text-monk-accent/90 font-medium">{wrapWin}</p>
+                  </div>
+                </Card>
+              </motion.div>
             ) : null}
 
             {!todayPlan ? (

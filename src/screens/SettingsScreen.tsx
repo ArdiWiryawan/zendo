@@ -1,5 +1,6 @@
 import { useEffect, useState, type JSX } from "react";
 import { useNavigate } from "react-router-dom";
+import { motion } from "framer-motion";
 import {
   CalmDialog,
   Card,
@@ -7,6 +8,20 @@ import {
   PageHeader,
   Textarea,
 } from "../components/ui";
+import {
+  Bell,
+  Calendar,
+  Cloud,
+  Download,
+  FileJson,
+  FileText,
+  Globe,
+  HardDrive,
+  Moon,
+  ShieldAlert,
+  Trash2,
+  Upload,
+} from "lucide-react";
 import { routes } from "../constants/routes";
 import { getDaysPassed } from "../lib/date";
 import { exportStateAsJson } from "../lib/storage";
@@ -28,54 +43,18 @@ function syncLabel(status: SyncStatus, tUI: (k: any) => string) {
   return tUI("sync.idle");
 }
 
-function AccountStatus() {
-  const navigate = useNavigate();
-  const tUI = useT();
-  const syncStatus = useSyncStatus();
-  const [session, setSession] = useState<{ email?: string } | null>(null);
-  const sb = typeof getSupabase === "function" ? (getSupabase as () => any)() : null;
-
-  useEffect(() => {
-    if (!sb?.auth) return;
-    sb.auth.getSession().then(({ data }: any) => {
-      if (data?.session) setSession({ email: data.session.user?.email });
-    });
-  }, []);
-
-  const handleLogout = async () => {
-    if (!sb?.auth) return;
-    await sb.auth.signOut();
-    setSession(null);
-  };
-
-  const chip = (
-    <span className="text-xs text-monk-muted" aria-live="polite">
-      {syncLabel(syncStatus, tUI)}
-    </span>
-  );
-
-  if (session?.email) {
-    return (
-      <div className="flex flex-col items-end gap-1">
-        <div className="flex items-center justify-between gap-2 w-full">
-          <span className="text-xs text-monk-muted">{session.email}</span>
-          <GhostButton onClick={handleLogout}>Logout</GhostButton>
-        </div>
-        {chip}
-      </div>
-    );
-  }
-
-  return (
-    <div className="flex flex-col items-end gap-1">
-      <div className="flex items-center justify-between gap-2 w-full">
-        <span className="text-sm text-monk-muted">Not connected</span>
-        <GhostButton onClick={() => navigate(routes.login)}>Connect Account</GhostButton>
-      </div>
-      {chip}
-    </div>
-  );
+function syncDotColor(status: SyncStatus) {
+  if (status === "synced") return "bg-monk-success";
+  if (status === "syncing") return "bg-blue-400 animate-pulse";
+  if (status === "error") return "bg-monk-danger";
+  if (status === "offline") return "bg-monk-warning";
+  return "bg-monk-muted";
 }
+
+const sectionReveal = {
+  hidden: { opacity: 0, y: 16 },
+  visible: { opacity: 1, y: 0, transition: { duration: 0.4, ease: [0.16, 1, 0.3, 1] } },
+};
 
 export default function SettingsScreen() {
   const store = useMonkStore();
@@ -83,9 +62,25 @@ export default function SettingsScreen() {
   const [exported, setExported] = useState("");
   const [confirmKind, setConfirmKind] = useState<null | "import" | "wipe">(null);
   const [pendingImport, setPendingImport] = useState<Record<string, unknown> | null>(null);
+  const [session, setSession] = useState<{ email?: string } | null>(null);
+  const syncStatus = useSyncStatus();
   const tUI = useT();
   const lang = (store.appSettings.language ?? "id") as AppLanguage;
   const labels = getJournalQuestionLabels(lang);
+  const sb = typeof getSupabase === "function" ? (getSupabase as () => any)() : null;
+
+  useEffect(() => {
+    if (!sb?.auth) return;
+    sb.auth.getSession().then(({ data }: any) => {
+      if (data?.session) setSession({ email: data.session.user?.email });
+    });
+  }, [sb]);
+
+  const handleLogout = async () => {
+    if (!sb?.auth) return;
+    await sb.auth.signOut();
+    setSession(null);
+  };
 
   const applyImport = (data: Record<string, unknown>) => {
     const separateKeys = new Set(["focusSessions", "learningSessions", "timelineEvents"]);
@@ -120,7 +115,7 @@ export default function SettingsScreen() {
       "END:VEVENT",
       "END:VCALENDAR"
     ].join("\r\n");
-    
+
     const blob = new Blob([icsContent], { type: "text/calendar;charset=utf-8" });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
@@ -148,45 +143,23 @@ export default function SettingsScreen() {
   const downloadSeasonLogMd = () => {
     const season = store.activeSeason;
     if (!season) return;
-    
-    const totalFocusMinutes = store.focusSessions
-      .filter((s) => ["completed", "ended_early"].includes(s.status))
-      .reduce((sum, s) => sum + (s.focusDurationMinutes ?? s.durationMinutes), 0);
-      
-    const completedDaysCount = store.dayPlans.filter(
-      (day) => day.seasonId === season.id && day.status === "completed"
-    ).length;
-    
-    const totalPassedDays = Math.max(1, getDaysPassed(season.startDate));
-    const consistencyRate = Math.min(100, Math.round((completedDaysCount / totalPassedDays) * 100));
-
+    const daysPassed = getDaysPassed(season.startDate);
+    const journal = store.journalEntries;
     const lines = [
-      `# Zendo Season Log`,
-      `Season ID: ${season.id}`,
-      `Status: ${season.status}`,
-      `Start Date: ${season.startDate}`,
-      `End Date: ${season.endDate}`,
-      `Duration: ${season.durationDays} days`,
-      `Goals completed/passed: ${completedDaysCount} days`,
-      `Total focus time: ${totalFocusMinutes} minutes`,
-      `Consistency rate: ${consistencyRate}%`,
+      `# Season Log: ${season.name}`,
+      `Started: ${season.startDate} (${daysPassed} days)`,
       "",
-      "## Focus Goals & Keystones",
-      ...store.goals.map(g => `- **${g.title}**: ${g.keystoneAction}`),
+      "## Goals",
+      ...store.goals.filter(g => !g.archived).map(g => `- **${g.title}** (${g.category}): ${g.progress}%`),
       "",
-      "## Daily Focus Log",
-      ...store.dayPlans.map(d => {
-        const goal = store.goals.find(g => g.id === d.goalId);
-        return `- **${d.date}**: ${d.dayType === "rest" ? "Rest Day" : `Goal: "${goal?.title}"`} (Status: ${d.status}, Action: ${d.mainAction || "None"})`;
-      }),
-      "",
-      "## Reflections (Journal)",
-      ...store.journalEntries.map(j => {
+      "## Journal",
+      ...journal.map(j => {
+        const prompt = getDailyJournalPromptForDate(j.createdAt.slice(0, 10));
+        const questionTexts = prompt ? prompt.questions.map(q => q.text) : [];
         return [
-          `### Reflection for ${j.date}`,
-          `- **${getDailyJournalPromptForDate(lang, j.date)}**: ${j.answers.whatMovedToday || "-"}`,
-          j.answers.whatDistractedMe ? `- **${labels.whatDistractedMe}**: ${j.answers.whatDistractedMe}` : "",
-          j.answers.whatDidILearn ? `- **${labels.whatDidILearn}**: ${j.answers.whatDidILearn}` : "",
+          `### ${j.createdAt.slice(0, 10)}`,
+          j.answers.whatWentWell ? `- **${labels.whatWentWell}**: ${j.answers.whatWentWell}` : "",
+          j.answers.whatCouldBeBetter ? `- **${labels.whatCouldBeBetter}**: ${j.answers.whatCouldBeBetter}` : "",
           j.answers.whatShouldBeEasierTomorrow ? `- **${labels.whatShouldBeEasierTomorrow}**: ${j.answers.whatShouldBeEasierTomorrow}` : "",
           j.answers.whatShouldBeHarderTomorrow ? `- **${labels.whatShouldBeHarderTomorrow}**: ${j.answers.whatShouldBeHarderTomorrow}` : ""
         ].filter(Boolean).join("\n");
@@ -198,7 +171,7 @@ export default function SettingsScreen() {
       "## Relapse & Drift Logs",
       ...store.relapseLogs.map(r => `- **${r.createdAt.slice(0,10)}** (Trigger: ${r.trigger}): ${r.note} - Recovery: ${r.recoveryAction || "-"}`)
     ];
-    
+
     const blob = new Blob([lines.join("\n")], { type: "text/markdown;charset=utf-8" });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
@@ -216,17 +189,17 @@ export default function SettingsScreen() {
       <div className="space-y-6 pb-8">
 
         {/* Preferences */}
-        <div>
-          <p className="mb-2 px-1 text-xs font-bold uppercase tracking-widest text-monk-muted">{tUI("settings.prefs")}</p>
+        <motion.div variants={sectionReveal} initial="hidden" whileInView="visible" viewport={{ once: true, amount: 0.2 }}>
+          <SectionHeader icon={Globe} label={tUI("settings.prefs")} />
           <Card className="divide-y divide-monk-border/40 overflow-hidden p-0">
-            <SettingsRow title={tUI("settings.language")} description={tUI("settings.languageDesc")}>
+            <SettingsRow icon={Globe} title={tUI("settings.language")} description={tUI("settings.languageDesc")}>
               <div className="flex rounded-full bg-monk-soft p-0.5 border border-monk-border/40 shrink-0">
                 {(["id", "en"] as const).map((code) => (
                   <button
                     key={code}
                     type="button"
                     onClick={() => store.updateSettings({ language: code })}
-                    className={`min-w-11 min-h-9 px-3 rounded-full text-xs font-semibold transition ${
+                    className={`min-w-10 min-h-8 px-2 rounded-full text-xs font-semibold transition ${
                       lang === code
                         ? "bg-monk-surface text-monk-text border border-monk-border-strong shadow-sm"
                         : "text-monk-muted hover:text-monk-text"
@@ -239,119 +212,167 @@ export default function SettingsScreen() {
                 ))}
               </div>
             </SettingsRow>
-            <SettingsRow title={tUI("settings.notifications")} description={tUI("settings.notificationsDesc")}>
-              <button
-                type="button"
-                role="switch"
-                aria-checked={store.appSettings.notificationEnabled}
+            <SettingsRow icon={Bell} title={tUI("settings.notifications")} description={tUI("settings.notificationsDesc")}>
+              <MonkToggle
+                checked={store.appSettings.notificationEnabled}
                 aria-label={tUI("settings.notifications")}
-                onClick={async () => {
+                onToggle={async () => {
                   if ("Notification" in window && Notification.permission !== "granted") {
                     await Notification.requestPermission();
                   }
                   store.updateSettings({ notificationEnabled: !store.appSettings.notificationEnabled });
                 }}
-                className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors ${store.appSettings.notificationEnabled ? "bg-monk-accent" : "bg-monk-border"}`}
-              >
-                <span className={`inline-block h-4 w-4 rounded-full bg-white shadow transition-transform ${store.appSettings.notificationEnabled ? "translate-x-[22px]" : "translate-x-1"}`} />
-              </button>
+              />
             </SettingsRow>
-            <SettingsRow title={tUI("settings.detox")} description={tUI("settings.detoxDesc")}>
-              <button
-                type="button"
-                role="switch"
-                aria-checked={store.appSettings.greyModeGuideCompleted}
+            <SettingsRow icon={Moon} title={tUI("settings.detox")} description={tUI("settings.detoxDesc")}>
+              <MonkToggle
+                checked={store.appSettings.greyModeGuideCompleted}
                 aria-label={tUI("settings.detox")}
-                onClick={() => store.updateSettings({ greyModeGuideCompleted: !store.appSettings.greyModeGuideCompleted })}
-                className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors ${store.appSettings.greyModeGuideCompleted ? "bg-monk-accent" : "bg-monk-border"}`}
-              >
-                <span className={`inline-block h-4 w-4 rounded-full bg-white shadow transition-transform ${store.appSettings.greyModeGuideCompleted ? "translate-x-[22px]" : "translate-x-1"}`} />
-              </button>
+                onToggle={() => store.updateSettings({ greyModeGuideCompleted: !store.appSettings.greyModeGuideCompleted })}
+              />
             </SettingsRow>
           </Card>
-        </div>
+        </motion.div>
 
         {/* Data & Export */}
-        <div>
-          <p className="mb-2 px-1 text-xs font-bold uppercase tracking-widest text-monk-muted">{tUI("settings.data")}</p>
-          <Card className="divide-y divide-monk-border/40 p-0 overflow-hidden">
-            <SettingsRow title={tUI("settings.calendar")} description={tUI("settings.calendarDesc")}>
-              <GhostButton onClick={downloadReminderIcs}>{tUI("settings.downloadIcs")}</GhostButton>
-            </SettingsRow>
-            <SettingsRow title={tUI("settings.seasonLog")} description={tUI("settings.seasonLogDesc")}>
-              <GhostButton onClick={downloadSeasonLogMd}>{tUI("settings.downloadMd")}</GhostButton>
-            </SettingsRow>
-            <SettingsRow title={tUI("settings.backup")} description={tUI("settings.backupDesc")}>
-              <GhostButton onClick={downloadBackup}>{tUI("settings.downloadBackup")}</GhostButton>
-            </SettingsRow>
-            <SettingsRow title="Data (JSON)" description="Export or import your full data.">
-              <div className="flex gap-2 shrink-0">
-                <GhostButton onClick={() => setExported(JSON.stringify({
-                  userProfile: store.userProfile,
-                  activeSeason: store.activeSeason,
-                  goals: store.goals,
-                  journalEntries: store.journalEntries,
-                  dayPlans: store.dayPlans,
-                  weeklyPlans: store.weeklyPlans,
-                  focusSessions: store.focusSessions,
-                  learningSessions: store.learningSessions,
-                  learningEntries: store.learningEntries,
-                  relapseLogs: store.relapseLogs,
-                  energyLogs: store.energyLogs,
-                  timelineEvents: store.timelineEvents,
-                  appSettings: store.appSettings,
-                }, null, 2))}>Export</GhostButton>
-                <label className="cursor-pointer">
-                  <input type="file" accept=".json" className="hidden" onChange={(e) => {
-                    const file = e.target.files?.[0];
-                    if (!file) return;
-                    const reader = new FileReader();
-                    reader.onload = (ev) => {
-                      try {
-                        const data = JSON.parse(ev.target?.result as string);
-                        if (data.userProfile || data.activeSeason || data.goals) {
-                          setPendingImport(data);
-                          setConfirmKind("import");
-                        } else {
-                          alert("Invalid Zendo backup file.");
-                        }
-                      } catch { alert("Failed to parse file."); }
-                    };
-                    reader.readAsText(file);
-                  }} />
-                  <span className="inline-flex items-center px-3 py-1.5 text-xs font-semibold text-monk-muted border border-monk-border rounded-full hover:border-monk-accent hover:text-monk-accent transition active:scale-95">Import</span>
-                </label>
-              </div>
-            </SettingsRow>
-          </Card>
-          {exported ? <Textarea readOnly value={exported} className="font-mono text-xs mt-3" /> : null}
-        </div>
+        <motion.div variants={sectionReveal} initial="hidden" whileInView="visible" viewport={{ once: true, amount: 0.2 }}>
+          <SectionHeader icon={HardDrive} label={tUI("settings.data")} />
+          <div className="space-y-4">
 
-        {/* Account */}
-        <div>
-          <p className="text-[10px] font-bold uppercase tracking-widest text-monk-muted px-1 mb-2">Account</p>
-          <Card className="p-0 overflow-hidden">
-            <SettingsRow title="Sync" description="Connect to sync across devices. Works offline without an account.">
-              <AccountStatus />
-            </SettingsRow>
+            {/* Quick Exports */}
+            <Card className="divide-y divide-monk-border/30 overflow-hidden p-0">
+              <SettingsRow icon={Calendar} title={tUI("settings.calendar")} description={tUI("settings.calendarDesc")}>
+                <GhostButton onClick={downloadReminderIcs} aria-label="Download .ics" className="shrink-0 !px-2 !min-h-8">
+                  <Download className="w-4 h-4" />
+                </GhostButton>
+              </SettingsRow>
+              <SettingsRow icon={FileText} title={tUI("settings.seasonLog")} description={tUI("settings.seasonLogDesc")}>
+                <GhostButton onClick={downloadSeasonLogMd} aria-label="Download .md" className="shrink-0 !px-2 !min-h-8">
+                  <Download className="w-4 h-4" />
+                </GhostButton>
+              </SettingsRow>
+              <SettingsRow icon={HardDrive} title={tUI("settings.backup")} description={tUI("settings.backupDesc")}>
+                <GhostButton onClick={downloadBackup} aria-label={tUI("settings.downloadBackup")} className="shrink-0 !px-2 !min-h-8">
+                  <Download className="w-4 h-4" />
+                </GhostButton>
+              </SettingsRow>
+            </Card>
+
+            {/* Full Data Export/Import */}
+            <Card className="group hover:border-monk-accent/50 transition-all" important>
+              <div className="flex items-center gap-2 p-3">
+                <div className="grid h-5 w-5 shrink-0 place-items-center rounded bg-monk-accent/10 border border-monk-accent/20">
+                  <FileJson size={11} strokeWidth={1.5} className="text-monk-accent" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <h4 className="text-sm font-semibold text-monk-text">Data (JSON)</h4>
+                  <p className="text-xs text-monk-muted mt-0.5">Export or import your full data.</p>
+                </div>
+                <div className="flex gap-2 shrink-0">
+                  <GhostButton
+                    onClick={() => setExported(JSON.stringify({
+                      userProfile: store.userProfile,
+                      activeSeason: store.activeSeason,
+                      goals: store.goals,
+                      journalEntries: store.journalEntries,
+                      dayPlans: store.dayPlans,
+                      weeklyPlans: store.weeklyPlans,
+                      focusSessions: store.focusSessions,
+                      learningSessions: store.learningSessions,
+                      learningEntries: store.learningEntries,
+                      relapseLogs: store.relapseLogs,
+                      energyLogs: store.energyLogs,
+                      timelineEvents: store.timelineEvents,
+                      appSettings: store.appSettings,
+                    }, null, 2))}
+                    aria-label="Export JSON"
+                    className="shrink-0 !px-2 !min-h-8"
+                  >
+                    <Download className="w-4 h-4" />
+                  </GhostButton>
+                  <label className="cursor-pointer">
+                    <input type="file" accept=".json" className="hidden" onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (!file) return;
+                      const reader = new FileReader();
+                      reader.onload = (ev) => {
+                        try {
+                          const data = JSON.parse(ev.target?.result as string);
+                          if (data.userProfile || data.activeSeason || data.goals) {
+                            setPendingImport(data);
+                            setConfirmKind("import");
+                          } else {
+                            alert("Invalid Zendo backup file.");
+                          }
+                        } catch { alert("Failed to parse file."); }
+                      };
+                      reader.readAsText(file);
+                    }} />
+                    <span className="inline-flex items-center justify-center h-8 w-8 text-monk-muted border border-monk-border rounded-full hover:border-monk-accent hover:text-monk-accent transition active:scale-95" aria-label="Import JSON">
+                      <Upload className="w-4 h-4" />
+                    </span>
+                  </label>
+                </div>
+              </div>
+            </Card>
+          </div>
+          {exported ? <Textarea readOnly value={exported} className="font-mono text-xs mt-3" /> : null}
+        </motion.div>
+
+        {/* Account & Sync */}
+        <motion.div variants={sectionReveal} initial="hidden" whileInView="visible" viewport={{ once: true, amount: 0.2 }}>
+          <SectionHeader icon={Cloud} label="Account" />
+          <Card className="group hover:border-monk-accent/50 transition-all" important>
+            <div className="flex items-center gap-2">
+              <div className={`grid h-5 w-5 shrink-0 place-items-center rounded border transition-colors ${
+                session?.email
+                  ? "bg-monk-accent/10 border-monk-accent/20"
+                  : "bg-monk-soft border-monk-border group-hover:border-monk-accent/30"
+              }`}>
+                <Cloud size={11} strokeWidth={1.5} className="text-monk-accent" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <h4 className="text-sm font-medium text-monk-text">Sync</h4>
+                <p className="text-xs text-monk-muted/70 mt-0.5">Connect to sync across devices. Works offline without an account.</p>
+              </div>
+              <div className="flex items-center gap-1.5 shrink-0">
+                <span className={`h-2 w-2 rounded-full ${syncDotColor(syncStatus)}`} />
+                <span className="text-[10px] font-medium text-monk-muted">{syncLabel(syncStatus, tUI)}</span>
+              </div>
+            </div>
+
+            {session?.email ? (
+              <div className="flex items-center justify-between mt-3 pt-2 border-t border-monk-border/30">
+                <p className="text-xs font-medium text-monk-text truncate">{session.email}</p>
+                <GhostButton onClick={handleLogout} className="text-xs !min-h-8 !px-3">
+                  Logout
+                </GhostButton>
+              </div>
+            ) : (
+              <div className="mt-3 pt-2 border-t border-monk-border/30">
+                <GhostButton onClick={() => navigate(routes.login)} className="text-xs !min-h-8 !px-3 w-full justify-center">
+                  Connect Account
+                </GhostButton>
+              </div>
+            )}
           </Card>
-        </div>
+        </motion.div>
 
         {/* Season */}
-        <div>
-          <p className="text-[10px] font-bold uppercase tracking-widest text-monk-muted px-1 mb-2">Season</p>
+        <motion.div variants={sectionReveal} initial="hidden" whileInView="visible" viewport={{ once: true, amount: 0.2 }}>
+          <SectionHeader icon={Calendar} label="Season" />
           <Card className="p-0 overflow-hidden">
-            <SettingsRow title="Archive Season" description="End current season, preserve all progress.">
+            <SettingsRow icon={Calendar} title="Archive Season" description="End current season, preserve all progress.">
               <GhostButton onClick={store.archiveSeason}>Archive</GhostButton>
             </SettingsRow>
           </Card>
-        </div>
+        </motion.div>
 
         {/* Danger Zone */}
-        <div>
-          <p className="text-[10px] font-bold uppercase tracking-widest text-monk-danger/60 px-1 mb-2">{tUI("settings.danger")}</p>
+        <motion.div variants={sectionReveal} initial="hidden" whileInView="visible" viewport={{ once: true, amount: 0.2 }}>
+          <SectionHeader icon={ShieldAlert} label={tUI("settings.danger")} danger />
           <Card className="border-monk-danger/20 p-0 overflow-hidden">
-            <SettingsRow title={tUI("settings.reset")} description={tUI("settings.resetDesc")}>
+            <SettingsRow icon={Trash2} title={tUI("settings.reset")} description={tUI("settings.resetDesc")} danger>
               <button
                 type="button"
                 className="shrink-0 text-xs font-bold text-monk-danger border border-monk-danger/30 hover:border-monk-danger bg-monk-danger/5 px-3 py-1.5 rounded-full transition active:scale-95"
@@ -361,7 +382,7 @@ export default function SettingsScreen() {
               </button>
             </SettingsRow>
           </Card>
-        </div>
+        </motion.div>
 
         {/* About */}
         <p className="text-center text-xs text-monk-muted/50 pb-2">{tUI("settings.about")}</p>
@@ -400,29 +421,59 @@ export default function SettingsScreen() {
   );
 }
 
-function SettingsItem({ title, description, children }: { title: string; description?: string; children: JSX.Element }) {
+/* ─── Redesigned Sub-components ─── */
+
+function SectionHeader({ icon: Icon, label, danger }: { icon: React.ComponentType<{ size?: number; strokeWidth?: number; className?: string }>; label: string; danger?: boolean }) {
+  const bg = danger ? "bg-monk-danger/10" : "bg-monk-accent/10";
+  const border = danger ? "border border-monk-danger/20" : "border border-monk-accent/15";
+  const iconColor = danger ? "text-monk-danger" : "text-monk-accent";
+  const textColor = danger ? "text-monk-danger/70" : "text-monk-muted";
   return (
-    <Card>
-      <div className="flex items-center justify-between gap-4">
-        <div>
-          <p className="font-semibold">{title}</p>
-          {description ? <p className="mt-1 text-sm leading-6 text-monk-muted">{description}</p> : null}
-        </div>
-        {children}
+    <div className="flex items-center gap-2.5 mb-3 px-1">
+      <div className={`grid h-6 w-6 shrink-0 place-items-center rounded-md ${bg} ${border}`}>
+        <Icon size={12} strokeWidth={2} className={iconColor} />
       </div>
-    </Card>
+      <span className={`text-xs font-semibold ${textColor}`}>{label}</span>
+    </div>
   );
 }
 
-function SettingsRow({ title, description, children }: { title: string; description?: string; children: React.ReactNode }) {
+function MonkToggle({ checked, ariaLabel, onToggle }: { checked: boolean; ariaLabel: string; onToggle: () => void }) {
   return (
-    <div className="flex items-center justify-between gap-4 px-4 py-3">
-      <div className="min-w-0">
-        <p className="text-sm font-semibold text-monk-text">{title}</p>
-        {description ? <p className="text-xs text-monk-muted mt-0.5 leading-4">{description}</p> : null}
+    <button
+      type="button"
+      role="switch"
+      aria-checked={checked}
+      aria-label={ariaLabel}
+      onClick={onToggle}
+      className={`relative inline-flex h-6 w-[44px] shrink-0 items-center rounded-full transition-colors duration-200 active:scale-[0.97] ${
+        checked ? "bg-monk-accent" : "bg-monk-border-strong"
+      }`}
+    >
+      <span className={`inline-block h-4 w-4 rounded-full bg-monk-text shadow-sm transition-transform duration-200 ${
+        checked ? "translate-x-[22px]" : "translate-x-[3px]"
+      }`} />
+    </button>
+  );
+}
+
+function SettingsRow({ icon: Icon, title, description, children, danger }: { icon?: React.ComponentType<{ size?: number; strokeWidth?: number; className?: string }>; title: string; description?: string; children: React.ReactNode; danger?: boolean }) {
+  const iconBg = danger ? "bg-monk-danger/8" : "bg-monk-accent/8";
+  const iconColor = danger ? "text-monk-danger/80" : "text-monk-accent/80";
+  return (
+    <div className="flex items-center justify-between gap-3 px-3 py-2">
+      <div className="flex items-center gap-2 min-w-0">
+        {Icon ? (
+          <div className={`grid h-5 w-5 shrink-0 place-items-center rounded ${iconBg}`}>
+            <Icon size={11} strokeWidth={1.5} className={iconColor} />
+          </div>
+        ) : null}
+        <div className="min-w-0">
+          <p className="text-sm font-medium text-monk-text">{title}</p>
+          {description ? <p className="text-xs text-monk-muted/70 mt-0.5 leading-4">{description}</p> : null}
+        </div>
       </div>
       <div className="shrink-0">{children}</div>
     </div>
   );
 }
-

@@ -316,6 +316,8 @@ export const id: Record<MessageKey, string> = {
   "timeline.subtitle": "Jalurmu, satu hari demi satu hari.",
   "timeline.dayTitle": "Hari {n} · {status}",
   "timeline.tapToLog": " · Ketuk untuk catat",
+  "timeline.activity": "Aktivitas",
+  "timeline.activitySubtitle": "Jalurmu, hari demi hari.",
 
   "journal.shortcut.notebook": "Notebook",
   "journal.shortcut.notebookDesc": "Catatan bebas",

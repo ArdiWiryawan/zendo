@@ -314,6 +314,8 @@ export const en = {
   "timeline.subtitle": "Your path, one day at a time.",
   "timeline.dayTitle": "Day {n} · {status}",
   "timeline.tapToLog": " · Tap to log",
+  "timeline.activity": "Activity",
+  "timeline.activitySubtitle": "Your journey, day by day.",
 
   "journal.shortcut.notebook": "Notebook",
   "journal.shortcut.notebookDesc": "Free notes",

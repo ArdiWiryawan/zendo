@@ -1,6 +1,6 @@
 import type { ButtonHTMLAttributes, InputHTMLAttributes, ReactNode, TextareaHTMLAttributes } from "react";
 import { useEffect, useRef, useState } from "react";
-import { ArrowLeft, ArrowRight, BookOpen, Calendar, Check, Flag, Grid3X3, Settings, Sun } from "lucide-react";
+import { ArrowLeft, ArrowRight, BookOpen, Calendar, Check, Download, FileJson, FileText, Flag, Grid3X3, Settings, Sun, Upload } from "lucide-react";
 import { hapticPress } from "../lib/haptics";
 import { NavLink, useLocation } from "react-router-dom";
 import { routes } from "../constants/routes";
