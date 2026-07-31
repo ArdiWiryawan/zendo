@@ -103,7 +103,7 @@ export function ValuesStep({ onNext }: { onNext: () => void }) {
               {protect.length}/3
             </span>
           </div>
-          <div className="grid grid-cols-1 gap-2">
+          <div className="grid grid-cols-2 gap-2 md:grid-cols-1">
             {CORE_VALUES.map(v => (
               <ChoiceCard
                 key={v.id}
@@ -127,7 +127,7 @@ export function ValuesStep({ onNext }: { onNext: () => void }) {
               {sacrifice.length}/3
             </span>
           </div>
-          <div className="grid grid-cols-1 gap-2">
+          <div className="grid grid-cols-2 gap-2 md:grid-cols-1">
             {CORE_VALUES.filter(v => !protect.includes(v.id)).map(v => (
               <ChoiceCard
                 key={v.id}
