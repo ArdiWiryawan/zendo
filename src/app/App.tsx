@@ -355,8 +355,18 @@ function OnboardingScreen({ path }: { path: string }) {
     );
   }
 
+  // phase labels mirror onboardingOrder phases only; do not drive order/navigation
+  const phaseForStep = (stepPath: string): string | undefined => {
+    if (stepPath === routes.onboardingValues || stepPath === routes.onboardingReality || stepPath === routes.onboardingObstacles) return "Reflect";
+    if (stepPath === routes.onboardingHabits || stepPath === routes.onboardingRemove || stepPath === routes.onboardingGreyMode) return "Clear";
+    if (stepPath === routes.onboardingGoals || stepPath === routes.onboardingSeason) return "Plan";
+    if (stepPath === routes.onboardingVision || stepPath === routes.onboardingNarrow || stepPath === routes.onboardingKeystone || stepPath === routes.onboardingWeekSetup) return "Focus";
+    if (stepPath === routes.onboardingPreview) return "Review";
+    return undefined;
+  };
+
   return (
-    <OnboardingShell currentStep={currentStep} totalSteps={totalSteps} onBack={goBack}>
+    <OnboardingShell currentStep={currentStep} totalSteps={totalSteps} phaseLabel={phaseForStep(path)} onBack={goBack}>
       {path === routes.onboardingValues ? <ValuesStep onNext={goNext} /> : null}
       {path === routes.onboardingVision ? <VisionStep onNext={goNext} /> : null}
       {path === routes.onboardingReality ? <RealityCheck onNext={goNext} /> : null}

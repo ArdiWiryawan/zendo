@@ -1,5 +1,6 @@
 import type { ButtonHTMLAttributes, InputHTMLAttributes, ReactNode, TextareaHTMLAttributes } from "react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
+import { MotionConfig } from "framer-motion";
 import { ArrowLeft, ArrowRight, BookOpen, Calendar, Check, Download, FileJson, FileText, Flag, Grid3X3, Settings, Sun, Upload } from "lucide-react";
 import { hapticPress } from "../lib/haptics";
 import { NavLink, useLocation } from "react-router-dom";
@@ -45,11 +46,13 @@ export function OnboardingShell({
   children,
   currentStep,
   totalSteps,
+  phaseLabel,
   onBack
 }: {
   children: ReactNode;
   currentStep?: number;
   totalSteps?: number;
+  phaseLabel?: string;
   onBack?: () => void;
 }) {
   const shellRef = useRef<HTMLDivElement>(null);
@@ -58,60 +61,44 @@ export function OnboardingShell({
     window.scrollTo(0, 0);
   }, [currentStep]);
 
+  // After a step route change, move focus to the step's semantic heading (id "step-heading")
+  // or, failing that, the first focusable, without trapping Tab.
   useEffect(() => {
-    if (!shellRef.current) return;
-
+    if (currentStep === undefined) return;
     const shell = shellRef.current;
-    const focusableSelector = 'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])';
-    const focusableElements = Array.from(shell.querySelectorAll(focusableSelector)) as HTMLElement[];
-
-    if (focusableElements.length === 0) return;
-
-    const firstFocusable = focusableElements[0];
-    const lastFocusable = focusableElements[focusableElements.length - 1];
-
-    const handleTab = (e: KeyboardEvent) => {
-      if (e.key !== 'Tab') return;
-
-      if (e.shiftKey) {
-        if (document.activeElement === firstFocusable) {
-          e.preventDefault();
-          lastFocusable.focus();
-        }
-      } else {
-        if (document.activeElement === lastFocusable) {
-          e.preventDefault();
-          firstFocusable.focus();
-        }
-      }
-    };
-
-    shell.addEventListener('keydown', handleTab);
-    return () => shell.removeEventListener('keydown', handleTab);
+    const target: HTMLElement | null =
+      shell?.querySelector('[id="step-heading"]') ??
+      shell?.querySelector('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])') ??
+      null;
+    if (!target) return;
+    // ponytail: heading-first focus is fine for a sequential 14-step flow; revisit if a step gains a top focusable that must win.
+    target.focus();
   }, [currentStep]);
 
   return (
-    <div ref={shellRef} className="min-h-dvh bg-monk-bg text-monk-text">
-      <ScreenContainer>
-        {currentStep && totalSteps ? (
-          <div className="mb-2 flex items-center gap-3">
-            {onBack ? (
-              <button
-                onClick={onBack}
-                className="grid min-h-12 min-w-12 shrink-0 place-items-center -ml-2 text-monk-muted hover:text-monk-text"
-                aria-label="Go back"
-              >
-                <ArrowLeft size={20} strokeWidth={2} />
-              </button>
-            ) : null}
-            <div className="min-w-0 flex-1">
-              <StepIndicator currentStep={currentStep} totalSteps={totalSteps} />
+    <MotionConfig reducedMotion="user">
+      <div ref={shellRef} className="min-h-dvh bg-monk-bg text-monk-text">
+        <ScreenContainer>
+          {currentStep && totalSteps ? (
+            <div className="mb-2 flex items-center gap-3">
+              {onBack ? (
+                <button
+                  onClick={onBack}
+                  className="-ml-2 grid min-h-12 min-w-12 shrink-0 place-items-center text-monk-muted transition-colors hover:text-monk-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-monk-accent focus-visible:ring-offset-2 focus-visible:ring-offset-monk-bg"
+                  aria-label="Go back"
+                >
+                  <ArrowLeft size={20} strokeWidth={2} />
+                </button>
+              ) : null}
+              <div className="min-w-0 flex-1">
+                <StepIndicator currentStep={currentStep} totalSteps={totalSteps} phaseLabel={phaseLabel} />
+              </div>
             </div>
-          </div>
-        ) : null}
-        <div className="flex min-h-[calc(100dvh-72px)] flex-col pb-[env(safe-area-inset-bottom)]">{children}</div>
-      </ScreenContainer>
-    </div>
+          ) : null}
+          <div className="flex min-h-[calc(100dvh-72px)] flex-col pb-[env(safe-area-inset-bottom)]">{children}</div>
+        </ScreenContainer>
+      </div>
+    </MotionConfig>
   );
 }
 
@@ -216,24 +203,29 @@ export function GhostButton({
 export function TextInput({
   className = "",
   label,
+  id,
   showCharCount,
   minLength,
   value,
   ...props
 }: InputHTMLAttributes<HTMLInputElement> & {
   label?: string;
+  id?: string;
   showCharCount?: boolean;
   minLength?: number;
   value?: string;
 }) {
+  const autoId = useId();
+  const inputId = id ?? (label ? autoId : undefined);
   const count = typeof value === 'string' ? value.length : 0;
   const min = minLength ?? 0;
 
   return (
     <div className="w-full">
-      {label && <label className="mb-2 block text-sm font-medium text-monk-muted">{label}</label>}
+      {label && <label htmlFor={inputId} className="mb-2 block text-sm font-medium text-monk-muted">{label}</label>}
       <input
         {...props}
+        id={inputId}
         value={value}
         minLength={minLength}
         className={`min-h-12 w-full rounded-xl border border-monk-border bg-monk-surface px-4 text-sm text-monk-text placeholder:text-monk-text-soft transition-colors focus:border-monk-accent focus:outline-none focus:ring-1 focus:ring-monk-accent/40 [scroll-margin-bottom:200px] ${className}`}
@@ -253,24 +245,29 @@ export function TextInput({
 export function Textarea({
   className = "",
   label,
+  id,
   showCharCount,
   minLength,
   value,
   ...props
 }: TextareaHTMLAttributes<HTMLTextAreaElement> & {
   label?: string;
+  id?: string;
   showCharCount?: boolean;
   minLength?: number;
   value?: string;
 }) {
+  const autoId = useId();
+  const inputId = id ?? (label ? autoId : undefined);
   const count = typeof value === 'string' ? value.length : 0;
   const min = minLength ?? 0;
 
   return (
     <div className="w-full">
-      {label && <label className="mb-2 block text-sm font-medium text-monk-muted">{label}</label>}
+      {label && <label htmlFor={inputId} className="mb-2 block text-sm font-medium text-monk-muted">{label}</label>}
       <textarea
         {...props}
+        id={inputId}
         value={value}
         minLength={minLength}
         className={`min-h-[120px] w-full resize-none rounded-xl border border-monk-border bg-monk-surface p-4 text-sm leading-6 text-monk-text placeholder:text-monk-text-soft transition-colors focus:border-monk-accent focus:outline-none focus:ring-1 focus:ring-monk-accent/40 [scroll-margin-bottom:200px] ${className}`}
@@ -355,7 +352,8 @@ export function ChoiceCard({
   );
 }
 
-export function StepIndicator({ currentStep, totalSteps }: { currentStep: number; totalSteps: number }) {
+export function StepIndicator({ currentStep, totalSteps, phaseLabel }: { currentStep: number; totalSteps: number; phaseLabel?: string }) {
+  const completed = Math.max(0, Math.min(currentStep, totalSteps));
   const width = Math.max(4, Math.min(100, (currentStep / totalSteps) * 100));
   return (
     <div
@@ -363,14 +361,32 @@ export function StepIndicator({ currentStep, totalSteps }: { currentStep: number
       aria-valuemin={1}
       aria-valuemax={totalSteps}
       aria-valuenow={currentStep}
-      aria-label={`Progress: step ${currentStep} of ${totalSteps}`}
+      aria-label={`Progress: step ${currentStep} of ${totalSteps}${phaseLabel ? ` — ${phaseLabel}` : ""}`}
     >
       <div className="mb-2 flex items-center justify-between gap-3">
-        <p className="text-xs text-monk-muted">Step {currentStep} of {totalSteps}</p>
+        <p className="text-xs font-medium text-monk-muted">
+          {phaseLabel ? <span className="text-monk-text">{phaseLabel}</span> : null}
+          {phaseLabel ? <span className="mx-1.5 text-monk-text-soft" aria-hidden>·</span> : null}
+          Step {currentStep} of {totalSteps}
+        </p>
         <p className="text-xs font-semibold tabular-nums text-monk-text-soft">{Math.round(width)}%</p>
       </div>
-      <div className="h-1.5 w-full overflow-hidden rounded-full bg-monk-soft shadow-[inset_0_1px_2px_rgba(0,0,0,0.4)]">
-        <div className="h-1.5 rounded-full bg-monk-accent shadow-[0_0_8px_rgba(164,139,94,0.45)] transition-all duration-500 ease-monk" style={{ width: `${width}%` }} />
+      {/* segmented track: discrete visible steps + continuous fill for low-vision legibility */}
+      <div
+        className="flex h-1.5 w-full gap-1"
+        aria-hidden
+      >
+        {Array.from({ length: totalSteps }).map((_, i) => (
+          <span
+            key={i}
+            className={`h-full flex-1 rounded-full transition-colors duration-500 ${
+              i < completed ? "bg-monk-accent" : "bg-monk-soft shadow-[inset_0_1px_2px_rgba(0,0,0,0.4)]"
+            }`}
+          />
+        ))}
+      </div>
+      <div className="mt-1 h-1 w-full overflow-hidden rounded-full bg-monk-soft/60">
+        <div className="h-1 rounded-full bg-gradient-to-r from-monk-accent/80 to-monk-accent shadow-[0_0_8px_rgba(164,139,94,0.45)] transition-all duration-500 ease-monk motion-reduce:transition-none" style={{ width: `${width}%` }} />
       </div>
     </div>
   );

@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import { Check, EyeOff, Minus, Moon, Plus, Target, Award, Clock, Zap, Gamepad2, Youtube, MessagesSquare, ShoppingBag, MoreHorizontal, Apple, Monitor, Smartphone, FastForward, Calendar, Mountain, Sliders, ListTodo, ShieldCheck, BookOpen, Coffee } from "lucide-react";
 import { useMonkStore } from "../store/useMonkStore";
 import { useT } from "../i18n";
@@ -55,10 +55,24 @@ import { hapticPress } from "../lib/haptics";
 import type { EnergyLevel, BadHabitCategory, Goal, GoalAllocation, MonkMVPState, OnboardingState, SeasonDurationPreset, WeeklyMode } from "../types/app";
 
 export function ScreenIntro({ title, subtitle }: { title: string; subtitle: string }) {
+  const reduce = useReducedMotion();
+  // motivated motion: gentle rise on step change signals "new step", matches Welcome cadence
+  const rise = (delay: number) =>
+    reduce
+      ? {}
+      : {
+          initial: { opacity: 0, y: 12 },
+          animate: { opacity: 1, y: 0 },
+          transition: { duration: 0.5, delay, ease: [0.16, 1, 0.3, 1] as const }
+        };
   return (
     <div className="mb-6 mt-4">
-      <h1 className="text-2xl font-semibold leading-9 tracking-tight">{title}</h1>
-      <p className="mt-3 text-[15px] leading-6 text-monk-muted">{subtitle}</p>
+      <motion.h1 id="step-heading" tabIndex={-1} className="text-2xl font-semibold leading-9 tracking-tight" {...rise(0)}>
+        {title}
+      </motion.h1>
+      <motion.p className="mt-2.5 text-[15px] leading-6 text-monk-muted" {...rise(0.06)}>
+        {subtitle}
+      </motion.p>
     </div>
   );
 }
@@ -256,6 +270,7 @@ export function RealityCheck({ onNext }: { onNext: () => void }) {
             <p className="font-semibold">Free hours per day</p>
           </div>
           <TextInput
+            label="Free hours per day"
             type="number"
             min={1}
             max={24}
@@ -417,8 +432,8 @@ export function HabitAudit({ onNext }: { onNext: () => void }) {
       </div>
       {otherHabit ? (
         <TextInput
+          label="Name the pattern"
           className="mt-5"
-          placeholder="Name the pattern"
           value={otherHabit.customName ?? ""}
           onChange={(event) => useMonkStore.getState().setCustomHabitName(event.target.value)}
         />
@@ -464,6 +479,7 @@ export function RemoveDistractions({ onNext }: { onNext: () => void }) {
                   key={action.id}
                   type="button"
                   layout
+                  aria-pressed={action.completed}
                   onClick={() => toggleFrictionAction(habit.id, action.id)}
                   className="flex min-h-12 w-full items-center gap-3 rounded-2xl p-3 text-left text-sm transition-colors hover:bg-monk-soft"
                 >
@@ -642,7 +658,7 @@ export function GoalBrainDump({ onNext }: { onNext: () => void }) {
               {onboarding.goalDrafts.length > 5 ? (
                 <button
                   type="button"
-                  aria-label="Remove goal"
+                  aria-label={`Remove goal${goal.title.trim() ? `: ${goal.title.trim()}` : ` ${index + 1}`}`}
                   onClick={() => removeGoalDraft(goal.id)}
                   className="grid min-h-12 min-w-12 shrink-0 place-items-center rounded-xl border border-monk-border bg-monk-surface text-monk-muted"
                 >
@@ -681,6 +697,7 @@ export function GoalElimination({ onNext }: { onNext: () => void }) {
               type="button"
               key={goal.id}
               layout
+              aria-pressed={released}
               animate={{
                 opacity: released ? 0.5 : 1,
                 backgroundColor: released ? "var(--color-danger-soft)" : "var(--color-surface)",
@@ -738,7 +755,7 @@ export function FocusGoals({ onNext }: { onNext: () => void }) {
               {onboarding.goalDrafts.length > 1 ? (
                 <button
                   type="button"
-                  aria-label="Remove goal"
+                  aria-label={`Remove goal${goal.title.trim() ? `: ${goal.title.trim()}` : ` ${index + 1}`}`}
                   onClick={() => store.removeGoalDraft(goal.id)}
                   className="grid h-[52px] w-[52px] shrink-0 place-items-center rounded-full border border-monk-border bg-monk-surface text-monk-muted"
                 >
@@ -832,10 +849,11 @@ export function SeasonSetup({ onNext }: { onNext: () => void }) {
         />
       </div>
       <div className={`mt-4 ${preset !== "custom" ? "opacity-50 pointer-events-none" : ""}`}>
-        <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-monk-muted">
+        <label htmlFor="custom-season-days" className="mb-2 block text-xs font-bold uppercase tracking-wider text-monk-muted">
           Custom days (min 7)
         </label>
         <TextInput
+          id="custom-season-days"
           inputMode="numeric"
           placeholder="Custom days"
           value={custom}
