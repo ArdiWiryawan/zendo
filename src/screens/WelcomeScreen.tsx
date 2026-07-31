@@ -19,7 +19,7 @@ export function WelcomeScreen({ onNext }: WelcomeScreenProps) {
         };
 
   return (
-    <main className="flex flex-1 flex-col justify-center text-center">
+    <div className="flex flex-1 flex-col justify-center text-center">
       <motion.div className="relative mx-auto mb-10" {...rise(0)}>
         <motion.div
           className="absolute left-1/2 top-1/2 h-48 w-48 -translate-x-1/2 -translate-y-1/2 rounded-full bg-monk-accent/5 blur-3xl"
@@ -35,7 +35,7 @@ export function WelcomeScreen({ onNext }: WelcomeScreenProps) {
       <motion.p className="mb-3 text-sm font-medium uppercase tracking-widest text-monk-accent" {...rise(0.08)}>
         ZENDO
       </motion.p>
-      <motion.h1 className="mx-auto max-w-[18ch] text-5xl font-bold leading-tight tracking-tighter" {...rise(0.16)}>
+      <motion.h1 id="welcome-heading" className="mx-auto max-w-[18ch] text-5xl font-bold leading-tight tracking-tighter" {...rise(0.16)}>
         Make space for what matters.
       </motion.h1>
       <motion.p className="mx-auto mt-6 max-w-xs text-base leading-7 text-monk-muted" {...rise(0.24)}>
@@ -56,6 +56,6 @@ export function WelcomeScreen({ onNext }: WelcomeScreenProps) {
           Setup is auto-saved. Leave anytime, resume where you stopped.
         </p>
       </motion.div>
-    </main>
+    </div>
   );
 }

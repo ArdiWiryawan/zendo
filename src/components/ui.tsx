@@ -361,7 +361,7 @@ export function StepIndicator({ currentStep, totalSteps, phaseLabel }: { current
       aria-valuemin={1}
       aria-valuemax={totalSteps}
       aria-valuenow={currentStep}
-      aria-label={`Progress: step ${currentStep} of ${totalSteps}${phaseLabel ? ` — ${phaseLabel}` : ""}`}
+      aria-label={`Progress: step ${currentStep} of ${totalSteps}${phaseLabel ? `, ${phaseLabel}` : ""}`}
     >
       <div className="mb-2 flex items-center justify-between gap-3">
         <p className="text-xs font-medium text-monk-muted">
