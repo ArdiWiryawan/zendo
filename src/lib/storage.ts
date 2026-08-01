@@ -1,8 +1,36 @@
-import type { MonkMVPState } from "../types/app";
+import type { MonkMVPState, JournalAnswers } from "../types/app";
 import { normalizeFocusSessionRecord, normalizeFocusTimelineEvents } from "../constants/focusSessionStatus";
 
 export const STORAGE_KEY = "monk_mode_pwa_state_v1";
 export const JOURNAL_DRAFT_KEY = "monk_journal_draft_v1";
+
+export type JournalDraft = { answers: JournalAnswers; tomorrow: string };
+
+export function readJournalDraft(key: string): JournalDraft | null {
+  if (typeof localStorage === "undefined") return null;
+  try {
+    const raw = localStorage.getItem(key);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as JournalDraft | JournalAnswers;
+    // Legacy drafts stored answers directly (no wrapper object).
+    return Array.isArray(parsed) || typeof parsed !== "object" || parsed === null
+      ? null
+      : "answers" in parsed
+        ? { answers: parsed.answers ?? {}, tomorrow: parsed.tomorrow ?? "" }
+        : { answers: parsed, tomorrow: "" };
+  } catch {
+    return null;
+  }
+}
+
+export function writeJournalDraft(key: string, payload: JournalDraft): void {
+  if (typeof localStorage === "undefined") return;
+  try {
+    localStorage.setItem(key, JSON.stringify(payload));
+  } catch {
+    /* ignore */
+  }
+}
 
 export function loadState(): MonkMVPState | null {
   if (typeof localStorage === "undefined") return null;

@@ -7,7 +7,7 @@ import { ChevronRight } from "lucide-react";
 import { CORE_VALUES } from "../constants/whyValues";
 import type { EnergyLevel } from "../types/app";
 
-export function EnergyCheck({ value, onChange }: { value?: EnergyLevel; onChange: (value: EnergyLevel) => void }) {
+export function EnergyCheck({ value, onChange, compact = false }: { value?: EnergyLevel; onChange: (value: EnergyLevel) => void; compact?: boolean }) {
   const store = useMonkStore();
   const today = getTodayDateString();
   const past7 = Array.from({ length: 7 }, (_, i) => {
@@ -69,35 +69,37 @@ export function EnergyCheck({ value, onChange }: { value?: EnergyLevel; onChange
           );
         })}
       </div>
-      <div className="mt-4">
-        <p className="mb-1.5 text-[10px] font-medium uppercase tracking-wider text-monk-muted">7-day trend</p>
-        <div className="flex items-end gap-1.5" aria-label="Energy trend last 7 days">
-          {past7.map((date) => {
-            const log = store.energyLogs?.find((l) => l.date === date);
-            const isToday = date === today;
-            const h = log?.level === "high" ? "h-5" : log?.level === "medium" ? "h-3.5" : log?.level === "low" ? "h-2" : "h-1.5";
-            const color = log?.level === "high"
-              ? "bg-monk-success"
-              : log?.level === "medium"
-              ? "bg-monk-accent"
-              : log?.level === "low"
-              ? "bg-monk-danger"
-              : "bg-monk-border/40";
-            return (
-              <span
-                key={date}
-                title={`${date}${log ? ` · ${log.level}` : ""}`}
-                className={`inline-block w-full rounded-sm ${h} ${color} ${isToday ? "ring-1 ring-monk-accent/50" : ""}`}
-              />
-            );
-          })}
+      {!compact ? (
+        <div className="mt-4">
+          <p className="mb-1.5 text-[10px] font-medium uppercase tracking-wider text-monk-muted">7-day trend</p>
+          <div className="flex items-end gap-1.5" aria-label="Energy trend last 7 days">
+            {past7.map((date) => {
+              const log = store.energyLogs?.find((l) => l.date === date);
+              const isToday = date === today;
+              const h = log?.level === "high" ? "h-5" : log?.level === "medium" ? "h-3.5" : log?.level === "low" ? "h-2" : "h-1.5";
+              const color = log?.level === "high"
+                ? "bg-monk-success"
+                : log?.level === "medium"
+                ? "bg-monk-accent"
+                : log?.level === "low"
+                ? "bg-monk-danger"
+                : "bg-monk-border/40";
+              return (
+                <span
+                  key={date}
+                  title={`${date}${log ? ` · ${log.level}` : ""}`}
+                  className={`inline-block w-full rounded-sm ${h} ${color} ${isToday ? "ring-1 ring-monk-accent/50" : ""}`}
+                />
+              );
+            })}
+          </div>
         </div>
-      </div>
+      ) : null}
     </Card>
   );
 }
 
-export function WhyStrip() {
+export function WhyStrip({ compact = false }: { compact?: boolean }) {
   const store = useMonkStore();
   const why = store.activeSeason?.why;
   const [open, setOpen] = useState(false);
@@ -137,6 +139,14 @@ export function WhyStrip() {
   }
 
   const line = why!.identity || why!.consequenceOfInaction;
+  if (compact) {
+    return (
+      <p className="rounded-monk border border-monk-accent/20 bg-monk-accent-soft/40 px-4 py-2.5 text-xs leading-5 text-monk-muted">
+        {line}
+      </p>
+    );
+  }
+
   return (
     <div className="rounded-monk border border-monk-accent/20 bg-monk-accent-soft/40 px-4 py-3">
       <button

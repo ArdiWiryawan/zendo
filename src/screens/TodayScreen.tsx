@@ -126,7 +126,7 @@ function CloseDayCard({ onSkip }: { onSkip?: () => void }) {
   );
 }
 
-function ReEntryBanner() {
+function ReEntryBanner({ onDismissedChange }: { onDismissedChange?: (dismissed: boolean) => void }) {
   const navigate = useNavigate();
   const store = useMonkStore();
   const t = useT();
@@ -138,8 +138,12 @@ function ReEntryBanner() {
     (entry) => entry.seasonId === season?.id && entry.date === today
   );
   const hasReflection = !!todayEntry?.answers.whatMovedToday?.trim();
-  const [dismissed, setDismissed] = useState(() => isReentryDismissed(today));
+  const [dismissed, setDismissedState] = useState(() => isReentryDismissed(today));
   const [chipHidden, setChipHidden] = useState(() => isReentryChipHidden(today));
+  const setDismissed = (value: boolean) => {
+    setDismissedState(value);
+    onDismissedChange?.(value);
+  };
 
   if (!season || isDone || hasReflection) return null;
   if (!shouldOfferReentry(store, season.startDate, today)) return null;
@@ -236,6 +240,7 @@ export function TodayScreen() {
   const [editingAction, setEditingAction] = useState(false);
   const [actionInput, setActionInput] = useState("");
   const [closeDaySkipped, setCloseDaySkipped] = useState(() => isCloseDaySkipped(today));
+  const [reentryDismissed, setReentryDismissed] = useState(() => isReentryDismissed(today));
   const [coachTick, setCoachTick] = useState(0);
   const [undoPlan, setUndoPlan] = useState<null | {
     dayType: "goal" | "rest";
@@ -272,6 +277,14 @@ export function TodayScreen() {
   const hasReflection = !!todayEntry?.answers.whatMovedToday?.trim();
   const dayClosed = hasReflection || closeDaySkipped;
   const energy = selectEnergyForDate(store, today);
+  // Reentry banner renders when: season active, plan not completed, no reflection, offerable, and not dismissed.
+  const reentryVisible =
+    !!season &&
+    !!todayPlan &&
+    todayPlan.status !== "completed" &&
+    !hasReflection &&
+    !reentryDismissed &&
+    shouldOfferReentry(store, season.startDate, today);
   const dayPart = getDayPart();
   const allocation = todayPlan?.goalId && weeklyPlan
     ? weeklyPlan.goalAllocations.find((a) => a.goalId === todayPlan.goalId)
@@ -303,10 +316,10 @@ export function TodayScreen() {
     ? "close"
     : isRest
     ? "rest"
-    : showMorningNudge
-    ? "morning"
     : !hasIntention
     ? "intention"
+    : showMorningNudge
+    ? "morning"
     : "focus";
 
   const statusLabel = !todayPlan
@@ -379,9 +392,9 @@ export function TodayScreen() {
         rightSlot={<SettingsLink />}
       />
       <div className="space-y-5">
-        <WhyStrip />
-        <ReEntryBanner />
-        {coachStep ? (
+        <WhyStrip compact={reentryVisible} />
+        <ReEntryBanner onDismissedChange={setReentryDismissed} />
+        {coachStep && !reentryVisible ? (
           <CoachHint
             step={coachStep}
             onDismiss={() => {
@@ -721,15 +734,10 @@ export function TodayScreen() {
                 <Card className="border-monk-accent/25 bg-monk-accent-soft/30 p-4">
                   <p className="text-sm font-semibold">{t("today.nudge.morningTitle")}</p>
                   <p className="mt-1 text-sm text-monk-muted">{t("today.nudge.morningBody")}</p>
-                  <div className="mt-3 space-y-2">
+                  <div className="mt-3">
                     <PrimaryButton onClick={() => navigate(`${routes.journal}?tab=morning`)}>
                       {t("today.nudge.morningCta")}
                     </PrimaryButton>
-                    <div className="flex justify-center">
-                      <GhostButton onClick={() => navigate(routes.focus)}>
-                        {t("today.primary.skipToFocus")}
-                      </GhostButton>
-                    </div>
                   </div>
                 </Card>
               ) : null}
@@ -820,14 +828,41 @@ export function TodayScreen() {
                 </Card>
               ) : null}
 
-              <EnergyCheck
-                value={todayPlan.energyLevel}
-                onChange={(level) => {
-                  store.updateTodayEnergy(level);
-                  store.logEnergy(level);
-                  toast.show(t("toast.energyLogged"));
-                }}
-              />
+              {primaryKind === "focus" && showMorningNudge ? (
+                <div className="flex justify-center">
+                  <GhostButton className="gap-1.5" onClick={() => navigate(`${routes.journal}?tab=morning`)}>
+                    <Sun size={14} className="text-monk-accent" />
+                    {t("today.nudge.morningChip")}
+                  </GhostButton>
+                </div>
+              ) : null}
+
+              {energy && (primaryKind === "focus" || primaryKind === "intention") ? (
+                <EnergyCheck
+                  value={todayPlan.energyLevel}
+                  onChange={(level) => {
+                    store.updateTodayEnergy(level);
+                    store.logEnergy(level);
+                    toast.show(t("toast.energyLogged"));
+                  }}
+                  compact
+                />
+              ) : (
+                <details className="group rounded-monk border border-monk-border bg-monk-surface transition-all duration-200 ease-monk hover:border-monk-border-strong open:border-monk-border-strong">
+                  <summary className="flex cursor-pointer list-none items-center justify-between gap-3 p-4 text-sm font-semibold text-monk-muted hover:text-monk-text marker:content-none [&::-webkit-details-marker]:hidden">
+                    <span>{t("today.energyCheckTitle")}</span>
+                    <ChevronRight size={16} className="shrink-0 transition-transform duration-200 group-open:rotate-90" />
+                  </summary>
+                  <EnergyCheck
+                    value={todayPlan.energyLevel}
+                    onChange={(level) => {
+                      store.updateTodayEnergy(level);
+                      store.logEnergy(level);
+                      toast.show(t("toast.energyLogged"));
+                    }}
+                  />
+                </details>
+              )}
             </div>
 
             {/* Secondary — collapsed */}
@@ -837,29 +872,6 @@ export function TodayScreen() {
                 <ChevronRight size={16} className="transition-transform duration-200 group-open:rotate-90" />
               </summary>
               <div className="space-y-3 border-t border-monk-border px-4 pb-4 pt-3">
-                {checklist.length ? (
-                  <div
-                    className="grid grid-cols-2 gap-3"
-                    role="list"
-                    aria-label={t("today.checklistAria", { done: checklistDone, total: checklist.length })}
-                  >
-                    {checklist.map((item) => (
-                      <div
-                        key={item.id}
-                        role="listitem"
-                        aria-label={`${item.label}: ${item.done ? t("today.checklistDone") : t("today.checklistNotDone")}`}
-                        className={`flex items-center gap-2.5 rounded-xl border p-2.5 pr-3 text-[11px] font-semibold ${
-                          item.done
-                            ? "border-monk-success/30 bg-monk-success-soft text-monk-success shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]"
-                            : "border-monk-border/60 bg-monk-soft text-monk-text-soft"
-                        }`}
-                      >
-                        {item.id === 'morning' ? <Sun size={14} /> : item.id === 'focus' ? <Check size={14} /> : item.id === 'learn' ? <BookOpen size={14} /> : <Moon size={14} />}
-                        <span>{item.label}</span>
-                      </div>
-                    ))}
-                  </div>
-                ) : null}
                 <DefenseChips compact />
                 <button
                   type="button"
@@ -908,6 +920,24 @@ export function TodayScreen() {
               </div>
             </details>
 
+            {checklist.length ? (
+              <div role="list" aria-label={t("today.check.stripAria")} className="space-y-2">
+                <div className="grid grid-cols-5 gap-1.5">
+                  {checklist.map((item) => (
+                    <span
+                      key={item.id}
+                      role="listitem"
+                      title={`${item.label}: ${item.done ? t("today.checklistDone") : t("today.check.tap")}`}
+                      aria-label={`${item.label}: ${item.done ? t("today.checklistDone") : t("today.check.tap")}`}
+                      className={`block h-1.5 rounded-full ${item.done ? "bg-monk-success" : "bg-monk-border/40"}`}
+                    />
+                  ))}
+                </div>
+                <p className="text-[11px] font-medium text-monk-muted">
+                  {t("today.checklistAria", { done: checklistDone, total: checklist.length })}
+                </p>
+              </div>
+            ) : null}
             <SeasonProgressCard compact />
             <WeeklyStatusIndicators />
             <PlanTomorrow goals={activeGoals} />

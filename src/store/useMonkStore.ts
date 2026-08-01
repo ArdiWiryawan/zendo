@@ -113,6 +113,7 @@ type MonkActions = {
   getOrCreateCurrentWeeklyPlan: () => WeeklyPlan | undefined;
   createOrUpdateDayPlan: (dateString: string, input: PickTodayInput) => void;
   clearDayPlan: (dateString: string) => void;
+  saveTomorrowIntention: (dateString: string, text: string) => void;
   toggleTodayCompletion: () => void;
   updateTodayEnergy: (energyLevel: EnergyLevel) => void;
   completeTodayMainAction: () => void;
@@ -230,6 +231,7 @@ function deriveTimelineStatus(state: MonkMVPState, dayPlan: DayPlan): TimelineSt
     learningSessions: learningSessions.length > 0 ? learningSessions : legacyLearningEntries.map((entry) => ({ id: entry.id }))
   });
   if (status !== "not_started") return status;
+  if (dayPlan.status === "completed" || dayPlan.status === "planned") return "partial";
   if (dayPlan.status === "missed") return "missed";
   return "not_started";
 }
@@ -868,14 +870,39 @@ export const useMonkStore = create<MonkStore>()(
     if (!existing) return;
 
     const dayPlans = state.dayPlans.filter((day) => day.id !== existing.id);
+    const focusSessions = state.focusSessions.filter((session) => session.dayPlanId !== existing.id);
+    const learningSessions = state.learningSessions.filter(
+      (session) => (session.endedAt ?? session.startedAt).slice(0, 10) !== dateString
+    );
+    const learningEntries = state.learningEntries.filter((entry) => entry.dayPlanId !== existing.id);
     let next: MonkMVPState = {
       ...snapshot(state),
-      dayPlans
+      dayPlans,
+      focusSessions,
+      learningSessions,
+      learningEntries
     };
     next = { ...next, weeklyPlans: updateAllocationCounts(next, existing.weeklyPlanId) };
     const timelineDays = state.timelineDays.filter((day) => day.date !== dateString);
     next = { ...next, timelineDays };
     set(next);
+  },
+
+  saveTomorrowIntention: (dateString, text) => {
+    const state = get();
+    const season = state.activeSeason;
+    if (!season || !text.trim()) return;
+    const tomorrow = addDaysToDate(dateString, 1);
+    const todayPlan = state.dayPlans.find((day) => day.seasonId === season.id && day.date === dateString);
+    const goalId = todayPlan?.goalId ?? getActiveGoals(state)[0]?.id;
+    const todayStatus: "active" | "completed" | "planned" | "missed" | undefined =
+      todayPlan?.status !== "rest" ? (todayPlan?.status as "active" | "completed" | "planned" | "missed" | undefined) : undefined;
+    get().createOrUpdateDayPlan(tomorrow, {
+      dayType: todayPlan?.dayType ?? "goal",
+      goalId,
+      mainAction: text,
+      status: todayStatus
+    });
   },
 
   toggleTodayCompletion: () => {

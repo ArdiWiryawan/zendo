@@ -17,8 +17,8 @@ import {
 } from "../components/ui";
 import { getTodayDateString, addDaysToDate, formatHumanDate } from "../lib/date";
 import { routes } from "../constants/routes";
-import { JOURNAL_DRAFT_KEY } from "../lib/storage";
-import { selectJournalEntryForToday, selectTodayPlan } from "../store/selectors";
+import { JOURNAL_DRAFT_KEY, readJournalDraft, writeJournalDraft } from "../lib/storage";
+import { selectActiveGoals, selectJournalEntryForToday, selectTodayPlan } from "../store/selectors";
 import { WhyEditor } from "../components/SeasonWidgets";
 import type { AppLanguage, JournalAnswers } from "../types/app";
 
@@ -47,13 +47,18 @@ export function JournalEntryScreen() {
   const journalDraftKey = `${JOURNAL_DRAFT_KEY}:${dateSeed}`;
 
   const initial = useMemo(() => {
-    const draft = localStorage.getItem(journalDraftKey);
-    return draft ? (JSON.parse(draft) as JournalAnswers) : targetEntry?.answers ?? {};
+    const draft = readJournalDraft(journalDraftKey);
+    return draft?.answers ?? targetEntry?.answers ?? {};
   }, [journalDraftKey, targetEntry?.id, targetEntry?.updatedAt]);
+
+  const initialTomorrow = useMemo(
+    () => readJournalDraft(journalDraftKey)?.tomorrow ?? "",
+    [journalDraftKey]
+  );
 
   const [answers, setAnswers] = useState<JournalAnswers>(initial);
   const [saved, setSaved] = useState(false);
-  const [tomorrow, setTomorrow] = useState("");
+  const [tomorrow, setTomorrow] = useState(initialTomorrow);
   const [tomorrowSaved, setTomorrowSaved] = useState(false);
   const [draftSaved, setDraftSaved] = useState(false);
   const draftSkipRef = useRef(true);
@@ -63,11 +68,12 @@ export function JournalEntryScreen() {
 
   useEffect(() => {
     setAnswers(initial);
+    setTomorrow(initialTomorrow);
     setSaved(false);
     setTomorrowSaved(false);
     setDraftSaved(false);
     draftSkipRef.current = true;
-  }, [initial]);
+  }, [initial, initialTomorrow]);
 
   useEffect(() => {
     if (draftSkipRef.current) {
@@ -76,17 +82,13 @@ export function JournalEntryScreen() {
     }
     if (draftTimerRef.current) clearTimeout(draftTimerRef.current);
     draftTimerRef.current = setTimeout(() => {
-      try {
-        localStorage.setItem(journalDraftKey, JSON.stringify(answers));
-        setDraftSaved(true);
-      } catch {
-        /* ignore */
-      }
+      writeJournalDraft(journalDraftKey, { answers, tomorrow });
+      setDraftSaved(true);
     }, 600);
     return () => {
       if (draftTimerRef.current) clearTimeout(draftTimerRef.current);
     };
-  }, [answers, journalDraftKey]);
+  }, [answers, tomorrow, journalDraftKey]);
 
   const activePrompt = useMemo(() => getDailyJournalPromptForDate(lang, dateSeed), [lang, dateSeed]);
 
@@ -140,7 +142,10 @@ export function JournalEntryScreen() {
         }
       />
       {!targetPlan ? (
-        <CalmAlert type="warning" title={isRequestedDate ? t("journal.needFocusDate") : t("journal.needFocus")} />
+        <div className="space-y-3">
+          <CalmAlert type="warning" title={isRequestedDate ? t("journal.needFocusDate") : t("journal.needFocus")} />
+          <PrimaryButton onClick={() => navigate(routes.today)}>{t("journal.setFocusToday")}</PrimaryButton>
+        </div>
       ) : null}
 
       <span className="sr-only" aria-live="polite">{t("journal.selectedDate", { date: formatHumanDate(dateSeed) })}</span>
@@ -248,12 +253,16 @@ export function JournalEntryScreen() {
               </p>
             ) : null}
           </Card>
-          <TextInput
-            label={t("today.closeDay.tomorrowLabel")}
-            placeholder={t("today.closeDay.tomorrowPlaceholder")}
-            value={tomorrow}
-            onChange={(event) => setTomorrow(event.target.value)}
-          />
+          {!isRequestedDate && targetPlan ? (
+            <TextInput
+              label={t("today.closeDay.tomorrowLabel")}
+              placeholder={t("today.closeDay.tomorrowPlaceholder")}
+              value={tomorrow}
+              onChange={(event) => setTomorrow(event.target.value)}
+            />
+          ) : isRequestedDate ? (
+            <p className="text-[11px] text-monk-text-soft">{t("journal.tomorrowPast")}</p>
+          ) : null}
         </div>
       )}
 
@@ -277,19 +286,24 @@ export function JournalEntryScreen() {
           onClick={() => {
             store.saveJournalEntry(answers, { date: dateSeed, tab: currentTab });
             localStorage.removeItem(journalDraftKey);
+            // Skip the next draft-write debounce so it can't resurrect stale
+            // answers just after the saved draft was cleared.
+            draftSkipRef.current = true;
             let wroteTomorrow = false;
             if (currentTab === "reflection" && !isRequestedDate && targetPlan) {
               const tomorrowText = tomorrow.trim();
               if (tomorrowText) {
                 const tomorrowDate = addDaysToDate(dateSeed, 1);
+                const goalId = targetPlan?.goalId ?? selectActiveGoals(store)[0]?.id;
+                store.saveTomorrowIntention?.(tomorrowDate, tomorrowText);
                 const isRest = targetPlan?.dayType === "rest";
                 if (isRest) {
                   store.createOrUpdateDayPlan(tomorrowDate, { dayType: "rest" });
                   wroteTomorrow = true;
-                } else if (targetPlan?.goalId) {
+                } else if (goalId) {
                   store.createOrUpdateDayPlan(tomorrowDate, {
                     dayType: "goal",
-                    goalId: targetPlan.goalId,
+                    goalId,
                     mainAction: tomorrowText
                   });
                   wroteTomorrow = true;

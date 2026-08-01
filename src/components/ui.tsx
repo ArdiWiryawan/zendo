@@ -427,6 +427,7 @@ export function CalmDialog({
   confirmLabel,
   cancelLabel,
   danger = false,
+  confirmDisabled = false,
   onConfirm,
   onCancel
 }: {
@@ -437,6 +438,7 @@ export function CalmDialog({
   confirmLabel: string;
   cancelLabel: string;
   danger?: boolean;
+  confirmDisabled?: boolean;
   onConfirm: () => void;
   onCancel: () => void;
 }) {
@@ -507,12 +509,13 @@ export function CalmDialog({
             <button
               type="button"
               onClick={onConfirm}
-              className="min-h-11 rounded-full border border-monk-danger/40 bg-monk-danger/10 px-4 text-sm font-bold text-monk-danger transition active:scale-95"
+              disabled={confirmDisabled}
+              className="min-h-11 rounded-full border border-monk-danger/40 bg-monk-danger/10 px-4 text-sm font-bold text-monk-danger transition active:scale-95 disabled:cursor-not-allowed disabled:opacity-40"
             >
               {confirmLabel}
             </button>
           ) : (
-            <PrimaryButton type="button" className="!w-auto px-5" onClick={onConfirm}>
+            <PrimaryButton type="button" className="!w-auto px-5" onClick={onConfirm} disabled={confirmDisabled}>
               {confirmLabel}
             </PrimaryButton>
           )}

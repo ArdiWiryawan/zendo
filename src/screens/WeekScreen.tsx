@@ -8,6 +8,8 @@ import { getTodayDateString, datesInRange, formatHumanDate } from "../lib/date";
 import { routes } from "../constants/routes";
 import { DefenseChips } from "./TodayScreen";
 import { selectTodayPlan, selectActiveGoals, selectCurrentWeeklyPlan, selectEnergyForDate, selectTotalFocusSecondsForDate } from "../store/selectors";
+import { isRetroEligible } from "../lib/dailyActivity";
+import { RetroLogModal } from "../components/RetroLogModal";
 import {
   Card,
   EmptyState,
@@ -24,7 +26,7 @@ import {
 import { FocusSessionStarter } from "./FocusSession";
 import { SeasonProgressCard } from "../components/SeasonWidgets";
 import { CircularProgress } from "../components/CircularProgress";
-import type { EnergyLevel } from "../types/app";
+import type { EnergyLevel, TimelineStatus } from "../types/app";
 
 export function WeekScreen() {
   const navigate = useNavigate();
@@ -34,6 +36,7 @@ export function WeekScreen() {
   const goals = selectActiveGoals(store);
   const today = getTodayDateString();
   const todayPlan = selectTodayPlan(store);
+  const [retroDate, setRetroDate] = useState<string | null>(null);
 
   useEffect(() => {
     store.getOrCreateCurrentWeeklyPlan();
@@ -50,6 +53,7 @@ export function WeekScreen() {
     const partial = plans.filter((p) => p?.status === "partial").length;
     const rest = plans.filter((p) => p?.dayType === "rest" || p?.status === "rest").length;
     const missed = plans.filter((p) => p?.status === "missed" || p?.status === "relapse").length;
+    const unhandled = plans.filter((p, i) => !p && weekDates[i] < today).length;
     const targetFocus = weeklyPlan.goalAllocations.reduce((s, a) => s + a.targetCount, 0) || 6;
     const focusDone = weeklyPlan.goalAllocations.reduce((s, a) => s + a.completedCount, 0);
     const energyCounts = weekDates.reduce((acc, date) => {
@@ -58,7 +62,7 @@ export function WeekScreen() {
       return acc;
     }, {} as Record<EnergyLevel, number>);
     const energyTotal = Object.values(energyCounts).reduce((a, b) => a + b, 0);
-    return { completed, partial, rest, missed, targetFocus, focusDone, energyCounts, energyTotal };
+    return { completed, partial, rest, missed, unhandled, targetFocus, focusDone, energyCounts, energyTotal };
   }, [weeklyPlan, weekDates, store.dayPlans, store.energyLogs]);
 
   const remainingDays = weekDates.filter((d) => d >= today).length;
@@ -126,7 +130,7 @@ export function WeekScreen() {
                   <div className="text-right text-[11px] text-monk-muted/80 space-y-1">
                     {stats.rest > 0 ? <p className="flex items-center gap-1.5 justify-end"><span className="h-1.5 w-1.5 rounded-full bg-monk-rest/70" />{t("week.restCount", { n: stats.rest })}</p> : null}
                     {stats.partial > 0 ? <p className="flex items-center gap-1.5 justify-end"><span className="h-1.5 w-1.5 rounded-full bg-monk-accent/70" />{t("week.partialCount", { n: stats.partial })}</p> : null}
-                    {stats.missed > 0 ? <p className="flex items-center gap-1.5 justify-end text-monk-danger/80"><span className="h-1.5 w-1.5 rounded-full bg-monk-danger/70" />{t("week.missedCount", { n: stats.missed })}</p> : null}
+                    {stats.missed + stats.unhandled > 0 ? <p className="flex items-center gap-1.5 justify-end text-monk-warning/90"><span className="h-1.5 w-1.5 rounded-full bg-monk-warning/70" />{stats.missed > 0 ? t("week.missedCount", { n: stats.missed }) + " " : ""}{stats.unhandled > 0 ? t("week.openMissed", { n: stats.unhandled }) : ""}</p> : null}
                     <p className="text-monk-muted/60">{remainingDays === 1 ? t("week.daysLeft", { n: remainingDays }) : t("week.daysLeftPlural", { n: remainingDays })}</p>
                   </div>
                 </div>
@@ -161,6 +165,7 @@ export function WeekScreen() {
                   const isRest = dayPlan?.dayType === "rest" || status === "rest";
                   const isRelapse = status === "relapse";
                   const isMissed = status === "missed";
+                  const isEligible = isRetroEligible(date, status as TimelineStatus, today);
                   const energyLevel = selectEnergyForDate(store, date);
                   const energyDot =
                     energyLevel === "high" ? "bg-monk-success" :
@@ -199,7 +204,11 @@ export function WeekScreen() {
                     : isRelapse
                     ? "bg-monk-danger/10 border-monk-danger/40 text-monk-danger"
                     : isMissed
-                    ? "bg-monk-text-soft/5 border-monk-text-soft/25 text-monk-text-soft/50"
+                    ? isEligible
+                      ? "bg-monk-text-soft/5 border-dashed border-monk-accent/60 text-monk-text-soft/50"
+                      : "bg-monk-text-soft/5 border-monk-text-soft/25 text-monk-text-soft/50"
+                    : isEligible
+                    ? "bg-monk-soft border-dashed border-monk-accent/60 text-monk-warning"
                     : isFuture
                     ? "bg-transparent border-monk-border/30 text-monk-text-soft/40"
                     : "bg-monk-soft border-monk-border text-monk-text-soft";
@@ -222,14 +231,15 @@ export function WeekScreen() {
                     </>
                   );
 
-                  if (isToday) {
+                  if (isToday || isEligible) {
                     return (
                       <button
                         key={date}
                         type="button"
                         role="listitem"
-                        aria-label={label}
-                        onClick={() => navigate(routes.today)}
+                        aria-label={label + (isEligible ? t("timeline.tapToLog") : "")}
+                        title={isEligible ? t("timeline.tapToLog") : undefined}
+                        onClick={() => (isToday ? navigate(routes.today) : setRetroDate(date))}
                         className="flex min-w-0 flex-1 flex-col items-center gap-1 rounded-xl py-1 transition active:scale-95"
                       >
                         {DayInner}
@@ -273,7 +283,13 @@ export function WeekScreen() {
                       <p className="text-sm text-monk-muted/90">{t("week.wrap.held", { n: heldDays })}</p>
                       {stats.rest > 0 ? <p className="text-sm text-monk-muted/90">{t("week.wrap.rest", { n: stats.rest })}</p> : null}
                     </div>
+                    {stats.focusDone === 0 && stats.rest > 0 ? (
+                      <p className="mt-2 text-sm text-monk-muted/90">{t("week.softWin.held")}</p>
+                    ) : null}
                     <p className="mt-3 text-sm text-monk-accent/90 font-medium">{wrapWin}</p>
+                    {stats.partial > 0 || (stats.focusDone === 0 && stats.rest > 0) ? (
+                      <p className="mt-1 text-xs text-monk-muted/90">{t("week.softWin.body")}</p>
+                    ) : null}
                   </div>
                 </Card>
               </motion.div>
@@ -409,6 +425,7 @@ export function WeekScreen() {
           </>
         )}
       </div>
+      <RetroLogModal open={!!retroDate} date={retroDate} onClose={() => setRetroDate(null)} />
     </>
   );
 }
@@ -475,6 +492,7 @@ function WeeklyReviewCard({
     partial: number;
     rest: number;
     missed: number;
+    unhandled: number;
     targetFocus: number;
     focusDone: number;
   };

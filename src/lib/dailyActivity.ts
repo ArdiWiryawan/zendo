@@ -1,5 +1,6 @@
 import type { MonkMVPState, TimelineStatus } from "../types/app";
-import { addDaysToDate } from "./date";
+import { addDaysToDate, getTodayDateString, parseLocalDateKey } from "./date";
+import { differenceInCalendarDays } from "date-fns";
 import { resolveDailyActivityStatus, getDailyStatusHelper } from "../constants/dailyActivityStatus";
 import { FOCUS_PRESETS } from "../constants/focusPresets";
 import {
@@ -22,8 +23,13 @@ export function getDailyActivity(store: MonkMVPState, date: string) {
 
 export function getDailyStatusForDate(store: MonkMVPState, date: string): TimelineStatus {
   const day = store.timelineDays.find((item) => item.date === date);
+  // Retro/plan-only states are authoritative: relapse, rest, and an explicitly
+  // logged-but-sessionless day (retro "Focus Goal" resolves 'partial' in the
+  // store, but no session exists to recompute from). Honor them verbatim.
   if (day?.status === "relapse" || day?.status === "rest") return day.status;
-  return getCoreDailyStatusForDate(store, date);
+  const core = getCoreDailyStatusForDate(store, date);
+  if (core === "not_started" && day?.status === "partial") return "partial";
+  return core;
 }
 
 export function getCoreDailyStatusForDate(store: MonkMVPState, date: string) {
@@ -64,6 +70,13 @@ export function getLearningSummaryForDate(store: MonkMVPState, date: string) {
   const entry = activity.legacyLearningEntries[0];
   if (entry) return `${entry.durationMinutes ?? 0} min · ${entry.title}`;
   return "Not done yet";
+}
+
+export function isRetroEligible(date: string, status: TimelineStatus, today?: string): boolean {
+  const todayKey = today ?? getTodayDateString();
+  if (date >= todayKey) return false;
+  if (status !== "not_started" && status !== "missed") return false;
+  return differenceInCalendarDays(parseLocalDateKey(todayKey), parseLocalDateKey(date)) <= 3;
 }
 
 export function isCloseDaySkipped(date: string) {

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type JSX } from "react";
+import { useMemo, useState, type JSX } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   FileText,
@@ -11,14 +11,13 @@ import {
 } from "lucide-react";
 import { motion } from "framer-motion";
 import {
-  CalmDialog,
   Card,
   EmptyState,
   PageHeader,
   SectionHeader,
   SettingsLink,
-  useCalmToast,
 } from "../components/ui";
+import { RetroLogModal } from "../components/RetroLogModal";
 import { SeasonProgressCard, WhyCard } from "../components/SeasonWidgets";
 import { DAILY_STATUS_LABELS } from "../constants/dailyActivityStatus";
 import { FOCUS_PRESETS } from "../constants/focusPresets";
@@ -41,8 +40,9 @@ import {
   getCoreDailyStatusForDate,
   getDailyHelperForDate,
   getDailyStatusForDate,
+  isRetroEligible,
 } from "../lib/dailyActivity";
-import { selectActiveGoals, selectTodayPlan } from "../store/selectors";
+import { selectTodayPlan } from "../store/selectors";
 import { useMonkStore } from "../store/useMonkStore";
 import type { AppLanguage, TimelineEvent, TimelineEventType } from "../types/app";
 import { getJournalAnswerItems } from "../i18n/prompts";
@@ -210,19 +210,9 @@ export default function TimelineScreen() {
   const navigate = useNavigate();
   const store = useMonkStore();
   const t = useT();
-  const toast = useCalmToast();
   const season = store.activeSeason!;
-  const activeGoals = selectActiveGoals(store);
 
   const [retroDate, setRetroDate] = useState<string | null>(null);
-  const [retroGoalId, setRetroGoalId] = useState<string>("");
-  const [retroDayType, setRetroDayType] = useState<"goal" | "rest">("goal");
-
-  useEffect(() => {
-    if (activeGoals.length > 0 && !retroGoalId) {
-      setRetroGoalId(activeGoals[0].id);
-    }
-  }, [activeGoals, retroGoalId]);
 
   const dates = useMemo(() => {
     return datesInRange(season.startDate, season.durationDays);
@@ -317,10 +307,7 @@ export default function TimelineScreen() {
                       const isToday = date === today;
                       const status = getDailyStatusForDate(store, date);
                       const dayNum = getDayNumber(date, season.startDate);
-                      const isPast = date < today;
-                      const diffTime = new Date(today + "T00:00:00").getTime() - new Date(date + "T00:00:00").getTime();
-                      const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
-                      const isEligible = isPast && diffDays <= 3 && ["missed", "not_started"].includes(status);
+                      const isEligible = isRetroEligible(date, status, today);
 
                       return (
                         <div
@@ -358,10 +345,7 @@ export default function TimelineScreen() {
                               const isToday = date === today;
                               const status = getDailyStatusForDate(store, date);
                               const dayNum = getDayNumber(date, season.startDate);
-                              const isPast = date < today;
-                              const diffTime = new Date(today + "T00:00:00").getTime() - new Date(date + "T00:00:00").getTime();
-                              const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
-                              const isEligible = isPast && diffDays <= 3 && ["missed", "not_started"].includes(status);
+                              const isEligible = isRetroEligible(date, status, today);
 
                               return (
                                 <div
@@ -450,76 +434,7 @@ export default function TimelineScreen() {
         </div>
       </div>
 
-      {/* Retroactive Logging Modal */}
-      <CalmDialog
-        open={!!retroDate}
-        title={t("timeline.retro.title")}
-        description={t("timeline.retro.body")}
-        confirmLabel={t("timeline.retro.saveLog")}
-        cancelLabel={t("timeline.retro.cancel")}
-        onCancel={() => setRetroDate(null)}
-        onConfirm={() => {
-          if (!retroDate) return;
-          store.createOrUpdateDayPlan(retroDate, {
-            dayType: retroDayType,
-            goalId: retroDayType === "goal" ? retroGoalId : undefined,
-            status: "completed"
-          });
-          toast.show(t("timeline.retro.saved"));
-          setRetroDate(null);
-        }}
-      >
-        <h3 className="text-sm font-bold text-monk-text">
-          {retroDate ? t("timeline.retro.heading", { date: formatHumanDate(retroDate) }) : ""}
-        </h3>
-        <div className="flex gap-2.5">
-          <button
-            type="button"
-            className={`flex-1 min-h-10 rounded-xl border text-xs font-semibold transition active:scale-[0.98] ${
-              retroDayType === "goal"
-                ? "border-monk-accent ring-1 ring-monk-accent/30 bg-monk-accent-soft text-monk-accent"
-                : "border-monk-border bg-monk-soft text-monk-muted hover:border-monk-border-strong"
-            }`}
-            onClick={() => setRetroDayType("goal")}
-          >
-            {t("timeline.retro.focusGoal")}
-          </button>
-          <button
-            type="button"
-            className={`flex-1 min-h-10 rounded-xl border text-xs font-semibold transition active:scale-[0.98] ${
-              retroDayType === "rest"
-                ? "border-monk-accent ring-1 ring-monk-accent/30 bg-monk-accent-soft text-monk-accent"
-                : "border-monk-border bg-monk-soft text-monk-muted hover:border-monk-border-strong"
-            }`}
-            onClick={() => setRetroDayType("rest")}
-          >
-            {t("timeline.retro.restDay")}
-          </button>
-        </div>
-
-        {retroDayType === "goal" ? (
-          <div className="space-y-2">
-            <label className="block text-xs font-bold text-monk-muted uppercase tracking-wider">{t("timeline.retro.chooseTheme")}</label>
-            <div className="max-h-40 space-y-2 overflow-y-auto">
-              {activeGoals.map((goal) => (
-                <button
-                  key={goal.id}
-                  type="button"
-                  className={`w-full rounded-xl border p-3 text-left text-xs font-semibold transition active:scale-[0.98] ${
-                    retroGoalId === goal.id
-                      ? "border-monk-accent ring-1 ring-monk-accent/30 bg-monk-accent-soft text-monk-accent"
-                      : "border-monk-border bg-monk-surface text-monk-text hover:border-monk-border-strong"
-                  }`}
-                  onClick={() => setRetroGoalId(goal.id)}
-                >
-                  {goal.title}
-                </button>
-              ))}
-            </div>
-          </div>
-        ) : null}
-      </CalmDialog>
-      {toast.Toast()}
+      <RetroLogModal open={!!retroDate} date={retroDate} onClose={() => setRetroDate(null)} />
     </>
   );
 }
