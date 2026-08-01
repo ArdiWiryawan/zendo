@@ -128,7 +128,7 @@ type MonkActions = {
   saveLearningEntry: (input: LearningInput) => void;
   saveLearningSession: (session: LearningSession) => void;
   addTimelineEvent: (event: TimelineEvent) => void;
-  saveJournalEntry: (answers: JournalAnswers) => void;
+  saveJournalEntry: (answers: JournalAnswers, opts?: { date?: string; tab?: "morning" | "reflection" }) => void;
   saveRelapseLog: (input: RelapseInput) => void;
   archiveSeason: () => void;
   startNewSeason: () => void;
@@ -1314,21 +1314,25 @@ export const useMonkStore = create<MonkStore>()(
     });
   },
 
-  saveJournalEntry: (answers) => {
+  saveJournalEntry: (answers, opts) => {
     const state = get();
-    const plan = findTodayPlan(state);
+    const date = opts?.date ?? getTodayDateString();
+    const plan =
+      (date !== getTodayDateString()
+        ? state.dayPlans.find((p) => p.seasonId === state.activeSeason?.id && p.date === date)
+        : findTodayPlan(state)) ??
+      state.dayPlans.find((p) => p.seasonId === state.activeSeason?.id && p.date === date);
     if (!state.activeSeason || !plan) return;
     const timestamp = nowIso();
-    const today = getTodayDateString();
     const existing = state.journalEntries.find(
-      (entry) => entry.seasonId === state.activeSeason?.id && entry.date === today
+      (entry) => entry.seasonId === state.activeSeason?.id && entry.date === date
     );
     const entry = {
       id: existing?.id ?? createId("journal"),
       seasonId: state.activeSeason.id,
       weeklyPlanId: plan.weeklyPlanId,
       dayPlanId: plan.id,
-      date: today,
+      date,
       answers,
       createdAt: existing?.createdAt ?? timestamp,
       updatedAt: timestamp

@@ -403,6 +403,7 @@ export function TodayScreen() {
           <>
             <Card
               important
+              id="today-primary"
               className={`today-primary-anchor relative overflow-hidden p-5 ${
                 isDone ? "border-monk-success/30" : isRest ? "border-monk-rest/25" : ""
               }`}
@@ -423,6 +424,9 @@ export function TodayScreen() {
                       {statusLabel}
                     </span>
                   </div>
+                  <span className="sr-only" aria-live="polite" id="today-status-live">
+                    {t("today.statusLive", { status: statusLabel })}
+                  </span>
                   <h2 className="mt-2 text-3xl font-bold leading-9 tracking-tight">
                     {isRest ? t("today.quietRecovery") : goal?.title ?? t("today.oneTheme")}
                   </h2>
@@ -459,30 +463,6 @@ export function TodayScreen() {
                   {isDone ? <Check size={18} strokeWidth={2.5} /> : null}
                 </button>
               </div>
-
-              {checklist.length ? (
-                <div
-                  className="mt-5 grid grid-cols-2 gap-3"
-                  role="list"
-                  aria-label={t("today.checklistAria", { done: checklistDone, total: checklist.length })}
-                >
-                  {checklist.map((item) => (
-                    <div
-                      key={item.id}
-                      role="listitem"
-                      aria-label={`${item.label}: ${item.done ? t("today.checklistDone") : t("today.checklistNotDone")}`}
-                      className={`flex items-center gap-2.5 rounded-xl border p-2.5 pr-3 text-[11px] font-semibold ${
-                        item.done
-                          ? "border-monk-success/30 bg-monk-success-soft text-monk-success shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]"
-                          : "border-monk-border/60 bg-monk-soft text-monk-text-soft"
-                      }`}
-                    >
-                      {item.id === 'morning' ? <Sun size={14} /> : item.id === 'focus' ? <Check size={14} /> : item.id === 'learn' ? <BookOpen size={14} /> : <Moon size={14} />}
-                      <span>{item.label}</span>
-                    </div>
-                  ))}
-                </div>
-              ) : null}
 
               <div className="mt-5 rounded-xl border border-monk-border bg-monk-bg p-4">
                 <div className="flex items-center justify-between gap-2">
@@ -583,14 +563,14 @@ export function TodayScreen() {
                             setEditingAction(true);
                           }}
                         >
-                          Make it today's intention
+                          {t("today.makeIntention")}
                         </button>
                       </div>
                     );
                   }
                   return (
                     <div className="mt-1.5 space-y-2">
-                      <p className="text-sm text-monk-muted">Name one action for today.</p>
+                      <p className="text-sm text-monk-muted">{t("today.nameAction")}</p>
                       <button
                         type="button"
                         className="text-xs font-bold text-monk-accent hover:underline"
@@ -599,7 +579,7 @@ export function TodayScreen() {
                           setEditingAction(true);
                         }}
                       >
-                        Add intention
+                        {t("today.addIntention")}
                       </button>
                     </div>
                   );
@@ -857,11 +837,34 @@ export function TodayScreen() {
                 <ChevronRight size={16} className="transition-transform duration-200 group-open:rotate-90" />
               </summary>
               <div className="space-y-3 border-t border-monk-border px-4 pb-4 pt-3">
+                {checklist.length ? (
+                  <div
+                    className="grid grid-cols-2 gap-3"
+                    role="list"
+                    aria-label={t("today.checklistAria", { done: checklistDone, total: checklist.length })}
+                  >
+                    {checklist.map((item) => (
+                      <div
+                        key={item.id}
+                        role="listitem"
+                        aria-label={`${item.label}: ${item.done ? t("today.checklistDone") : t("today.checklistNotDone")}`}
+                        className={`flex items-center gap-2.5 rounded-xl border p-2.5 pr-3 text-[11px] font-semibold ${
+                          item.done
+                            ? "border-monk-success/30 bg-monk-success-soft text-monk-success shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]"
+                            : "border-monk-border/60 bg-monk-soft text-monk-text-soft"
+                        }`}
+                      >
+                        {item.id === 'morning' ? <Sun size={14} /> : item.id === 'focus' ? <Check size={14} /> : item.id === 'learn' ? <BookOpen size={14} /> : <Moon size={14} />}
+                        <span>{item.label}</span>
+                      </div>
+                    ))}
+                  </div>
+                ) : null}
                 <DefenseChips compact />
                 <button
                   type="button"
                   className="flex w-full items-center justify-between rounded-xl border border-monk-border bg-monk-soft px-3 py-2.5 text-left text-sm"
-                  onClick={() => navigate(routes.journal + (hasMorningPages ? "?tab=morning" : "?tab=morning"))}
+                  onClick={() => navigate(`${routes.journal}?tab=morning`)}
                 >
                   <span className="flex items-center gap-2">
                     <Sun size={14} className="text-monk-accent" />
@@ -992,6 +995,7 @@ function FlowPickToday({ goals }: { goals: ReturnType<typeof selectActiveGoals> 
   const restUsed = store.dayPlans.some(
     (day) => day.weeklyPlanId === weeklyPlan?.id && day.dayType === "rest" && day.status !== "missed"
   );
+  const t = useT();
   if (!weeklyPlan) {
     return (
       <EmptyState
@@ -1011,8 +1015,8 @@ function FlowPickToday({ goals }: { goals: ReturnType<typeof selectActiveGoals> 
 
   return (
     <Card important>
-      <p className="font-semibold">Choose what deserves today.</p>
-      <p className="mt-2 text-sm leading-6 text-monk-muted">One theme is enough. Prefer the goal still short on days.</p>
+      <p className="font-semibold">{t("today.pickHeading")}</p>
+      <p className="mt-2 text-sm leading-6 text-monk-muted">{t("today.pickBody")}</p>
       <div className="mt-5 space-y-3">
         {ranked.map(({ allocation, remaining }) => {
           const goal = goals.find((item) => item.id === allocation.goalId);
@@ -1035,20 +1039,20 @@ function FlowPickToday({ goals }: { goals: ReturnType<typeof selectActiveGoals> 
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-2">
-                    <p className="font-semibold">{goal?.title ?? "Focus goal"}</p>
+                    <p className="font-semibold">{goal?.title ?? t("today.goalFallback")}</p>
                     {recommend ? (
                       <span className="rounded-full border border-monk-accent/40 bg-monk-accent-soft px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-monk-accent">
-                        Suggested
+                        {t("today.suggested")}
                       </span>
                     ) : null}
                     {done ? (
                       <span className="rounded-full border border-monk-success/30 bg-monk-success-soft px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-monk-success">
-                        Target met
+                        {t("today.targetMet")}
                       </span>
                     ) : null}
                   </div>
                   <p className="mt-1 text-xs text-monk-muted line-clamp-2">
-                    {goal?.keystoneAction?.trim() || `${remaining} day${remaining === 1 ? "" : "s"} left this week`}
+                    {goal?.keystoneAction?.trim() || (remaining === 1 ? t("today.daysLeftWeek", { n: remaining }) : t("today.daysLeftWeekPlural", { n: remaining }))}
                   </p>
                 </div>
                 <span className="shrink-0 font-mono text-xs text-monk-muted tabular-nums">
@@ -1074,8 +1078,8 @@ function FlowPickToday({ goals }: { goals: ReturnType<typeof selectActiveGoals> 
               <Moon size={16} strokeWidth={1.5} />
             </div>
             <div>
-              <p className="font-semibold">Rest</p>
-              <p className="mt-1 text-xs text-monk-muted">One quiet day. Rest is part of the path.</p>
+              <p className="font-semibold">{t("week.rest")}</p>
+              <p className="mt-1 text-xs text-monk-muted">{t("today.restPickBody")}</p>
             </div>
           </button>
         ) : null}

@@ -246,14 +246,14 @@ export function WeekScreen() {
               </div>
 
               <div className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-monk-text-soft/70">
-                <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-sm bg-monk-success/80" />done</span>
-                <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-sm bg-monk-accent/70" />partial</span>
-                <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-sm bg-monk-rest/60" />rest</span>
+                <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-sm bg-monk-success/80" />{t("week.legendDone")}</span>
+                <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-sm bg-monk-accent/70" />{t("week.legendPartial")}</span>
+                <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-sm bg-monk-rest/60" />{t("week.legendRest")}</span>
                 <span className="ml-auto flex items-center gap-1.5">
                   <span className="h-1.5 w-1.5 rounded-full bg-monk-success" />
                   <span className="h-1.5 w-1.5 rounded-full bg-monk-accent" />
                   <span className="h-1.5 w-1.5 rounded-full bg-monk-danger" />
-                  energy
+                  {t("week.legendEnergy")}
                 </span>
               </div>
             </Card>
@@ -281,10 +281,10 @@ export function WeekScreen() {
 
             {!todayPlan ? (
               <Card className="p-4 border-monk-accent/30 bg-monk-accent-soft/40">
-                <p className="text-sm font-semibold">Today is open</p>
-                <p className="mt-1 text-xs text-monk-muted">Pick one focus theme. One theme is enough.</p>
+                <p className="text-sm font-semibold">{t("week.todayOpenTitle")}</p>
+                <p className="mt-1 text-xs text-monk-muted">{t("week.todayOpenBody")}</p>
                 <PrimaryButton className="mt-4" onClick={() => navigate(routes.today)}>
-                  Plan Today
+                  {t("week.planToday")}
                 </PrimaryButton>
               </Card>
             ) : null}
@@ -292,8 +292,8 @@ export function WeekScreen() {
             {stats.energyTotal > 0 ? (
               <Card className="p-4">
                 <div className="mb-3 flex items-center justify-between">
-                  <p className="text-xs font-bold uppercase tracking-[0.18em] text-monk-muted">Energy</p>
-                  <span className="text-xs text-monk-muted">{stats.energyTotal} logged</span>
+                  <p className="text-xs font-bold uppercase tracking-[0.18em] text-monk-muted">{t("week.energyTitle")}</p>
+                  <span className="text-xs text-monk-muted">{t("week.energyLogged", { n: stats.energyTotal })}</span>
                 </div>
                 <div className="flex h-2 overflow-hidden rounded-full bg-monk-soft">
                   {(["high", "medium", "low"] as EnergyLevel[]).map((lvl) => {
@@ -313,7 +313,7 @@ export function WeekScreen() {
                 <div className="mt-2 flex flex-wrap gap-3 text-xs text-monk-muted">
                   {(["high", "medium", "low"] as EnergyLevel[]).map((lvl) =>
                     stats.energyCounts[lvl] ? (
-                      <span key={lvl} className="capitalize">{lvl} {stats.energyCounts[lvl]}d</span>
+                      <span key={lvl} className="capitalize">{lvl} {t("week.energyDay", { n: stats.energyCounts[lvl] })}</span>
                     ) : null
                   )}
                 </div>
@@ -321,7 +321,7 @@ export function WeekScreen() {
             ) : null}
 
             <div>
-              <SectionHeader title="Goals this week" subtitle="Touch every goal at least once." />
+              <SectionHeader title={t("week.goalsTitle")} subtitle={t("week.goalsSubtitle")} />
               <div className="space-y-3">
                 {weeklyPlan.goalAllocations.map((allocation, index) => {
                   const goal = goals.find((item) => item.id === allocation.goalId);
@@ -331,7 +331,13 @@ export function WeekScreen() {
                   const complete = allocation.completedCount >= allocation.targetCount;
                   const remaining = Math.max(0, allocation.targetCount - allocation.completedCount);
                   const behind = !complete && remaining > remainingDays;
-                  const statusLabel = complete ? "Target Met" : behind ? "Behind Schedule" : allocation.completedCount > 0 ? "In Progress" : "Not Started";
+                  const statusLabel = complete
+                    ? t("week.statusMet")
+                    : behind
+                    ? t("week.statusBehind")
+                    : allocation.completedCount > 0
+                    ? t("week.statusProgress")
+                    : t("week.statusNotStarted");
                   const statusClass = complete
                     ? "text-monk-success border-monk-success/30 bg-monk-success-soft"
                     : behind
@@ -345,9 +351,9 @@ export function WeekScreen() {
                     <Card className="p-4">
                       <div className="flex items-start justify-between gap-3">
                         <div className="min-w-0 flex-1">
-                          <p className="text-sm font-semibold truncate">{goal?.title ?? "Goal"}</p>
+                          <p className="text-sm font-semibold truncate">{goal?.title ?? t("week.goalFallback")}</p>
                           {goal?.why ? (
-                            <p className="mt-1 text-xs text-monk-accent/90 line-clamp-2">Because {goal.why}</p>
+                            <p className="mt-1 text-xs text-monk-accent/90 line-clamp-2">{t("week.because", { why: goal.why })}</p>
                           ) : null}
                           {goal?.keystoneAction ? (
                             <p className="mt-1 text-xs text-monk-muted line-clamp-2">{goal.keystoneAction}</p>
@@ -382,9 +388,9 @@ export function WeekScreen() {
                       <Moon size={16} strokeWidth={1.5} />
                     </div>
                     <div>
-                      <p className="text-sm font-semibold">Rest day</p>
+                      <p className="text-sm font-semibold">{t("week.restDay")}</p>
                       <p className="mt-0.5 text-xs text-monk-muted">
-                        {stats.rest > 0 ? "Taken this week. Protect the recovery." : "Still open — rest is part of the path."}
+                        {stats.rest > 0 ? t("week.restTaken") : t("week.restOpen")}
                       </p>
                     </div>
                   </div>
@@ -409,6 +415,7 @@ export function WeekScreen() {
 
 function GoalWhyInline({ goalId, why }: { goalId: string; why?: string }) {
   const updateGoalWhy = useMonkStore((s) => s.updateGoalWhy);
+  const t = useT();
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(why ?? "");
 
@@ -416,14 +423,14 @@ function GoalWhyInline({ goalId, why }: { goalId: string; why?: string }) {
     return (
       <div className="mt-3 space-y-2 border-t border-monk-border/40 pt-3">
         <TextInput
-          label="Why this goal"
+          label={t("week.whyLabel")}
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
-          placeholder="Because…"
+          placeholder={t("week.whyPlaceholder")}
         />
         <div className="flex gap-2">
           <GhostButton className="flex-1 min-h-9 text-xs" onClick={() => setEditing(false)}>
-            Cancel
+            {t("week.cancel")}
           </GhostButton>
           <PrimaryButton
             className="flex-1 min-h-9 text-xs"
@@ -432,7 +439,7 @@ function GoalWhyInline({ goalId, why }: { goalId: string; why?: string }) {
               setEditing(false);
             }}
           >
-            Save
+            {t("week.save")}
           </PrimaryButton>
         </div>
       </div>
@@ -448,7 +455,7 @@ function GoalWhyInline({ goalId, why }: { goalId: string; why?: string }) {
       }}
       className="mt-2 text-[11px] font-semibold text-monk-accent hover:underline"
     >
-      {why ? "Edit goal why" : "Add goal why"}
+      {why ? t("week.editGoalWhy") : t("week.addGoalWhy")}
     </button>
   );
 }
@@ -476,6 +483,7 @@ function WeeklyReviewCard({
   today: string;
 }) {
   const navigate = useNavigate();
+  const t = useT();
   const why = useMonkStore((s) => s.activeSeason?.why);
   const weekEnded = remainingDays === 0 || weekDates[weekDates.length - 1] < today;
   const lateWeek = remainingDays <= 1 || weekEnded;
@@ -495,36 +503,36 @@ function WeeklyReviewCard({
   return (
     <Card className="border-monk-accent/25 bg-monk-accent-soft/20 p-5">
       <p className="text-[10px] font-bold uppercase tracking-widest text-monk-accent">
-        {weekEnded ? "Week review" : "Almost week-end"}
+        {weekEnded ? t("week.review.title") : t("week.review.almost")}
       </p>
       <p className="mt-2 text-sm font-semibold text-monk-text">
-        {stats.focusDone}/{stats.targetFocus} focus days · {hitRate}% of target
+        {t("week.review.focusDays", { done: stats.focusDone, target: stats.targetFocus, hit: hitRate })}
       </p>
       {stats.missed > 0 ? (
-        <p className="mt-1 text-xs text-monk-muted">{stats.missed} missed · data, not verdict.</p>
+        <p className="mt-1 text-xs text-monk-muted">{t("week.review.missed", { n: stats.missed })}</p>
       ) : (
-        <p className="mt-1 text-xs text-monk-muted">No missed days logged. Steady.</p>
+        <p className="mt-1 text-xs text-monk-muted">{t("week.review.steady")}</p>
       )}
 
       {starved.length ? (
         <div className="mt-4">
-          <p className="text-[11px] font-bold uppercase tracking-wider text-monk-muted">Needs attention</p>
+          <p className="text-[11px] font-bold uppercase tracking-wider text-monk-muted">{t("week.review.needs")}</p>
           <ul className="mt-2 space-y-1.5">
             {starved.slice(0, 3).map(({ goal, remaining, done, target }) => (
               <li key={goal?.id ?? target} className="text-sm text-monk-text">
-                <span className="font-semibold">{goal?.title ?? "Goal"}</span>
-                <span className="text-monk-muted"> · {done}/{target} · {remaining} short</span>
+                <span className="font-semibold">{goal?.title ?? t("week.goalFallback")}</span>
+                <span className="text-monk-muted"> · {done}/{target} · {t("week.review.short", { remaining })}</span>
               </li>
             ))}
           </ul>
         </div>
       ) : (
-        <p className="mt-3 text-sm text-monk-success">Every goal touched enough this week.</p>
+        <p className="mt-3 text-sm text-monk-success">{t("week.review.allTouched")}</p>
       )}
 
       {why?.identity || why?.consequenceOfInaction ? (
         <div className="mt-4 rounded-xl border border-monk-border/70 bg-monk-bg/50 p-3">
-          <p className="text-[10px] font-bold uppercase tracking-wider text-monk-muted">Still true?</p>
+          <p className="text-[10px] font-bold uppercase tracking-wider text-monk-muted">{t("week.review.stillTrue")}</p>
           <p className="mt-1 text-sm leading-5 text-monk-text line-clamp-3">
             {why.identity || why.consequenceOfInaction}
           </p>
@@ -533,7 +541,7 @@ function WeeklyReviewCard({
             className="mt-2 text-[11px] font-semibold text-monk-accent hover:underline"
             onClick={() => navigate(routes.timeline)}
           >
-            Revisit why
+            {t("week.review.revisitWhy")}
           </button>
         </div>
       ) : (
@@ -542,15 +550,15 @@ function WeeklyReviewCard({
           className="mt-4 text-xs font-semibold text-monk-accent hover:underline"
           onClick={() => navigate(routes.timeline)}
         >
-          Set your why before next week
+          {t("week.review.setWhy")}
         </button>
       )}
 
       <p className="mt-4 text-xs leading-5 text-monk-muted">
-        Next week: protect starved goals first. One theme per day still wins.
+        {t("week.review.nextWeek")}
       </p>
       <SecondaryButton className="mt-3" onClick={() => navigate(routes.today)}>
-        Plan tomorrow
+        {t("week.review.planTomorrow")}
       </SecondaryButton>
     </Card>
   );

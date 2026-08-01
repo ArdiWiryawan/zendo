@@ -134,14 +134,17 @@ export function SectionHeader({ title, subtitle }: { title: string; subtitle?: s
 export function Card({
   children,
   className = "",
-  important = false
+  important = false,
+  id
 }: {
   children: ReactNode;
   className?: string;
   important?: boolean;
+  id?: string;
 }) {
   return (
     <div
+      id={id}
       className={`border bg-monk-surface ${
         important
           ? "rounded-monk-lg border-monk-border-strong bg-monk-soft p-6 monk-depth-raised"
@@ -420,6 +423,7 @@ export function CalmDialog({
   open,
   title,
   description,
+  children,
   confirmLabel,
   cancelLabel,
   danger = false,
@@ -429,6 +433,7 @@ export function CalmDialog({
   open: boolean;
   title: string;
   description?: string;
+  children?: ReactNode;
   confirmLabel: string;
   cancelLabel: string;
   danger?: boolean;
@@ -493,6 +498,7 @@ export function CalmDialog({
         {description ? (
           <p className="mt-2 text-sm leading-6 text-monk-muted">{description}</p>
         ) : null}
+        {children ? <div className="mt-4 space-y-3">{children}</div> : null}
         <div className="mt-5 flex items-center justify-end gap-2">
           <GhostButton type="button" onClick={onCancel}>
             {cancelLabel}

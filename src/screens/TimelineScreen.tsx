@@ -11,15 +11,13 @@ import {
 } from "lucide-react";
 import { motion } from "framer-motion";
 import {
+  CalmDialog,
   Card,
   EmptyState,
-  GhostButton,
   PageHeader,
-  PrimaryButton,
-  SecondaryButton,
   SectionHeader,
   SettingsLink,
-  Textarea,
+  useCalmToast,
 } from "../components/ui";
 import { SeasonProgressCard, WhyCard } from "../components/SeasonWidgets";
 import { DAILY_STATUS_LABELS } from "../constants/dailyActivityStatus";
@@ -52,6 +50,7 @@ import { useT } from "../i18n";
 
 function TimelineStats() {
   const store = useMonkStore();
+  const t = useT();
   const season = store.activeSeason!;
 
   const totalFocusMinutes = Math.round(
@@ -80,9 +79,9 @@ function TimelineStats() {
       <div className="rounded-xl border border-monk-accent/25 bg-gradient-to-br from-monk-surface to-monk-surface/60 p-4 relative overflow-hidden transition hover:border-monk-accent/40 monk-depth">
         <div className="flex items-start justify-between gap-2">
           <div>
-            <p className="text-sm font-semibold uppercase tracking-wider text-monk-muted">Focus Time</p>
-            <p className="text-4xl font-bold mt-1 text-monk-accent tabular-nums leading-none">{totalFocusMinutes}<span className="text-base font-semibold text-monk-muted/50 ml-1">min</span></p>
-            <p className="text-xs text-monk-muted mt-1">{totalFocusSessions} sessions</p>
+            <p className="text-sm font-semibold uppercase tracking-wider text-monk-muted">{t("timeline.stats.focus")}</p>
+            <p className="text-4xl font-bold mt-1 text-monk-accent tabular-nums leading-none">{totalFocusMinutes}<span className="text-base font-semibold text-monk-muted/50 ml-1">{t("timeline.stats.minutes")}</span></p>
+            <p className="text-xs text-monk-muted mt-1">{t("timeline.stats.sessions", { n: totalFocusSessions })}</p>
           </div>
           <div className="grid h-8 w-8 place-items-center rounded-full bg-gradient-to-br from-monk-accent/20 to-monk-accent/5 border border-monk-accent/10 shrink-0 mt-1 shadow-[inset_0_1px_2px_rgba(0,0,0,0.2)]">
             <Timer size={14} strokeWidth={2} className="text-monk-accent" />
@@ -92,9 +91,9 @@ function TimelineStats() {
       <div className="rounded-xl border border-monk-success/25 bg-gradient-to-br from-monk-surface to-monk-surface/60 p-4 relative overflow-hidden transition hover:border-monk-success/40 monk-depth">
         <div className="flex items-start justify-between gap-2">
           <div>
-            <p className="text-sm font-semibold uppercase tracking-wider text-monk-muted">Consistency</p>
+            <p className="text-sm font-semibold uppercase tracking-wider text-monk-muted">{t("timeline.stats.consistency")}</p>
             <p className="text-4xl font-bold mt-1 text-monk-success tabular-nums leading-none">{consistencyRate}<span className="text-base font-semibold text-monk-muted/50 ml-1">%</span></p>
-            <p className="text-xs text-monk-muted mt-1">{completedDaysCount}/{totalPassedDays} days</p>
+            <p className="text-xs text-monk-muted mt-1">{t("timeline.stats.days", { n: completedDaysCount, total: totalPassedDays })}</p>
           </div>
           <div className="grid h-8 w-8 place-items-center rounded-full bg-gradient-to-br from-monk-success/20 to-monk-success/5 border border-monk-success/10 shrink-0 mt-1 shadow-[inset_0_1px_2px_rgba(0,0,0,0.2)]">
             <Flame size={14} strokeWidth={2} className="text-monk-success" />
@@ -107,6 +106,7 @@ function TimelineStats() {
 
 function TimelineEventRow({ event }: { event: TimelineEvent }) {
   const store = useMonkStore();
+  const t = useT();
   const focusRecord = event.type === "focus_session"
     ? event.focusSession ?? store.focusSessions.find((session) => session.id === event.sourceId)
     : undefined;
@@ -114,7 +114,7 @@ function TimelineEventRow({ event }: { event: TimelineEvent }) {
   const focusCompleted = normalizedFocusRecord ? resolveFocusSessionStatus(normalizedFocusRecord) === "completed" : false;
   const focusPreset = normalizedFocusRecord ? getFocusSessionPreset(normalizedFocusRecord) : undefined;
   const focusTitle = focusPreset
-    ? `${FOCUS_PRESETS[focusPreset].shortLabel} ${focusCompleted ? "completed" : "ended early"}`
+    ? `${FOCUS_PRESETS[focusPreset].shortLabel} ${focusCompleted ? t("timeline.focusCompleted") : t("timeline.focusEndedEarly")}`
     : event.title;
   const displayTitle = event.type === "focus_session" && normalizedFocusRecord ? focusTitle : event.title;
   const journalRecord = event.type === "journal_entry"
@@ -210,6 +210,7 @@ export default function TimelineScreen() {
   const navigate = useNavigate();
   const store = useMonkStore();
   const t = useT();
+  const toast = useCalmToast();
   const season = store.activeSeason!;
   const activeGoals = selectActiveGoals(store);
 
@@ -297,7 +298,7 @@ export default function TimelineScreen() {
                 {/* Today status row */}
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-[10px] font-bold uppercase tracking-widest text-monk-muted">Day {todayDayNum} of {season.durationDays}</p>
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-monk-muted">{t("timeline.dayProgress", { n: todayDayNum, total: season.durationDays })}</p>
                     <p className="mt-0.5 text-sm font-semibold text-monk-text">{getDailyHelperForDate(store, today)}</p>
                   </div>
                   <span className={`rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider ${
@@ -367,8 +368,8 @@ export default function TimelineScreen() {
                                   key={date}
                                   role={isEligible ? "button" : undefined}
                                   tabIndex={isEligible ? 0 : undefined}
-                                  title={`Day ${dayNum} · ${status}${isEligible ? " · Tap to log" : ""}`}
-                                  aria-label={`Day ${dayNum} · ${status}${isEligible ? " · Tap to log" : ""}`}
+                                  title={t("timeline.dayTitle", { n: dayNum, status }) + (isEligible ? t("timeline.tapToLog") : "")}
+                                  aria-label={t("timeline.dayTitle", { n: dayNum, status }) + (isEligible ? t("timeline.tapToLog") : "")}
                                   onClick={isEligible ? () => setRetroDate(date) : undefined}
                                   onKeyDown={isEligible ? (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setRetroDate(date); }} : undefined}
                                   className={`w-full aspect-square rounded-lg transition-all duration-300 ${
@@ -385,7 +386,13 @@ export default function TimelineScreen() {
                 )}
                 {/* Legend */}
                 <div className="flex items-center gap-x-4 gap-y-1 pt-1 flex-wrap">
-                  {([["bg-monk-success/75", "Done"], ["bg-monk-accent/60", "Partial"], ["bg-monk-rest/45", "Rest"], ["bg-monk-danger/55", "Relapse"], ["bg-monk-text-soft/20", "Missed"]] as const).map(([cls, label]) => (
+                  {([
+                    ["bg-monk-success/75", t("timeline.legend.done")],
+                    ["bg-monk-accent/60", t("timeline.legend.partial")],
+                    ["bg-monk-rest/45", t("timeline.legend.rest")],
+                    ["bg-monk-danger/55", t("timeline.legend.relapse")],
+                    ["bg-monk-text-soft/20", t("timeline.legend.missed")]
+                  ] as const).map(([cls, label]) => (
                     <span key={label} className="flex items-center gap-1.5">
                       <span className={`inline-block h-2.5 w-2.5 rounded-[3px] ${cls}`} aria-hidden />
                       <span className="text-[11px] text-monk-muted/70">{label}</span>
@@ -403,9 +410,9 @@ export default function TimelineScreen() {
           <SectionHeader title={t("timeline.activity")} subtitle={t("timeline.activitySubtitle")} />
           {groupedEvents.length === 0 ? (
             <EmptyState
-              title="No activity yet"
-              description="Focus sessions, learning, and reflections appear here once you start moving."
-              actionLabel="Start today"
+              title={t("timeline.emptyTitle")}
+              description={t("timeline.emptyDesc")}
+              actionLabel={t("timeline.emptyAction")}
               onAction={() => navigate(routes.today)}
             />
           ) : (
@@ -413,7 +420,7 @@ export default function TimelineScreen() {
               {groupedEvents.map((group) => {
                 const isToday = group.date === getTodayDateString();
                 const isYesterday = group.date === addDaysToDate(getTodayDateString(), -1);
-                const groupTitle = isToday ? "Today" : (isYesterday ? "Yesterday" : formatHumanDate(group.date));
+                const groupTitle = isToday ? t("timeline.today") : (isYesterday ? t("timeline.yesterday") : formatHumanDate(group.date));
 
                 return (
                   <div key={group.date} className="space-y-3">
@@ -443,90 +450,76 @@ export default function TimelineScreen() {
         </div>
       </div>
 
-      {/* Retroactive Logging Modal Overlay */}
-      {retroDate ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-[4px]">
-          <Card className="w-full max-w-sm p-6 bg-monk-bg border border-monk-border shadow-2xl space-y-4 rounded-monk-lg">
-            <div>
-              <p className="text-xs font-bold text-monk-accent uppercase tracking-widest">Retroactive Log</p>
-              <h3 className="text-lg font-bold text-monk-text mt-1">Log for {formatHumanDate(retroDate)}</h3>
-              <p className="text-xs text-monk-muted mt-1 leading-normal">
-                Logged entries count toward weekly allocations and season consistency.
-              </p>
-            </div>
-
-            <div className="flex gap-2.5">
-              <button
-                type="button"
-                className={`flex-1 min-h-10 rounded-xl border text-xs font-semibold transition active:scale-[0.98] ${
-                  retroDayType === "goal"
-                    ? "border-monk-accent ring-1 ring-monk-accent/30 bg-monk-accent-soft text-monk-accent shadow-[inset_0_1px_0_rgba(255,255,255,0.05),0_4px_12px_rgba(164,139,94,0.15)]"
-                    : "border-monk-border bg-monk-soft text-monk-muted hover:border-monk-border-strong"
-                }`}
-                onClick={() => setRetroDayType("goal")}
-              >
-                Focus Goal
-              </button>
-              <button
-                type="button"
-                className={`flex-1 min-h-10 rounded-xl border text-xs font-semibold transition active:scale-[0.98] ${
-                  retroDayType === "rest"
-                    ? "border-monk-accent ring-1 ring-monk-accent/30 bg-monk-accent-soft text-monk-accent shadow-[inset_0_1px_0_rgba(255,255,255,0.05),0_4px_12px_rgba(164,139,94,0.15)]"
-                    : "border-monk-border bg-monk-soft text-monk-muted hover:border-monk-border-strong"
-                }`}
-                onClick={() => setRetroDayType("rest")}
-              >
-                Rest Day
-              </button>
-            </div>
-
-            {retroDayType === "goal" ? (
-              <div className="space-y-2">
-                <label className="text-xs font-bold text-monk-muted uppercase tracking-wider block">Choose theme</label>
-                <div className="space-y-2 max-h-40 overflow-y-auto">
-                  {activeGoals.map((goal) => (
-                    <button
-                      key={goal.id}
-                      type="button"
-                      className={`w-full p-3 rounded-xl border text-xs text-left font-semibold transition active:scale-[0.98] ${
-                        retroGoalId === goal.id
-                          ? "border-monk-accent ring-1 ring-monk-accent/30 bg-monk-accent-soft text-monk-accent shadow-[inset_0_1px_0_rgba(255,255,255,0.05),0_4px_12px_rgba(164,139,94,0.15)]"
-                          : "border-monk-border bg-monk-surface hover:border-monk-border-strong text-monk-text"
-                      }`}
-                      onClick={() => setRetroGoalId(goal.id)}
-                    >
-                      {goal.title}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            ) : null}
-
-            <div className="flex gap-2 pt-2">
-              <button
-                type="button"
-                className="flex-1 py-3 border border-monk-border rounded-xl text-xs font-semibold text-monk-muted hover:border-monk-border-strong active:scale-[0.98] transition"
-                onClick={() => setRetroDate(null)}
-              >
-                Cancel
-              </button>
-              <PrimaryButton
-                disabled={retroDayType === "goal" && !retroGoalId}
-                onClick={() => {
-                  store.createOrUpdateDayPlan(retroDate, {
-                    dayType: retroDayType,
-                    goalId: retroDayType === "goal" ? retroGoalId : undefined,
-                    status: "completed"
-                  });
-                  setRetroDate(null);
-                }}
-              >
-                Save Log
-              </PrimaryButton>
-            </div>
-          </Card>
+      {/* Retroactive Logging Modal */}
+      <CalmDialog
+        open={!!retroDate}
+        title={t("timeline.retro.title")}
+        description={t("timeline.retro.body")}
+        confirmLabel={t("timeline.retro.saveLog")}
+        cancelLabel={t("timeline.retro.cancel")}
+        onCancel={() => setRetroDate(null)}
+        onConfirm={() => {
+          if (!retroDate) return;
+          store.createOrUpdateDayPlan(retroDate, {
+            dayType: retroDayType,
+            goalId: retroDayType === "goal" ? retroGoalId : undefined,
+            status: "completed"
+          });
+          toast.show(t("timeline.retro.saved"));
+          setRetroDate(null);
+        }}
+      >
+        <h3 className="text-sm font-bold text-monk-text">
+          {retroDate ? t("timeline.retro.heading", { date: formatHumanDate(retroDate) }) : ""}
+        </h3>
+        <div className="flex gap-2.5">
+          <button
+            type="button"
+            className={`flex-1 min-h-10 rounded-xl border text-xs font-semibold transition active:scale-[0.98] ${
+              retroDayType === "goal"
+                ? "border-monk-accent ring-1 ring-monk-accent/30 bg-monk-accent-soft text-monk-accent"
+                : "border-monk-border bg-monk-soft text-monk-muted hover:border-monk-border-strong"
+            }`}
+            onClick={() => setRetroDayType("goal")}
+          >
+            {t("timeline.retro.focusGoal")}
+          </button>
+          <button
+            type="button"
+            className={`flex-1 min-h-10 rounded-xl border text-xs font-semibold transition active:scale-[0.98] ${
+              retroDayType === "rest"
+                ? "border-monk-accent ring-1 ring-monk-accent/30 bg-monk-accent-soft text-monk-accent"
+                : "border-monk-border bg-monk-soft text-monk-muted hover:border-monk-border-strong"
+            }`}
+            onClick={() => setRetroDayType("rest")}
+          >
+            {t("timeline.retro.restDay")}
+          </button>
         </div>
-      ) : null}
+
+        {retroDayType === "goal" ? (
+          <div className="space-y-2">
+            <label className="block text-xs font-bold text-monk-muted uppercase tracking-wider">{t("timeline.retro.chooseTheme")}</label>
+            <div className="max-h-40 space-y-2 overflow-y-auto">
+              {activeGoals.map((goal) => (
+                <button
+                  key={goal.id}
+                  type="button"
+                  className={`w-full rounded-xl border p-3 text-left text-xs font-semibold transition active:scale-[0.98] ${
+                    retroGoalId === goal.id
+                      ? "border-monk-accent ring-1 ring-monk-accent/30 bg-monk-accent-soft text-monk-accent"
+                      : "border-monk-border bg-monk-surface text-monk-text hover:border-monk-border-strong"
+                  }`}
+                  onClick={() => setRetroGoalId(goal.id)}
+                >
+                  {goal.title}
+                </button>
+              ))}
+            </div>
+          </div>
+        ) : null}
+      </CalmDialog>
+      {toast.Toast()}
     </>
   );
 }

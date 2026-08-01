@@ -29,15 +29,27 @@ export function JournalEntryScreen() {
   const lang = (store.appSettings.language ?? "id") as AppLanguage;
   const [searchParams, setSearchParams] = useSearchParams();
 
+  const today = getTodayDateString();
+  const urlDate = searchParams.get("date");
+  const requestedDate = urlDate && /^\d{4}-\d{2}-\d{2}$/.test(urlDate) ? urlDate : today;
+  const isRequestedDate = requestedDate !== today;
+
   const todayPlan = selectTodayPlan(store);
-  const todayEntry = selectJournalEntryForToday(store);
-  const dateSeed = todayPlan ? todayPlan.date : getTodayDateString();
+  const targetPlan = isRequestedDate
+    ? store.dayPlans.find((p) => p.seasonId === store.activeSeason?.id && p.date === requestedDate)
+    : todayPlan;
+  const targetEntry = isRequestedDate
+    ? store.journalEntries.find(
+        (entry) => entry.seasonId === store.activeSeason?.id && entry.date === requestedDate
+      )
+    : selectJournalEntryForToday(store);
+  const dateSeed = targetPlan?.date ?? requestedDate;
   const journalDraftKey = `${JOURNAL_DRAFT_KEY}:${dateSeed}`;
 
   const initial = useMemo(() => {
     const draft = localStorage.getItem(journalDraftKey);
-    return draft ? (JSON.parse(draft) as JournalAnswers) : todayEntry?.answers ?? {};
-  }, [journalDraftKey, todayEntry?.id, todayEntry?.updatedAt]);
+    return draft ? (JSON.parse(draft) as JournalAnswers) : targetEntry?.answers ?? {};
+  }, [journalDraftKey, targetEntry?.id, targetEntry?.updatedAt]);
 
   const [answers, setAnswers] = useState<JournalAnswers>(initial);
   const [saved, setSaved] = useState(false);
@@ -90,7 +102,9 @@ export function JournalEntryScreen() {
 
   const setTab = (tab: "reflection" | "morning") => {
     setCurrentTab(tab);
-    setSearchParams({ tab });
+    const next: Record<string, string> = { tab };
+    if (isRequestedDate) next.date = requestedDate;
+    setSearchParams(next);
   };
 
   const wordCount = useMemo(() => {
@@ -98,7 +112,7 @@ export function JournalEntryScreen() {
     return text.trim() ? text.trim().split(/\s+/).length : 0;
   }, [answers.morningPages]);
 
-  const canSave = todayPlan && (
+  const canSave = targetPlan && (
     currentTab === "morning"
       ? !!answers.morningPages?.trim()
       : !!answers.whatMovedToday?.trim()
@@ -108,7 +122,9 @@ export function JournalEntryScreen() {
     <>
       <PageHeader
         title={t("journal.title")}
-        subtitle={isEvening ? t("journal.subtitleEvening") : t("journal.subtitleMorning")}
+        subtitle={isRequestedDate
+          ? t("journal.dateContext", { date: formatHumanDate(requestedDate) })
+          : (isEvening ? t("journal.subtitleEvening") : t("journal.subtitleMorning"))}
         rightSlot={
           <div className="flex items-center gap-2">
             <button
@@ -123,11 +139,19 @@ export function JournalEntryScreen() {
           </div>
         }
       />
-      {!todayPlan ? <CalmAlert type="warning" title={t("journal.needFocus")} /> : null}
+      {!targetPlan ? (
+        <CalmAlert type="warning" title={isRequestedDate ? t("journal.needFocusDate") : t("journal.needFocus")} />
+      ) : null}
 
-      <div className="flex rounded-xl bg-monk-soft p-1 mb-5 border border-monk-border/40">
+      <span className="sr-only" aria-live="polite">{t("journal.selectedDate", { date: formatHumanDate(dateSeed) })}</span>
+      <div role="tablist" aria-label={t("journal.title")} className="flex rounded-xl bg-monk-soft p-1 mb-5 border border-monk-border/40">
         <button
           type="button"
+          role="tab"
+          id="journal-tab-morning"
+          aria-selected={currentTab === "morning"}
+          aria-controls="journal-panel-morning"
+          aria-label={t("journal.tabMorningAria")}
           className={`flex-1 min-h-11 rounded-lg py-2 text-xs font-semibold tracking-wide transition relative ${
             currentTab === "morning"
               ? "bg-monk-surface text-monk-text border border-monk-border-strong shadow-sm"
@@ -140,6 +164,11 @@ export function JournalEntryScreen() {
         </button>
         <button
           type="button"
+          role="tab"
+          id="journal-tab-reflection"
+          aria-selected={currentTab === "reflection"}
+          aria-controls="journal-panel-reflection"
+          aria-label={t("journal.tabReflectionAria")}
           className={`flex-1 min-h-11 rounded-lg py-2 text-xs font-semibold tracking-wide transition relative ${
             currentTab === "reflection"
               ? "bg-monk-surface text-monk-text border border-monk-border-strong shadow-sm"
@@ -153,7 +182,12 @@ export function JournalEntryScreen() {
       </div>
 
       {currentTab === "morning" ? (
-        <div className="mt-4 space-y-3">
+        <div
+          role="tabpanel"
+          id="journal-panel-morning"
+          aria-labelledby="journal-tab-morning"
+          className="mt-4 space-y-3"
+        >
           <div className="flex items-center justify-between px-1">
             <span className="text-[10px] uppercase tracking-widest text-monk-text-soft font-mono">{t("journal.morningLabel")}</span>
             <span className={`text-[10px] font-mono ${wordCount >= 750 ? "text-monk-success" : "text-monk-text-soft"}`}>
@@ -187,7 +221,12 @@ export function JournalEntryScreen() {
           ) : null}
         </div>
       ) : (
-        <div className="mt-5 space-y-4">
+        <div
+          role="tabpanel"
+          id="journal-panel-reflection"
+          aria-labelledby="journal-tab-reflection"
+          className="mt-5 space-y-4"
+        >
           {/* Main Required Question */}
           <Card>
             <div className="mb-3 space-y-1">
@@ -226,7 +265,7 @@ export function JournalEntryScreen() {
             title={tomorrowSaved ? t("journal.tomorrowSaved") : t("journal.saved")}
           />
         ) : null}
-        {!canSave && todayPlan ? (
+        {!canSave && targetPlan ? (
           <p className="text-xs text-monk-text-soft text-center">
             {currentTab === "morning"
               ? t("journal.needWriteMorning")
@@ -236,21 +275,21 @@ export function JournalEntryScreen() {
         <PrimaryButton
           disabled={!canSave}
           onClick={() => {
-            store.saveJournalEntry(answers);
+            store.saveJournalEntry(answers, { date: dateSeed, tab: currentTab });
             localStorage.removeItem(journalDraftKey);
             let wroteTomorrow = false;
-            if (currentTab === "reflection") {
+            if (currentTab === "reflection" && !isRequestedDate && targetPlan) {
               const tomorrowText = tomorrow.trim();
               if (tomorrowText) {
                 const tomorrowDate = addDaysToDate(dateSeed, 1);
-                const isRest = todayPlan?.dayType === "rest";
+                const isRest = targetPlan?.dayType === "rest";
                 if (isRest) {
                   store.createOrUpdateDayPlan(tomorrowDate, { dayType: "rest" });
                   wroteTomorrow = true;
-                } else if (todayPlan?.goalId) {
+                } else if (targetPlan?.goalId) {
                   store.createOrUpdateDayPlan(tomorrowDate, {
                     dayType: "goal",
-                    goalId: todayPlan.goalId,
+                    goalId: targetPlan.goalId,
                     mainAction: tomorrowText
                   });
                   wroteTomorrow = true;
