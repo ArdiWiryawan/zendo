@@ -45,6 +45,13 @@ function wordCount(text: string) {
   return t ? t.split(/\s+/).length : 0;
 }
 
+// Auto-grow a single-line textarea (title/body) to its content. Page scrolls;
+// no nested textarea scroll region.
+function resizeTextarea(el: HTMLTextAreaElement) {
+  el.style.height = "auto";
+  el.style.height = `${el.scrollHeight}px`;
+}
+
 type Translate = (key: MessageKey, vars?: Record<string, string | number>) => string;
 
 function formatRelative(iso: string, t: Translate, locale: string) {
@@ -369,14 +376,13 @@ export function NotebookEditor({
   const createdAtRef = useRef(entry?.createdAt ?? nowIso());
 
   useEffect(() => {
-    titleRef.current?.focus();
-    // Size the title to its content on mount (existing long titles).
-    const el = titleRef.current;
-    if (el) {
-      el.style.height = "auto";
-      el.style.height = `${el.scrollHeight}px`;
-    }
-  }, []);
+    // Existing notes: do not steal focus/scroll. New note: focus title to write.
+    if (!entry) titleRef.current?.focus();
+    requestAnimationFrame(() => {
+      if (titleRef.current) resizeTextarea(titleRef.current);
+      if (bodyRef.current) resizeTextarea(bodyRef.current);
+    });
+  }, [entry]);
 
   const markDirty = () => setDirty(true);
 
@@ -430,6 +436,7 @@ export function NotebookEditor({
       setBody(next);
       markDirty();
       requestAnimationFrame(() => {
+        resizeTextarea(el);
         const c = s + 1 + marker.length;
         el.setSelectionRange(c, c);
       });
@@ -439,7 +446,10 @@ export function NotebookEditor({
       e.preventDefault();
       setBody(body.slice(0, lineStart) + body.slice(s));
       markDirty();
-      requestAnimationFrame(() => el.setSelectionRange(lineStart, lineStart));
+      requestAnimationFrame(() => {
+        resizeTextarea(el);
+        el.setSelectionRange(lineStart, lineStart);
+      });
     }
   };
 
@@ -479,22 +489,24 @@ export function NotebookEditor({
           {t("notebook.back")}
         </button>
         <div className="flex min-w-0 items-center gap-2 text-[10px] font-mono text-monk-text-soft">
-          <span className="min-w-0 flex-1 break-words text-sm font-semibold leading-snug text-monk-accent">
+          <span className="min-w-0 flex-1 truncate text-sm font-semibold leading-snug text-monk-accent">
             {entry ? entry.title || t("notebook.untitled") : t("notebook.newNote")}
           </span>
           <span className="shrink-0 opacity-40">·</span>
-          {savedFlash ? (
-            <span className="text-monk-success animate-scale-in">{t("notebook.saved")}</span>
-          ) : dirty ? (
-            <span className="flex items-center gap-1 text-monk-warning">
-              <span className="h-1.5 w-1.5 rounded-full bg-monk-warning animate-pulse" />
-              {t("notebook.unsaved")}
-            </span>
-          ) : null}
+          <span role="status" aria-live="polite">
+            {savedFlash ? (
+              <span className="text-monk-success animate-scale-in">{t("notebook.saved")}</span>
+            ) : dirty ? (
+              <span className="flex items-center gap-1 text-monk-warning">
+                <span className="h-1.5 w-1.5 rounded-full bg-monk-warning animate-pulse" />
+                {t("notebook.unsaved")}
+              </span>
+            ) : null}
+          </span>
         </div>
       </div>
 
-      <div className="mb-6 mt-4 flex flex-wrap items-center gap-2">
+      <div className="mb-6 mt-4 flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
         {categories.map((cat) => {
           const hex = catHex(cat.id);
           const active = catId === cat.id;
@@ -502,11 +514,12 @@ export function NotebookEditor({
             <button
               key={cat.id}
               type="button"
+              aria-pressed={active}
               onClick={() => {
                 setCatId(cat.id);
                 markDirty();
               }}
-              className="flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-bold uppercase tracking-wider transition duration-200 active:scale-[0.97]"
+              className="flex min-h-11 shrink-0 items-center gap-1.5 rounded-full border px-2.5 text-[11px] font-bold uppercase tracking-wider transition duration-200 active:scale-[0.97]"
               style={{
                 borderColor: active ? hex : undefined,
                 color: active ? hex : undefined,
@@ -521,7 +534,9 @@ export function NotebookEditor({
         <button
           type="button"
           onClick={() => setShowNewCat((v) => !v)}
-          className="rounded-full border border-dashed border-monk-border px-2.5 py-1 text-[11px] font-bold uppercase tracking-wider text-monk-muted hover:border-monk-accent hover:text-monk-accent"
+          aria-expanded={showNewCat}
+          aria-controls="nb-new-cat"
+          className="flex min-h-11 shrink-0 items-center rounded-full border border-dashed border-monk-border px-2.5 text-[11px] font-bold uppercase tracking-wider text-monk-muted hover:border-monk-accent hover:text-monk-accent"
         >
           {t("notebook.addCategory")}
         </button>
@@ -531,7 +546,8 @@ export function NotebookEditor({
             setIsPinned((v) => !v);
             markDirty();
           }}
-          className={`ml-auto flex min-h-9 items-center gap-1 rounded-full border px-2.5 text-[11px] font-bold uppercase tracking-wider transition ${
+          aria-pressed={isPinned}
+          className={`ml-auto flex min-h-11 shrink-0 items-center gap-1 rounded-full border px-2.5 text-[11px] font-bold uppercase tracking-wider transition ${
             isPinned
               ? "border-monk-accent/40 bg-monk-accent-soft text-monk-accent"
               : "border-monk-border text-monk-muted"
@@ -543,11 +559,12 @@ export function NotebookEditor({
       </div>
 
       {showNewCat ? (
-        <div className="mb-4 flex items-center gap-2">
+        <div id="nb-new-cat" className="mb-4 flex items-center gap-2">
           <input
             type="text"
             value={newCatName}
             onChange={(e) => setNewCatName(e.target.value)}
+            aria-label={t("notebook.newCategoryPlaceholder")}
             placeholder={t("notebook.newCategoryPlaceholder")}
             className="min-h-11 flex-1 rounded-monk border border-monk-border bg-monk-surface px-3 text-sm text-monk-text placeholder:text-monk-text-soft focus:border-monk-accent focus:outline-none"
             onKeyDown={(e) => {
@@ -576,25 +593,26 @@ export function NotebookEditor({
         <textarea
           ref={titleRef}
           rows={1}
+          aria-label={t("notebook.titlePlaceholder")}
           placeholder={t("notebook.titlePlaceholder")}
           value={title}
           onChange={(e) => {
             setTitle(e.target.value);
             markDirty();
-            const el = e.currentTarget;
-            el.style.height = "auto";
-            el.style.height = `${el.scrollHeight}px`;
+            resizeTextarea(e.currentTarget);
           }}
           className="nb-page-title"
         />
         <textarea
           ref={bodyRef}
+          aria-label={t("notebook.bodyPlaceholder")}
           placeholder={t("notebook.bodyPlaceholder")}
           value={body}
           onKeyDown={handleBodyKeyDown}
           onChange={(e) => {
             setBody(e.target.value);
             markDirty();
+            resizeTextarea(e.currentTarget);
           }}
           className="nb-page-body"
         />
@@ -611,7 +629,7 @@ export function NotebookEditor({
         </div>
       </div>
 
-      <div className="fixed inset-x-0 bottom-0 z-40 border-t border-monk-border bg-monk-bg/95 px-6 py-3 backdrop-blur-md">
+      <div className="fixed inset-x-0 bottom-0 z-40 border-t border-monk-border bg-monk-bg/95 px-6 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur-md">
         <div className="mx-auto flex max-w-[430px] items-center justify-end gap-2">
             {entry ? (
               <GhostButton

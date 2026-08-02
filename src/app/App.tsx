@@ -257,7 +257,7 @@ export default function App() {
         <Route path={routes.login} element={<LoginScreen />} />
         <Route path={routes.signup} element={<SignupScreen />} />
         <Route path={routes.library} element={<ProtectedMain><Suspense><JournalLibraryScreenLazy /></Suspense></ProtectedMain>} />
-        <Route path={routes.notebook} element={<ProtectedMain><Suspense><NotebookPageLazy /></Suspense></ProtectedMain>} />
+        <Route path={routes.notebook} element={<ProtectedMain showNav={false}><Suspense><NotebookPageLazy /></Suspense></ProtectedMain>} />
         <Route path={routes.packs} element={<ProtectedMain><Suspense><PacksPageLazy /></Suspense></ProtectedMain>} />
         <Route path="*" element={<Navigate to={routes.root} replace />} />
       </Routes>
@@ -307,7 +307,7 @@ function OnboardingGate() {
   return <OnboardingScreen path={location.pathname} />;
 }
 
-function ProtectedMain({ children, allowEnded = false }: { children: JSX.Element; allowEnded?: boolean }) {
+function ProtectedMain({ children, allowEnded = false, showNav = true }: { children: JSX.Element; allowEnded?: boolean; showNav?: boolean }) {
   const { userProfile, activeSeason, ensureSeasonFresh } = useMonkStore();
   const location = useLocation();
 
@@ -325,7 +325,7 @@ function ProtectedMain({ children, allowEnded = false }: { children: JSX.Element
   if (!allowEnded && (activeSeason.status === "ended" || activeSeason.status === "archived")) {
     return <Navigate to={routes.seasonEnd} replace />;
   }
-  return <AppShell>{children}</AppShell>;
+  return <AppShell showBottomNav={showNav}>{children}</AppShell>;
 }
 
 
