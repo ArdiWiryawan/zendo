@@ -119,6 +119,13 @@ export type GoalAllocation = {
   completedCount: number;
 };
 
+/** A goal released mid-season. The goal itself stays in `goals` (status "released") so history is preserved. */
+export type ReleasedSeasonGoal = {
+  goalId: string;
+  note?: string;
+  releasedAt: ISODateString;
+};
+
 export type WeeklyPlan = {
   id: string;
   seasonId: string;
@@ -488,6 +495,9 @@ export type MonkMVPState = {
 
   // Energy Logs
   energyLogs: EnergyLog[];
+
+  // Released (mid-season) goals — ritual archive, never destructive to history
+  releasedSeasonGoals: ReleasedSeasonGoal[];
 };
 
 // ── Notebook (Free Journal) ──

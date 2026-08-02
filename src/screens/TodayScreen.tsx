@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Moon, BookOpen, Check, ChevronRight, Sun } from "lucide-react";
+import { Moon, BookOpen, Check, ChevronRight, MoreHorizontal, Sun } from "lucide-react";
 import { useMonkStore } from "../store/useMonkStore";
 import { useT } from "../i18n";
 import { useCalmToast } from "../components/ui";
@@ -16,6 +16,7 @@ import { isCloseDaySkipped, skipCloseDay, getDayPart, isReentryDismissed, dismis
 import { isRestSuggestionDismissed, dismissRestSuggestion, shouldSuggestRest } from "../lib/restSuggestion";
 import { selectTodayPlan, selectActiveGoals, selectCurrentWeeklyPlan, selectEnergyForDate, selectTodayLearningSessions, selectTotalFocusSecondsForDate } from "../store/selectors";
 import {
+  CalmDialog,
   Card,
   ChoiceChip,
   EmptyState,
@@ -300,6 +301,8 @@ export function TodayScreen() {
     energyLevel?: EnergyLevel;
     status?: "active" | "completed" | "planned" | "missed";
   }>(null);
+  const [releaseOpen, setReleaseOpen] = useState(false);
+  const [releaseNote, setReleaseNote] = useState("");
 
   useEffect(() => {
     if (todayPlan?.mainAction) {
@@ -511,6 +514,19 @@ export function TodayScreen() {
                     <span className={`rounded-full border px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider ${statusClass}`}>
                       {statusLabel}
                     </span>
+                    {!isRest && goal ? (
+                      <button
+                        type="button"
+                        aria-label={t("release.triggerLabel")}
+                        className="grid h-7 w-7 place-items-center rounded-full text-monk-muted transition hover:bg-monk-soft hover:text-monk-text active:scale-90"
+                        onClick={() => {
+                          setReleaseNote("");
+                          setReleaseOpen(true);
+                        }}
+                      >
+                        <MoreHorizontal size={15} />
+                      </button>
+                    ) : null}
                   </div>
                   <span className="sr-only" aria-live="polite" id="today-status-live">
                     {t("today.statusLive", { status: statusLabel })}
@@ -1069,6 +1085,32 @@ export function TodayScreen() {
           </div>
         </div>
       ) : null}
+      <CalmDialog
+        open={releaseOpen}
+        title={goal && !isRest ? t("release.title", { goal: goal.title }) : ""}
+        description={t("release.body")}
+        confirmLabel={t("release.confirm")}
+        cancelLabel={t("release.cancel")}
+        danger
+        onConfirm={() => {
+          if (!goal) return;
+          store.releaseGoalFromSeason(goal.id, releaseNote);
+          setReleaseOpen(false);
+          setReleaseNote("");
+          toast.show(t("release.done"));
+        }}
+        onCancel={() => {
+          setReleaseOpen(false);
+          setReleaseNote("");
+        }}
+      >
+        <TextInput
+          label={t("release.noteLabel")}
+          placeholder={t("release.note")}
+          value={releaseNote}
+          onChange={(event) => setReleaseNote(event.target.value)}
+        />
+      </CalmDialog>
       {toast.Toast()}
     </>
   );

@@ -60,6 +60,7 @@ import type {
   MonkMVPState,
   OnboardingState,
   RelapseLog,
+  ReleasedSeasonGoal,
   SeasonWhy,
   TimelineDay,
   TimelineStatus,
@@ -138,6 +139,7 @@ type MonkActions = {
   startNewSeason: () => void;
   updateSeasonWhy: (why: SeasonWhy) => void;
   updateGoalWhy: (goalId: string, why: string) => void;
+  releaseGoalFromSeason: (goalId: string, note?: string) => void;
   updateSettings: (patch: Partial<AppSettings>) => void;
   importState: (data: Partial<MonkMVPState>) => void;
 
@@ -185,7 +187,8 @@ function snapshot(state: MonkStore | MonkMVPState): MonkMVPState {
     journalPacks: state.journalPacks,
     journalPackSessions: state.journalPackSessions,
     purchasedPackIds: state.purchasedPackIds,
-    energyLogs: state.energyLogs
+    energyLogs: state.energyLogs,
+    releasedSeasonGoals: state.releasedSeasonGoals
   };
 }
 
@@ -1529,6 +1532,36 @@ export const useMonkStore = create<MonkStore>()(
     });
   },
 
+  releaseGoalFromSeason: (goalId, note) => {
+    const state = get();
+    const goal = state.goals.find((g) => g.id === goalId && g.seasonId === state.activeSeason?.id && g.status === "active");
+    if (!goal) return;
+    const timestamp = nowIso();
+    const trimmedNote = note?.trim();
+    const released: ReleasedSeasonGoal = {
+      goalId,
+      note: trimmedNote || undefined,
+      releasedAt: timestamp
+    };
+    const already = state.releasedSeasonGoals.some((r) => r.goalId === goalId);
+    set({
+      goals: state.goals.map((g) =>
+        g.id === goalId
+          ? { ...g, status: "released" as const, keystoneAction: "", updatedAt: timestamp }
+          : g
+      ),
+      // Clear the goal out of every week's allocations; completed counts/history in dayPlans stay untouched.
+      weeklyPlans: state.weeklyPlans.map((plan) => ({
+        ...plan,
+        goalAllocations: plan.goalAllocations.filter((a) => a.goalId !== goalId),
+        updatedAt: timestamp
+      })),
+      releasedSeasonGoals: already
+        ? state.releasedSeasonGoals
+        : [...state.releasedSeasonGoals, released]
+    });
+  },
+
   saveLearningSession: (session) => {
     const state = get();
     const timestamp = nowIso();
@@ -1738,6 +1771,7 @@ export const useMonkStore = create<MonkStore>()(
       journalPackSessions: data.journalPackSessions !== undefined ? data.journalPackSessions : state.journalPackSessions,
       purchasedPackIds: data.purchasedPackIds !== undefined ? data.purchasedPackIds : state.purchasedPackIds,
       energyLogs: data.energyLogs !== undefined ? data.energyLogs : state.energyLogs,
+      releasedSeasonGoals: data.releasedSeasonGoals !== undefined ? data.releasedSeasonGoals : state.releasedSeasonGoals,
     });
   }
 }),
@@ -1765,7 +1799,8 @@ export const useMonkStore = create<MonkStore>()(
         journalPacks: state.journalPacks,
         journalPackSessions: state.journalPackSessions,
         purchasedPackIds: state.purchasedPackIds,
-        energyLogs: state.energyLogs
+        energyLogs: state.energyLogs,
+        releasedSeasonGoals: state.releasedSeasonGoals
       }),
       // ponytail: custom storage adapter to keep multi-key writes + normalization; simplify when migration done
       storage: {

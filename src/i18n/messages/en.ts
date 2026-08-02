@@ -602,6 +602,16 @@ export const en = {
   "seasonEnd.startNew": "Start New Season",
   "seasonEnd.archive": "Archive Season",
 
+  "release.title": "Release {goal}?",
+  "release.body": "Letting this go is a decision, not a failure. It frees energy for what matters.",
+  "release.note": "What will you do with the freed time?",
+  "release.noteLabel": "A note to your future self",
+  "release.confirm": "Release",
+  "release.cancel": "Cancel",
+  "release.done": "Released with compassion.",
+  "release.triggerLabel": "Goal menu",
+  "release.sectionTitle": "Released",
+
   "library.aria.back": "Back",
   "library.subview.journal": "Journal",
   "library.subview.journalDesc": "Reflect on your season, progress, blockers, and thoughts.",
