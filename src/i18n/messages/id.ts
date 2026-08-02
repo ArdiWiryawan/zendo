@@ -620,6 +620,8 @@ export const id: Record<MessageKey, string> = {
   "seasonEnd.q5": "Apa yang berikutnya?",
   "seasonEnd.startNew": "Mulai Season Baru",
   "seasonEnd.archive": "Arsipkan Season",
+  "seasonEnd.resume": "Lanjutkan season · {n} hari lagi",
+  "seasonEnd.resumePlural": "Lanjutkan season · {n} hari lagi",
 
   "seasons.title": "Season yang lalu",
   "seasons.subtitle": "Apa yang dibawa setiap season — dan yang kamu bawa maju.",

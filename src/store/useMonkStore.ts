@@ -139,6 +139,7 @@ type MonkActions = {
   saveRelapseLog: (input: RelapseInput) => void;
   archiveSeason: () => void;
   startNewSeason: () => void;
+  resumeSeason: () => void;
   updateSeasonWhy: (why: SeasonWhy) => void;
   updateGoalWhy: (goalId: string, why: string) => void;
   releaseGoalFromSeason: (goalId: string, note?: string) => void;
@@ -1558,6 +1559,20 @@ export const useMonkStore = create<MonkStore>()(
         ? { ...state.userProfile, onboardingCompleted: false, activeSeasonId: undefined }
         : null,
       onboarding: createDefaultOnboarding()
+    });
+  },
+
+  resumeSeason: () => {
+    const state = get();
+    const season = state.activeSeason;
+    if (!season) return;
+    // Re-open a season that ended/archived early but still has days left.
+    // Keeps the same goals/history; only status returns to active.
+    set({
+      activeSeason: { ...season, status: "active", updatedAt: nowIso() },
+      userProfile: state.userProfile
+        ? { ...state.userProfile, onboardingCompleted: true, activeSeasonId: season.id, updatedAt: nowIso() }
+        : state.userProfile
     });
   },
 

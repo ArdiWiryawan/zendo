@@ -618,6 +618,8 @@ export const en = {
   "seasonEnd.q5": "What comes next?",
   "seasonEnd.startNew": "Start New Season",
   "seasonEnd.archive": "Archive Season",
+  "seasonEnd.resume": "Continue season · {n} day left",
+  "seasonEnd.resumePlural": "Continue season · {n} days left",
 
   "seasons.title": "Past seasons",
   "seasons.subtitle": "What each one carried — and what you carried forward.",

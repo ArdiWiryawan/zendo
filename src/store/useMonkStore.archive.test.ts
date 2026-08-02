@@ -72,4 +72,21 @@ describe("season archive (pastSeasons)", () => {
     expect(selectSeasonFocusSummary(state, second.id).totalMinutes).toBe(25);
     expect(selectSeasonFocusSummary(state, first.id).count).toBe(1);
   });
+
+  it("resumeSeason re-opens an archived season without losing data", () => {
+    const first = startSeason();
+    useMonkStore.getState().archiveSeason();
+    expect(useMonkStore.getState().activeSeason?.status).toBe("archived");
+    // Keep a goal to confirm it survives resume.
+    const goalBefore = useMonkStore.getState().goals.length;
+
+    useMonkStore.getState().resumeSeason();
+
+    const { activeSeason, userProfile } = useMonkStore.getState();
+    expect(activeSeason?.id).toBe(first.id);
+    expect(activeSeason?.status).toBe("active");
+    expect(userProfile?.activeSeasonId).toBe(first.id);
+    expect(userProfile?.onboardingCompleted).toBe(true);
+    expect(useMonkStore.getState().goals.length).toBe(goalBefore); // data preserved
+  });
 });

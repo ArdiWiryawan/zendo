@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useMonkStore } from "../store/useMonkStore";
 import { useT } from "../i18n";
 import { routes } from "../constants/routes";
+import { getDaysLeft } from "../lib/date";
 import {
   Card,
   GhostButton,
@@ -28,6 +29,8 @@ export function SeasonEndScreen() {
   const t = useT();
   const questions = [t("seasonEnd.q1"), t("seasonEnd.q2"), t("seasonEnd.q3"), t("seasonEnd.q4"), t("seasonEnd.q5")];
   const seasonId = store.activeSeason?.id;
+  const season = store.activeSeason;
+  const daysLeft = season ? getDaysLeft(season.endDate) : 0;
   const released = store.releasedSeasonGoals
     .map((entry) => ({ entry, goal: store.goals.find((g) => g.id === entry.goalId) }))
     .filter((item) => item.goal && item.goal!.seasonId === seasonId);
@@ -56,6 +59,14 @@ export function SeasonEndScreen() {
             <Textarea value={answers[question] ?? ""} onChange={(event) => setAnswers((value) => ({ ...value, [question]: event.target.value }))} />
           </Card>
         ))}
+        {daysLeft > 0 ? (
+          <PrimaryButton onClick={() => {
+            store.resumeSeason();
+            navigate(routes.today);
+          }}>
+            {daysLeft === 1 ? t("seasonEnd.resume", { n: daysLeft }) : t("seasonEnd.resumePlural", { n: daysLeft })}
+          </PrimaryButton>
+        ) : null}
         <PrimaryButton onClick={() => {
           store.startNewSeason();
           navigate(routes.onboardingGoals);
