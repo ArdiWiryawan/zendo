@@ -473,10 +473,10 @@ export function NotebookEditor({
           {t("notebook.back")}
         </button>
         <div className="flex min-w-0 items-center gap-2 text-[10px] font-mono text-monk-text-soft">
-          <span className="truncate text-xs font-semibold text-monk-accent/90">
+          <span className="min-w-0 flex-1 break-words text-sm font-semibold leading-snug text-monk-accent">
             {entry ? entry.title || t("notebook.untitled") : t("notebook.newNote")}
           </span>
-          <span className="opacity-40">·</span>
+          <span className="shrink-0 opacity-40">·</span>
           {savedFlash ? (
             <span className="text-monk-success animate-scale-in">{t("notebook.saved")}</span>
           ) : dirty ? (

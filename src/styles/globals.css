@@ -247,6 +247,7 @@ button {
   line-height: 1.35;
   color: var(--notebook-text-title);
   transition: color 0.15s ease;
+  word-break: break-word;
 }
 
 .notebook-card-title:hover {
@@ -462,6 +463,7 @@ button {
   outline: none;
   width: 100%;
   padding: 18px 20px 2px 60px;
+  word-break: break-word;
 }
 
 .nb-page-title::placeholder {
@@ -469,10 +471,10 @@ button {
   opacity: 0.45;
 }
 
-/* Body textarea on the ruled page */
+/* Body textarea on the ruled page — Outfit for readability, handwriting only on the title */
 .nb-page-body {
-  font-family: 'Caveat', cursive;
-  font-size: 1.15rem;
+  font-family: 'Outfit', ui-sans-serif, system-ui, sans-serif;
+  font-size: 1rem;
   line-height: 24px;
   color: var(--notebook-text-body);
   width: 100%;
@@ -486,7 +488,7 @@ button {
 
 .nb-page-body::placeholder {
   color: var(--notebook-text-body);
-  opacity: 0.45;
+  opacity: 0.6;
 }
 
 /* Folio: word count + date at the page corner */
@@ -495,10 +497,10 @@ button {
   align-items: center;
   gap: 10px;
   padding: 10px 20px 12px;
-  font-family: 'Caveat', cursive;
-  font-size: 1.05rem;
+  font-family: 'Outfit', ui-sans-serif, system-ui, sans-serif;
+  font-size: 0.8rem;
   color: var(--notebook-text-body);
-  opacity: 0.6;
+  opacity: 0.75;
   border-top: 1px dashed var(--notebook-card-line);
 }
 
