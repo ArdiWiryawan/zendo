@@ -49,10 +49,9 @@ describe("weekly re-decide review", () => {
     expect(updated?.keystoneAction).toBe("Read one chapter");
   });
 
-  it("release decision is safe when releaseGoalFromSeason is absent", () => {
+  it("release decision delegates to releaseGoalFromSeason", () => {
     const { goalId, weekId } = makeSeasonWithGoal();
 
-    // releaseGoalFromSeason does not exist yet (parallel worktree) — must not throw
     expect(() => {
       useMonkStore.getState().reviewWeek(weekId, {
         [goalId]: { action: "release" }
@@ -61,9 +60,9 @@ describe("weekly re-decide review", () => {
 
     const review = useMonkStore.getState().weeklyReviews[weekId];
     expect(review?.decisions[goalId].action).toBe("release");
-    // Goal stays active — release skipped, no data loss
+    // releaseGoalFromSeason is present post-merge → goal is released, not active
     const goalAfter = useMonkStore.getState().goals.find((g) => g.id === goalId);
-    expect(goalAfter?.status).toBe("active");
+    expect(goalAfter?.status).toBe("released");
   });
 
   it("skipWeekReview persists skipped flag", () => {

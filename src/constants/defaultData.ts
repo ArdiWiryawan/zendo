@@ -123,7 +123,8 @@ export function createInitialState(): MonkMVPState {
     journalPackSessions: [],
     purchasedPackIds: [],
     energyLogs: [],
-    weeklyReviews: {}
+    weeklyReviews: {},
+    releasedSeasonGoals: []
   };
 }
 

@@ -621,6 +621,16 @@ export const id: Record<MessageKey, string> = {
   "seasonEnd.startNew": "Mulai Season Baru",
   "seasonEnd.archive": "Arsipkan Season",
 
+  "release.title": "Lepaskan {goal}?",
+  "release.body": "Melepaskan ini adalah keputusan, bukan kegagalan. Ia membebaskan energi untuk hal yang penting.",
+  "release.note": "Apa yang akan kamu lakukan dengan waktu yang terbebas?",
+  "release.noteLabel": "Catatan untuk dirimu di masa depan",
+  "release.confirm": "Lepaskan",
+  "release.cancel": "Batal",
+  "release.done": "Dilepaskan dengan welas asih.",
+  "release.triggerLabel": "Menu tujuan",
+  "release.sectionTitle": "Dilepaskan",
+
   "library.aria.back": "Kembali",
   "library.subview.journal": "Jurnal",
   "library.subview.journalDesc": "Renungkan season, progres, hambatan, dan pikiranmu.",

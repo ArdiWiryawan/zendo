@@ -60,6 +60,7 @@ import type {
   MonkMVPState,
   OnboardingState,
   RelapseLog,
+  ReleasedSeasonGoal,
   SeasonWhy,
   TimelineDay,
   TimelineStatus,
@@ -139,6 +140,7 @@ type MonkActions = {
   startNewSeason: () => void;
   updateSeasonWhy: (why: SeasonWhy) => void;
   updateGoalWhy: (goalId: string, why: string) => void;
+  releaseGoalFromSeason: (goalId: string, note?: string) => void;
   updateSettings: (patch: Partial<AppSettings>) => void;
   importState: (data: Partial<MonkMVPState>) => void;
 
@@ -192,7 +194,8 @@ function snapshot(state: MonkStore | MonkMVPState): MonkMVPState {
     journalPackSessions: state.journalPackSessions,
     purchasedPackIds: state.purchasedPackIds,
     energyLogs: state.energyLogs,
-    weeklyReviews: state.weeklyReviews
+    weeklyReviews: state.weeklyReviews,
+    releasedSeasonGoals: state.releasedSeasonGoals
   };
 }
 
@@ -1570,9 +1573,6 @@ export const useMonkStore = create<MonkStore>()(
         get().updateGoalKeystoneAction(goalId, decision.mainAction);
       }
       if (decision.action !== "release") return;
-      // Release ritual is implemented in a parallel worktree. If the store already
-      // exposes releaseGoalFromSeason, delegate release decisions to it — else skip
-      // the release for now (goal stays active, no data loss).
       if (typeof storeWithRelease.releaseGoalFromSeason === "function") {
         storeWithRelease.releaseGoalFromSeason(goalId);
       }
@@ -1588,6 +1588,36 @@ export const useMonkStore = create<MonkStore>()(
         ...state.weeklyReviews,
         [weekId]: { date: nowIso(), decisions: {}, skipped: true }
       }
+    });
+  },
+
+  releaseGoalFromSeason: (goalId, note) => {
+    const state = get();
+    const goal = state.goals.find((g) => g.id === goalId && g.seasonId === state.activeSeason?.id && g.status === "active");
+    if (!goal) return;
+    const timestamp = nowIso();
+    const trimmedNote = note?.trim();
+    const released: ReleasedSeasonGoal = {
+      goalId,
+      note: trimmedNote || undefined,
+      releasedAt: timestamp
+    };
+    const already = state.releasedSeasonGoals.some((r) => r.goalId === goalId);
+    set({
+      goals: state.goals.map((g) =>
+        g.id === goalId
+          ? { ...g, status: "released" as const, keystoneAction: "", updatedAt: timestamp }
+          : g
+      ),
+      // Clear the goal out of every week's allocations; completed counts/history in dayPlans stay untouched.
+      weeklyPlans: state.weeklyPlans.map((plan) => ({
+        ...plan,
+        goalAllocations: plan.goalAllocations.filter((a) => a.goalId !== goalId),
+        updatedAt: timestamp
+      })),
+      releasedSeasonGoals: already
+        ? state.releasedSeasonGoals
+        : [...state.releasedSeasonGoals, released]
     });
   },
 
@@ -1801,6 +1831,7 @@ export const useMonkStore = create<MonkStore>()(
       purchasedPackIds: data.purchasedPackIds !== undefined ? data.purchasedPackIds : state.purchasedPackIds,
       energyLogs: data.energyLogs !== undefined ? data.energyLogs : state.energyLogs,
       weeklyReviews: data.weeklyReviews !== undefined ? data.weeklyReviews : state.weeklyReviews,
+      releasedSeasonGoals: data.releasedSeasonGoals !== undefined ? data.releasedSeasonGoals : state.releasedSeasonGoals,
     });
   }
 }),
@@ -1829,7 +1860,8 @@ export const useMonkStore = create<MonkStore>()(
         journalPackSessions: state.journalPackSessions,
         purchasedPackIds: state.purchasedPackIds,
         energyLogs: state.energyLogs,
-        weeklyReviews: state.weeklyReviews
+        weeklyReviews: state.weeklyReviews,
+        releasedSeasonGoals: state.releasedSeasonGoals
       }),
       // ponytail: custom storage adapter to keep multi-key writes + normalization; simplify when migration done
       storage: {
