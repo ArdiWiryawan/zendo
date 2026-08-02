@@ -457,6 +457,17 @@ export type OnboardingState = {
   obstacleMitigations: Record<string, string>;
 };
 
+export type WeeklyReviewDecision = {
+  action: "continue" | "adjust" | "release";
+  mainAction?: string;
+};
+
+export type WeeklyReview = {
+  date: string;
+  decisions: Record<string, WeeklyReviewDecision>;
+  skipped?: boolean;
+};
+
 export type MonkMVPState = {
   userProfile: UserProfile | null;
   appSettings: AppSettings;
@@ -488,6 +499,9 @@ export type MonkMVPState = {
 
   // Energy Logs
   energyLogs: EnergyLog[];
+
+  // Weekly re-decide review
+  weeklyReviews: Record<string, WeeklyReview>;
 };
 
 // ── Notebook (Free Journal) ──

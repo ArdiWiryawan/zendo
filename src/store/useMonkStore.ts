@@ -64,7 +64,8 @@ import type {
   TimelineDay,
   TimelineStatus,
   WeeklyMode,
-  WeeklyPlan
+  WeeklyPlan,
+  WeeklyReviewDecision
 } from "../types/app";
 
 type StoreSnapshot = MonkMVPState;
@@ -141,6 +142,11 @@ type MonkActions = {
   updateSettings: (patch: Partial<AppSettings>) => void;
   importState: (data: Partial<MonkMVPState>) => void;
 
+  // Weekly re-decide review
+  reviewWeek: (weekId: string, decisions: Record<string, WeeklyReviewDecision>, opts?: { skipped?: boolean }) => void;
+  skipWeekReview: (weekId: string) => void;
+  updateGoalKeystoneAction: (goalId: string, action: string) => void;
+
   // Notebook actions
   addNotebookCategory: (name: string, icon?: string) => void;
   renameNotebookCategory: (id: string, name: string) => void;
@@ -185,7 +191,8 @@ function snapshot(state: MonkStore | MonkMVPState): MonkMVPState {
     journalPacks: state.journalPacks,
     journalPackSessions: state.journalPackSessions,
     purchasedPackIds: state.purchasedPackIds,
-    energyLogs: state.energyLogs
+    energyLogs: state.energyLogs,
+    weeklyReviews: state.weeklyReviews
   };
 }
 
@@ -1517,6 +1524,19 @@ export const useMonkStore = create<MonkStore>()(
     });
   },
 
+  updateGoalKeystoneAction: (goalId, action) => {
+    const state = get();
+    const trimmed = action.trim();
+    if (!trimmed) return;
+    set({
+      goals: state.goals.map((g) =>
+        g.id === goalId
+          ? { ...g, keystoneAction: trimmed, updatedAt: nowIso() }
+          : g
+      )
+    });
+  },
+
   updateGoalWhy: (goalId, why) => {
     const state = get();
     const trimmed = why.trim();
@@ -1526,6 +1546,48 @@ export const useMonkStore = create<MonkStore>()(
           ? { ...g, why: trimmed || undefined, updatedAt: nowIso() }
           : g
       )
+    });
+  },
+
+  reviewWeek: (weekId, decisions, opts) => {
+    const state = get();
+    const season = state.activeSeason;
+    if (!season) return;
+    set({
+      weeklyReviews: {
+        ...state.weeklyReviews,
+        [weekId]: {
+          date: nowIso(),
+          decisions,
+          skipped: opts?.skipped
+        }
+      }
+    });
+    const storeWithRelease = get() as MonkStore & { releaseGoalFromSeason?: (goalId: string) => void };
+    Object.entries(decisions).forEach(([goalId, decision]) => {
+      if (decision.action === "adjust" && decision.mainAction?.trim()) {
+        // Re-decide: apply the adjusted keystone action so next week uses it.
+        get().updateGoalKeystoneAction(goalId, decision.mainAction);
+      }
+      if (decision.action !== "release") return;
+      // Release ritual is implemented in a parallel worktree. If the store already
+      // exposes releaseGoalFromSeason, delegate release decisions to it — else skip
+      // the release for now (goal stays active, no data loss).
+      if (typeof storeWithRelease.releaseGoalFromSeason === "function") {
+        storeWithRelease.releaseGoalFromSeason(goalId);
+      }
+    });
+  },
+
+  skipWeekReview: (weekId) => {
+    const state = get();
+    const season = state.activeSeason;
+    if (!season) return;
+    set({
+      weeklyReviews: {
+        ...state.weeklyReviews,
+        [weekId]: { date: nowIso(), decisions: {}, skipped: true }
+      }
     });
   },
 
@@ -1738,6 +1800,7 @@ export const useMonkStore = create<MonkStore>()(
       journalPackSessions: data.journalPackSessions !== undefined ? data.journalPackSessions : state.journalPackSessions,
       purchasedPackIds: data.purchasedPackIds !== undefined ? data.purchasedPackIds : state.purchasedPackIds,
       energyLogs: data.energyLogs !== undefined ? data.energyLogs : state.energyLogs,
+      weeklyReviews: data.weeklyReviews !== undefined ? data.weeklyReviews : state.weeklyReviews,
     });
   }
 }),
@@ -1765,7 +1828,8 @@ export const useMonkStore = create<MonkStore>()(
         journalPacks: state.journalPacks,
         journalPackSessions: state.journalPackSessions,
         purchasedPackIds: state.purchasedPackIds,
-        energyLogs: state.energyLogs
+        energyLogs: state.energyLogs,
+        weeklyReviews: state.weeklyReviews
       }),
       // ponytail: custom storage adapter to keep multi-key writes + normalization; simplify when migration done
       storage: {
