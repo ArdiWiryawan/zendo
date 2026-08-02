@@ -487,6 +487,7 @@ export const en = {
 
   "notebook.title": "Notebook",
   "notebook.subtitle": "Free journal. No prompts.",
+  "notebook.coverTitle": "Notebook",
   "notebook.collection": "Collection",
   "notebook.noneYet": "No notes yet",
   "notebook.count": "{n} notes",

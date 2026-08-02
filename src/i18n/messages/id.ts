@@ -489,6 +489,7 @@ export const id: Record<MessageKey, string> = {
 
   "notebook.title": "Notebook",
   "notebook.subtitle": "Jurnal bebas. Tanpa prompt.",
+  "notebook.coverTitle": "Notebook",
   "notebook.collection": "Koleksi",
   "notebook.noneYet": "Belum ada catatan",
   "notebook.count": "{n} catatan",

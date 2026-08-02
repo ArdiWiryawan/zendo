@@ -20,8 +20,24 @@ const CATEGORY_HEX: Record<string, string> = {
   cat_lainnya: "#a0a0a0"
 };
 
+// Zendo-palette fallback pool for user-created categories. Each id maps to a
+// stable color via a small string hash, so the same category keeps its color
+// across renders/sessions but new categories land on varied on-palette hues
+// instead of the grey fallback.
+const CUSTOM_CATEGORY_PALETTE = [
+  "#e07c6b", "#6b9ac4", "#6bb48b", "#c48bb4",
+  "#c4a06b", "#8b9dc4", "#6bc4b4", "#c48b6b"
+];
+
+function hashId(s: string): number {
+  let h = 0;
+  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0;
+  return h;
+}
+
 function catHex(id: string) {
-  return CATEGORY_HEX[id] ?? "#a48b5e";
+  if (CATEGORY_HEX[id]) return CATEGORY_HEX[id];
+  return CUSTOM_CATEGORY_PALETTE[hashId(id) % CUSTOM_CATEGORY_PALETTE.length];
 }
 
 function wordCount(text: string) {
@@ -100,33 +116,42 @@ export default function JournalNotebook() {
 
   const pinnedCount = entries.filter((e) => e.isPinned).length;
 
+  const todayLabel = new Date().toLocaleDateString(dateLocale, {
+    year: "numeric",
+    month: "long"
+  });
+
   return (
     <div className="relative space-y-4 pb-24">
-      <div className="flex items-end justify-between gap-3">
-        <div>
-          <div className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-[0.18em] text-monk-muted">
-            <BookOpen size={12} strokeWidth={2.5} />
-            <span>{t("notebook.collection")}</span>
+      <div className="nb-binder">
+        <div className="nb-spine" aria-hidden />
+        <div className="nb-cover">
+          <div>
+            <p className="nb-cover-title">{t("notebook.coverTitle")}</p>
+            <p className="nb-cover-sub">{todayLabel}</p>
           </div>
-          <p className="mt-0.5 text-sm text-monk-text-soft">
-            {entries.length === 0
-              ? t("notebook.noneYet")
-              : pinnedCount
-                ? t("notebook.countPinned", { n: entries.length, p: pinnedCount })
-                : t("notebook.count", { n: entries.length })}
-          </p>
+          <div className="flex items-center gap-3">
+            <p className="text-xs font-bold uppercase tracking-[0.18em] text-monk-text-soft">
+              {entries.length === 0
+                ? t("notebook.noneYet")
+                : pinnedCount
+                  ? t("notebook.countPinned", { n: entries.length, p: pinnedCount })
+                  : t("notebook.count", { n: entries.length })}
+            </p>
+            <button
+              type="button"
+              onClick={openNew}
+              className="flex min-h-10 items-center gap-1.5 rounded-full border border-monk-accent/40 bg-monk-accent-soft px-3 text-xs font-bold text-monk-accent transition active:scale-95"
+            >
+              <Plus size={14} strokeWidth={2} />
+              {t("notebook.new")}
+            </button>
+          </div>
         </div>
-        <button
-          type="button"
-          onClick={openNew}
-          className="hidden min-h-10 items-center gap-1.5 rounded-full border border-monk-accent/40 bg-monk-accent-soft px-3 text-xs font-bold text-monk-accent transition active:scale-95 sm:inline-flex"
-        >
-          <Plus size={14} strokeWidth={2} />
-          {t("notebook.new")}
-        </button>
-      </div>
 
-      <div className="relative">
+        <div className="nb-sheets">
+
+      <div className="relative mb-5">
         <Search
           size={14}
           className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-monk-text-soft"
@@ -224,10 +249,9 @@ export default function JournalNotebook() {
             return (
               <article
                 key={entry.id}
-                className={`notebook-card group relative overflow-hidden rounded-monk p-4 transition duration-150 hover:border-monk-border-strong hover:-translate-y-0.5 active:scale-[0.98] ${
-                  entry.isPinned ? "pinned ring-1 ring-monk-accent/20" : ""
+                className={`nb-sheet group relative overflow-hidden p-4 ${
+                  entry.isPinned ? "ring-1 ring-monk-accent/25" : ""
                 }`}
-                style={{ borderLeftColor: hex }}
               >
                 <button
                   type="button"
@@ -285,6 +309,8 @@ export default function JournalNotebook() {
           })}
         </div>
       )}
+        </div>{/* /nb-sheets */}
+      </div>{/* /nb-binder */}
 
       <button
         type="button"
@@ -437,7 +463,7 @@ export function NotebookEditor({
 
   return (
     <div className="space-y-0 pb-28">
-      <div className="sticky top-0 z-30 -mx-4 px-4 backdrop-blur-md bg-monk-bg/80 mb-4 flex items-center justify-between border-b border-monk-border py-3">
+      <div className="nb-editor-cover">
         <button
           type="button"
           onClick={handleBack}
@@ -446,7 +472,11 @@ export function NotebookEditor({
           <ArrowLeft size={13} strokeWidth={1.5} />
           {t("notebook.back")}
         </button>
-        <div className="flex items-center gap-2 text-[10px] font-mono text-monk-text-soft">
+        <div className="flex min-w-0 items-center gap-2 text-[10px] font-mono text-monk-text-soft">
+          <span className="truncate text-xs font-semibold text-monk-accent/90">
+            {entry ? entry.title || t("notebook.untitled") : t("notebook.newNote")}
+          </span>
+          <span className="opacity-40">·</span>
           {savedFlash ? (
             <span className="text-monk-success animate-scale-in">{t("notebook.saved")}</span>
           ) : dirty ? (
@@ -454,35 +484,11 @@ export function NotebookEditor({
               <span className="h-1.5 w-1.5 rounded-full bg-monk-warning animate-pulse" />
               {t("notebook.unsaved")}
             </span>
-          ) : entry ? (
-            <span>{formatRelative(entry.updatedAt, t, dateLocale)}</span>
-          ) : (
-            <span>{t("notebook.newNote")}</span>
-          )}
-          <span className="opacity-40">·</span>
-          <span>
-            {new Date().toLocaleDateString(dateLocale, {
-              day: "numeric",
-              month: "short",
-              year: "numeric"
-            })}
-          </span>
+          ) : null}
         </div>
       </div>
 
-      <input
-        ref={titleRef}
-        type="text"
-        placeholder={t("notebook.titlePlaceholder")}
-        value={title}
-        onChange={(e) => {
-          setTitle(e.target.value);
-          markDirty();
-        }}
-        className="mb-3 w-full border-none bg-transparent font-handwriting text-[1.7rem] leading-tight text-monk-text outline-none placeholder:text-monk-text-soft/50 focus:outline-none"
-      />
-
-      <div className="mb-4 flex flex-wrap items-center gap-1.5">
+      <div className="mb-6 mt-4 flex flex-wrap items-center gap-2">
         {categories.map((cat) => {
           const hex = catHex(cat.id);
           const active = catId === cat.id;
@@ -560,10 +566,18 @@ export function NotebookEditor({
         </div>
       ) : null}
 
-      <div
-        className="notebook-card rounded-monk p-0 transition-all duration-200 focus-within:ring-1 focus-within:ring-monk-accent/30"
-        style={{ borderLeftWidth: 3, borderLeftColor: activeCatHex }}
-      >
+      <div className="nb-open-page nb-open-enter" style={{ "--nb-cat": activeCatHex } as React.CSSProperties}>
+        <input
+          ref={titleRef}
+          type="text"
+          placeholder={t("notebook.titlePlaceholder")}
+          value={title}
+          onChange={(e) => {
+            setTitle(e.target.value);
+            markDirty();
+          }}
+          className="nb-page-title"
+        />
         <textarea
           ref={bodyRef}
           placeholder={t("notebook.bodyPlaceholder")}
@@ -573,22 +587,23 @@ export function NotebookEditor({
             setBody(e.target.value);
             markDirty();
           }}
-          className="notebook-card-body min-h-[min(56vh,420px)] w-full resize-y border-none bg-transparent px-4 pt-4 pb-4 outline-none"
-          style={{ lineHeight: "24px" }}
+          className="nb-page-body"
         />
+        <div className="nb-folio">
+          <span>{t("notebook.words", { n: words })}</span>
+          <span>·</span>
+          <span>
+            {new Date().toLocaleDateString(dateLocale, {
+              day: "numeric",
+              month: "short",
+              year: "numeric"
+            })}
+          </span>
+        </div>
       </div>
 
       <div className="fixed inset-x-0 bottom-0 z-40 border-t border-monk-border bg-monk-bg/95 px-6 py-3 backdrop-blur-md">
-        <div className="mx-auto flex max-w-[430px] items-center justify-between gap-3">
-          <div className="text-[11px] font-mono text-monk-text-soft">
-            <span>{t("notebook.words", { n: words })}</span>
-            {savedFlash ? (
-              <span className="ml-2 text-monk-success">· {t("notebook.saved")}</span>
-            ) : dirty ? (
-              <span className="ml-2 text-monk-warning">· {t("notebook.draft")}</span>
-            ) : null}
-          </div>
-          <div className="flex items-center gap-2">
+        <div className="mx-auto flex max-w-[430px] items-center justify-end gap-2">
             {entry ? (
               <GhostButton
                 className="text-monk-danger"
@@ -604,7 +619,6 @@ export function NotebookEditor({
               {t("notebook.done")}
             </PrimaryButton>
           </div>
-        </div>
       </div>
 
       <CalmDialog

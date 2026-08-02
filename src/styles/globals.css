@@ -293,6 +293,232 @@ button {
   display: none;
 }
 
+/* Binder — physical notebook frame (cover + spine + paper sheets) */
+.nb-binder {
+  --nb-leather: #262019;
+  --nb-leather-2: #2e2620;
+  --nb-stitch: rgba(164, 139, 94, 0.45);
+  position: relative;
+  border-radius: 14px;
+  background:
+    linear-gradient(160deg, var(--nb-leather-2), var(--nb-leather));
+  padding: 14px 12px 18px 0;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    0 18px 40px rgba(15, 16, 15, 0.5);
+}
+
+/* Cover header — leather band with stitched title */
+.nb-cover {
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 0 0 14px 16px;
+  padding: 18px 18px 16px;
+  border-radius: 10px;
+  background:
+    radial-gradient(ellipse 80% 60% at 70% -20%, rgba(164, 139, 94, 0.12), transparent 60%),
+    linear-gradient(150deg, #2e2620, #221c16);
+  border: 1px solid rgba(164, 139, 94, 0.16);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+.nb-cover::after {
+  /* stitched seam near the bottom edge */
+  content: "";
+  position: absolute;
+  left: 16px;
+  right: 16px;
+  bottom: 9px;
+  height: 1px;
+  background-image: linear-gradient(90deg, var(--nb-stitch) 6px, transparent 6px);
+  background-size: 12px 1px;
+  opacity: 0.5;
+}
+
+.nb-cover-title {
+  font-family: 'Caveat', cursive;
+  font-size: 2rem;
+  line-height: 1.1;
+  color: #e8e0d0;
+}
+
+.nb-cover-sub {
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  font-weight: 700;
+  color: rgba(232, 224, 208, 0.55);
+}
+
+/* Spine — vertical hinge on the left of the sheets */
+.nb-spine {
+  position: absolute;
+  left: 0;
+  top: 14px;
+  bottom: 18px;
+  width: 12px;
+  border-radius: 6px 0 0 6px;
+  background: linear-gradient(90deg, #1a1511, #241d17);
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.3), 2px 0 4px rgba(0, 0, 0, 0.25);
+}
+
+/* Sheets area — ruled paper pages sitting to the right of the spine */
+.nb-sheets {
+  position: relative;
+  margin-left: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* A note = a sheet of ruled paper */
+.nb-sheet {
+  position: relative;
+  border-radius: 6px;
+  background:
+    var(--notebook-bg);
+  background-image: repeating-linear-gradient(
+    transparent,
+    transparent 23px,
+    var(--notebook-card-line) 23px,
+    var(--notebook-card-line) 24px
+  );
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    0 4px 12px rgba(0, 0, 0, 0.25);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .nb-sheet:hover {
+    transform: translateY(-2px);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.04),
+      0 8px 20px rgba(0, 0, 0, 0.3);
+  }
+}
+
+/* ── Editor: writing in an open binder page ── */
+
+/* Leather cover strip at the top of the editor (consistent with list cover) */
+.nb-editor-cover {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  background:
+    radial-gradient(ellipse 70% 90% at 80% -30%, rgba(164, 139, 94, 0.1), transparent 60%),
+    linear-gradient(150deg, #2e2620, #221c16);
+  border: 1px solid rgba(164, 139, 94, 0.16);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+/* Open page: full ruled sheet with spine fold + margin line */
+.nb-open-page {
+  position: relative;
+  border-radius: 6px;
+  background:
+    var(--notebook-bg);
+  background-image: repeating-linear-gradient(
+    transparent,
+    transparent 23px,
+    var(--notebook-card-line) 23px,
+    var(--notebook-card-line) 24px
+  );
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    inset 14px 0 20px -18px rgba(0, 0, 0, 0.55),
+    0 8px 24px rgba(0, 0, 0, 0.3);
+  overflow: hidden;
+}
+
+/* Vertical margin line (classic notebook), tinted by category via --nb-cat.
+   Applied as a box-shadow so a 1px line renders regardless of PostCSS color-mix support. */
+.nb-open-page::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 44px;
+  width: 1px;
+  background: var(--nb-cat, #a48b5e);
+  opacity: 0.35;
+  pointer-events: none;
+}
+
+.nb-page-title {
+  font-family: 'Caveat', cursive;
+  font-size: 2rem;
+  line-height: 1.2;
+  color: var(--notebook-text-title);
+  background: transparent;
+  border: none;
+  outline: none;
+  width: 100%;
+  padding: 18px 20px 2px 60px;
+}
+
+.nb-page-title::placeholder {
+  color: var(--notebook-text-title);
+  opacity: 0.45;
+}
+
+/* Body textarea on the ruled page */
+.nb-page-body {
+  font-family: 'Caveat', cursive;
+  font-size: 1.15rem;
+  line-height: 24px;
+  color: var(--notebook-text-body);
+  width: 100%;
+  resize: vertical;
+  background: transparent;
+  border: none;
+  outline: none;
+  padding: 6px 20px 20px 60px;
+  min-height: 420px;
+}
+
+.nb-page-body::placeholder {
+  color: var(--notebook-text-body);
+  opacity: 0.45;
+}
+
+/* Folio: word count + date at the page corner */
+.nb-folio {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 20px 12px;
+  font-family: 'Caveat', cursive;
+  font-size: 1.05rem;
+  color: var(--notebook-text-body);
+  opacity: 0.6;
+  border-top: 1px dashed var(--notebook-card-line);
+}
+
+/* Open transition — subtle scale/fade into the page */
+@media (prefers-reduced-motion: no-preference) {
+  .nb-open-enter {
+    animation: nb-open 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+}
+@keyframes nb-open {
+  from {
+    opacity: 0;
+    transform: scale(0.985) translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
 /* Notebook category tab colors — darkened for night */
 .nb-tab-pribadi { --tab-color: #8c5a4a; }
 .nb-tab-karier { --tab-color: #4a6a7a; }
