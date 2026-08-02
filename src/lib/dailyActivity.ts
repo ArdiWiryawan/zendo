@@ -9,13 +9,18 @@ import {
 } from "../constants/focusSessionStatus";
 
 export function getDailyActivity(store: MonkMVPState, date: string) {
-  const dayPlanIds = store.dayPlans.filter((plan) => plan.date === date).map((plan) => plan.id);
+  // Scope to the active season — a shared calendar date must not pull in a
+  // previous season's day plans/sessions.
+  const seasonId = store.activeSeason?.id;
+  const dayPlanIds = store.dayPlans
+    .filter((plan) => plan.date === date && (!seasonId || plan.seasonId === seasonId))
+    .map((plan) => plan.id);
   const focusSessions = store.focusSessions.filter((session) => {
     const sessionDate = (session.endedAt ?? session.endTime ?? session.startedAt ?? session.startTime).slice(0, 10);
     return (dayPlanIds.includes(session.dayPlanId) || sessionDate === date) && ["completed", "ended_early"].includes(session.status);
   });
   const learningSessions = store.learningSessions.filter(
-    (session) => (session.endedAt ?? session.startedAt).slice(0, 10) === date && session.status === "completed"
+    (session) => (session.endedAt ?? session.startedAt).slice(0, 10) === date && session.status === "completed" && (!seasonId || session.seasonId === seasonId)
   );
   const legacyLearningEntries = store.learningEntries.filter((entry) => dayPlanIds.includes(entry.dayPlanId));
   return { focusSessions, learningSessions, legacyLearningEntries };

@@ -61,6 +61,7 @@ import type {
   OnboardingState,
   RelapseLog,
   ReleasedSeasonGoal,
+  Season,
   SeasonWhy,
   TimelineDay,
   TimelineStatus,
@@ -195,8 +196,17 @@ function snapshot(state: MonkStore | MonkMVPState): MonkMVPState {
     purchasedPackIds: state.purchasedPackIds,
     energyLogs: state.energyLogs,
     weeklyReviews: state.weeklyReviews,
-    releasedSeasonGoals: state.releasedSeasonGoals
+    releasedSeasonGoals: state.releasedSeasonGoals,
+    pastSeasons: state.pastSeasons
   };
+}
+
+// Idempotent — a season is archived into pastSeasons at most once (by id), so
+// re-running archiveSeason/startNewSeason never duplicates it.
+function archiveIntoPastSeasons(state: MonkMVPState, archived: Season): Season[] {
+  return state.pastSeasons.some((s) => s.id === archived.id)
+    ? state.pastSeasons
+    : [...state.pastSeasons, archived];
 }
 
 function getActiveGoals(state: MonkMVPState) {
@@ -823,6 +833,9 @@ export const useMonkStore = create<MonkStore>()(
     }));
 
     set({
+      // Preserve the previous season's envelope before overwriting activeSeason —
+      // otherwise its metadata (name/startDate/endDate) is lost forever.
+      pastSeasons: state.activeSeason ? archiveIntoPastSeasons(state, state.activeSeason) : state.pastSeasons,
       userProfile: {
         id: createId("user"),
         onboardingCompleted: true,
@@ -1491,6 +1504,7 @@ export const useMonkStore = create<MonkStore>()(
     };
     set({
       activeSeason: { ...season, status: "archived", updatedAt: timestamp },
+      pastSeasons: archiveIntoPastSeasons(state, season),
       userProfile: state.userProfile
         ? { ...state.userProfile, activeSeasonId: undefined, updatedAt: timestamp }
         : state.userProfile,
@@ -1505,6 +1519,7 @@ export const useMonkStore = create<MonkStore>()(
       activeSeason: state.activeSeason
         ? { ...state.activeSeason, status: "archived", updatedAt: timestamp }
         : null,
+      pastSeasons: state.activeSeason ? archiveIntoPastSeasons(state, state.activeSeason) : state.pastSeasons,
       userProfile: state.userProfile
         ? { ...state.userProfile, onboardingCompleted: false, activeSeasonId: undefined }
         : null,
@@ -1832,6 +1847,7 @@ export const useMonkStore = create<MonkStore>()(
       energyLogs: data.energyLogs !== undefined ? data.energyLogs : state.energyLogs,
       weeklyReviews: data.weeklyReviews !== undefined ? data.weeklyReviews : state.weeklyReviews,
       releasedSeasonGoals: data.releasedSeasonGoals !== undefined ? data.releasedSeasonGoals : state.releasedSeasonGoals,
+      pastSeasons: data.pastSeasons !== undefined ? data.pastSeasons : state.pastSeasons,
     });
   }
 }),
@@ -1861,7 +1877,8 @@ export const useMonkStore = create<MonkStore>()(
         purchasedPackIds: state.purchasedPackIds,
         energyLogs: state.energyLogs,
         weeklyReviews: state.weeklyReviews,
-        releasedSeasonGoals: state.releasedSeasonGoals
+        releasedSeasonGoals: state.releasedSeasonGoals,
+        pastSeasons: state.pastSeasons
       }),
       // ponytail: custom storage adapter to keep multi-key writes + normalization; simplify when migration done
       storage: {

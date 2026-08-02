@@ -75,23 +75,37 @@ export function selectFocusSessionsForToday(state: MonkMVPState, today = getToda
   return state.focusSessions.filter((session) => session.dayPlanId === plan.id);
 }
 
+// All date-scoped selectors below filter by the ACTIVE season. Old-season
+// records stay in the store (history preserved) but must not leak into the
+// current season's views when a calendar date is shared across seasons.
+// ponytail: an explicit `seasonId` param (defaulting to activeSeason.id) is the
+// upgrade path if a cross-season date query ever appears.
+
 export function selectTodayFocusSessions(state: MonkMVPState, today = getTodayDateString()): FocusSession[] {
-  return state.focusSessions.filter((s) => s.startTime.slice(0, 10) === today || s.startedAt?.slice(0, 10) === today);
+  const seasonId = state.activeSeason?.id;
+  if (!seasonId) return [];
+  return state.focusSessions.filter((s) => s.seasonId === seasonId && (s.startTime.slice(0, 10) === today || s.startedAt?.slice(0, 10) === today));
 }
 
 export function selectTodayLearningSessions(state: MonkMVPState, today = getTodayDateString()): LearningSession[] {
-  return state.learningSessions.filter((s) => s.startedAt.slice(0, 10) === today);
+  const seasonId = state.activeSeason?.id;
+  if (!seasonId) return [];
+  return state.learningSessions.filter((s) => s.seasonId === seasonId && s.startedAt.slice(0, 10) === today);
 }
 
 export function selectTotalFocusSecondsForDate(state: MonkMVPState, date: string): number {
+  const seasonId = state.activeSeason?.id;
+  if (!seasonId) return 0;
   return state.focusSessions
-    .filter((s) => (s.startTime.slice(0, 10) === date || s.startedAt?.slice(0, 10) === date) && ["completed", "ended_early"].includes(s.status))
+    .filter((s) => s.seasonId === seasonId && (s.startTime.slice(0, 10) === date || s.startedAt?.slice(0, 10) === date) && ["completed", "ended_early"].includes(s.status))
     .reduce((sum, s) => sum + ((s.focusDurationMinutes ?? s.durationMinutes) * 60), 0);
 }
 
 export function selectTotalLearningSecondsForDate(state: MonkMVPState, date: string): number {
+  const seasonId = state.activeSeason?.id;
+  if (!seasonId) return 0;
   return state.learningSessions
-    .filter((s) => s.startedAt.slice(0, 10) === date && s.status === "completed")
+    .filter((s) => s.seasonId === seasonId && s.startedAt.slice(0, 10) === date && s.status === "completed")
     .reduce((sum, s) => sum + s.actualDurationSeconds, 0);
 }
 
@@ -125,4 +139,13 @@ export function selectSeasonLearningSummary(state: MonkMVPState, seasonId: strin
 
 export function selectEnergyForDate(state: MonkMVPState, date: string): EnergyLevel | undefined {
   return state.energyLogs.find((e) => e.date === date)?.level;
+}
+
+export function selectSeasonGoals(state: MonkMVPState, seasonId: string): Goal[] {
+  return state.goals.filter((g) => g.seasonId === seasonId);
+}
+
+export function selectSeasonDayPlanCounts(state: MonkMVPState, seasonId: string) {
+  const days = state.dayPlans.filter((d) => d.seasonId === seasonId);
+  return { planned: days.length, completed: days.filter((d) => d.status === "completed").length };
 }

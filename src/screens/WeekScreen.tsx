@@ -72,7 +72,7 @@ export function WeekScreen() {
   const hasJournalThisWeek = useMemo(() => {
     if (!weeklyPlan) return false;
     const set = new Set(weekDates);
-    return store.journalEntries.some((e) => set.has(e.date));
+    return store.journalEntries.some((e) => set.has(e.date) && e.seasonId === weeklyPlan.seasonId);
   }, [weeklyPlan, weekDates, store.journalEntries]);
 
   const showWeekWrap = !!weeklyPlan && !!stats && (

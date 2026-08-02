@@ -104,6 +104,7 @@ export function createInitialState(): MonkMVPState {
     userProfile: null,
     appSettings: createDefaultSettings(),
     activeSeason: null,
+    pastSeasons: [],
     goals: [],
     badHabits: [],
     weeklyPlans: [],

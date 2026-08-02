@@ -479,6 +479,7 @@ export type MonkMVPState = {
   userProfile: UserProfile | null;
   appSettings: AppSettings;
   activeSeason: Season | null;
+  pastSeasons: Season[];
   goals: Goal[];
   badHabits: BadHabit[];
   weeklyPlans: WeeklyPlan[];

@@ -68,6 +68,9 @@ export function SeasonEndScreen() {
         }}>
           {t("seasonEnd.archive")}
         </SecondaryButton>
+        <GhostButton onClick={() => navigate(routes.seasons)}>
+          {t("seasons.view")}
+        </GhostButton>
       </div>
     </>
   );

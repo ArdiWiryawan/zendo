@@ -36,6 +36,8 @@ export const routes = {
   learn: "/learn",
   relapse: "/relapse",
   seasonEnd: "/season-end",
+  seasons: "/seasons",
+  seasonDetail: "/seasons/:seasonId",
   settings: "/settings",
   library: "/library",
   notebook: "/notebook",

@@ -41,7 +41,7 @@ export function LearningScreen() {
   const [content, setContent] = useState("");
 
   const activeGoals = selectActiveGoals(store);
-  const parentOptions = store.learningSessions.filter((s) => !s.parentId && s.id !== "");
+  const parentOptions = store.learningSessions.filter((s) => !s.parentId && s.id !== "" && s.seasonId === store.activeSeason?.id);
 
   const learningSessionTypes = [
     { value: "book", label: "Book" },

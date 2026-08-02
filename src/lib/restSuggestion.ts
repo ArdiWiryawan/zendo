@@ -43,9 +43,12 @@ export function shouldSuggestRest(store: MonkMVPState, today = getTodayDateStrin
 
   // STREAK_DAYS consecutive goal-days PRECEDING today (not today-inclusive), so a
   // missed/today's pending status doesn't kill the signal from 5 held goal-days.
+  // Scope to the active season — the 5-day lookback must not count goal-days
+  // from a previous season during the first days of a new one.
+  const seasonId = store.activeSeason?.id;
   for (let i = 1; i <= STREAK_DAYS; i++) {
     const date = addDaysToDate(today, -i);
-    const plan = store.dayPlans.find((day) => day.date === date);
+    const plan = store.dayPlans.find((day) => day.date === date && (!seasonId || day.seasonId === seasonId));
     if (!isGoalDay(plan)) return false;
   }
   return true;

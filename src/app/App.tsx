@@ -115,6 +115,7 @@ const SeasonEndScreenLazy = lazy(() => import("../screens/SeasonEndScreen").then
 const JournalLibraryScreenLazy = lazy(() => import("../screens/LibraryScreen").then(m => ({ default: m.JournalLibraryScreen })));
 const NotebookPageLazy = lazy(() => import("../screens/LibraryScreen").then(m => ({ default: m.NotebookPage })));
 const PacksPageLazy = lazy(() => import("../screens/LibraryScreen").then(m => ({ default: m.PacksPage })));
+const ArchiveScreenLazy = lazy(() => import("../screens/ArchiveScreen").then(m => ({ default: m.ArchiveScreen })));
 import { TodayScreen, DefenseChips } from "../screens/TodayScreen";
 import { FocusSessionPanel, FocusSessionStarter } from "../screens/FocusSession";
 import { FrictionWhy, SeasonProgressCard, WhyEditor } from "../components/SeasonWidgets";
@@ -250,6 +251,8 @@ export default function App() {
         <Route path={routes.learn} element={<ProtectedMain><Suspense><LearningScreenLazy /></Suspense></ProtectedMain>} />
         <Route path={routes.relapse} element={<ProtectedMain><Suspense><RelapseScreenLazy /></Suspense></ProtectedMain>} />
         <Route path={routes.seasonEnd} element={<ProtectedMain allowEnded><Suspense><SeasonEndScreenLazy /></Suspense></ProtectedMain>} />
+        <Route path={routes.seasons} element={<ProtectedMain allowEnded><Suspense><ArchiveScreenLazy /></Suspense></ProtectedMain>} />
+        <Route path={routes.seasonDetail} element={<ProtectedMain allowEnded><Suspense><ArchiveScreenLazy /></Suspense></ProtectedMain>} />
         <Route path={routes.settings} element={<ProtectedMain><Suspense><SettingsScreen /></Suspense></ProtectedMain>} />
         <Route path={routes.login} element={<LoginScreen />} />
         <Route path={routes.signup} element={<SignupScreen />} />

@@ -42,7 +42,7 @@ import {
   getDailyStatusForDate,
   isRetroEligible,
 } from "../lib/dailyActivity";
-import { selectTodayPlan } from "../store/selectors";
+import { selectTodayPlan, selectSeasonFocusSummary } from "../store/selectors";
 import { useMonkStore } from "../store/useMonkStore";
 import type { AppLanguage, TimelineEvent, TimelineEventType } from "../types/app";
 import { getJournalAnswerItems } from "../i18n/prompts";
@@ -53,13 +53,12 @@ function TimelineStats() {
   const t = useT();
   const season = store.activeSeason!;
 
-  const totalFocusMinutes = Math.round(
-    store.focusSessions
-      .filter((s) => ["completed", "ended_early"].includes(s.status))
-      .reduce((sum, s) => sum + (s.focusDurationMinutes ?? s.durationMinutes), 0)
-  );
-
-  const totalFocusSessions = store.focusSessions.filter((s) => ["completed", "ended_early"].includes(s.status)).length;
+  // Season-scoped — without seasonId the previous season's sessions would
+  // inflate the current season's totals. selectSeasonFocusSummary already
+  // filters seasonId + [completed, ended_early].
+  const focusSummary = selectSeasonFocusSummary(store, season.id);
+  const totalFocusMinutes = focusSummary.totalMinutes;
+  const totalFocusSessions = focusSummary.count;
 
   const completedDaysCount = store.dayPlans.filter(
     (day) => day.seasonId === season.id && day.status === "completed"
@@ -230,13 +229,17 @@ export default function TimelineScreen() {
 
   const groupedEvents = useMemo(() => {
     const groups: Record<string, TimelineEvent[]> = {};
-    store.timelineEvents.forEach((event) => {
-      const date = event.occurredAt.slice(0, 10);
-      if (!groups[date]) {
-        groups[date] = [];
-      }
-      groups[date].push(event);
-    });
+    // Only the active season's events — old-season events would otherwise
+    // surface in the new season's timeline feed.
+    store.timelineEvents
+      .filter((event) => event.seasonId === season.id)
+      .forEach((event) => {
+        const date = event.occurredAt.slice(0, 10);
+        if (!groups[date]) {
+          groups[date] = [];
+        }
+        groups[date].push(event);
+      });
     return Object.keys(groups)
       .sort((a, b) => b.localeCompare(a))
       .map((date) => ({

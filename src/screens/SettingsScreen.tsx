@@ -145,7 +145,11 @@ export default function SettingsScreen() {
     const season = store.activeSeason;
     if (!season) return;
     const daysPassed = getDaysPassed(season.startDate);
-    const journal = store.journalEntries;
+    // Scope each log to this season — otherwise old-season entries leak into
+    // the "Season Log" export.
+    const journal = store.journalEntries.filter(j => j.seasonId === season.id);
+    const learning = store.learningEntries.filter(l => l.seasonId === season.id);
+    const relapses = store.relapseLogs.filter(r => r.seasonId === season.id);
     const lines = [
       `# Season Log: ${season.name}`,
       `Started: ${season.startDate} (${daysPassed} days)`,
@@ -163,10 +167,10 @@ export default function SettingsScreen() {
       }),
       "",
       "## Learning Log",
-      ...store.learningEntries.map(l => `- **${l.createdAt.slice(0,10)}** (${l.type}): ${l.title} - Insight: ${l.keyInsight || "-"}`),
+      ...learning.map(l => `- **${l.createdAt.slice(0,10)}** (${l.type}): ${l.title} - Insight: ${l.keyInsight || "-"}`),
       "",
       "## Relapse & Drift Logs",
-      ...store.relapseLogs.map(r => `- **${r.createdAt.slice(0,10)}** (Trigger: ${r.trigger}): ${r.note} - Recovery: ${r.recoveryAction || "-"}`)
+      ...relapses.map(r => `- **${r.createdAt.slice(0,10)}** (Trigger: ${r.trigger}): ${r.note} - Recovery: ${r.recoveryAction || "-"}`)
     ];
 
     const blob = new Blob([lines.join("\n")], { type: "text/markdown;charset=utf-8" });
@@ -361,6 +365,9 @@ export default function SettingsScreen() {
           <Card className="p-0 overflow-hidden">
             <SettingsRow icon={Calendar} title="Archive Season" description="End current season, preserve all progress.">
               <GhostButton onClick={store.archiveSeason}>Archive</GhostButton>
+            </SettingsRow>
+            <SettingsRow icon={Calendar} title={tUI("seasons.settingsRow")} description={tUI("seasons.settingsRowDesc")}>
+              <GhostButton onClick={() => navigate(routes.seasons)}>{tUI("seasons.open")}</GhostButton>
             </SettingsRow>
           </Card>
         </motion.div>
