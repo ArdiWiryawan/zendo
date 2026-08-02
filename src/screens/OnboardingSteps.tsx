@@ -1009,6 +1009,83 @@ export function KeystoneSetup({ onNext }: { onNext: () => void }) {
   );
 }
 
+export function ObstacleStep({ onNext }: { onNext: () => void }) {
+  const { onboarding, setObstacleMitigation } = useMonkStore();
+  const goals = onboarding.goalDrafts.filter((goal) => onboarding.selectedFocusGoalIds.includes(goal.id));
+  // Local drafts keep the two fields independent while typing; the store string only
+  // round-trips when BOTH are filled, so a partially-typed obstacle never wipes the input.
+  const [drafts, setDrafts] = useState<Record<string, { when: string; action: string }>>(() =>
+    Object.fromEntries(
+      goals.map((goal) => [goal.id, parseIntention(onboarding.obstacleMitigations[goal.id] ?? "")])
+    )
+  );
+  const commit = (goalId: string, when: string, action: string) => {
+    setDrafts((prev) => ({ ...prev, [goalId]: { when, action } }));
+    setObstacleMitigation(goalId, formatIntention(when, action));
+  };
+
+  const obstaclePlaceholders = [
+    "Feeling tired or low energy",
+    "No time — the day fills up",
+    "Bored / unsure how to start",
+    "Fear of doing it imperfectly",
+    "Getting distracted by my phone"
+  ];
+  const mitigationPlaceholders = [
+    "start with just 5 minutes",
+    "do the smallest step first",
+    "put the phone in another room",
+    "reset and start fresh",
+    "tell someone I'm doing this"
+  ];
+
+  return (
+    <>
+      <ScreenIntro
+        title="What could get in the way?"
+        subtitle="Naming the obstacle once makes the hard day easier. Optional — skip if nothing comes to mind."
+      />
+      <div className="space-y-4">
+        {goals.map((goal, index) => {
+          const draft = drafts[goal.id] ?? { when: "", action: "" };
+          const obstaclePh = obstaclePlaceholders[index % obstaclePlaceholders.length];
+          const mitigationPh = mitigationPlaceholders[index % mitigationPlaceholders.length];
+          return (
+            <Card key={goal.id}>
+              <p className="mb-1 text-xs font-bold uppercase tracking-wider text-monk-muted">Goal {index + 1}</p>
+              <p className="mb-3 font-semibold text-monk-text">{goal.title}</p>
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                <TextInput
+                  label="What might get in the way?"
+                  id={`obstacle-when-${goal.id}`}
+                  placeholder={obstaclePh}
+                  value={draft.when}
+                  onChange={(event) => commit(goal.id, event.target.value, draft.action)}
+                />
+                <TextInput
+                  label="When that happens, I will…"
+                  id={`obstacle-action-${goal.id}`}
+                  placeholder={mitigationPh}
+                  value={draft.action}
+                  onChange={(event) => commit(goal.id, draft.when, event.target.value)}
+                />
+              </div>
+              {draft.when.trim() && draft.action.trim() ? (
+                <p className="mt-2 text-xs leading-5 text-monk-muted">
+                  Plan B: <span className="text-monk-text-soft">When {draft.when}, I will {draft.action}.</span>
+                </p>
+              ) : null}
+            </Card>
+          );
+        })}
+      </div>
+      <div className="mt-auto space-y-3 pt-8">
+        <PrimaryButton onClick={onNext}>Continue</PrimaryButton>
+      </div>
+    </>
+  );
+}
+
 export function WeekSetup({ onNext }: { onNext: () => void }) {
   const { onboarding, setWeeklyAllocation, updateOnboarding } = useMonkStore();
   const goals = onboarding.goalDrafts.filter((goal) => onboarding.selectedFocusGoalIds.includes(goal.id));

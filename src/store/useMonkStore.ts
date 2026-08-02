@@ -31,6 +31,7 @@ import {
   nowIso
 } from "../lib/date";
 import { createId } from "../lib/ids";
+import { parseIntention } from "../lib/implementationIntention";
 import { loadState } from "../lib/storage";
 import { t } from "../i18n";
 import type {
@@ -107,6 +108,7 @@ type MonkActions = {
   toggleFocusGoal: (id: string) => void;
   setSeasonDuration: (days: number) => void;
   setKeystoneAction: (goalId: string, action: string) => void;
+  setObstacleMitigation: (goalId: string, mitigation: string) => void;
   setWeeklyMode: (mode: WeeklyMode) => void;
   setWeeklyAllocation: (goalId: string, targetCount: number) => void;
   createSeasonFromOnboarding: () => void;
@@ -646,6 +648,16 @@ export const useMonkStore = create<MonkStore>()(
     });
   },
 
+  setObstacleMitigation: (goalId, mitigation) => {
+    const state = get();
+    set({
+      onboarding: {
+        ...state.onboarding,
+        obstacleMitigations: { ...state.onboarding.obstacleMitigations, [goalId]: mitigation }
+      }
+    });
+  },
+
   setWeeklyMode: (mode) => {
     const state = get();
     set({
@@ -692,6 +704,8 @@ export const useMonkStore = create<MonkStore>()(
       title: draft.title.trim(),
       keystoneAction: onboarding.keystoneActions[draft.id]?.trim() || "Stay with one thing",
       why: onboarding.goalWhys[draft.id]?.trim() || undefined,
+      obstacle: parseIntention(onboarding.obstacleMitigations[draft.id] ?? "")?.when || undefined,
+      obstacleMitigation: parseIntention(onboarding.obstacleMitigations[draft.id] ?? "")?.action || undefined,
       priority: (index + 1) as 1 | 2 | 3,
       weeklyTargetCount:
         onboarding.weeklyAllocations.find((allocation) => allocation.goalId === draft.id)

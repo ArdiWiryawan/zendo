@@ -136,6 +136,7 @@ import {
   SeasonSetup,
   NarrowGoals,
   KeystoneSetup,
+  ObstacleStep,
   WeekSetup,
   TodayPreviewStep,
   CoachHint,
@@ -360,7 +361,7 @@ function OnboardingScreen({ path }: { path: string }) {
     if (stepPath === routes.onboardingValues || stepPath === routes.onboardingReality || stepPath === routes.onboardingObstacles) return "Reflect";
     if (stepPath === routes.onboardingHabits || stepPath === routes.onboardingRemove || stepPath === routes.onboardingGreyMode) return "Clear";
     if (stepPath === routes.onboardingGoals || stepPath === routes.onboardingSeason) return "Plan";
-    if (stepPath === routes.onboardingVision || stepPath === routes.onboardingNarrow || stepPath === routes.onboardingKeystone || stepPath === routes.onboardingWeekSetup) return "Focus";
+    if (stepPath === routes.onboardingVision || stepPath === routes.onboardingNarrow || stepPath === routes.onboardingKeystone || stepPath === routes.onboardingObstacleMitigation || stepPath === routes.onboardingWeekSetup) return "Focus";
     if (stepPath === routes.onboardingPreview) return "Review";
     return undefined;
   };
@@ -378,6 +379,7 @@ function OnboardingScreen({ path }: { path: string }) {
       {path === routes.onboardingSeason ? <SeasonSetup onNext={goNext} /> : null}
       {path === routes.onboardingNarrow ? <NarrowGoals onNext={goNext} /> : null}
       {path === routes.onboardingKeystone ? <KeystoneSetup onNext={goNext} /> : null}
+      {path === routes.onboardingObstacleMitigation ? <ObstacleStep onNext={goNext} /> : null}
       {path === routes.onboardingWeekSetup ? <WeekSetup onNext={goNext} /> : null}
       {path === routes.onboardingPreview ? <TodayPreviewStep /> : null}
     </OnboardingShell>

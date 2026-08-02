@@ -74,6 +74,10 @@ export type Goal = {
   keystoneAction: string;
   /** Why this goal matters — short personal reason. */
   why?: string;
+  /** Biggest inner obstacle expected for this goal. */
+  obstacle?: string;
+  /** Plan B — parsed from "When [obstacle], I will [plan B]". */
+  obstacleMitigation?: string;
   priority: 1 | 2 | 3;
   weeklyTargetCount: number;
   status: GoalStatus;

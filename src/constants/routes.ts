@@ -59,6 +59,7 @@ export const onboardingOrder = [
   routes.onboardingVision,
   routes.onboardingNarrow,
   routes.onboardingKeystone,
+  routes.onboardingObstacleMitigation,
   routes.onboardingWeekSetup,
   routes.onboardingPreview
 ] as const;
