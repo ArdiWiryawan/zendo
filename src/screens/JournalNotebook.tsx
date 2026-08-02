@@ -354,7 +354,7 @@ export function NotebookEditor({
   const lang = useLanguage();
   const dateLocale = lang === "id" ? "id-ID" : "en-US";
   const categories = store.notebookCategories;
-  const titleRef = useRef<HTMLInputElement>(null);
+  const titleRef = useRef<HTMLTextAreaElement>(null);
   const bodyRef = useRef<HTMLTextAreaElement>(null);
   const [title, setTitle] = useState(entry?.title ?? "");
   const [body, setBody] = useState(entry?.body ?? "");
@@ -370,6 +370,12 @@ export function NotebookEditor({
 
   useEffect(() => {
     titleRef.current?.focus();
+    // Size the title to its content on mount (existing long titles).
+    const el = titleRef.current;
+    if (el) {
+      el.style.height = "auto";
+      el.style.height = `${el.scrollHeight}px`;
+    }
   }, []);
 
   const markDirty = () => setDirty(true);
@@ -567,14 +573,17 @@ export function NotebookEditor({
       ) : null}
 
       <div className="nb-open-page nb-open-enter" style={{ "--nb-cat": activeCatHex } as React.CSSProperties}>
-        <input
+        <textarea
           ref={titleRef}
-          type="text"
+          rows={1}
           placeholder={t("notebook.titlePlaceholder")}
           value={title}
           onChange={(e) => {
             setTitle(e.target.value);
             markDirty();
+            const el = e.currentTarget;
+            el.style.height = "auto";
+            el.style.height = `${el.scrollHeight}px`;
           }}
           className="nb-page-title"
         />
