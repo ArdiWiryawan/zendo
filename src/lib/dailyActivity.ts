@@ -138,6 +138,22 @@ export function hideReentryChip(date: string) {
   }
 }
 
+export function isReflectionThreadDismissed(date: string): boolean {
+  try {
+    return localStorage.getItem(`zendo.thread.dismissed.${date}`) === "1";
+  } catch {
+    return false;
+  }
+}
+
+export function dismissReflectionThread(date: string) {
+  try {
+    localStorage.setItem(`zendo.thread.dismissed.${date}`, "1");
+  } catch {
+    /* ignore */
+  }
+}
+
 export function shouldOfferReentry(store: { dayPlans: MonkMVPState["dayPlans"]; activeSeason: MonkMVPState["activeSeason"] }, seasonStart: string, today: string): boolean {
   const yesterday = addDaysToDate(today, -1);
   if (yesterday < seasonStart) return false;

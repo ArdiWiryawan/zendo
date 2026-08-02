@@ -237,6 +237,9 @@ export const id: Record<MessageKey, string> = {
   "today.daysLeftWeekPlural": "{n} hari lagi minggu ini",
   "today.restPickBody": "Satu hari tenang. Istirahat bagian dari jalan.",
   "today.statusLive": "Status hari ini: {status}",
+  "today.thread.title": "Kemarin kamu berkata: \"{text}\". Lanjutkan benang itu hari ini?",
+  "today.thread.keep": "Jadikan aksi utama hari ini",
+  "today.thread.dismiss": "Nanti saja",
 
   "relapse.savedTitle": "Tercatat. Re-anchor.",
   "relapse.savedSubtitle": "Drift itu data. Why-mu tetap ada.",

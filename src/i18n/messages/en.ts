@@ -235,6 +235,9 @@ export const en = {
   "today.daysLeftWeekPlural": "{n} days left this week",
   "today.restPickBody": "One quiet day. Rest is part of the path.",
   "today.statusLive": "Today status: {status}",
+  "today.thread.title": "Yesterday you said: \"{text}\". Keep that thread today?",
+  "today.thread.keep": "Keep it as today's main action",
+  "today.thread.dismiss": "Not now",
 
   "relapse.savedTitle": "Logged. Now re-anchor.",
   "relapse.savedSubtitle": "Drift is data. Your why still stands.",

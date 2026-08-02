@@ -12,7 +12,7 @@ import { formatIntention, parseIntention } from "../lib/implementationIntention"
 import { playZenBell, unlockAudio } from "../lib/audio";
 import { loadLastFocus, saveLastFocus } from "../lib/storage";
 import { getCoachStep, dismissCoachStep } from "../lib/coach";
-import { isCloseDaySkipped, skipCloseDay, getDayPart, isReentryDismissed, dismissReentry, isReentryChipHidden, hideReentryChip, shouldOfferReentry } from "../lib/dailyActivity";
+import { isCloseDaySkipped, skipCloseDay, getDayPart, isReentryDismissed, dismissReentry, isReentryChipHidden, hideReentryChip, shouldOfferReentry, isReflectionThreadDismissed, dismissReflectionThread } from "../lib/dailyActivity";
 import { isRestSuggestionDismissed, dismissRestSuggestion, shouldSuggestRest } from "../lib/restSuggestion";
 import { selectTodayPlan, selectActiveGoals, selectCurrentWeeklyPlan, selectEnergyForDate, selectTodayLearningSessions, selectTotalFocusSecondsForDate } from "../store/selectors";
 import {
@@ -257,6 +257,51 @@ function ReEntryBanner({ onDismissedChange }: { onDismissedChange?: (dismissed: 
             </div>
           </>
         )}
+      </div>
+    </Card>
+  );
+}
+
+function ReflectionThreadHint() {
+  const store = useMonkStore();
+  const t = useT();
+  const navigate = useNavigate();
+  const season = store.activeSeason;
+  const today = getTodayDateString();
+  const yesterday = addDaysToDate(today, -1);
+  const [dismissed, setDismissed] = useState(() => isReflectionThreadDismissed(today));
+  const todayPlan = selectTodayPlan(store);
+
+  if (!season || dismissed) return null;
+  const yesterdayEntry = store.journalEntries.find(
+    (entry) => entry.seasonId === season.id && entry.date === yesterday
+  );
+  const thread = yesterdayEntry?.answers.whatMovedToday?.trim();
+  if (!thread || yesterday < season.startDate) return null;
+  return (
+    <Card className="border-monk-border bg-monk-soft/40 p-4">
+      <p className="text-sm leading-5">{t("today.thread.title", { text: thread })}</p>
+      <div className="mt-2.5 flex flex-wrap gap-2">
+        <GhostButton
+          onClick={() => {
+            store.createOrUpdateDayPlan(today, {
+              dayType: todayPlan?.dayType ?? "goal",
+              goalId: todayPlan?.goalId,
+              mainAction: todayPlan?.mainAction?.trim() ? todayPlan.mainAction : thread
+            });
+            setDismissed(true);
+          }}
+        >
+          {t("today.thread.keep")}
+        </GhostButton>
+        <GhostButton
+          onClick={() => {
+            dismissReflectionThread(today);
+            setDismissed(true);
+          }}
+        >
+          {t("today.thread.dismiss")}
+        </GhostButton>
       </div>
     </Card>
   );
@@ -552,6 +597,7 @@ export function TodayScreen() {
                 </button>
               </div>
 
+              {!isRest && !isDone ? <ReflectionThreadHint /> : null}
               <div className="mt-5 rounded-xl border border-monk-border bg-monk-bg p-4">
                 <div className="flex items-center justify-between gap-2">
                   <p className="text-xs font-medium uppercase tracking-[0.16em] text-monk-text-soft">
