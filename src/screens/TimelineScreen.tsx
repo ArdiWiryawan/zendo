@@ -46,7 +46,7 @@ import { selectTodayPlan } from "../store/selectors";
 import { useMonkStore } from "../store/useMonkStore";
 import type { AppLanguage, TimelineEvent, TimelineEventType } from "../types/app";
 import { getJournalAnswerItems } from "../i18n/prompts";
-import { useT } from "../i18n";
+import { useT, useLanguage } from "../i18n";
 
 function TimelineStats() {
   const store = useMonkStore();
@@ -107,6 +107,8 @@ function TimelineStats() {
 function TimelineEventRow({ event }: { event: TimelineEvent }) {
   const store = useMonkStore();
   const t = useT();
+  const lang = useLanguage();
+  const locale = lang === "id" ? "id-ID" : "en-US";
   const focusRecord = event.type === "focus_session"
     ? event.focusSession ?? store.focusSessions.find((session) => session.id === event.sourceId)
     : undefined;
@@ -171,7 +173,7 @@ function TimelineEventRow({ event }: { event: TimelineEvent }) {
     journal_entry: "border-monk-muted"
   };
 
-  const timeLabel = new Date(event.occurredAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  const timeLabel = new Date(event.occurredAt).toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' });
 
   return (
     <div className="flex gap-3">

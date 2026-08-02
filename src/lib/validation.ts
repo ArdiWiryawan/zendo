@@ -15,19 +15,9 @@ export function validateHabitAudit(selectedCount: number) {
 export function validateGoalBrainDump(goals: GoalDraft[]) {
   const titles = goals.map((goal) => goal.title.trim()).filter(Boolean);
   const unique = new Set(titles.map((title) => title.toLowerCase()));
-  if (titles.length < 5) return invalid("Add at least 5 goal ideas before narrowing.");
+  if (titles.length < 3) return invalid("Add at least 3 goal ideas before narrowing.");
   if (titles.length > 10) return invalid("10 ideas is the maximum. Time to narrow.");
   if (unique.size !== titles.length) return invalid("This goal already exists.");
-  return valid();
-}
-
-export function validateGoalElimination(releasedCount: number) {
-  return releasedCount >= 2 ? valid() : invalid("Release at least two goals.");
-}
-
-export function validateFocusGoalSelection(selectedCount: number) {
-  if (selectedCount < 1) return invalid("Choose at least one focus goal.");
-  if (selectedCount > 3) return invalid("Three is the limit for this season.");
   return valid();
 }
 

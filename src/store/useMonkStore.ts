@@ -33,6 +33,7 @@ import {
 import { createId } from "../lib/ids";
 import { parseIntention } from "../lib/implementationIntention";
 import { loadState } from "../lib/storage";
+import { stopMusic } from "../lib/focusMusic";
 import { t } from "../i18n";
 import type {
   AppSettings,
@@ -1168,13 +1169,30 @@ export const useMonkStore = create<MonkStore>()(
     const phases = session.phases?.length
       ? session.phases
       : createFocusPhases(session.preset ?? session.timerMode ?? "deep_work", session.durationMinutes);
-    const completedPhases = phases.map((phase) => ({
-      ...phase,
-      completedMinutes: phase.plannedMinutes,
-      status: "completed" as const
-    }));
+    const currentIndex = session.currentPhaseIndex ?? 0;
+    const currentPlannedSeconds = (phases[currentIndex]?.plannedMinutes ?? 0) * 60;
+    // Actual elapsed for the phase in progress, clamped to its plan. Without this,
+    // an auto-complete that fires after the user stepped away would record the FULL
+    // planned duration, inflating focus stats. Prior phases keep their completed
+    // minutes (recorded by advanceFocusPhase); unreached phases stay pending.
+    const phaseElapsedSeconds = Math.min(
+      currentPlannedSeconds,
+      Math.max(
+        session.elapsedSeconds ?? 0,
+        Math.floor((Date.now() - new Date(session.startTime).getTime()) / 1000)
+      )
+    );
+    const completedPhases = phases.map((phase, index) => {
+      if (index > currentIndex) return phase;
+      const completedMinutes =
+        index === currentIndex
+          ? Math.min(phase.plannedMinutes, Math.floor(phaseElapsedSeconds / 60))
+          : phase.completedMinutes;
+      return { ...phase, completedMinutes, status: "completed" as const };
+    });
     const completedSession = { ...session, phases: completedPhases, currentPhaseIndex: phases.length - 1 };
     const summary = summarizeFocusSession(completedSession, endTimestamp, "completed");
+    stopMusic();
     const actualDurationSeconds = summary.completedDurationMinutes * 60;
 
     const focusSessions = state.focusSessions.map((item) =>
@@ -1265,6 +1283,7 @@ export const useMonkStore = create<MonkStore>()(
     );
     const endTimestamp = nowIso();
     const summary = summarizeFocusSession(session, endTimestamp, "ended_early", elapsedSeconds);
+    stopMusic();
     const focusSessions = state.focusSessions.map((s) =>
       s.id === sessionId
         ? {

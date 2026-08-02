@@ -139,6 +139,7 @@ function PackCard({
   const dateLocale = lang === "id" ? "id-ID" : "en-US";
   const progress = activeSession?.progress ?? 0;
   const inProgress = !!activeSession && progress < 100;
+  const hasSession = !!activeSession;
   const locked = !!pack.isPremium && !purchased;
 
   return (
@@ -190,16 +191,16 @@ function PackCard({
             ) : null}
           </div>
 
-          {inProgress ? (
+          {hasSession ? (
             <div className="mt-3">
               <div className="mb-1 flex items-center justify-between text-[10px] text-monk-muted">
-                <span>{t("packs.inProgress")}</span>
+                <span>{inProgress ? t("packs.inProgress") : t("packs.doneCount", { n: completedCount })}</span>
                 <span className="font-mono">{progress}%</span>
               </div>
               <div className="h-1.5 overflow-hidden rounded-full bg-monk-soft">
                 <div
                   className="h-full rounded-full bg-monk-accent transition-all"
-                  style={{ width: `${progress}%` }}
+                  style={{ width: `${Math.max(progress, 2)}%` }}
                 />
               </div>
             </div>
@@ -300,8 +301,13 @@ function PackSession({ pack, onBack }: { pack: JournalPack; onBack: () => void }
       const nextAnswer = session.answers.find((a) => a.questionId === pack.questions[nextIdx]?.id);
       setInput(nextAnswer?.answer ?? "");
     } else {
-      store.completeJournalPack(session.id);
-      setDone(true);
+      const isLast = currentIndex === pack.questions.length - 1;
+      if (isLast && session.completedAt) {
+        setDone(true);
+      } else {
+        store.completeJournalPack(session.id);
+        setDone(true);
+      }
     }
   };
 

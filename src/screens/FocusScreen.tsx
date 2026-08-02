@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Volume2, VolumeX } from "lucide-react";
 import {
@@ -8,16 +8,17 @@ import {
   PageHeader,
   SecondaryButton,
 } from "../components/ui";
-import { FocusSessionPanel, FocusSessionStarter } from "../screens/FocusSession";
+import { FocusSessionPanel, FocusSessionStarter, FocusSessionSummary } from "../screens/FocusSession";
 import { routes } from "../constants/routes";
 import { getTodayDateString } from "../lib/date";
 import { parseIntention } from "../lib/implementationIntention";
 import { isCloseDaySkipped } from "../lib/eveningNudge";
 import { unlockAudio } from "../lib/audio";
-import { stopMusic, toggleMusic } from "../lib/focusMusic";
+import { isMusicOn, toggleMusic } from "../lib/focusMusic";
 import { selectTodayPlan, selectTotalFocusSecondsForDate } from "../store/selectors";
 import { useMonkStore } from "../store/useMonkStore";
 import { useT } from "../i18n";
+import type { FocusSession } from "../types/app";
 
 export default function FocusScreen() {
   const navigate = useNavigate();
@@ -25,7 +26,9 @@ export default function FocusScreen() {
   const t = useT();
   const plan = selectTodayPlan(store);
   const goal = plan?.goalId ? store.goals.find((item) => item.id === plan.goalId) : undefined;
-  const [musicOn, setMusicOn] = useState(false);
+  const [musicOn, setMusicOn] = useState(isMusicOn);
+  const [justCompleted, setJustCompleted] = useState<FocusSession | null>(null);
+  const prevSessionIdRef = useRef<string | null>(null);
   const today = getTodayDateString();
   const todayEntry = store.journalEntries.find(
     (entry) => entry.seasonId === store.activeSeason?.id && entry.date === today
@@ -37,10 +40,35 @@ export default function FocusScreen() {
   const activeSession = store.focusSessions.find(
     (session) => session.dayPlanId === plan?.id && ["running", "paused"].includes(session.status)
   );
+  const activeSessionId = activeSession?.id ?? null;
 
   useEffect(() => {
-    return () => { stopMusic(); };
-  }, []);
+    // Music must survive navigation while a session runs, so it is NOT stopped on
+    // unmount. It is stopped only when the session actually ends (completed / ended
+    // early / abandoned) — see useMonkStore actions. Keep the header icon in sync.
+    setMusicOn(isMusicOn());
+  }, [activeSessionId]);
+
+  useEffect(() => {
+    // Detect the moment a session transitions running/paused -> ended so the
+    // completion summary can replace the blank starter.
+    const prevId = prevSessionIdRef.current;
+    prevSessionIdRef.current = activeSessionId;
+    if (!activeSessionId) {
+      if (prevId) {
+        const ended = store.focusSessions.find(
+          (s) => s.id === prevId && ["completed", "ended_early"].includes(s.status)
+        );
+        if (ended) {
+          if (ended.status === "completed") setJustCompleted(ended);
+          else setJustCompleted(null);
+        }
+      }
+    } else if (!prevId) {
+      // Fresh session started — clear any lingering summary.
+      setJustCompleted(null);
+    }
+  }, [activeSessionId, store.focusSessions]);
 
   const toggleMusicHandler = () => {
     unlockAudio();
@@ -65,6 +93,7 @@ export default function FocusScreen() {
   const intention = parseIntention(plan.mainAction || "");
   const showCloseDayNudge =
     !activeSession &&
+    !justCompleted &&
     (plan.status === "completed" || focusMinutes > 0) &&
     !hasReflection &&
     !closeDaySkipped;
@@ -122,6 +151,13 @@ export default function FocusScreen() {
             {t("focus.returnToday")}
           </GhostButton>
         </div>
+      ) : justCompleted ? (
+        <FocusSessionSummary
+          session={justCompleted}
+          mainAction={plan.mainAction}
+          onCloseDay={() => navigate(routes.today)}
+          onStartAnother={() => setJustCompleted(null)}
+        />
       ) : (
         <FocusSessionStarter />
       )}

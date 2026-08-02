@@ -15,8 +15,6 @@ export const routes = {
   onboardingHabits: "/onboarding/habits",
   onboardingRemove: "/onboarding/remove",
   onboardingGreyMode: "/onboarding/grey-mode",
-  onboardingEliminate: "/onboarding/eliminate",
-  onboardingFocusGoals: "/onboarding/focus-goals",
   onboardingWeeklyMode: "/onboarding/weekly-mode",
   onboardingWhy: "/onboarding/why",
   onboardingPastReflection: "/onboarding/past-reflection",

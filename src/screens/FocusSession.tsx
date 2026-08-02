@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Check, Minus, Plus } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { Check, Minus, Plus, Volume2, VolumeX } from "lucide-react";
 import {
   CalmAlert,
   Card,
@@ -8,6 +8,7 @@ import {
   SecondaryButton,
 } from "../components/ui";
 import { FOCUS_PRESETS, getCompletedSeconds, getCurrentFocusPhase } from "../constants/focusPresets";
+import { isMusicOn, toggleMusic } from "../lib/focusMusic";
 import { loadLastFocus, saveLastFocus } from "../lib/storage";
 import { getTodayDateString } from "../lib/date";
 import { parseIntention } from "../lib/implementationIntention";
@@ -50,10 +51,6 @@ function getRemainingFocusBlocks(session: FocusSession) {
   const phases = getSessionPhases(session);
   const currentIndex = session.currentPhaseIndex ?? 0;
   return phases.slice(currentIndex + 1).filter((item) => item.type === "focus").length;
-}
-
-function getSessionLeftTitle(session: FocusSession) {
-  return (session.preset ?? session.timerMode) === "pomodoro" ? "Sessions left" : "Session left";
 }
 
 function getSessionLeftLabel(session: FocusSession) {
@@ -120,6 +117,38 @@ export function FocusSessionPanel({
 }) {
   const store = useMonkStore();
   const t = useT();
+  const [armedFor, setArmedFor] = useState<"end" | "reset" | null>(null);
+  const [musicOn, setMusicOn] = useState(isMusicOn);
+  const armTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (armTimerRef.current) clearTimeout(armTimerRef.current);
+    };
+  }, []);
+
+  function armAndCommit(action: "end" | "reset") {
+    if (armedFor === action) {
+      if (armTimerRef.current) clearTimeout(armTimerRef.current);
+      armTimerRef.current = null;
+      setArmedFor(null);
+      if (action === "end") store.abandonFocusSession(session.id);
+      else store.resetFocusSession(session.id);
+      return;
+    }
+    if (armTimerRef.current) clearTimeout(armTimerRef.current);
+    setArmedFor(action);
+    armTimerRef.current = setTimeout(() => {
+      armTimerRef.current = null;
+      setArmedFor(null);
+    }, 3000);
+  }
+
+  const toggleMusicHandler = () => {
+    unlockAudio();
+    setMusicOn(toggleMusic().on);
+  };
+
   const phase = getCurrentFocusPhase(session);
   const targetSeconds = Math.max(1, phase.plannedMinutes * 60);
   const elapsed = session.elapsedSeconds || 0;
@@ -268,21 +297,41 @@ export function FocusSessionPanel({
         )}
         <button
           type="button"
-          aria-label={t("focus.resetAria")}
-          className="min-h-12 min-w-12 rounded-monk border border-monk-border px-3 text-xs font-semibold text-monk-muted transition hover:border-monk-accent hover:text-monk-accent active:scale-95"
-          onClick={() => store.resetFocusSession(session.id)}
+          aria-label={armedFor === "reset" ? t("focus.resetConfirmAria") : t("focus.resetAria")}
+          className={`min-h-12 min-w-12 rounded-monk border px-3 text-xs font-semibold transition active:scale-95 ${
+            armedFor === "reset"
+              ? "border-monk-danger/40 bg-monk-danger-soft text-monk-danger"
+              : "border-monk-border text-monk-muted hover:border-monk-accent hover:text-monk-accent"
+          }`}
+          onClick={() => armAndCommit("reset")}
         >
-          {t("focus.reset")}
+          {armedFor === "reset" ? t("focus.resetConfirm") : t("focus.reset")}
         </button>
         <button
           type="button"
-          aria-label={t("focus.endAria")}
-          className="min-h-12 min-w-12 rounded-monk border border-monk-danger/40 px-3 text-xs font-semibold text-monk-danger transition hover:border-monk-danger active:scale-95"
-          onClick={() => store.abandonFocusSession(session.id)}
+          aria-label={armedFor === "end" ? t("focus.endConfirmAria") : t("focus.endAria")}
+          className={`min-h-12 min-w-12 rounded-monk border px-3 text-xs font-semibold transition active:scale-95 ${
+            armedFor === "end"
+              ? "border-monk-danger bg-monk-danger text-monk-bg"
+              : "border-monk-danger/40 text-monk-danger hover:border-monk-danger"
+          }`}
+          onClick={() => armAndCommit("end")}
         >
-          {t("focus.end")}
+          {armedFor === "end" ? t("focus.endConfirm") : t("focus.end")}
         </button>
       </div>
+
+      {compact ? (
+        <button
+          type="button"
+          onClick={toggleMusicHandler}
+          aria-label={musicOn ? t("focus.musicOff") : t("focus.musicOn")}
+          className="mx-auto mt-4 flex min-h-11 items-center justify-center gap-1.5 rounded-full border border-monk-border px-4 text-xs font-semibold text-monk-muted transition hover:border-monk-accent hover:text-monk-accent active:scale-95"
+        >
+          {musicOn ? <Volume2 size={15} strokeWidth={1.5} /> : <VolumeX size={15} strokeWidth={1.5} />}
+          {musicOn ? t("focus.musicOff") : t("focus.musicOn")}
+        </button>
+      ) : null}
 
       {onOpenFocus ? (
         <button
@@ -293,6 +342,74 @@ export function FocusSessionPanel({
           {t("focus.fullMode")}
         </button>
       ) : null}
+    </Card>
+  );
+}
+
+export function FocusSessionSummary({
+  session,
+  mainAction,
+  onCloseDay,
+  onStartAnother
+}: {
+  session: FocusSession;
+  mainAction?: string;
+  onCloseDay: () => void;
+  onStartAnother: () => void;
+}) {
+  const t = useT();
+  const focusMinutes = session.focusDurationMinutes ?? 0;
+  const blocks = session.completedFocusBlocks ?? 0;
+  const distractionMatch = /^distractions:(\d+)/.exec(session.note ?? "");
+  const distractions = distractionMatch ? Number(distractionMatch[1]) : 0;
+  const intention = parseIntention(mainAction || "");
+
+  return (
+    <Card
+      important
+      className="relative border-monk-border-strong bg-monk-soft p-6 text-center shadow-[0_0_40px_rgba(164,139,94,0.08)]"
+    >
+      <p className="text-sm font-bold text-monk-text">{t("focus.summary.title")}</p>
+      <p className="mt-1 text-xs text-monk-muted">{t("focus.summary.subtitle")}</p>
+
+      <div className="mt-5 grid grid-cols-3 gap-2">
+        <div className="rounded-2xl border border-monk-border bg-monk-bg p-3">
+          <p className="text-xl font-bold tabular-nums text-monk-text">{focusMinutes}m</p>
+          <p className="mt-1 text-[10px] font-bold uppercase tracking-wider text-monk-muted">
+            {t("focus.summary.focus")}
+          </p>
+        </div>
+        <div className="rounded-2xl border border-monk-border bg-monk-bg p-3">
+          <p className="text-xl font-bold tabular-nums text-monk-text">{blocks}</p>
+          <p className="mt-1 text-[10px] font-bold uppercase tracking-wider text-monk-muted">
+            {t("focus.summary.blocks")}
+          </p>
+        </div>
+        <div className="rounded-2xl border border-monk-border bg-monk-bg p-3">
+          <p className="text-xl font-bold tabular-nums text-monk-text">{distractions}</p>
+          <p className="mt-1 text-[10px] font-bold uppercase tracking-wider text-monk-muted">
+            {t("focus.summary.distractions")}
+          </p>
+        </div>
+      </div>
+
+      {intention.when && intention.action ? (
+        <div className="mt-4 space-y-0.5 rounded-2xl border border-monk-border bg-monk-bg p-3 text-left">
+          <p className="text-[10px] font-bold uppercase tracking-wider text-monk-muted">{t("focus.todaysAction")}</p>
+          <p className="text-xs text-monk-muted">{t("today.whenShown", { when: intention.when })}</p>
+          <p className="text-sm font-semibold text-monk-text">{t("today.iWillShown", { action: intention.action })}</p>
+        </div>
+      ) : mainAction ? (
+        <div className="mt-4 rounded-2xl border border-monk-border bg-monk-bg p-3 text-left">
+          <p className="text-[10px] font-bold uppercase tracking-wider text-monk-muted">{t("focus.todaysAction")}</p>
+          <p className="mt-1 text-sm font-semibold text-monk-text">{mainAction}</p>
+        </div>
+      ) : null}
+
+      <div className="mt-5 flex flex-col gap-2">
+        <PrimaryButton onClick={onCloseDay}>{t("focus.closeDayCta")}</PrimaryButton>
+        <GhostButton onClick={onStartAnother}>{t("focus.summary.startAnother")}</GhostButton>
+      </div>
     </Card>
   );
 }

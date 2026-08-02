@@ -1,0 +1,118 @@
+import type { ReactNode } from "react";
+
+/**
+ * Markdown-lite for the notebook. Line-based, one regex per type, no markdown
+ * library, no dangerouslySetInnerHTML (React nodes only). Plain text IS valid
+ * markdown, so existing string bodies persist/search unchanged.
+ */
+
+const AUTOLIST = /^(\s*)([-*]|(?:\d+[.)])|(?:\[[ xX]\]))(\s+)(.*)$/;
+const EMPTY_MARKER = /^(\s*)([-*]|(?:\d+[.)])|(?:\[[ xX]\]))\s*$/;
+
+/** Marker to insert when Enter is pressed on a list line. Empty content ends the list. */
+export function autolistMarker(line: string): string | null {
+  const m = AUTOLIST.exec(line);
+  if (!m) return null;
+  if (!m[4]) return ""; // marker alone -> end list
+  const indent = m[1];
+  const tok = m[2];
+  if (tok === "-" || tok === "*") return `${indent}${tok} `;
+  if (tok[0] === "[") return `${indent}[ ] `;
+  const delim = tok.includes(")") ? ")" : ".";
+  return `${indent}${parseInt(tok, 10) + 1}${delim} `;
+}
+
+type ListKind = "ul" | "ol" | "task";
+
+const HEADING = /^#{1,6}\s+(.*)$/;
+const TASK = /^\[([ xX])\]\s+(.*)$/;
+const BULLET = /^[-*]\s+(.*)$/;
+const ORDERED = /^(\d+)[.)]\s+(.*)$/;
+
+/** Render a notebook body as React nodes. Consecutive same-kind lines group into one list. */
+export function renderBodyMarkdown(body: string): ReactNode[] {
+  const out: ReactNode[] = [];
+  let open: { type: ListKind; items: Array<{ text: string; checked?: boolean }> } | null = null;
+  let num = 1;
+
+  const close = () => {
+    if (!open) return;
+    const key = out.length;
+    if (open.type === "ol") {
+      out.push(
+        <ol key={key} className="md-list">
+          {open.items.map((i, k) => (
+            <li key={k}>{i.text}</li>
+          ))}
+        </ol>
+      );
+    } else if (open.type === "task") {
+      out.push(
+        <ul key={key} className="md-list">
+          {open.items.map((i, k) => (
+            <li key={k}>
+              <span className={`md-task-box${i.checked ? " checked" : ""}`} aria-hidden />
+              {i.text}
+            </li>
+          ))}
+        </ul>
+      );
+    } else {
+      out.push(
+        <ul key={key} className="md-list">
+          {open.items.map((i, k) => (
+            <li key={k}>{i.text}</li>
+          ))}
+        </ul>
+      );
+    }
+    open = null;
+  };
+
+  for (const raw of body.split("\n")) {
+    const t = raw.trim();
+    const h = HEADING.exec(t);
+    const tk = TASK.exec(t);
+    const b = BULLET.exec(t);
+    const o = ORDERED.exec(t);
+    if (h) {
+      close();
+      out.push(
+        <h3 key={out.length} className="md-heading font-handwriting">
+          {h[1]}
+        </h3>
+      );
+    } else if (tk) {
+      if (open?.type !== "task") {
+        close();
+        open = { type: "task", items: [] };
+      }
+      open.items.push({ text: tk[2], checked: tk[1] !== " " });
+    } else if (b) {
+      if (open?.type !== "ul") {
+        close();
+        open = { type: "ul", items: [] };
+      }
+      open.items.push({ text: b[1] });
+    } else if (o) {
+      if (open?.type !== "ol") {
+        close();
+        open = { type: "ol", items: [] };
+        num = parseInt(o[1], 10);
+      }
+      open.items.push({ text: `${num}. ${o[2]}` });
+      num++;
+    } else {
+      close();
+      if (t) {
+        out.push(
+          <p key={out.length} className="md-para">
+            {raw}
+          </p>
+        );
+      }
+    }
+  }
+  close();
+  return out;
+}

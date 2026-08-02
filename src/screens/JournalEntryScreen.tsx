@@ -1,15 +1,17 @@
 import { useState, useEffect, useMemo, useRef } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useNavigate, useSearchParams, useBlocker } from "react-router-dom";
 import { BookOpen, FileText } from "lucide-react";
 import { useMonkStore } from "../store/useMonkStore";
 import { useT } from "../i18n";
 import { getDailyJournalPromptForDate } from "../i18n/prompts";
 import {
-  Card,
   CalmAlert,
+  CalmDialog,
+  Card,
   GhostButton,
   PageHeader,
   PrimaryButton,
+  SecondaryButton,
   SettingsLink,
   TextInput,
   Textarea,
@@ -61,8 +63,10 @@ export function JournalEntryScreen() {
   const [tomorrow, setTomorrow] = useState(initialTomorrow);
   const [tomorrowSaved, setTomorrowSaved] = useState(false);
   const [draftSaved, setDraftSaved] = useState(false);
+  const [confirmLeave, setConfirmLeave] = useState(false);
   const draftSkipRef = useRef(true);
   const draftTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const toast = useCalmToast();
 
   useEffect(() => { window.scrollTo(0, 0); }, []);
 
@@ -97,6 +101,15 @@ export function JournalEntryScreen() {
   const urlTab = searchParams.get("tab");
   const defaultTab: "reflection" | "morning" = urlTab === "morning" || urlTab === "reflection" ? urlTab : (isEvening ? "reflection" : "morning");
   const [currentTab, setCurrentTab] = useState(defaultTab);
+
+  const hasDraft =
+    (currentTab === "morning" && !!answers.morningPages?.trim()) ||
+    (currentTab === "reflection" && !!answers.whatMovedToday?.trim());
+  const blocker = useBlocker(() => hasDraft && !saved);
+
+  useEffect(() => {
+    if (blocker.state === "blocked") setConfirmLeave(true);
+  }, [blocker.state]);
 
   useEffect(() => {
     setCurrentTab(defaultTab);
@@ -224,6 +237,7 @@ export function JournalEntryScreen() {
               {t("journal.draftSaved")}
             </p>
           ) : null}
+          {toast.Toast()}
         </div>
       ) : (
         <div
@@ -252,6 +266,7 @@ export function JournalEntryScreen() {
                 {t("journal.draftSaved")}
               </p>
             ) : null}
+            {toast.Toast()}
           </Card>
           {!isRequestedDate && targetPlan ? (
             <TextInput
@@ -312,15 +327,32 @@ export function JournalEntryScreen() {
             }
             setTomorrowSaved(wroteTomorrow);
             setSaved(true);
-            setTimeout(() => {
-              navigate(routes.today);
-            }, 800);
+            toast.show(wroteTomorrow ? t("journal.tomorrowSaved") : t("journal.saved"));
           }}
         >
           {currentTab === "morning" ? t("journal.saveMorning") : t("journal.saveReflection")}
         </PrimaryButton>
+        {saved ? (
+          <SecondaryButton onClick={() => navigate(routes.today)}>
+            {t("journal.done")}
+          </SecondaryButton>
+        ) : null}
       </> : null}
       </div>
+
+      <CalmDialog
+        open={confirmLeave}
+        title={t("journal.discardTitle")}
+        description={t("journal.discardBody")}
+        confirmLabel={t("dialog.discard")}
+        cancelLabel={t("dialog.cancel")}
+        danger
+        onCancel={() => setConfirmLeave(false)}
+        onConfirm={() => {
+          setConfirmLeave(false);
+          if (blocker.state === "blocked") blocker.proceed();
+        }}
+      />
 
       {/* Notebook & Packs shortcuts below save */}
       <div className="grid grid-cols-2 gap-3 pt-6 pb-8">

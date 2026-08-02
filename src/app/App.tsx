@@ -79,9 +79,7 @@ import { capacityCheck, planStrengthLabel, scorePlan } from "../lib/planScoring"
 import { dismissCoachStep, getCoachStep, type CoachStepId } from "../lib/coach";
 import { exportStateAsJson, JOURNAL_DRAFT_KEY, loadLastFocus, saveLastFocus } from "../lib/storage";
 import {
-  validateFocusGoalSelection,
   validateGoalBrainDump,
-  validateGoalElimination,
   validateHabitAudit,
   validateJournalEntry,
   validateKeystoneActions,
@@ -131,8 +129,6 @@ import {
   RemoveDistractions,
   GreyMode,
   GoalBrainDump,
-  GoalElimination,
-  FocusGoals,
   SeasonSetup,
   NarrowGoals,
   KeystoneSetup,
@@ -294,7 +290,7 @@ function RootRedirect() {
   if (!userProfile || !userProfile.onboardingCompleted || !activeSeason) {
     return <Navigate to={routes.onboardingWelcome} replace />;
   }
-  if (activeSeason.status === "ended") return <Navigate to={routes.seasonEnd} replace />;
+  if (activeSeason.status === "ended" || activeSeason.status === "archived") return <Navigate to={routes.seasonEnd} replace />;
   return <Navigate to={routes.today} replace />;
 }
 
@@ -323,7 +319,7 @@ function ProtectedMain({ children, allowEnded = false }: { children: JSX.Element
   if (!userProfile?.onboardingCompleted || !activeSeason) {
     return <Navigate to={routes.onboardingWelcome} replace />;
   }
-  if (!allowEnded && activeSeason.status === "ended") {
+  if (!allowEnded && (activeSeason.status === "ended" || activeSeason.status === "archived")) {
     return <Navigate to={routes.seasonEnd} replace />;
   }
   return <AppShell>{children}</AppShell>;

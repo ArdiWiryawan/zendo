@@ -13,9 +13,11 @@ import { playZenBell, unlockAudio } from "../lib/audio";
 import { loadLastFocus, saveLastFocus } from "../lib/storage";
 import { getCoachStep, dismissCoachStep } from "../lib/coach";
 import { isCloseDaySkipped, skipCloseDay, getDayPart, isReentryDismissed, dismissReentry, isReentryChipHidden, hideReentryChip, shouldOfferReentry } from "../lib/dailyActivity";
+import { isRestSuggestionDismissed, dismissRestSuggestion, shouldSuggestRest } from "../lib/restSuggestion";
 import { selectTodayPlan, selectActiveGoals, selectCurrentWeeklyPlan, selectEnergyForDate, selectTodayLearningSessions, selectTotalFocusSecondsForDate } from "../store/selectors";
 import {
   Card,
+  ChoiceChip,
   EmptyState,
   GhostButton,
   PageHeader,
@@ -70,7 +72,11 @@ function CloseDayCard({ onSkip }: { onSkip?: () => void }) {
         onChange={(event) => setTomorrow(event.target.value)}
       />
       {error ? <p className="text-xs text-monk-danger">{error}</p> : null}
-      {saved ? <p className="text-xs font-medium text-monk-success">{t("today.closeDay.saved")}</p> : null}
+      {saved ? (
+        <p className="text-xs font-medium text-monk-success">
+          {text.trim() ? t("today.closeDay.echo", { text: text.trim() }) : t("today.closeDay.saved")}
+        </p>
+      ) : null}
       <PrimaryButton
         onClick={() => {
           if (!text.trim()) {
@@ -140,6 +146,7 @@ function ReEntryBanner({ onDismissedChange }: { onDismissedChange?: (dismissed: 
   const hasReflection = !!todayEntry?.answers.whatMovedToday?.trim();
   const [dismissed, setDismissedState] = useState(() => isReentryDismissed(today));
   const [chipHidden, setChipHidden] = useState(() => isReentryChipHidden(today));
+  const [logged, setLogged] = useState(false);
   const setDismissed = (value: boolean) => {
     setDismissedState(value);
     onDismissedChange?.(value);
@@ -180,6 +187,22 @@ function ReEntryBanner({ onDismissedChange }: { onDismissedChange?: (dismissed: 
 
   const whyRaw = season.why?.identity || season.why?.consequenceOfInaction || "";
   const whyLine = whyRaw.length > 120 ? `${whyRaw.slice(0, 120)}…` : whyRaw;
+  const planGoal = todayPlan?.goalId ? store.goals.find((g) => g.id === todayPlan.goalId) : undefined;
+  const mitigation = planGoal?.obstacleMitigation?.trim() ?? "";
+  const planB = mitigation ? parseIntention(mitigation) : null;
+  const planBText =
+    planB && planB.when && planB.action
+      ? `${formatIntention(planB.when, planB.action)}.`
+      : mitigation;
+  const reentryTriggers = [
+    "boredom",
+    "stress",
+    "fatigue",
+    "loneliness",
+    "trigger_app",
+    "no_clear_plan",
+    "other",
+  ] as const;
 
   return (
     <Card className="border-monk-accent/25 bg-monk-accent-soft/30 p-4">
@@ -187,6 +210,11 @@ function ReEntryBanner({ onDismissedChange }: { onDismissedChange?: (dismissed: 
       <p className="mt-1 text-sm text-monk-muted">{t("today.reentry.body")}</p>
       {whyLine ? (
         <p className="mt-1.5 text-xs leading-5 text-monk-muted/90">{t("today.reentry.why", { why: whyLine })}</p>
+      ) : null}
+      {planBText ? (
+        <p className="mt-1.5 text-xs leading-5 text-monk-muted/90">
+          {t("today.reentry.planB", { text: planBText })}
+        </p>
       ) : null}
       <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:flex-wrap">
         <SecondaryButton onClick={() => startMinutes(10)}>{t("today.reentry.ten")}</SecondaryButton>
@@ -207,6 +235,28 @@ function ReEntryBanner({ onDismissedChange }: { onDismissedChange?: (dismissed: 
         >
           {t("today.reentry.dismiss")}
         </GhostButton>
+      </div>
+      <div className="mt-3">
+        {logged ? (
+          <p className="text-xs font-medium text-monk-success">{t("today.reentry.logged")}</p>
+        ) : (
+          <>
+            <p className="text-xs text-monk-muted">{t("today.reentry.whatPulled")}</p>
+            <div className="mt-1.5 flex flex-wrap gap-1.5">
+              {reentryTriggers.map((value) => (
+                <ChoiceChip
+                  key={value}
+                  label={t(`relapse.trigger.${value}`)}
+                  selected={false}
+                  onClick={() => {
+                    store.saveRelapseLog({ trigger: value, note: "", recoveryAction: "" });
+                    setLogged(true);
+                  }}
+                />
+              ))}
+            </div>
+          </>
+        )}
       </div>
     </Card>
   );
@@ -241,6 +291,7 @@ export function TodayScreen() {
   const [actionInput, setActionInput] = useState("");
   const [closeDaySkipped, setCloseDaySkipped] = useState(() => isCloseDaySkipped(today));
   const [reentryDismissed, setReentryDismissed] = useState(() => isReentryDismissed(today));
+  const [restDismissed, setRestDismissed] = useState(() => isRestSuggestionDismissed(today));
   const [coachTick, setCoachTick] = useState(0);
   const [undoPlan, setUndoPlan] = useState<null | {
     dayType: "goal" | "rest";
@@ -394,6 +445,30 @@ export function TodayScreen() {
       <div className="space-y-5">
         <WhyStrip compact={reentryVisible} />
         <ReEntryBanner onDismissedChange={setReentryDismissed} />
+        {!restDismissed && shouldSuggestRest(store, today) && !isRest ? (
+          <Card className="border-monk-rest/25 bg-monk-rest-soft/30 p-4">
+            <p className="text-sm font-semibold">{t("today.restSuggestion.title")}</p>
+            <p className="mt-1 text-sm text-monk-muted">{t("today.restSuggestion.body")}</p>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <SecondaryButton
+                onClick={() => {
+                  store.createOrUpdateDayPlan(today, { dayType: "rest" });
+                  setRestDismissed(true);
+                }}
+              >
+                {t("today.restSuggestion.accept")}
+              </SecondaryButton>
+              <GhostButton
+                onClick={() => {
+                  dismissRestSuggestion(today);
+                  setRestDismissed(true);
+                }}
+              >
+                {t("today.restSuggestion.dismiss")}
+              </GhostButton>
+            </div>
+          </Card>
+        ) : null}
         {coachStep && !reentryVisible ? (
           <CoachHint
             step={coachStep}
@@ -509,6 +584,7 @@ export function TodayScreen() {
                             placeholder={t("today.whenPlaceholder")}
                             autoFocus
                           />
+                          <p className="text-xs text-monk-muted">{t("today.whenHint")}</p>
                           <TextInput
                             label={t("today.iWill")}
                             value={parsed.action}
@@ -677,7 +753,13 @@ export function TodayScreen() {
                 ) : (
                   <Card className="border-monk-success/30 bg-monk-success-soft/40 p-5 text-center">
                     <p className="font-semibold text-monk-success">{t("today.dayHeld")}</p>
-                    <p className="mt-1 text-sm text-monk-muted">{t("today.dayHeldOptional")}</p>
+                    {todayEntry?.answers?.whatMovedToday?.trim() ? (
+                      <p className="mt-1 text-sm text-monk-muted">
+                        {t("today.dayHeldEcho", { text: todayEntry.answers.whatMovedToday.trim() })}
+                      </p>
+                    ) : (
+                      <p className="mt-1 text-sm text-monk-muted">{t("today.dayHeldOptional")}</p>
+                    )}
                   </Card>
                 )
               ) : null}
@@ -766,8 +848,28 @@ export function TodayScreen() {
                   <p className="text-sm font-semibold">{t("focus.title")}</p>
                   <p className="mt-1 text-sm text-monk-muted">{t("today.primary.focusHint")}</p>
                   {energy === "low" ? (
-                    <div className="mt-2 rounded-xl border border-monk-danger/20 bg-monk-danger/5 px-3 py-2 text-xs text-monk-danger/80">
-                      {t("today.lowEnergy")}
+                    <div className="mt-2 rounded-xl border border-monk-danger/20 bg-monk-danger/5 px-3 py-3">
+                      <p className="text-xs text-monk-danger">{t("today.lowEnergy")}</p>
+                      <div className="mt-2 flex flex-wrap gap-2">
+                        <PrimaryButton
+                          onClick={() => {
+                            unlockAudio();
+                            saveLastFocus("custom", 10);
+                            store.startFocusSession("custom", 10);
+                            navigate(routes.focus);
+                          }}
+                        >
+                          {t("today.energy.smallStep")}
+                        </PrimaryButton>
+                        <GhostButton
+                          onClick={() => {
+                            store.createOrUpdateDayPlan(today, { dayType: "rest" });
+                            setCloseDaySkipped(false);
+                          }}
+                        >
+                          {t("today.energy.restInstead")}
+                        </GhostButton>
+                      </div>
                     </div>
                   ) : null}
                   <div className="mt-3 space-y-2">
@@ -991,7 +1093,7 @@ export function DefenseChips({ compact = false }: { compact?: boolean }) {
             {anti.map((item) => (
               <span
                 key={item}
-                className="rounded-full border border-monk-danger/25 bg-monk-danger-soft/40 px-2.5 py-1 text-[11px] text-monk-danger/90"
+                className="rounded-full border border-monk-danger/25 bg-monk-danger-soft/40 px-2.5 py-1 text-[11px] text-monk-danger"
               >
                 {item}
               </span>

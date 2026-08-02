@@ -25,10 +25,11 @@ export function SeasonEndScreen() {
   const navigate = useNavigate();
   const store = useMonkStore();
   const [answers, setAnswers] = useState<Record<string, string>>({});
-  const questions = ["What changed?", "What mattered most?", "What should continue?", "What should be released?", "What comes next?"];
+  const t = useT();
+  const questions = [t("seasonEnd.q1"), t("seasonEnd.q2"), t("seasonEnd.q3"), t("seasonEnd.q4"), t("seasonEnd.q5")];
   return (
     <>
-      <PageHeader title="Your season has ended." subtitle="Reflect before you continue." />
+      <PageHeader title={t("seasonEnd.title")} subtitle={t("seasonEnd.subtitle")} />
       <div className="space-y-4">
         {questions.map((question) => (
           <Card key={question}>
@@ -40,13 +41,13 @@ export function SeasonEndScreen() {
           store.startNewSeason();
           navigate(routes.onboardingGoals);
         }}>
-          Start New Season
+          {t("seasonEnd.startNew")}
         </PrimaryButton>
         <SecondaryButton onClick={() => {
           store.archiveSeason();
           navigate(routes.onboardingWelcome);
         }}>
-          Archive Season
+          {t("seasonEnd.archive")}
         </SecondaryButton>
       </div>
     </>

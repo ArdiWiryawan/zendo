@@ -20,7 +20,7 @@ export function DefenseChips({ compact = false }: { compact?: boolean }) {
             {anti.map((item) => (
               <span
                 key={item}
-                className="rounded-full border border-monk-danger/25 bg-monk-danger-soft px-2.5 py-0.5 text-xs font-semibold text-monk-danger/90"
+                className="rounded-full border border-monk-danger/25 bg-monk-danger-soft px-2.5 py-0.5 text-xs font-semibold text-monk-danger"
               >
                 {item}
               </span>

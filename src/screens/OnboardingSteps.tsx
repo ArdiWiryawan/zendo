@@ -14,9 +14,7 @@ import { createId } from "../lib/ids";
 import { formatIntention, parseIntention } from "../lib/implementationIntention";
 import { capacityCheck, planStrengthLabel, scorePlan } from "../lib/planScoring";
 import {
-  validateFocusGoalSelection,
   validateGoalBrainDump,
-  validateGoalElimination,
   validateHabitAudit,
   validateKeystoneActions,
   validateNarrowGoals,
@@ -51,7 +49,6 @@ import { CircularProgress } from "../components/CircularProgress";
 import { dismissCoachStep, getCoachStep, type CoachStepId } from "../lib/coach";
 import { isCloseDaySkipped, skipCloseDay, getDayPart } from "../lib/dailyActivity";
 import { playZenBell } from "../lib/audio";
-import { hapticPress } from "../lib/haptics";
 import type { EnergyLevel, BadHabitCategory, Goal, GoalAllocation, MonkMVPState, OnboardingState, SeasonDurationPreset, WeeklyMode } from "../types/app";
 
 export function ScreenIntro({ title, subtitle }: { title: string; subtitle: string }) {
@@ -83,7 +80,7 @@ export function ValuesStep({ onNext }: { onNext: () => void }) {
   const [sacrifice, setSacrifice] = useState<string[]>(onboarding.valueTradeoffs.sacrifice);
   const [tradeoff, setTradeoff] = useState(onboarding.valueTradeoffs.tradeoffExplanation);
 
-  const canContinue = protect.length === 3 && sacrifice.length === 3 && tradeoff.length >= 20;
+  const canContinue = protect.length === 3 && sacrifice.length === 3 && tradeoff.length >= 10;
 
   const handleNext = () => {
     updateOnboarding({
@@ -154,7 +151,7 @@ export function ValuesStep({ onNext }: { onNext: () => void }) {
           onChange={e => setTradeoff(e.target.value)}
           rows={2}
           showCharCount
-          minLength={20}
+          minLength={10}
         />
       </div>
 
@@ -162,7 +159,7 @@ export function ValuesStep({ onNext }: { onNext: () => void }) {
         {!canContinue ? (
           <CalmAlert
             type="warning"
-            title="Pick 3 to protect, 3 to sacrifice, and write why (20+ chars)."
+            title="Pick 3 to protect, 3 to sacrifice, and write why (10+ chars)."
           />
         ) : null}
         <PrimaryButton disabled={!canContinue} onClick={handleNext}>Continue</PrimaryButton>
@@ -177,7 +174,7 @@ export function VisionStep({ onNext }: { onNext: () => void }) {
   const [consequence, setConsequence] = useState(onboarding.legacyVision.consequenceOfInaction);
   const days = onboarding.seasonDurationDays;
 
-  const canContinue = vision.length >= 20 && consequence.length >= 10;
+  const canContinue = vision.length >= 10 && consequence.length >= 5;
 
   const handleNext = () => {
     updateOnboarding({
@@ -204,7 +201,7 @@ export function VisionStep({ onNext }: { onNext: () => void }) {
             onChange={e => setVision(e.target.value)}
             rows={5}
             showCharCount
-            minLength={20}
+            minLength={10}
             className="mt-4"
           />
         </div>
@@ -247,7 +244,7 @@ export function RealityCheck({ onNext }: { onNext: () => void }) {
     { id: "Evening (17-21)", label: "Evening · 5–9" },
     { id: "Night (21-24)", label: "Night · 9–12" }
   ];
-  const canContinue = hours > 0 && hours <= 24 && blocks.length > 0 && crash.length >= 20;
+  const canContinue = hours > 0 && hours <= 24 && blocks.length > 0 && crash.length >= 10;
 
   const handleNext = () => {
     updateOnboarding({
@@ -316,7 +313,7 @@ export function RealityCheck({ onNext }: { onNext: () => void }) {
         placeholder="e.g. After lunch, late night scrolling, Sunday evenings..."
         className="mt-6"
         showCharCount
-        minLength={20}
+        minLength={10}
       />
 
       <div className="mt-auto space-y-3 pt-8">
@@ -409,7 +406,8 @@ export function HabitAudit({ onNext }: { onNext: () => void }) {
   const selectedCount = onboarding.selectedHabits.length;
   const otherHabit = onboarding.selectedHabits.find((item) => item.category === "other");
   const otherNeedsName = Boolean(otherHabit && !otherHabit.customName?.trim());
-  const canContinue = result.valid && !otherNeedsName;
+  const isEmpty = selectedCount === 0;
+  const canContinue = isEmpty || (result.valid && !otherNeedsName);
   return (
     <>
       <ScreenIntro title="What usually pulls you away?" subtitle="Notice the patterns that make focus harder." />
@@ -445,7 +443,9 @@ export function HabitAudit({ onNext }: { onNext: () => void }) {
             title={otherNeedsName ? "Name your custom pattern to continue." : result.message || "Select at least 1 habit"}
           />
         ) : null}
-        <PrimaryButton disabled={!canContinue} onClick={onNext}>Continue</PrimaryButton>
+        <PrimaryButton disabled={!canContinue} onClick={onNext}>
+          {isEmpty ? "Skip for now" : "Continue"}
+        </PrimaryButton>
       </div>
     </>
   );
@@ -512,7 +512,7 @@ export function RemoveDistractions({ onNext }: { onNext: () => void }) {
       <div className="mt-auto space-y-3 pt-8">
         {!completed && totalCount > 0 ? <CalmAlert type="warning" title="Choose at least 1 action you'll take." /> : null}
         <PrimaryButton disabled={!completed && totalCount > 0} onClick={onNext}>
-          {totalCount === 0 ? "Continue" : "I'll make it harder"}
+          {completed ? "I'll make it harder" : "Skip for now"}
         </PrimaryButton>
       </div>
     </>
@@ -629,11 +629,11 @@ export function GoalBrainDump({ onNext }: { onNext: () => void }) {
   const result = validateGoalBrainDump(onboarding.goalDrafts);
   return (
     <>
-      <ScreenIntro title="What feels important in this season?" subtitle="Write 5–10 possible goals first. Don't filter yet — we'll narrow them next." />
+      <ScreenIntro title="What feels important in this season?" subtitle="Write 3–10 possible goals first. Don't filter yet — we'll narrow them next." />
       <div className="mb-3 flex items-center justify-between">
         <p className="text-xs text-monk-muted">Brain dump first. Selection comes later.</p>
         <span className="rounded-full bg-monk-soft px-2.5 py-1 text-xs font-bold text-monk-muted">
-          {filledCount}/10 · min 5
+          {filledCount}/10 · min 3
         </span>
       </div>
       <div className="space-y-3">
@@ -681,118 +681,6 @@ export function GoalBrainDump({ onNext }: { onNext: () => void }) {
     </>
   );
 }
-
-export function GoalElimination({ onNext }: { onNext: () => void }) {
-  const { onboarding, toggleReleasedGoal } = useMonkStore();
-  const goals = onboarding.goalDrafts.filter((goal) => goal.title.trim());
-  const result = validateGoalElimination(onboarding.releasedGoalIds.length);
-  return (
-    <>
-      <ScreenIntro title="What can you release for now?" subtitle="Not everything needs your energy this season." />
-      <div className="space-y-3">
-        {goals.map((goal) => {
-          const released = onboarding.releasedGoalIds.includes(goal.id);
-          return (
-            <motion.button
-              type="button"
-              key={goal.id}
-              layout
-              aria-pressed={released}
-              animate={{
-                opacity: released ? 0.5 : 1,
-                backgroundColor: released ? "var(--color-danger-soft)" : "var(--color-surface)",
-              }}
-              transition={{ duration: 0.3 }}
-              onClick={() => {
-                hapticPress("light");
-                toggleReleasedGoal(goal.id);
-              }}
-              className={`flex min-h-[64px] w-full items-center justify-between rounded-monk border p-4 text-left ${
-                released ? "border-monk-danger text-monk-muted line-through" : "border-monk-border"
-              }`}
-            >
-              <span>{goal.title}</span>
-              <span className="text-sm text-monk-muted">{released ? "Released" : "Release"}</span>
-            </motion.button>
-          );
-        })}
-      </div>
-      <div className="mt-auto space-y-3 pt-8">
-        {!result.valid ? <CalmAlert type="warning" title={result.message!} /> : null}
-        <PrimaryButton disabled={!result.valid} onClick={onNext}>Continue</PrimaryButton>
-      </div>
-    </>
-  );
-}
-
-export function FocusGoals({ onNext }: { onNext: () => void }) {
-  const store = useMonkStore();
-  const { onboarding } = store;
-  const nonEmptyGoals = onboarding.goalDrafts.filter((goal) => goal.title.trim());
-  const result = validateFocusGoalSelection(nonEmptyGoals.length);
-
-  return (
-    <>
-      <ScreenIntro title="What feels important in this season?" subtitle="Write one to three focus goals. Fewer is stronger." />
-      <div className="space-y-3">
-        <AnimatePresence>
-          {onboarding.goalDrafts.map((goal, index) => (
-            <motion.div
-              key={goal.id}
-              layout
-              initial={{ opacity: 0, y: -10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, x: -20 }}
-              transition={{ duration: 0.2 }}
-              className="flex gap-2"
-            >
-              <TextInput
-                aria-label={`Goal ${index + 1}`}
-                placeholder="Write a goal"
-                value={goal.title}
-                onChange={(event) => store.updateGoalDraft(goal.id, event.target.value)}
-              />
-              {onboarding.goalDrafts.length > 1 ? (
-                <button
-                  type="button"
-                  aria-label={`Remove goal${goal.title.trim() ? `: ${goal.title.trim()}` : ` ${index + 1}`}`}
-                  onClick={() => store.removeGoalDraft(goal.id)}
-                  className="grid h-[52px] w-[52px] shrink-0 place-items-center rounded-full border border-monk-border bg-monk-surface text-monk-muted"
-                >
-                  <Minus size={18} strokeWidth={1.5} />
-                </button>
-              ) : null}
-            </motion.div>
-          ))}
-        </AnimatePresence>
-      </div>
-      {onboarding.goalDrafts.length < 3 ? (
-        <GhostButton className="mt-4" onClick={store.addGoalDraft}>
-          <span className="inline-flex items-center gap-2"><Plus size={16} /> Add goal</span>
-        </GhostButton>
-      ) : null}
-      <div className="mt-auto space-y-3 pt-8">
-        {!result.valid ? <CalmAlert type="warning" title={result.message!} /> : null}
-        <PrimaryButton
-          disabled={!result.valid}
-          onClick={() => {
-            const validGoals = onboarding.goalDrafts.filter((g) => g.title.trim());
-            const goalIds = validGoals.map((g) => g.id);
-            const currentAllocations = onboarding.weeklyAllocations;
-            const isMatch = currentAllocations.length === goalIds.length &&
-              currentAllocations.every((alloc) => goalIds.includes(alloc.goalId));
-            store.updateOnboarding({
-              selectedFocusGoalIds: goalIds,
-              weeklyAllocations: isMatch ? currentAllocations : defaultWeeklyTargets(goalIds)
-            });
-            onNext();
-          }}
-        >
-          Choose Season
-        </PrimaryButton>
-      </div>
-    </>
-  );}
 
 export function SeasonSetup({ onNext }: { onNext: () => void }) {
   const { onboarding, setSeasonDuration, updateOnboarding } = useMonkStore();
@@ -930,7 +818,6 @@ export function KeystoneSetup({ onNext }: { onNext: () => void }) {
   const { onboarding, setKeystoneAction, updateOnboarding } = useMonkStore();
   const goals = onboarding.goalDrafts.filter((goal) => onboarding.selectedFocusGoalIds.includes(goal.id));
   const result = validateKeystoneActions(onboarding.selectedFocusGoalIds, onboarding.keystoneActions);
-  const whenHints = onboarding.timeAudit.peakEnergyBlocks;
 
   const actionPlaceholders = [
     "Study for 25 minutes",
@@ -951,13 +838,13 @@ export function KeystoneSetup({ onNext }: { onNext: () => void }) {
     <>
       <ScreenIntro
         title="What action moves each goal forward?"
-        subtitle="Pair each action with a time or cue. Add why it matters — optional, powerful."
+        subtitle="Pair each action with a cue — after coffee, at your desk. Cues beat clock times."
       />
       <div className="space-y-4">
         {goals.map((goal, index) => {
           const parsed = parseIntention(onboarding.keystoneActions[goal.id] ?? "");
           const actionPh = actionPlaceholders[index % actionPlaceholders.length];
-          const whenPh = whenHints[index] || whenPlaceholders[index % whenPlaceholders.length];
+          const whenPh = whenPlaceholders[index % whenPlaceholders.length];
           const goalWhy = onboarding.goalWhys[goal.id] ?? "";
           const commit = (when: string, action: string) => {
             setKeystoneAction(goal.id, formatIntention(when, action));
@@ -1080,7 +967,14 @@ export function ObstacleStep({ onNext }: { onNext: () => void }) {
         })}
       </div>
       <div className="mt-auto space-y-3 pt-8">
-        <PrimaryButton onClick={onNext}>Continue</PrimaryButton>
+        <PrimaryButton onClick={onNext}>
+          {goals.some((goal) => {
+            const draft = drafts[goal.id] ?? { when: "", action: "" };
+            return draft.when.trim() && draft.action.trim();
+          })
+            ? "Continue"
+            : "Skip for now"}
+        </PrimaryButton>
       </div>
     </>
   );

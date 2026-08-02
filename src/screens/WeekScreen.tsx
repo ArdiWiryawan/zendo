@@ -1,6 +1,6 @@
 import { useEffect, useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { Check, Moon } from "lucide-react";
+import { Check, Moon, Pencil } from "lucide-react";
 import { motion } from "framer-motion";
 import { useMonkStore } from "../store/useMonkStore";
 import { useT } from "../i18n";
@@ -20,12 +20,7 @@ import {
   SectionHeader,
   SettingsLink,
   TextInput,
-  Textarea,
-  useCalmToast,
 } from "../components/ui";
-import { FocusSessionStarter } from "./FocusSession";
-import { SeasonProgressCard } from "../components/SeasonWidgets";
-import { CircularProgress } from "../components/CircularProgress";
 import type { EnergyLevel, TimelineStatus } from "../types/app";
 
 export function WeekScreen() {
@@ -130,7 +125,7 @@ export function WeekScreen() {
                   <div className="text-right text-[11px] text-monk-muted/80 space-y-1">
                     {stats.rest > 0 ? <p className="flex items-center gap-1.5 justify-end"><span className="h-1.5 w-1.5 rounded-full bg-monk-rest/70" />{t("week.restCount", { n: stats.rest })}</p> : null}
                     {stats.partial > 0 ? <p className="flex items-center gap-1.5 justify-end"><span className="h-1.5 w-1.5 rounded-full bg-monk-accent/70" />{t("week.partialCount", { n: stats.partial })}</p> : null}
-                    {stats.missed + stats.unhandled > 0 ? <p className="flex items-center gap-1.5 justify-end text-monk-warning/90"><span className="h-1.5 w-1.5 rounded-full bg-monk-warning/70" />{stats.missed > 0 ? t("week.missedCount", { n: stats.missed }) + " " : ""}{stats.unhandled > 0 ? t("week.openMissed", { n: stats.unhandled }) : ""}</p> : null}
+                    {stats.missed + stats.unhandled > 0 ? <p className="flex items-center gap-1.5 justify-end text-monk-warning"><span className="h-1.5 w-1.5 rounded-full bg-monk-warning/70" />{stats.missed > 0 ? t("week.missedCount", { n: stats.missed }) + " " : ""}{stats.unhandled > 0 ? t("week.openMissed", { n: stats.unhandled }) : ""}</p> : null}
                     <p className="text-monk-muted/60">{remainingDays === 1 ? t("week.daysLeft", { n: remainingDays }) : t("week.daysLeftPlural", { n: remainingDays })}</p>
                   </div>
                 </div>
@@ -215,18 +210,34 @@ export function WeekScreen() {
 
                   const DayInner = (
                     <>
-                      <div
-                        className={`grid h-9 w-9 sm:h-11 sm:w-11 shrink-0 place-items-center rounded-full border-2 text-[10px] sm:text-[11px] font-mono font-bold transition-colors ${circleClass} ${
-                          isToday ? "ring-2 ring-inset ring-monk-accent/70" : ""
-                        }`}
-                      >
-                        {isCompleted ? <Check size={14} strokeWidth={2.5} /> : isRest ? <Moon size={12} strokeWidth={1.75} /> : dayNum}
+                      <div className={`grid min-h-11 min-w-11 shrink-0 place-items-center ${isToday || isEligible ? "cursor-pointer" : ""}`}>
+                        <div
+                          className={`grid h-9 w-9 sm:h-11 sm:w-11 place-items-center rounded-full border-2 text-[10px] sm:text-[11px] font-mono font-bold transition-colors ${circleClass} ${
+                            isToday ? "ring-2 ring-inset ring-monk-accent/70" : ""
+                          }`}
+                        >
+                          {isCompleted ? (
+                            <Check size={14} strokeWidth={2.5} />
+                          ) : isRest ? (
+                            <Moon size={12} strokeWidth={1.75} />
+                          ) : (
+                            <span className="flex flex-col items-center leading-none">
+                              {dayNum}
+                              {isToday || isEligible ? (
+                                <Pencil size={7} strokeWidth={2.75} className="mt-0.5 text-monk-accent" aria-hidden="true" />
+                              ) : null}
+                            </span>
+                          )}
+                        </div>
                       </div>
                       <span className={`text-[10px] sm:text-[11px] font-semibold uppercase tracking-wide ${
                         isToday ? "text-monk-accent" : "text-monk-text-soft/60"
                       }`}>
                         {weekday.slice(0, 2)}
                       </span>
+                      {isToday ? (
+                        <span className="text-[9px] font-bold uppercase tracking-wide text-monk-accent">{t("week.today")}</span>
+                      ) : null}
                       <span className={`h-1.5 w-1.5 rounded-full ${energyDot}`} aria-hidden="true" />
                     </>
                   );
@@ -259,6 +270,10 @@ export function WeekScreen() {
                 <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-sm bg-monk-success/80" />{t("week.legendDone")}</span>
                 <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-sm bg-monk-accent/70" />{t("week.legendPartial")}</span>
                 <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-sm bg-monk-rest/60" />{t("week.legendRest")}</span>
+                <span className="flex items-center gap-1.5 text-monk-accent/80">
+                  <Pencil size={10} strokeWidth={2.5} />
+                  {t("week.tapHint")}
+                </span>
                 <span className="ml-auto flex items-center gap-1.5">
                   <span className="h-1.5 w-1.5 rounded-full bg-monk-success" />
                   <span className="h-1.5 w-1.5 rounded-full bg-monk-accent" />
@@ -281,7 +296,6 @@ export function WeekScreen() {
                     <div className="mt-3 space-y-2">
                       <p className="text-sm font-semibold text-monk-text/95">{t("week.wrap.focus", { n: focusMinutes })}</p>
                       <p className="text-sm text-monk-muted/90">{t("week.wrap.held", { n: heldDays })}</p>
-                      {stats.rest > 0 ? <p className="text-sm text-monk-muted/90">{t("week.wrap.rest", { n: stats.rest })}</p> : null}
                     </div>
                     {stats.focusDone === 0 && stats.rest > 0 ? (
                       <p className="mt-2 text-sm text-monk-muted/90">{t("week.softWin.held")}</p>
@@ -347,20 +361,6 @@ export function WeekScreen() {
                   const complete = allocation.completedCount >= allocation.targetCount;
                   const remaining = Math.max(0, allocation.targetCount - allocation.completedCount);
                   const behind = !complete && remaining > remainingDays;
-                  const statusLabel = complete
-                    ? t("week.statusMet")
-                    : behind
-                    ? t("week.statusBehind")
-                    : allocation.completedCount > 0
-                    ? t("week.statusProgress")
-                    : t("week.statusNotStarted");
-                  const statusClass = complete
-                    ? "text-monk-success border-monk-success/30 bg-monk-success-soft"
-                    : behind
-                    ? "text-monk-warning border-monk-warning/30 bg-monk-warning-soft"
-                    : allocation.completedCount > 0
-                    ? "text-monk-accent border-monk-accent/30 bg-monk-accent-soft"
-                    : "text-monk-muted border-monk-border bg-monk-soft";
 
                   return (
                     <motion.div key={allocation.goalId} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3, delay: index * 0.05 }}>
@@ -375,22 +375,25 @@ export function WeekScreen() {
                             <p className="mt-1 text-xs text-monk-muted line-clamp-2">{goal.keystoneAction}</p>
                           ) : null}
                         </div>
-                        <span className={`shrink-0 rounded-full border px-2 py-0.5 text-[11px] font-bold uppercase tracking-wide ${statusClass}`}>
-                          {statusLabel}
-                        </span>
-                      </div>
-                      <div className="mt-3 flex items-center gap-2">
-                        <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-monk-soft">
-                          <div
-                            className={`h-full rounded-full transition-all ${
-                              complete ? "bg-monk-success" : behind ? "bg-monk-warning" : "bg-monk-accent"
-                            }`}
-                            style={{ width: `${progress}%` }}
-                          />
+                        <div className="shrink-0 text-right">
+                          <p className={`font-mono text-sm tabular-nums font-bold ${complete ? "text-monk-success" : behind ? "text-monk-warning" : progress > 0 ? "text-monk-accent" : "text-monk-muted"}`}>
+                            {allocation.completedCount}
+                            <span className="font-semibold text-monk-muted/70">/{allocation.targetCount}</span>
+                          </p>
+                          {progress > 0 ? (
+                            <p className="mt-0.5 text-[10px] font-semibold uppercase tracking-wide text-monk-muted/80">
+                              {complete ? t("week.statusMet") : behind ? t("week.statusBehind") : t("week.statusProgress")}
+                            </p>
+                          ) : null}
                         </div>
-                        <span className="shrink-0 text-xs font-mono tabular-nums text-monk-muted">
-                          {allocation.completedCount}/{allocation.targetCount}
-                        </span>
+                      </div>
+                      <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-monk-soft">
+                        <div
+                          className={`h-full rounded-full transition-all ${
+                            complete ? "bg-monk-success" : behind ? "bg-monk-warning" : "bg-monk-accent"
+                          }`}
+                          style={{ width: `${progress}%` }}
+                        />
                       </div>
                       {goal ? <GoalWhyInline goalId={goal.id} why={goal.why} /> : null}
                     </Card>

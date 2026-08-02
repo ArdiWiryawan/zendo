@@ -6,6 +6,7 @@ import { hapticPress } from "../lib/haptics";
 import { NavLink, useLocation } from "react-router-dom";
 import { routes } from "../constants/routes";
 import { useT } from "../i18n";
+import { useSyncStatus } from "../lib/syncStatus";
 
 export function ScreenContainer({
   children,
@@ -27,10 +28,19 @@ export function ScreenContainer({
 
 export function AppShell({ children, showBottomNav = true }: { children: ReactNode; showBottomNav?: boolean }) {
   const navVisible = useScrollNav();
+  const syncStatus = useSyncStatus();
+  const tUI = useT();
 
   return (
     <div className="min-h-dvh bg-monk-bg text-monk-text">
-      <ScreenContainer withBottomNavPadding={showBottomNav}>{children}</ScreenContainer>
+      <ScreenContainer withBottomNavPadding={showBottomNav}>
+        {syncStatus === "error" ? (
+          <div className="mb-4">
+            <CalmAlert type="danger" title={tUI("sync.error")} description={tUI("sync.errorDesc")} />
+          </div>
+        ) : null}
+        {children}
+      </ScreenContainer>
       {showBottomNav ? (
         <div className={`fixed inset-x-0 bottom-[calc(env(safe-area-inset-bottom)+12px)] px-6 transition-transform duration-300 z-50 ${
           navVisible ? "translate-y-0" : "translate-y-[120%]"
@@ -166,7 +176,7 @@ export function PrimaryButton({
       {...props}
       type={type}
       onClick={(e) => { hapticPress("medium"); onClick?.(e); }}
-      className={`monk-btn-primary min-h-12 w-full rounded-monk px-6 text-base font-bold bg-monk-accent text-monk-bg transition duration-150 ease-monk active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40 disabled:shadow-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-monk-accent/50 focus-visible:ring-offset-2 focus-visible:ring-offset-monk-bg ${className}`}
+      className={`monk-btn-primary min-h-12 w-full rounded-monk px-6 text-base font-bold bg-monk-accent text-monk-bg transition duration-150 ease-monk active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40 disabled:shadow-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-monk-accent focus-visible:ring-offset-2 focus-visible:ring-offset-monk-bg ${className}`}
     />
   );
 }
@@ -182,7 +192,7 @@ export function SecondaryButton({
       {...props}
       type={type}
       onClick={(e) => { hapticPress("light"); onClick?.(e); }}
-      className={`min-h-12 w-full rounded-monk border border-monk-border bg-monk-soft px-6 text-sm font-semibold text-monk-text shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] transition duration-150 ease-monk active:scale-[0.98] enabled:hover:border-monk-border-strong enabled:hover:bg-monk-raised disabled:opacity-45 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-monk-accent/50 focus-visible:ring-offset-2 focus-visible:ring-offset-monk-bg ${className}`}
+      className={`min-h-12 w-full rounded-monk border border-monk-border bg-monk-soft px-6 text-sm font-semibold text-monk-text shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] transition duration-150 ease-monk active:scale-[0.98] enabled:hover:border-monk-border-strong enabled:hover:bg-monk-raised disabled:opacity-45 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-monk-accent focus-visible:ring-offset-2 focus-visible:ring-offset-monk-bg ${className}`}
     />
   );
 }
@@ -198,7 +208,7 @@ export function GhostButton({
       {...props}
       type={type}
       onClick={(e) => { hapticPress("light"); onClick?.(e); }}
-      className={`min-h-11 rounded-full px-4 text-sm font-medium text-monk-muted transition duration-150 ease-monk active:scale-[0.98] enabled:hover:text-monk-text disabled:opacity-45 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-monk-accent/50 focus-visible:ring-offset-2 focus-visible:ring-offset-monk-bg ${className}`}
+      className={`min-h-11 rounded-full px-4 text-sm font-medium text-monk-muted transition duration-150 ease-monk active:scale-[0.98] enabled:hover:text-monk-text disabled:opacity-45 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-monk-accent focus-visible:ring-offset-2 focus-visible:ring-offset-monk-bg ${className}`}
     />
   );
 }

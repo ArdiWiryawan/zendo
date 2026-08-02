@@ -6,6 +6,7 @@ import { nowIso } from "../lib/date";
 import type { NotebookEntry } from "../types/app";
 import { Search, Plus, Pin, PinOff, Trash2, ArrowLeft, X, BookOpen } from "lucide-react";
 import { useT, useLanguage, type MessageKey } from "../i18n";
+import { autolistMarker, renderBodyMarkdown } from "../lib/notebookMarkdown";
 
 const CATEGORY_HEX: Record<string, string> = {
   cat_pribadi: "#e07c6b",
@@ -29,12 +30,6 @@ function wordCount(text: string) {
 }
 
 type Translate = (key: MessageKey, vars?: Record<string, string | number>) => string;
-
-function previewBody(body: string, t: Translate, max = 110) {
-  const flat = body.replace(/\s+/g, " ").trim();
-  if (!flat) return t("notebook.noBody");
-  return flat.length > max ? `${flat.slice(0, max).trim()}…` : flat;
-}
 
 function formatRelative(iso: string, t: Translate, locale: string) {
   const ts = new Date(iso).getTime();
@@ -247,9 +242,9 @@ export default function JournalNotebook() {
                       <Pin size={14} className="mt-1 shrink-0 text-monk-accent" strokeWidth={2} />
                     ) : null}
                   </div>
-                  <p className="notebook-card-body line-clamp-3 min-h-[1.5rem]">
-                    {previewBody(entry.body, t)}
-                  </p>
+                  <div className="notebook-card-body line-clamp-3 min-h-[1.5rem]">
+                    {entry.body.trim() ? renderBodyMarkdown(entry.body) : t("notebook.noBody")}
+                  </div>
                   <div className="mt-3 flex flex-wrap items-center gap-2 text-[11px] text-monk-text-soft">
                     <span
                       className="inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 font-semibold uppercase tracking-wide"
@@ -384,6 +379,37 @@ export function NotebookEditor({
     },
     [body, catId, entry?.tags, isPinned, onBack, resolveTitle, store]
   );
+
+  // Enter-autolist + Backspace-unlist: native-feel list continuation in the
+  // textarea. Only setBody + markDirty; save flow untouched.
+  const handleBodyKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    const el = e.currentTarget;
+    const { selectionStart: s, selectionEnd: en } = el;
+    if (s !== en) return; // selection -> default
+    const before = body.slice(0, s);
+    const lineStart = before.lastIndexOf("\n") + 1;
+    const line = body.slice(lineStart, s);
+
+    if (e.key === "Enter" && !e.shiftKey && !e.metaKey && !e.ctrlKey) {
+      const marker = autolistMarker(line);
+      if (marker === null) return; // plain line -> default
+      e.preventDefault();
+      const next = `${body.slice(0, s)}\n${marker}${body.slice(en)}`;
+      setBody(next);
+      markDirty();
+      requestAnimationFrame(() => {
+        const c = s + 1 + marker.length;
+        el.setSelectionRange(c, c);
+      });
+    } else if (e.key === "Backspace") {
+      if (s !== lineStart + line.length) return; // not at line end
+      if (!/^(\s*)([-*]|(?:\d+[.)])|(?:\[[ xX]\]))\s*$/.test(line)) return;
+      e.preventDefault();
+      setBody(body.slice(0, lineStart) + body.slice(s));
+      markDirty();
+      requestAnimationFrame(() => el.setSelectionRange(lineStart, lineStart));
+    }
+  };
 
   // Cmd/Ctrl+S
   useEffect(() => {
@@ -542,6 +568,7 @@ export function NotebookEditor({
           ref={bodyRef}
           placeholder={t("notebook.bodyPlaceholder")}
           value={body}
+          onKeyDown={handleBodyKeyDown}
           onChange={(e) => {
             setBody(e.target.value);
             markDirty();
@@ -555,7 +582,11 @@ export function NotebookEditor({
         <div className="mx-auto flex max-w-[430px] items-center justify-between gap-3">
           <div className="text-[11px] font-mono text-monk-text-soft">
             <span>{t("notebook.words", { n: words })}</span>
-            {dirty ? <span className="ml-2 text-monk-warning">· {t("notebook.draft")}</span> : null}
+            {savedFlash ? (
+              <span className="ml-2 text-monk-success">· {t("notebook.saved")}</span>
+            ) : dirty ? (
+              <span className="ml-2 text-monk-warning">· {t("notebook.draft")}</span>
+            ) : null}
           </div>
           <div className="flex items-center gap-2">
             {entry ? (

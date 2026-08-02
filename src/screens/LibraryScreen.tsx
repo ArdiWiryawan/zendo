@@ -9,24 +9,17 @@ import { routes } from "../constants/routes";
 import { DAILY_STATUS_LABELS, resolveDailyActivityStatus } from "../constants/dailyActivityStatus";
 import { FOCUS_PRESETS } from "../constants/focusPresets";
 import { getDailyActivity, getDailyHelperForDate, getFocusSummaryForDate, getLearningSummaryForDate } from "../lib/dailyActivity";
-import { selectActiveGoals } from "../store/selectors";
-import { DefenseChips } from "./TodayScreen";
 import {
   Card,
   EmptyState,
   GhostButton,
   PageHeader,
   PrimaryButton,
-  SecondaryButton,
   SettingsLink,
   TextInput,
-  Textarea,
-  useCalmToast,
 } from "../components/ui";
 import JournalNotebook, { NotebookEditor } from "./JournalNotebook";
 import JournalPacks from "./JournalPacks";
-import { SeasonProgressCard } from "../components/SeasonWidgets";
-import { CircularProgress } from "../components/CircularProgress";
 import type { AppLanguage, TimelineStatus } from "../types/app";
 
 export function CalendarCell({
@@ -71,12 +64,13 @@ export function CalendarCell({
 
 
 export function TimelineLegend() {
+  const t = useT();
   const items: Array<[TimelineStatus, string]> = [
-    ["completed", "Completed"],
-    ["partial", "Partial"],
-    ["missed", "Missed"],
-    ["relapse", "Relapse"],
-    ["rest", "Rest"]
+    ["completed", t("timeline.legend.done")],
+    ["partial", t("timeline.legend.partial")],
+    ["missed", t("timeline.legend.missed")],
+    ["relapse", t("timeline.legend.relapse")],
+    ["rest", t("timeline.legend.rest")]
   ];
   return (
     <Card className="bg-monk-soft">
@@ -177,7 +171,7 @@ export function JournalLibraryScreen() {
                 return (
                   <div key={session.id} className="p-4 bg-monk-surface border border-monk-border/40 rounded-xl transition hover:border-monk-accent">
                     <div className="flex items-center gap-2 mb-1">
-                      <span className="text-sm">🧭</span>
+                      <span className="text-sm">{t("library.packEmoji")}</span>
                       <span className="text-sm font-semibold text-monk-text">{pack?.title ?? t("library.unknownPack")}</span>
                     </div>
                     <p className="text-xs text-monk-muted mt-1">{t("library.answersCount", { n: session.answers.length })}</p>
@@ -217,8 +211,8 @@ export function JournalLibraryScreen() {
                     <div className="flex items-center justify-between mb-1">
                       <span className="text-sm font-semibold text-monk-text">{formatHumanDate(entry.date)}</span>
                       <div className="flex gap-1.5">
-                        {hasMorningPages ? <span className="text-xs font-bold uppercase tracking-wider text-monk-accent bg-monk-accent-soft px-2 py-0.5 rounded-full">AM</span> : null}
-                        {hasReflection ? <span className="text-xs font-bold uppercase tracking-wider text-monk-success bg-monk-success-soft px-2 py-0.5 rounded-full">PM</span> : null}
+                        {hasMorningPages ? <span className="text-xs font-bold uppercase tracking-wider text-monk-accent bg-monk-accent-soft px-2 py-0.5 rounded-full">{t("library.am")}</span> : null}
+                        {hasReflection ? <span className="text-xs font-bold uppercase tracking-wider text-monk-success bg-monk-success-soft px-2 py-0.5 rounded-full">{t("library.pm")}</span> : null}
                       </div>
                     </div>
                     {hasReflection ? <p className="text-xs text-monk-muted mt-1 line-clamp-2">{entry.answers.whatMovedToday}</p> : hasMorningPages ? <p className="text-xs text-monk-muted mt-1 line-clamp-2">{entry.answers.morningPages}</p> : null}
@@ -312,6 +306,9 @@ export function LibraryScreen() {
   const [subview, setSubview] = useState<"journal" | "learning" | "history" | null>(null);
   const [activeTab, setActiveTab] = useState<"focus" | "drifts">("focus");
   const [searchQuery, setSearchQuery] = useState("");
+  const t = useT();
+  const lang = useLanguage();
+  const dateLocale = lang === "id" ? "id-ID" : "en-US";
 
   const filteredReflections = useMemo(() => {
     return store.journalEntries.filter((j) => {
@@ -370,23 +367,23 @@ export function LibraryScreen() {
             type="button"
             onClick={() => { setSubview(null); setSearchQuery(""); }}
             className="grid h-10 w-10 place-items-center rounded-full border border-monk-border bg-monk-surface text-monk-muted active:scale-95"
-            aria-label="Back"
+            aria-label={t("library.aria.back")}
           >
             <ArrowLeft size={18} />
           </button>
           <div>
-            <h1 className="text-xl font-bold text-monk-text">Journal</h1>
-            <p className="text-xs text-monk-muted">Reflect on your season, progress, blockers, and thoughts.</p>
+            <h1 className="text-xl font-bold text-monk-text">{t("library.subview.journal")}</h1>
+            <p className="text-xs text-monk-muted">{t("library.subview.journalDesc")}</p>
           </div>
         </div>
 
         <div className="space-y-4">
           <PrimaryButton onClick={() => navigate(routes.journal)}>
-            Write journal
+            {t("library.writeJournal")}
           </PrimaryButton>
 
           <TextInput
-            placeholder="Search reflections..."
+            placeholder={t("library.search.reflections")}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           />
@@ -394,11 +391,11 @@ export function LibraryScreen() {
           <div className="space-y-3 pt-2">
             {filteredReflections.length === 0 ? (
               <EmptyState
-                title={searchQuery ? "No matching reflections" : "Your journal is still empty."}
+                title={searchQuery ? t("library.searchReflectionsEmpty") : t("library.journalEmpty")}
                 description={
                   searchQuery
-                    ? "Try a different search, or clear the box to see everything."
-                    : "Write your first reflection to understand what's really happening in your season."
+                    ? t("library.searchReflectionsNoResult")
+                    : t("library.journalEmptyDesc")
                 }
               />
             ) : (
@@ -425,11 +422,11 @@ export function LibraryScreen() {
                   <div className="space-y-3">
                     <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                       <div className="rounded-xl border border-monk-border bg-monk-bg p-3">
-                        <p className="text-xs font-bold uppercase tracking-wider text-monk-muted">Focus</p>
+                        <p className="text-xs font-bold uppercase tracking-wider text-monk-muted">{t("library.label.focus")}</p>
                         <p className="mt-1 text-xs font-semibold leading-relaxed text-monk-text">{getFocusSummaryForDate(store, j.date)}</p>
                       </div>
                       <div className="rounded-xl border border-monk-border bg-monk-bg p-3">
-                        <p className="text-xs font-bold uppercase tracking-wider text-monk-muted">Learning</p>
+                        <p className="text-xs font-bold uppercase tracking-wider text-monk-muted">{t("library.label.learning")}</p>
                         <p className="mt-1 text-xs font-semibold leading-relaxed text-monk-text">{getLearningSummaryForDate(store, j.date)}</p>
                       </div>
                     </div>
@@ -459,23 +456,23 @@ export function LibraryScreen() {
             type="button"
             onClick={() => { setSubview(null); setSearchQuery(""); }}
             className="grid h-10 w-10 place-items-center rounded-full border border-monk-border bg-monk-surface text-monk-muted active:scale-95"
-            aria-label="Back"
+            aria-label={t("library.aria.back")}
           >
             <ArrowLeft size={18} />
           </button>
           <div>
-            <h1 className="text-xl font-bold text-monk-text">Learning Companion</h1>
-            <p className="text-xs text-monk-muted">Capture what you learn, then connect it to your current goals.</p>
+            <h1 className="text-xl font-bold text-monk-text">{t("library.subview.learning")}</h1>
+            <p className="text-xs text-monk-muted">{t("library.subview.learningDesc")}</p>
           </div>
         </div>
 
         <div className="space-y-4">
           <PrimaryButton onClick={() => navigate(routes.learn)}>
-            Add learning
+            {t("library.addLearning")}
           </PrimaryButton>
 
           <TextInput
-            placeholder="Search learning notes..."
+            placeholder={t("library.search.learning")}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           />
@@ -483,11 +480,11 @@ export function LibraryScreen() {
           <div className="space-y-3 pt-2">
             {filteredLearning.length === 0 ? (
               <EmptyState
-                title={searchQuery ? "No matching notes" : "No learning notes yet."}
+                title={searchQuery ? t("library.searchLearningEmpty") : t("library.learningEmpty")}
                 description={
                   searchQuery
-                    ? "Try a different search, or clear the box to see everything."
-                    : "Add one lesson from a book, course, podcast, or video that can support your season."
+                    ? t("library.searchReflectionsNoResult")
+                    : t("library.learningEmptyDesc")
                 }
               />
             ) : (
@@ -501,11 +498,11 @@ export function LibraryScreen() {
                     <div className="flex justify-between items-start gap-2">
                       <div>
                         <p className="text-xs font-bold text-monk-accent">{formatHumanDate(l.startedAt.slice(0, 10))}</p>
-                        <p className="text-sm font-semibold text-monk-text mt-0.5">{l.sourceTitle || "Untitled Note"}</p>
+                        <p className="text-sm font-semibold text-monk-text mt-0.5">{l.sourceTitle || t("library.untitledNote")}</p>
                         {l.chapter && <p className="text-xs text-monk-muted mt-0.5">{l.chapter}</p>}
                       </div>
                       <span className="text-xs font-bold text-monk-success bg-monk-success-soft border border-monk-success/30 px-2 py-0.5 rounded-full shrink-0">
-                        {durationMinutes} mins
+                        {t("library.mins", { n: durationMinutes })}
                       </span>
                     </div>
                     <div className="flex flex-wrap items-center gap-1.5 mt-2">
@@ -513,23 +510,23 @@ export function LibraryScreen() {
                         {l.sourceType.replace("_", " ")}
                       </span>
                       {goal && <span className="text-xs text-monk-muted bg-monk-soft px-2 py-0.5 rounded border border-monk-border">{goal.title}</span>}
-                      {parent && <span className="text-xs text-monk-text-soft bg-monk-soft px-2 py-0.5 rounded border border-monk-border">under: {parent.sourceTitle || parent.lesson?.slice(0, 20) || parent.id.slice(0, 8)}</span>}
+                      {parent && <span className="text-xs text-monk-text-soft bg-monk-soft px-2 py-0.5 rounded border border-monk-border">{t("library.under", { title: parent.sourceTitle || parent.lesson?.slice(0, 20) || parent.id.slice(0, 8) })}</span>}
                     </div>
                     {l.lesson && (
                       <div className="mt-3 bg-monk-soft/50 rounded-xl p-3 border border-monk-border/30">
-                        <span className="text-xs font-bold text-monk-muted uppercase tracking-wider block">Lesson</span>
+                        <span className="text-xs font-bold text-monk-muted uppercase tracking-wider block">{t("library.lesson")}</span>
                         <p className="text-xs leading-relaxed text-monk-text mt-0.5">"{l.lesson}"</p>
                       </div>
                     )}
                     {l.content && (
                       <div className="mt-3 bg-monk-bg/60 rounded-xl p-3 border border-monk-border/30">
-                        <span className="text-xs font-bold text-monk-muted uppercase tracking-wider block">Notes</span>
+                        <span className="text-xs font-bold text-monk-muted uppercase tracking-wider block">{t("library.notes")}</span>
                         <p className="text-xs leading-6 text-monk-text whitespace-pre-wrap mt-0.5">{l.content}</p>
                       </div>
                     )}
                     {l.actionIdea && (
                       <div className="mt-3 bg-monk-accent-soft/30 rounded-xl p-3 border border-monk-accent/15">
-                        <span className="text-xs font-bold text-monk-accent uppercase tracking-wider block">Action</span>
+                        <span className="text-xs font-bold text-monk-accent uppercase tracking-wider block">{t("library.action")}</span>
                         <p className="text-xs leading-relaxed text-monk-text-soft mt-0.5">{l.actionIdea}</p>
                       </div>
                     )}
@@ -537,7 +534,7 @@ export function LibraryScreen() {
                       <div className="mt-3 flex flex-wrap gap-1.5">
                         {linked.filter(Boolean).map((lnk: any) => (
                           <span key={lnk?.id} className="text-xs text-monk-accent bg-monk-accent-soft px-2 py-0.5 rounded-full border border-monk-accent/20">
-                            linked: {lnk?.sourceTitle || lnk?.lesson?.slice(0, 20) || lnk?.id?.slice(0, 8)}
+                            {t("library.linked", { title: lnk?.sourceTitle || lnk?.lesson?.slice(0, 20) || lnk?.id?.slice(0, 8) })}
                           </span>
                         ))}
                       </div>
@@ -560,27 +557,27 @@ export function LibraryScreen() {
             type="button"
             onClick={() => { setSubview(null); setSearchQuery(""); }}
             className="grid h-10 w-10 place-items-center rounded-full border border-monk-border bg-monk-surface text-monk-muted active:scale-95"
-            aria-label="Back"
+            aria-label={t("library.aria.back")}
           >
             <ArrowLeft size={18} />
           </button>
           <div>
-            <h1 className="text-xl font-bold text-monk-text">History & Logs</h1>
-            <p className="text-xs text-monk-muted">Past focus sessions and drifts.</p>
+            <h1 className="text-xl font-bold text-monk-text">{t("library.subview.history")}</h1>
+            <p className="text-xs text-monk-muted">{t("library.subview.historyDesc")}</p>
           </div>
         </div>
 
         <div className="space-y-4">
           <TextInput
-            placeholder="Search history..."
+            placeholder={t("library.search.history")}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           />
 
           <div className="flex gap-2">
             {[
-              { id: "focus", label: `Focus Sessions (${filteredFocus.length})` },
-              { id: "drifts", label: `Drift Logs (${filteredDrifts.length})` }
+              { id: "focus", label: t("library.focusSessionsCount", { n: filteredFocus.length }) },
+              { id: "drifts", label: t("library.driftLogsCount", { n: filteredDrifts.length }) }
             ].map((tab) => (
               <button
                 key={tab.id}
@@ -601,13 +598,13 @@ export function LibraryScreen() {
             {activeTab === "focus" && (
               filteredFocus.length === 0 ? (
                 <EmptyState
-                  title={searchQuery ? "No matching sessions" : "No focus sessions yet"}
+                  title={searchQuery ? t("library.searchSessionsEmpty") : t("library.focusSessionsEmpty")}
                   description={
                     searchQuery
-                      ? "Try a different search, or clear the box to see everything."
-                      : "Complete a quiet focus block and it will land here."
+                      ? t("library.searchReflectionsNoResult")
+                      : t("library.focusSessionsEmptyDesc")
                   }
-                  actionLabel={searchQuery ? undefined : "Start focus"}
+                  actionLabel={searchQuery ? undefined : t("library.startFocus")}
                   onAction={searchQuery ? undefined : () => navigate(routes.focus)}
                 />
               ) : (
@@ -617,15 +614,15 @@ export function LibraryScreen() {
                     <Card key={s.id} className="p-4 bg-monk-surface/30 flex justify-between items-center">
                       <div>
                         <p className="text-xs font-bold text-monk-accent">{formatHumanDate(s.startTime.slice(0, 10))}</p>
-                        <p className="text-sm font-semibold mt-1">{goal?.title || "Focus Session"}</p>
+                        <p className="text-sm font-semibold mt-1">{goal?.title || t("library.focusSession")}</p>
                         <p className="text-xs text-monk-muted mt-0.5 uppercase tracking-wider font-bold">
                           {FOCUS_PRESETS[s.preset ?? s.timerMode ?? "deep_work"].shortLabel}
-                          {s.status === "ended_early" ? " · Ended early" : ""}
+                          {s.status === "ended_early" ? t("library.endedEarly") : ""}
                         </p>
                       </div>
                       <div className="text-right">
                         <p className="text-lg font-bold text-monk-success">{s.focusDurationMinutes ?? s.durationMinutes}m</p>
-                        <p className="text-xs text-monk-muted">{s.breakDurationMinutes ?? 0}m break</p>
+                        <p className="text-xs text-monk-muted">{t("library.minutesBreak", { n: s.breakDurationMinutes ?? 0 })}</p>
                       </div>
                     </Card>
                   );
@@ -636,11 +633,11 @@ export function LibraryScreen() {
             {activeTab === "drifts" && (
               filteredDrifts.length === 0 ? (
                 <EmptyState
-                  title={searchQuery ? "No matching drift logs" : "No drift logs"}
+                  title={searchQuery ? t("library.searchDriftsEmpty") : t("library.driftsEmpty")}
                   description={
                     searchQuery
-                      ? "Try a different search, or clear the box to see everything."
-                      : "Clean track so far. Drift notes only appear when you log a slip."
+                      ? t("library.searchReflectionsNoResult")
+                      : t("library.driftsEmptyDesc")
                   }
                 />
               ) : (
@@ -651,16 +648,16 @@ export function LibraryScreen() {
                     </div>
                     <div className="space-y-2">
                       <div>
-                        <span className="text-xs font-bold text-monk-muted uppercase tracking-wider block">Trigger</span>
+                        <span className="text-xs font-bold text-monk-muted uppercase tracking-wider block">{t("library.trigger")}</span>
                         <p className="text-xs font-semibold leading-relaxed text-monk-danger mt-0.5 uppercase tracking-wider">{r.trigger.replace("_", " ")}</p>
                       </div>
                       <div>
-                        <span className="text-xs font-bold text-monk-muted uppercase tracking-wider block">Notes</span>
+                        <span className="text-xs font-bold text-monk-muted uppercase tracking-wider block">{t("library.notes")}</span>
                         <p className="text-xs text-monk-text mt-0.5 leading-relaxed">{r.note || "-"}</p>
                       </div>
                       {r.recoveryAction && (
                         <div className="bg-monk-soft/30 rounded-xl p-2.5 border border-monk-border/40 mt-1">
-                          <span className="text-xs font-bold text-monk-muted uppercase tracking-wider block">Recovery plan</span>
+                          <span className="text-xs font-bold text-monk-muted uppercase tracking-wider block">{t("library.recoveryPlan")}</span>
                           <p className="text-xs text-monk-text-soft mt-0.5 leading-normal">{r.recoveryAction}</p>
                         </div>
                       )}
@@ -677,7 +674,7 @@ export function LibraryScreen() {
 
   return (
     <>
-      <PageHeader title="Library" subtitle="Your second brain." rightSlot={<SettingsLink />} />
+      <PageHeader title={t("library.home.title")} subtitle={t("library.home.subtitle")} rightSlot={<SettingsLink />} />
       <div className="space-y-3">
         <button
           type="button"
@@ -691,13 +688,13 @@ export function LibraryScreen() {
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center justify-between gap-2">
-                  <p className="text-sm font-semibold text-monk-text">Reflections</p>
+                  <p className="text-sm font-semibold text-monk-text">{t("library.reflections")}</p>
                   <span className="text-xs font-bold text-monk-muted bg-monk-soft/80 px-2 py-0.5 rounded-full">
                     {store.journalEntries.length}
                   </span>
                 </div>
                 <p className="mt-1 text-xs text-monk-muted leading-relaxed">
-                  Daily reflections, morning pages, and what moved.
+                  {t("library.reflectionsDesc")}
                 </p>
               </div>
             </div>
@@ -716,13 +713,13 @@ export function LibraryScreen() {
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center justify-between gap-2">
-                  <p className="text-sm font-semibold text-monk-text">Learning Notes</p>
+                  <p className="text-sm font-semibold text-monk-text">{t("library.learningNotes")}</p>
                   <span className="text-xs font-bold text-monk-muted bg-monk-soft/80 px-2 py-0.5 rounded-full">
                     {store.learningSessions.length}
                   </span>
                 </div>
                 <p className="mt-1 text-xs text-monk-muted leading-relaxed">
-                  Lessons, modules, and connected ideas.
+                  {t("library.learningNotesDesc")}
                 </p>
               </div>
             </div>
@@ -739,10 +736,10 @@ export function LibraryScreen() {
             <div className="flex items-center justify-between gap-3 text-monk-muted">
               <div className="flex items-center gap-3">
                 <History size={16} />
-                <span className="text-sm font-semibold">History & Logs</span>
+                <span className="text-sm font-semibold">{t("library.historyLogs")}</span>
               </div>
               <span className="text-xs text-monk-text-soft">
-                {store.focusSessions.filter(s => ["completed", "ended_early"].includes(s.status)).length} focus · {store.relapseLogs.length} drifts
+                {t("library.historyCounts", { focus: store.focusSessions.filter(s => ["completed", "ended_early"].includes(s.status)).length, drifts: store.relapseLogs.length })}
               </span>
             </div>
           </Card>
