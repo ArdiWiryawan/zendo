@@ -283,6 +283,15 @@ export function WeekScreen() {
               </div>
             </Card>
 
+            <WeekReviewCard
+              weeklyPlan={weeklyPlan}
+              goals={goals}
+              showWeekWrap={showWeekWrap}
+              remainingDays={remainingDays}
+              weekDates={weekDates}
+              today={today}
+            />
+
             {showWeekWrap ? (
               <motion.div
                 initial={{ opacity: 0, y: 12 }}
@@ -430,6 +439,181 @@ export function WeekScreen() {
       </div>
       <RetroLogModal open={!!retroDate} date={retroDate} onClose={() => setRetroDate(null)} />
     </>
+  );
+}
+
+type WeekReviewDecision = {
+  action: "continue" | "adjust" | "release";
+  mainAction?: string;
+};
+
+function WeekReviewCard({
+  weeklyPlan,
+  goals,
+  showWeekWrap,
+  remainingDays,
+  weekDates,
+  today
+}: {
+  weeklyPlan: NonNullable<ReturnType<typeof selectCurrentWeeklyPlan>>;
+  goals: ReturnType<typeof selectActiveGoals>;
+  showWeekWrap: boolean;
+  remainingDays: number;
+  weekDates: string[];
+  today: string;
+}) {
+  const t = useT();
+  const reviewWeek = useMonkStore((s) => s.reviewWeek);
+  const skipWeekReview = useMonkStore((s) => s.skipWeekReview);
+  const savedReview = useMonkStore((s) => s.weeklyReviews?.[weeklyPlan.id]);
+  const [decisions, setDecisions] = useState<Record<string, WeekReviewDecision>>({});
+
+  const weekEnded = remainingDays === 0 || weekDates[weekDates.length - 1] < today;
+  const shouldShow = showWeekWrap || weekEnded;
+  if (!shouldShow) return null;
+
+  const setAction = (goalId: string, action: WeekReviewDecision["action"]) => {
+    setDecisions((prev) => ({
+      ...prev,
+      [goalId]: { ...prev[goalId], action, mainAction: prev[goalId]?.mainAction }
+    }));
+  };
+  const setMainAction = (goalId: string, mainAction: string) => {
+    setDecisions((prev) => ({
+      ...prev,
+      [goalId]: { action: "adjust", mainAction }
+    }));
+  };
+
+  const submit = () => {
+    reviewWeek(weeklyPlan.id, decisions);
+  };
+
+  const counts = {
+    cont: Object.values(decisions).filter((d) => d.action === "continue").length,
+    adj: Object.values(decisions).filter((d) => d.action === "adjust").length,
+    rel: Object.values(decisions).filter((d) => d.action === "release").length
+  };
+
+  if (savedReview) {
+    return (
+      <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}>
+        <Card className="p-5">
+          <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-monk-muted/80">{t("week.review.title")}</p>
+          {savedReview.skipped ? (
+            <p className="mt-2 text-sm text-monk-muted">{t("week.review.skip")}</p>
+          ) : (
+            <p className="mt-2 text-sm text-monk-accent/90 font-medium">
+              {t("week.review.summary", {
+                cont: savedReview.decisions ? Object.values(savedReview.decisions).filter((d) => d.action === "continue").length : 0,
+                adj: savedReview.decisions ? Object.values(savedReview.decisions).filter((d) => d.action === "adjust").length : 0,
+                rel: savedReview.decisions ? Object.values(savedReview.decisions).filter((d) => d.action === "release").length : 0
+              })}
+            </p>
+          )}
+        </Card>
+      </motion.div>
+    );
+  }
+
+  return (
+    <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}>
+      <Card className="relative p-5 bg-monk-surface/30 border-monk-accent/20">
+        <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-monk-accent">{t("week.review.title")}</p>
+        <p className="mt-2 text-sm font-semibold text-monk-text">{t("week.review.decideTitle")}</p>
+        <p className="mt-1 text-xs text-monk-muted">{t("week.review.decideBody")}</p>
+
+        <div className="mt-4 space-y-3">
+          {weeklyPlan.goalAllocations.map((allocation) => {
+            const goal = goals.find((g) => g.id === allocation.goalId);
+            const decision = decisions[allocation.goalId] ?? { action: "continue" as const };
+            const adjusting = decision.action === "adjust";
+            return (
+              <div key={allocation.goalId} className="rounded-xl border border-monk-border/50 bg-monk-bg/40 p-3">
+                <p className="text-sm font-semibold">{goal?.title ?? t("week.goalFallback")}</p>
+                {decision.action === "release" ? (
+                  <p className="mt-1 text-xs text-monk-muted">{t("week.review.releaseNote")}</p>
+                ) : null}
+                <div className="mt-2 flex flex-wrap gap-2">
+                  <ChoiceButton
+                    active={decision.action === "continue"}
+                    tone="success"
+                    onClick={() => setAction(allocation.goalId, "continue")}
+                    label={t("week.review.continue")}
+                  />
+                  <ChoiceButton
+                    active={decision.action === "adjust"}
+                    tone="accent"
+                    onClick={() => setAction(allocation.goalId, "adjust")}
+                    label={t("week.review.adjust")}
+                  />
+                  <ChoiceButton
+                    active={decision.action === "release"}
+                    tone="muted"
+                    onClick={() => setAction(allocation.goalId, "release")}
+                    label={t("week.review.release")}
+                  />
+                </div>
+                {adjusting ? (
+                  <div className="mt-3 space-y-2 border-t border-monk-border/40 pt-3">
+                    <p className="text-[11px] font-semibold uppercase tracking-wider text-monk-muted">{t("week.review.adjustHint")}</p>
+                    <TextInput
+                      label={t("week.review.actionLabel")}
+                      value={decision.mainAction ?? goal?.keystoneAction ?? ""}
+                      onChange={(e) => setMainAction(allocation.goalId, e.target.value)}
+                      placeholder={t("week.review.actionPlaceholder")}
+                    />
+                  </div>
+                ) : null}
+              </div>
+            );
+          })}
+        </div>
+
+        <p className="mt-4 text-xs text-monk-muted">
+          {t("week.review.summary", { cont: counts.cont, adj: counts.adj, rel: counts.rel })}
+        </p>
+        <div className="mt-3 flex gap-2">
+          <GhostButton className="flex-1 min-h-9 text-xs" onClick={() => skipWeekReview(weeklyPlan.id)}>
+            {t("week.review.skip")}
+          </GhostButton>
+          <PrimaryButton className="flex-1 min-h-9 text-xs" onClick={submit}>
+            {t("week.review.done")}
+          </PrimaryButton>
+        </div>
+      </Card>
+    </motion.div>
+  );
+}
+
+function ChoiceButton({
+  active,
+  tone,
+  onClick,
+  label
+}: {
+  active: boolean;
+  tone: "success" | "accent" | "muted";
+  onClick: () => void;
+  label: string;
+}) {
+  const activeClass =
+    tone === "success"
+      ? "bg-monk-success/15 border-monk-success/50 text-monk-success"
+      : tone === "accent"
+      ? "bg-monk-accent/15 border-monk-accent/50 text-monk-accent"
+      : "bg-monk-soft/60 border-monk-border/60 text-monk-text-soft/80";
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={active}
+      className={`rounded-full border px-3 py-1 text-[11px] font-semibold transition-colors ${
+        active ? activeClass : "border-monk-border/40 text-monk-muted hover:border-monk-border"
+      }`}
+    >
+      {label}
+    </button>
   );
 }
 
