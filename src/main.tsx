@@ -7,6 +7,7 @@ import { registerSW } from "virtual:pwa-register";
 import { getState, setState } from "./lib/supabase";
 import { useMonkStore } from "./store/useMonkStore";
 import { setSyncStatus } from "./lib/syncStatus";
+import { mergeRemoteState } from "./lib/syncMerge";
 
 // Batch C: actually register the service worker (import alone is a no-op)
 registerSW({ immediate: true });
@@ -42,7 +43,13 @@ async function initSync(): Promise<void> {
     ]);
 
     if (remote && Object.keys(remote).length > 0) {
-      useMonkStore.setState((state) => ({ ...state, ...remote }));
+      // Safety net: snapshot current local state before applying remote, so a
+      // bad sync can never silently destroy newer local data without recovery.
+      const before = useMonkStore.getState();
+      localStorage.setItem("zendo_state_backup_v1", JSON.stringify(before));
+      // Merge last-write-wins by updatedAt — a stale/empty remote must not
+      // clobber newer local goals/sessions/journal (the old spread did).
+      useMonkStore.setState((state) => mergeRemoteState(state, remote));
     }
 
     let timer: ReturnType<typeof setTimeout> | null = null;

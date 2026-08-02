@@ -461,9 +461,43 @@ export const useMonkStore = create<MonkStore>()(
 
       const fresh = createInitialState();
 
+      // Data recovery: reconstruct pastSeasons from orphaned seasonIds if the
+      // Season envelope was lost before the pastSeasons array was implemented.
+      let pastSeasons = stored.pastSeasons ?? [];
+      const knownSeasonIds = new Set([stored.activeSeason?.id, ...pastSeasons.map((s) => s.id)].filter(Boolean));
+
+      const allOrphanedIds = new Set<string>();
+      (stored.goals ?? []).forEach((g) => { if (g.seasonId && !knownSeasonIds.has(g.seasonId)) allOrphanedIds.add(g.seasonId); });
+      (focusSessions ?? []).forEach((s) => { if (s.seasonId && !knownSeasonIds.has(s.seasonId)) allOrphanedIds.add(s.seasonId); });
+
+      if (allOrphanedIds.size > 0) {
+        const recovered = Array.from(allOrphanedIds).map((id) => {
+          // Derive a rough start/end date from the orphaned day plans or sessions
+          const days = (stored.dayPlans ?? []).filter((d) => d.seasonId === id).map((d) => d.date).sort();
+          const start = days[0] || "2026-01-01";
+          const end = days[days.length - 1] || start;
+          const durationDays = days.length || 30;
+          return {
+            id,
+            name: "Recovered Season",
+            startDate: start,
+            endDate: end,
+            durationDays,
+            status: "archived" as const,
+            mode: "planning" as const,
+            goalIds: (stored.goals ?? []).filter((g) => g.seasonId === id).map((g) => g.id),
+            badHabitIds: [],
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString()
+          };
+        });
+        pastSeasons = [...pastSeasons, ...recovered];
+      }
+
       set({
         ...fresh,
         ...stored,
+        pastSeasons,
         // Always use latest pack definitions (stale localStorage must not overwrite)
         journalPacks: fresh.journalPacks,
         purchasedPackIds: stored.purchasedPackIds ?? [],
