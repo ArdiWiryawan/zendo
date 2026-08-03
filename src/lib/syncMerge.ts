@@ -29,7 +29,14 @@ function mergeById<T extends HasId>(local: T[] | undefined, remote: T[] | undefi
   for (const rec of local ?? []) map.set(rec.id, rec);
   for (const rec of remote ?? []) {
     const existing = map.get(rec.id);
-    if (!existing || isNewer(rec, existing)) map.set(rec.id, rec);
+    if (!existing || isNewer(rec, existing)) {
+      // Preserve local-only images field for NotebookEntry when remote record is newer but lacks images
+      if (existing && 'images' in existing && !('images' in rec && rec.images)) {
+        map.set(rec.id, { ...rec, images: (existing as any).images } as T);
+      } else {
+        map.set(rec.id, rec);
+      }
+    }
   }
   return [...map.values()];
 }

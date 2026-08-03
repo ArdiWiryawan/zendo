@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
+import { deleteImage } from "../lib/imageStore";
 import {
   createDefaultOnboarding,
   createInitialState,
@@ -1777,10 +1778,14 @@ export const useMonkStore = create<MonkStore>()(
 
   deleteNotebookCategory: (id) => {
     const state = get();
+    const removed = state.notebookEntries.filter((e) => e.categoryId === id);
     set({
       notebookCategories: state.notebookCategories.filter((c) => c.id !== id),
       notebookEntries: state.notebookEntries.filter((e) => e.categoryId !== id)
     });
+    for (const e of removed) {
+      for (const imgId of e.images ?? []) void deleteImage(imgId);
+    }
   },
 
   saveNotebookEntry: (entry) => {
@@ -1796,9 +1801,12 @@ export const useMonkStore = create<MonkStore>()(
 
   deleteNotebookEntry: (id) => {
     const state = get();
+    const entry = state.notebookEntries.find((e) => e.id === id);
     set({
       notebookEntries: state.notebookEntries.filter((e) => e.id !== id)
     });
+    // Cascade: remove this entry's blobs from IndexedDB (fire-and-forget).
+    if (entry) for (const imgId of entry.images ?? []) void deleteImage(imgId);
   },
 
   togglePinNotebookEntry: (id) => {

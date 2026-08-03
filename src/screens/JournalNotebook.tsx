@@ -4,9 +4,10 @@ import { PrimaryButton, SecondaryButton, GhostButton, CalmDialog } from "../comp
 import { createId } from "../lib/ids";
 import { nowIso } from "../lib/date";
 import type { NotebookEntry } from "../types/app";
-import { Search, Plus, Pin, PinOff, Trash2, ArrowLeft, X, BookOpen } from "lucide-react";
+import { Search, Plus, Pin, PinOff, Trash2, ArrowLeft, X, BookOpen, ImagePlus } from "lucide-react";
 import { useT, useLanguage, type MessageKey } from "../i18n";
 import { autolistMarker, renderBodyMarkdown } from "../lib/notebookMarkdown";
+import { compressImage, getImage, putImage, deleteImage } from "../lib/imageStore";
 
 const CATEGORY_HEX: Record<string, string> = {
   cat_pribadi: "#e07c6b",
@@ -50,6 +51,37 @@ function wordCount(text: string) {
 function resizeTextarea(el: HTMLTextAreaElement) {
   el.style.height = "auto";
   el.style.height = `${el.scrollHeight}px`;
+}
+
+/** Resolve an image id → object URL. Fetches blob from IndexedDB once, revokes on unmount/re-fetch. */
+function useObjectUrl(id: string | null): string | null {
+  const [url, setUrl] = useState<string | null>(null);
+  useEffect(() => {
+    if (!id) {
+      setUrl(null);
+      return;
+    }
+    let revoked = false;
+    let objectUrl: string | null = null;
+    let alive = true;
+    void getImage(id).then((blob) => {
+      if (!alive) return;
+      if (!blob) {
+        setUrl(null);
+        return;
+      }
+      objectUrl = URL.createObjectURL(blob);
+      if (!revoked) setUrl(objectUrl);
+    }).catch(() => {
+      if (alive) setUrl(null);
+    });
+    return () => {
+      alive = false;
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+      revoked = true;
+    };
+  }, [id]);
+  return url;
 }
 
 type Translate = (key: MessageKey, vars?: Record<string, string | number>) => string;
@@ -364,10 +396,14 @@ export function NotebookEditor({
   const categories = store.notebookCategories;
   const titleRef = useRef<HTMLTextAreaElement>(null);
   const bodyRef = useRef<HTMLTextAreaElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [title, setTitle] = useState(entry?.title ?? "");
   const [body, setBody] = useState(entry?.body ?? "");
   const [catId, setCatId] = useState(entry?.categoryId ?? categories[0]?.id ?? "cat_lainnya");
   const [isPinned, setIsPinned] = useState(entry?.isPinned ?? false);
+  const [images, setImages] = useState<string[]>(entry?.images ?? []);
+  const [removedImages, setRemovedImages] = useState<string[]>([]);
+  const [photoError, setPhotoError] = useState("");
   const [showNewCat, setShowNewCat] = useState(false);
   const [newCatName, setNewCatName] = useState("");
   const [dirty, setDirty] = useState(false);
@@ -375,6 +411,7 @@ export function NotebookEditor({
   const [confirmKind, setConfirmKind] = useState<"leave" | "delete-editor" | null>(null);
   const entryIdRef = useRef(entry?.id ?? createId("nb_entry"));
   const createdAtRef = useRef(entry?.createdAt ?? nowIso());
+  const initialImagesRef = useRef(entry?.images ?? []);
 
   useEffect(() => {
     // Existing notes: do not steal focus/scroll. New note: focus title to write.
@@ -398,6 +435,61 @@ export function NotebookEditor({
     return t("notebook.untitled");
   }, [title, body, t]);
 
+  const handleAddImages = async (files: FileList | null) => {
+    if (!files || files.length === 0) return;
+    setPhotoError("");
+    const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif"];
+    const MAX_BYTES = 10 * 1024 * 1024;
+    const MAX_COUNT = 20;
+
+    const arr = Array.from(files);
+    for (const f of arr) {
+      if (!ALLOWED_TYPES.includes(f.type)) {
+        setPhotoError(t("notebook.photoInvalid"));
+        if (fileInputRef.current) fileInputRef.current.value = "";
+        return;
+      }
+      if (f.size > MAX_BYTES) {
+        setPhotoError(t("notebook.photoInvalid"));
+        if (fileInputRef.current) fileInputRef.current.value = "";
+        return;
+      }
+    }
+    if (images.length + arr.length > MAX_COUNT) {
+      setPhotoError(t("notebook.photoInvalid"));
+      if (fileInputRef.current) fileInputRef.current.value = "";
+      return;
+    }
+
+    const next: string[] = [];
+    try {
+      for (const file of arr) {
+        const blob = await compressImage(file);
+        const id = createId("img");
+        await putImage(id, blob);
+        next.push(id);
+      }
+      if (next.length > 0) {
+        setImages((prev) => [...prev, ...next]);
+        markDirty();
+      }
+    } catch (err) {
+      setPhotoError(t("notebook.photoError"));
+      for (const id of next) void deleteImage(id);
+    }
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+
+  const handleRemoveImage = (imgId: string) => {
+    setImages((prev) => prev.filter((i) => i !== imgId));
+    if (initialImagesRef.current.includes(imgId)) {
+      setRemovedImages((prev) => [...prev, imgId]);
+    } else {
+      void deleteImage(imgId);
+    }
+    markDirty();
+  };
+
   const handleSave = useCallback(
     (andBack = true) => {
       const timestamp = nowIso();
@@ -408,15 +500,17 @@ export function NotebookEditor({
         categoryId: catId,
         tags: entry?.tags ?? [],
         isPinned,
+        images,
         createdAt: createdAtRef.current,
         updatedAt: timestamp
       });
+      for (const imgId of removedImages) void deleteImage(imgId);
       setDirty(false);
       setSavedFlash(true);
       window.setTimeout(() => setSavedFlash(false), 1200);
       if (andBack) onBack();
     },
-    [body, catId, entry?.tags, isPinned, onBack, resolveTitle, store]
+    [body, catId, entry?.tags, isPinned, images, removedImages, onBack, resolveTitle, store]
   );
 
   // Enter-autolist + Backspace-unlist: native-feel list continuation in the
@@ -590,6 +684,24 @@ export function NotebookEditor({
         </div>
       ) : null}
 
+      <ImageStrip images={images} onRemove={handleRemoveImage} onAdd={() => fileInputRef.current?.click()} addLabel={t("notebook.addPhoto")} removeLabel={t("notebook.removePhoto")} />
+
+      {photoError ? (
+        <div className="mb-4 rounded-monk border border-monk-danger/30 bg-monk-danger/5 px-3 py-2 text-sm text-monk-danger">
+          {photoError}
+        </div>
+      ) : null}
+
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        multiple
+        capture="environment"
+        className="hidden"
+        onChange={(e) => void handleAddImages(e.target.files)}
+      />
+
       <div className="nb-open-page nb-open-enter" style={{ "--nb-cat": activeCatHex } as React.CSSProperties}>
         <textarea
           ref={titleRef}
@@ -680,6 +792,57 @@ export function NotebookEditor({
           onBack();
         }}
       />
+    </div>
+  );
+}
+
+/** Horizontal strip of attached photos with an add button. Used in the editor. */
+function ImageStrip({
+  images,
+  onRemove,
+  onAdd,
+  addLabel,
+  removeLabel
+}: {
+  images: string[];
+  onRemove: (id: string) => void;
+  onAdd: () => void;
+  addLabel: string;
+  removeLabel: string;
+}) {
+  return (
+    <div className="nb-open-page nb-open-enter mb-4" style={{ "--nb-cat": "var(--color-border)" } as React.CSSProperties}>
+      <div className="flex gap-2 overflow-x-auto px-1 py-2 scrollbar-none">
+        {images.map((imgId) => (
+          <PhotoThumb key={imgId} id={imgId} removeLabel={removeLabel} onRemove={() => onRemove(imgId)} />
+        ))}
+        <button
+          type="button"
+          onClick={onAdd}
+          aria-label={addLabel}
+          className="grid h-20 w-20 shrink-0 place-items-center rounded-lg border border-dashed border-monk-border text-monk-text-soft transition hover:border-monk-accent hover:text-monk-accent"
+        >
+          <ImagePlus size={18} strokeWidth={1.5} />
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function PhotoThumb({ id, removeLabel, onRemove }: { id: string; removeLabel: string; onRemove: () => void }) {
+  const url = useObjectUrl(id);
+  if (!url) return null;
+  return (
+    <div className="relative h-20 w-20 shrink-0">
+      <img src={url} alt="" className="h-20 w-20 rounded-lg object-cover ring-1 ring-monk-border/40" />
+      <button
+        type="button"
+        aria-label={removeLabel}
+        onClick={onRemove}
+        className="absolute -right-1.5 -top-1.5 grid h-6 w-6 place-items-center rounded-full bg-monk-danger text-monk-bg shadow active:scale-90"
+      >
+        <X size={12} />
+      </button>
     </div>
   );
 }

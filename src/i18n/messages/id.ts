@@ -532,6 +532,12 @@ export const id: Record<MessageKey, string> = {
   "notebook.rel.m": "{n}m lalu",
   "notebook.rel.h": "{n}j lalu",
   "notebook.rel.d": "{n}h lalu",
+  "notebook.addPhoto": "Tambah foto",
+  "notebook.addPhotoAria": "Tambah foto",
+  "notebook.removePhoto": "Hapus foto",
+  "notebook.photos": "{n} foto",
+  "notebook.photoError": "Gagal menambah foto",
+  "notebook.photoInvalid": "Hanya gambar (JPEG, PNG, WebP, GIF) maks 10MB per file",
 
   "packs.title": "Pack",
   "packs.subtitle": "Pertanyaan bertema untuk refleksi lebih dalam",

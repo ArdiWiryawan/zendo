@@ -532,6 +532,9 @@ export type NotebookEntry = {
   categoryId: string;
   tags: string[];
   isPinned: boolean;
+  // imageIds referencing blobs in IndexedDB "zendo_images" (lib/imageStore).
+  // Local-only by design — never synced. Optional: older persisted entries lack it.
+  images?: string[];
   createdAt: ISODateString;
   updatedAt: ISODateString;
 };

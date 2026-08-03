@@ -530,6 +530,12 @@ export const en = {
   "notebook.rel.m": "{n}m ago",
   "notebook.rel.h": "{n}h ago",
   "notebook.rel.d": "{n}d ago",
+  "notebook.addPhoto": "Add photo",
+  "notebook.addPhotoAria": "Add photos",
+  "notebook.removePhoto": "Remove photo",
+  "notebook.photos": "{n} photos",
+  "notebook.photoError": "Could not add photos",
+  "notebook.photoInvalid": "Only images (JPEG, PNG, WebP, GIF) up to 10MB each",
 
   "packs.title": "Packs",
   "packs.subtitle": "Themed questions for deeper reflection",
