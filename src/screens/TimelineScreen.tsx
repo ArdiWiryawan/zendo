@@ -74,29 +74,24 @@ function TimelineStats() {
     : 0;
 
   return (
-    <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35, ease: "easeOut" }} className="grid grid-cols-2 gap-4">
-      <div className="rounded-xl border border-monk-accent/25 bg-gradient-to-br from-monk-surface to-monk-surface/60 p-4 relative overflow-hidden transition hover:border-monk-accent/40 monk-depth">
-        <div className="flex items-start justify-between gap-2">
+    <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35, ease: "easeOut" }}>
+      <div className="rounded-xl border border-monk-accent/25 bg-gradient-to-br from-monk-surface to-monk-surface/60 p-5 relative overflow-hidden transition hover:border-monk-accent/40 monk-depth">
+        <div className="flex items-start justify-between gap-3">
           <div>
             <p className="text-sm font-semibold uppercase tracking-wider text-monk-muted">{t("timeline.stats.focus")}</p>
             <p className="text-4xl font-bold mt-1 text-monk-accent tabular-nums leading-none">{totalFocusMinutes}<span className="text-base font-semibold text-monk-muted/50 ml-1">{t("timeline.stats.minutes")}</span></p>
             <p className="text-xs text-monk-muted mt-1">{t("timeline.stats.sessions", { n: totalFocusSessions })}</p>
           </div>
-          <div className="grid h-8 w-8 place-items-center rounded-full bg-gradient-to-br from-monk-accent/20 to-monk-accent/5 border border-monk-accent/10 shrink-0 mt-1 shadow-[inset_0_1px_2px_rgba(0,0,0,0.2)]">
-            <Timer size={14} strokeWidth={2} className="text-monk-accent" />
+          <div className="grid h-9 w-9 place-items-center rounded-full bg-gradient-to-br from-monk-accent/20 to-monk-accent/5 border border-monk-accent/10 shrink-0 shadow-[inset_0_1px_2px_rgba(0,0,0,0.2)]">
+            <Timer size={16} strokeWidth={2} className="text-monk-accent" />
           </div>
         </div>
-      </div>
-      <div className="rounded-xl border border-monk-success/25 bg-gradient-to-br from-monk-surface to-monk-surface/60 p-4 relative overflow-hidden transition hover:border-monk-success/40 monk-depth">
-        <div className="flex items-start justify-between gap-2">
+        <div className="mt-4 flex items-center justify-between border-t border-monk-border/50 pt-3">
           <div>
-            <p className="text-sm font-semibold uppercase tracking-wider text-monk-muted">{t("timeline.stats.consistency")}</p>
-            <p className="text-4xl font-bold mt-1 text-monk-success tabular-nums leading-none">{consistencyRate}<span className="text-base font-semibold text-monk-muted/50 ml-1">%</span></p>
-            <p className="text-xs text-monk-muted mt-1">{t("timeline.stats.days", { n: completedDaysCount, total: totalPassedDays })}</p>
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-monk-muted">{t("timeline.stats.consistency")}</p>
+            <p className="text-xl font-bold mt-0.5 text-monk-success tabular-nums leading-none">{consistencyRate}<span className="text-sm font-semibold text-monk-muted/50 ml-0.5">%</span></p>
           </div>
-          <div className="grid h-8 w-8 place-items-center rounded-full bg-gradient-to-br from-monk-success/20 to-monk-success/5 border border-monk-success/10 shrink-0 mt-1 shadow-[inset_0_1px_2px_rgba(0,0,0,0.2)]">
-            <Flame size={14} strokeWidth={2} className="text-monk-success" />
-          </div>
+          <p className="text-xs text-monk-muted tabular-nums">{t("timeline.stats.days", { n: completedDaysCount, total: totalPassedDays })}</p>
         </div>
       </div>
     </motion.div>
@@ -183,11 +178,9 @@ function TimelineEventRow({ event }: { event: TimelineEvent }) {
         <div className={`w-[2px] flex-1 bg-gradient-to-b ${typeColors[event.type]} opacity-60 rounded-b-full min-h-[20px]`} />
       </div>
       <div className="flex-1 pb-5">
+        <p className="mb-1 font-mono text-[11px] text-monk-muted/80 tabular-nums">{timeLabel}</p>
         <Card className={`p-4 bg-monk-soft/80 hover:bg-monk-raised/60 shadow-[0_1px_3px_rgba(0,0,0,0.3)] hover:shadow-[0_2px_8px_rgba(0,0,0,0.4)] transition-all duration-150 border-l-4 ${leftAccent[event.type]} border-t border-r border-b border-monk-border/20`}>
-          <div className="flex justify-between items-start gap-2">
-            <h4 className="text-sm font-bold text-monk-text leading-tight tracking-wide">{displayTitle}</h4>
-            <span className="text-xs font-mono text-monk-muted/80 bg-monk-surface/50 rounded-md px-1.5 py-0.5 shrink-0 tabular-nums">{timeLabel}</span>
-          </div>
+          <h4 className="text-sm font-bold text-monk-text leading-tight tracking-wide">{displayTitle}</h4>
           {displayDescription && (
             <p className="mt-2 text-sm text-monk-muted leading-relaxed whitespace-pre-line">{displayDescription}</p>
           )}
@@ -291,10 +284,25 @@ export default function TimelineScreen() {
             return (
               <div className="space-y-3">
                 {/* Today status row */}
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-[10px] font-bold uppercase tracking-widest text-monk-muted">{t("timeline.dayProgress", { n: todayDayNum, total: season.durationDays })}</p>
-                    <p className="mt-0.5 text-sm font-semibold text-monk-text">{getDailyHelperForDate(store, today)}</p>
+                <div className="flex items-center justify-between gap-4">
+                  <div className="flex items-center gap-3">
+                    <div className="relative h-12 w-12 shrink-0" role="img" aria-label={t("timeline.dayProgress", { n: todayDayNum, total: season.durationDays })}>
+                      <svg viewBox="0 0 36 36" className="h-full w-full -rotate-90">
+                        <circle cx="18" cy="18" r="15.5" fill="none" strokeWidth="3" className="stroke-monk-border" />
+                        <circle
+                          cx="18" cy="18" r="15.5" fill="none" strokeWidth="3"
+                          strokeLinecap="round"
+                          className="stroke-monk-accent transition-[stroke-dashoffset] duration-500 ease-monk"
+                          strokeDasharray={`${(todayDayNum / season.durationDays) * 100} 100`}
+                          style={{ strokeDashoffset: `${(todayDayNum / season.durationDays) * 100}` }}
+                        />
+                      </svg>
+                      <span className="absolute inset-0 grid place-items-center font-mono text-[11px] font-bold text-monk-accent tabular-nums">{todayDayNum}</span>
+                    </div>
+                    <div>
+                      <p className="text-[10px] font-bold uppercase tracking-widest text-monk-muted">{t("timeline.dayProgress", { n: todayDayNum, total: season.durationDays })}</p>
+                      <p className="mt-0.5 text-sm font-semibold text-monk-text">{getDailyHelperForDate(store, today)}</p>
+                    </div>
                   </div>
                   <span className={`rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider ${
                     todayCompleted ? "bg-monk-success/20 text-monk-success border border-monk-success/30" :
