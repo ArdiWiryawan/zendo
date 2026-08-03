@@ -128,13 +128,11 @@ export function renderBodyMarkdown(
       num++;
     } else {
       close();
-      if (t) {
-        out.push(
-          <p key={out.length} className="md-para">
-            {raw}
-          </p>
-        );
-      }
+      out.push(
+        <p key={out.length} className="md-para">
+          {raw || " "}
+        </p>
+      );
     }
   }
   close();
