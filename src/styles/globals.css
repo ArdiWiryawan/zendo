@@ -498,7 +498,8 @@ button {
     inset 0 0 0 1px rgba(164, 139, 94, 0.06),
     inset 16px 0 20px -18px rgba(0, 0, 0, 0.55),
     0 10px 28px rgba(0, 0, 0, 0.32);
-  overflow: hidden;
+  /* visible so auto-growing title/body textareas never clip the caret */
+  overflow: visible;
 }
 
 /* Vertical margin line (classic notebook), tinted by category via --nb-cat.
@@ -527,7 +528,7 @@ button {
   background: transparent;
   border: none;
   outline: none;
-  overflow: hidden;
+  overflow: visible;
   overflow-wrap: anywhere;
   white-space: pre-wrap;
   resize: none;
@@ -565,7 +566,7 @@ button {
   background-position: 0 6px;
   border: none;
   outline: none;
-  overflow: hidden;
+  overflow: visible;
   resize: none;
 }
 
@@ -651,6 +652,111 @@ button {
   transform: scale(0.97);
 }
 
+/* Per-photo delete chip, overlaid top-right on inline photos (edit + preview). */
+.nb-photo-del {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  display: grid;
+  width: 26px;
+  height: 26px;
+  place-items: center;
+  border-radius: 999px;
+  border: none;
+  background: rgba(15, 15, 15, 0.72);
+  color: #fff;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35);
+  cursor: pointer;
+  transition: transform 0.15s ease, background 0.15s ease;
+}
+
+.nb-photo-del:hover {
+  background: rgba(15, 15, 15, 0.9);
+}
+
+.nb-photo-del:active {
+  transform: scale(0.9);
+}
+
+/* Delete button inside the lightbox, next to the close button. */
+.nb-lightbox-del {
+  position: absolute;
+  top: 16px;
+  right: 68px;
+  display: grid;
+  width: 42px;
+  height: 42px;
+  place-items: center;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
+  cursor: pointer;
+  transition: background 0.18s ease, transform 0.12s ease;
+}
+
+.nb-lightbox-del:hover {
+  background: rgba(255, 255, 255, 0.18);
+}
+
+.nb-lightbox-del:active {
+  transform: scale(0.92);
+}
+
+/* Page navigation row inside the sheet: prev/next, count, add/remove. */
+.nb-page-nav {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 22px 20px 46px;
+}
+
+.nb-page-btn {
+  display: inline-grid;
+  width: 34px;
+  height: 34px;
+  place-items: center;
+  border-radius: 999px;
+  border: 1px solid var(--notebook-card-line);
+  background: transparent;
+  color: var(--notebook-text-body);
+  cursor: pointer;
+  transition: border-color 0.18s ease, color 0.18s ease, background 0.18s ease;
+}
+
+.nb-page-btn:hover:not(:disabled) {
+  border-color: var(--nb-cat, var(--color-accent));
+  color: var(--nb-cat, var(--color-accent));
+  background: rgba(0, 0, 0, 0.04);
+}
+
+.nb-page-btn:active:not(:disabled) {
+  transform: scale(0.94);
+}
+
+.nb-page-btn:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.nb-page-btn.danger:hover {
+  border-color: var(--color-danger);
+  color: var(--color-danger);
+}
+
+.nb-page-count {
+  font-family: 'Outfit', ui-sans-serif, system-ui, sans-serif;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--notebook-text-body);
+  min-width: 44px;
+  text-align: center;
+}
+
+.nb-page-nav-sep {
+  flex: 1;
+}
+
 /* Preview mode: the saved page rendered inside the sheet (photos interleaved). */
 .nb-preview-page {
   cursor: text;
@@ -724,6 +830,7 @@ button {
 
 /* Inline photo embedded in the body via a {{img:<id>}} marker line. Centered block. */
 .nb-inline-photo {
+  position: relative;
   display: block;
   width: 100%;
   margin: 10px 0;

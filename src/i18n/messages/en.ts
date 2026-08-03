@@ -540,6 +540,11 @@ export const en = {
   "notebook.takePhoto": "Take photo",
   "notebook.photoLabel": "Photos",
   "notebook.photoEmpty": "Photos you add appear here",
+  "notebook.prevPage": "Previous page",
+  "notebook.nextPage": "Next page",
+  "notebook.addPage": "Add page",
+  "notebook.removePage": "Remove page",
+  "notebook.removePageConfirm": "Remove this page? Its text and photos are deleted.",
 
   "packs.title": "Packs",
   "packs.subtitle": "Themed questions for deeper reflection",

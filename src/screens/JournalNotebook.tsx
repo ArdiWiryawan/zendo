@@ -4,9 +4,10 @@ import { PrimaryButton, SecondaryButton, GhostButton, CalmDialog } from "../comp
 import { createId } from "../lib/ids";
 import { nowIso } from "../lib/date";
 import type { NotebookEntry } from "../types/app";
-import { Search, Plus, Pin, PinOff, Trash2, ArrowLeft, X, BookOpen, ImagePlus, Camera } from "lucide-react";
+import { Search, Plus, Pin, PinOff, Trash2, ArrowLeft, X, BookOpen, ImagePlus, Camera, ChevronLeft, ChevronRight } from "lucide-react";
 import { useT, useLanguage, type MessageKey } from "../i18n";
 import { autolistMarker, groupPhotoRuns, renderBodyMarkdown } from "../lib/notebookMarkdown";
+import { joinPages, removePhotoMarker } from "../lib/notebookPages";
 import { compressImage, putImage, deleteImage, matchImageMarkers } from "../lib/imageStore";
 import { PhotoLightbox, photoIdsInBody } from "../components/NotebookImages";
 
@@ -52,6 +53,14 @@ function wordCount(text: string) {
 function resizeTextarea(el: HTMLTextAreaElement) {
   el.style.height = "auto";
   el.style.height = `${el.scrollHeight}px`;
+}
+
+// Resize after the new text has been committed to the DOM (rAF post-commit).
+// Doing it synchronously in onChange measures the OLD value, so a wrapped 2nd
+// line (or the tail of the body) would clip — the original occlusion bug.
+function queueResize(el: HTMLTextAreaElement | null) {
+  if (!el) return;
+  requestAnimationFrame(() => resizeTextarea(el));
 }
 
 
@@ -373,8 +382,18 @@ export function NotebookEditor({
   const galleryInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const [title, setTitle] = useState(entry?.title ?? "");
-  const [body, setBody] = useState(entry?.body ?? "");
+  const [pages, setPages] = useState<string[]>(entry?.pages && entry.pages.length > 0 ? entry.pages : [entry?.body ?? ""]);
+  const [pageIndex, setPageIndex] = useState(0);
   const [catId, setCatId] = useState(entry?.categoryId ?? categories[0]?.id ?? "cat_lainnya");
+
+  // Current page text (textarea + autolist + photo insert target).
+  const body = pages[pageIndex] ?? "";
+  // Flat join of ALL pages: single surface for GC, lightbox ordering and the
+  // saved `body` field — search/list/GC keep working unchanged.
+  const allBody = joinPages(pages);
+
+  const setPageText = (v: string) =>
+    setPages((prev) => prev.map((p, i) => (i === pageIndex ? v : p)));
   const [isPinned, setIsPinned] = useState(entry?.isPinned ?? false);
   const [images, setImages] = useState<string[]>(entry?.images ?? []);
   const [photoError, setPhotoError] = useState("");
@@ -394,10 +413,10 @@ export function NotebookEditor({
     // Existing notes: do not steal focus/scroll. New note: focus title to write.
     if (!entry) titleRef.current?.focus();
     requestAnimationFrame(() => {
-      if (titleRef.current) resizeTextarea(titleRef.current);
-      if (bodyRef.current) resizeTextarea(bodyRef.current);
+      queueResize(titleRef.current);
+      queueResize(bodyRef.current);
     });
-  }, [entry]);
+  }, [entry, pageIndex]);
 
   const markDirty = () => setDirty(true);
 
@@ -412,7 +431,7 @@ export function NotebookEditor({
         return;
       }
       const t = e.target as Node;
-      if (sheetRef.current && !sheetRef.current.contains(t) && body.trim()) {
+      if (sheetRef.current && !sheetRef.current.contains(t) && allBody.trim()) {
         setPreviewing(true);
       }
     };
@@ -422,7 +441,7 @@ export function NotebookEditor({
       document.removeEventListener("mousedown", onDown);
       document.removeEventListener("touchstart", onDown);
     };
-  }, [body]);
+  }, [allBody]);
 
   const enterEdit = useCallback(() => {
     suppressPreviewRef.current = true;
@@ -440,13 +459,13 @@ export function NotebookEditor({
   const resolveTitle = useCallback(() => {
     const trimmed = title.trim();
     if (trimmed) return trimmed;
-    const firstLine = body
+    const firstLine = allBody
       .split("\n")
       .map((l) => l.trim())
       .find((l) => Boolean(l) && !l.startsWith("{{img:"));
     if (firstLine) return firstLine.slice(0, 80);
     return t("notebook.untitled");
-  }, [title, body, t]);
+  }, [title, allBody, t]);
 
   const resetInputs = () => {
     if (galleryInputRef.current) galleryInputRef.current.value = "";
@@ -456,12 +475,57 @@ export function NotebookEditor({
   // Click an inline photo in the live preview → open lightbox at its position.
   const openPhotoInBody = useCallback(
     (id: string) => {
-      const ids = photoIdsInBody(body);
+      const ids = photoIdsInBody(allBody);
       const i = ids.indexOf(id);
       if (i >= 0) setLightbox({ ids, index: i });
     },
-    [body]
+    [allBody]
   );
+
+  // Delete a photo: strip its marker line from every page, drop the id from the
+  // images cache and free the blob immediately (save-GC double-delete is a
+  // harmless no-op on a missing key).
+  const handleDeletePhoto = useCallback(
+    (id: string) => {
+      setPages((prev) => prev.map((p) => removePhotoMarker(p, id)));
+      setImages((prev) => prev.filter((i) => i !== id));
+      void deleteImage(id);
+      markDirty();
+      setLightbox((lb) => {
+        if (!lb) return lb;
+        const remaining = lb.ids.filter((i) => i !== id);
+        if (remaining.length === 0) return null;
+        const idx = Math.min(lb.index, remaining.length - 1);
+        return { ids: remaining, index: idx };
+      });
+    },
+    []
+  );
+
+  const totalPages = pages.length;
+  const goPrevPage = () => setPageIndex((i) => Math.max(0, i - 1));
+  const goNextPage = () => setPageIndex((i) => Math.min(totalPages - 1, i + 1));
+  const addPage = () => {
+    setPages((prev) => [...prev, ""]);
+    setPageIndex(totalPages);
+    markDirty();
+    requestAnimationFrame(() => {
+      setPreviewing(false);
+      bodyRef.current?.focus();
+    });
+  };
+  const [confirmRemovePage, setConfirmRemovePage] = useState(false);
+  const confirmRemoveCurrent = () => setConfirmRemovePage(true);
+  const doRemovePage = () => {
+    setConfirmRemovePage(false);
+    setPages((prev) => {
+      if (prev.length <= 1) return prev;
+      const next = prev.filter((_, i) => i !== pageIndex);
+      setPageIndex((cur) => Math.min(cur, next.length - 1));
+      return next;
+    });
+    markDirty();
+  };
 
   const handleAddImages = async (files: FileList | null) => {
     if (!files || files.length === 0) return;
@@ -505,7 +569,7 @@ export function NotebookEditor({
         const markers = next.map((id) => `{{img:${id}}}`).join("\n");
         const prefix = pos > 0 && body[pos - 1] !== "\n" ? "\n" : "";
         const nextBody = `${body.slice(0, pos)}${prefix}${markers}${pos === body.length ? "" : "\n"}${body.slice(pos)}`;
-        setBody(nextBody);
+        setPageText(nextBody);
         setImages((prev) => [...prev, ...next]);
         markDirty();
         requestAnimationFrame(() => {
@@ -525,7 +589,8 @@ export function NotebookEditor({
       store.saveNotebookEntry({
         id: entryIdRef.current,
         title: resolveTitle(),
-        body,
+        body: allBody,
+        pages,
         categoryId: catId,
         tags: entry?.tags ?? [],
         isPinned,
@@ -535,7 +600,7 @@ export function NotebookEditor({
       });
       // GC orphaned blobs: ids we tracked but whose {{img:…}} marker line no longer
       // exists in the saved body (marker deleted while editing).
-      const referenced = matchImageMarkers(body);
+      const referenced = matchImageMarkers(allBody);
       for (const imgId of images) {
         if (!referenced.has(imgId)) void deleteImage(imgId);
       }
@@ -544,7 +609,7 @@ export function NotebookEditor({
       window.setTimeout(() => setSavedFlash(false), 1200);
       if (andBack) onBack();
     },
-    [body, catId, entry?.tags, isPinned, images, onBack, resolveTitle, store]
+    [allBody, pages, catId, entry?.tags, isPinned, images, onBack, resolveTitle, store]
   );
 
   // Enter-autolist + Backspace-unlist: native-feel list continuation in the
@@ -562,7 +627,7 @@ export function NotebookEditor({
       if (marker === null) return; // plain line -> default
       e.preventDefault();
       const next = `${body.slice(0, s)}\n${marker}${body.slice(en)}`;
-      setBody(next);
+      setPageText(next);
       markDirty();
       requestAnimationFrame(() => {
         resizeTextarea(el);
@@ -573,7 +638,7 @@ export function NotebookEditor({
       if (s !== lineStart + line.length) return; // not at line end
       if (!/^(\s*)([-*]|(?:\d+[.)])|(?:\[[ xX]\]))\s*$/.test(line)) return;
       e.preventDefault();
-      setBody(body.slice(0, lineStart) + body.slice(s));
+      setPageText(body.slice(0, lineStart) + body.slice(s));
       markDirty();
       requestAnimationFrame(() => {
         resizeTextarea(el);
@@ -595,7 +660,7 @@ export function NotebookEditor({
   }, [handleSave]);
 
   const activeCatHex = catHex(catId);
-  const words = wordCount(body);
+  const words = pages.reduce((n, p) => n + wordCount(p), 0);
   const canSave = title.trim().length > 0 || body.trim().length > 0;
 
   const handleBack = () => {
@@ -607,7 +672,7 @@ export function NotebookEditor({
   };
 
   return (
-    <div className="space-y-0 pb-28">
+    <div className="space-y-0 pb-28 scroll-mb-28">
       <div className="nb-editor-cover">
         <button
           type="button"
@@ -751,7 +816,7 @@ export function NotebookEditor({
           <div className="nb-preview-page" onClick={enterEdit}>
             <div className="nb-rendered-title">{title || resolveTitle()}</div>
             <div className="nb-page-body-rendered">
-              {groupPhotoRuns(renderBodyMarkdown(body, openPhotoInBody, false))}
+              {groupPhotoRuns(renderBodyMarkdown(allBody, openPhotoInBody, false, handleDeletePhoto))}
             </div>
           </div>
         ) : (
@@ -765,7 +830,7 @@ export function NotebookEditor({
               onChange={(e) => {
                 setTitle(e.target.value);
                 markDirty();
-                resizeTextarea(e.currentTarget);
+                queueResize(e.currentTarget);
               }}
               className="nb-page-title"
             />
@@ -776,9 +841,9 @@ export function NotebookEditor({
               value={body}
               onKeyDown={handleBodyKeyDown}
               onChange={(e) => {
-                setBody(e.target.value);
+                setPageText(e.target.value);
                 markDirty();
-                resizeTextarea(e.currentTarget);
+                queueResize(e.currentTarget);
               }}
               className="nb-page-body"
             />
@@ -795,17 +860,16 @@ export function NotebookEditor({
             })}
           </span>
         </div>
-        {previewing && photoIdsInBody(body).length > 0 ? (
+        {photoIdsInBody(allBody).length > 0 ? (
           <div className="nb-photos-head">
             <span>{t("notebook.photoLabel")}</span>
-            <span className="nb-photos-count">{photoIdsInBody(body).length}</span>
+            <span className="nb-photos-count">{photoIdsInBody(allBody).length}</span>
           </div>
-        ) : null}
-        {previewing && photoIdsInBody(body).length === 0 ? (
+        ) : (
           <div className="nb-photos-head">
             <span>{t("notebook.photoEmpty")}</span>
           </div>
-        ) : null}
+        )}
         <div className="nb-photos">
         <div className="nb-photos-actions">
           <button type="button" className="nb-photo-btn" onClick={() => galleryInputRef.current?.click()}>
@@ -817,7 +881,28 @@ export function NotebookEditor({
             {t("notebook.takePhoto")}
           </button>
         </div>
-      </div>
+        </div>
+        {/* Page navigation: prev/next, count, add/remove page. */}
+        <div className="nb-page-nav">
+          <button type="button" className="nb-page-btn" onClick={goPrevPage} disabled={pageIndex === 0} aria-label={t("notebook.prevPage")}>
+            <ChevronLeft size={16} strokeWidth={2} />
+          </button>
+          <span className="nb-page-count">
+            {pageIndex + 1} / {totalPages}
+          </span>
+          <button type="button" className="nb-page-btn" onClick={goNextPage} disabled={pageIndex >= totalPages - 1} aria-label={t("notebook.nextPage")}>
+            <ChevronRight size={16} strokeWidth={2} />
+          </button>
+          <span className="nb-page-nav-sep" aria-hidden />
+          {totalPages > 1 ? (
+            <button type="button" className="nb-page-btn danger" onClick={confirmRemoveCurrent} aria-label={t("notebook.removePage")}>
+              <Trash2 size={15} strokeWidth={2} />
+            </button>
+          ) : null}
+          <button type="button" className="nb-page-btn" onClick={addPage} aria-label={t("notebook.addPage")}>
+            <Plus size={16} strokeWidth={2} />
+          </button>
+        </div>
       </div>
 
       <div className="fixed inset-x-0 bottom-0 z-40 border-t border-monk-border bg-monk-bg/95 px-6 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur-md">
@@ -876,8 +961,19 @@ export function NotebookEditor({
           index={lightbox.index}
           onNavigate={(i) => setLightbox((s) => (s ? { ...s, index: i } : s))}
           onClose={() => setLightbox(null)}
+          onDelete={handleDeletePhoto}
         />
       ) : null}
+      <CalmDialog
+        open={confirmRemovePage}
+        title={t("notebook.removePage")}
+        description={t("notebook.removePageConfirm")}
+        confirmLabel={t("dialog.delete")}
+        cancelLabel={t("dialog.cancel")}
+        danger
+        onCancel={() => setConfirmRemovePage(false)}
+        onConfirm={doRemovePage}
+      />
     </div>
   );
 }

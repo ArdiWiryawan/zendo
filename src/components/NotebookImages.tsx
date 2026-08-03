@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { X, ChevronLeft, ChevronRight } from "lucide-react";
+import { X, Trash2, ChevronLeft, ChevronRight } from "lucide-react";
 import { IMG_MARKER } from "../lib/imageStore";
 
 /** Signature for "user tapped an inline photo" — the id is an imageStore marker id. */
@@ -53,10 +53,12 @@ export function useObjectUrl(id: string | null): string | null {
 export function InlinePhoto({
   id,
   onOpen,
+  onDelete,
   alt
 }: {
   id: string;
   onOpen: PhotoOpenHandler;
+  onDelete?: (id: string) => void;
   alt?: string;
 }) {
   const url = useObjectUrl(id);
@@ -83,6 +85,19 @@ export function InlinePhoto({
       ) : (
         <span data-photo-placeholder />
       )}
+      {onDelete ? (
+        <button
+          type="button"
+          className="nb-photo-del"
+          aria-label="delete photo"
+          onClick={(e) => {
+            e.stopPropagation();
+            onDelete(id);
+          }}
+        >
+          <X size={12} strokeWidth={2.2} />
+        </button>
+      ) : null}
     </span>
   );
 }
@@ -92,12 +107,14 @@ export function PhotoLightbox({
   ids,
   index,
   onClose,
-  onNavigate
+  onNavigate,
+  onDelete
 }: {
   ids: string[];
   index: number;
   onClose: () => void;
   onNavigate: (index: number) => void;
+  onDelete?: (id: string) => void;
 }) {
   const id = ids[index];
 
@@ -116,6 +133,19 @@ export function PhotoLightbox({
       <button type="button" className="nb-lightbox-close" onClick={onClose} aria-label="Close">
         <X size={22} strokeWidth={2} />
       </button>
+      {onDelete ? (
+        <button
+          type="button"
+          className="nb-lightbox-del"
+          onClick={(e) => {
+            e.stopPropagation();
+            onDelete(id);
+          }}
+          aria-label="delete photo"
+        >
+          <Trash2 size={18} strokeWidth={2} />
+        </button>
+      ) : null}
       {ids.length > 1 ? (
         <>
           <button

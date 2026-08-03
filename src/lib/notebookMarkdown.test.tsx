@@ -131,4 +131,12 @@ describe("groupPhotoRuns", () => {
     expect(out).not.toContain("nb-photo-grid");
     expect(out).toContain("nb-inline-photo");
   });
+  it("adds a delete chip only when onDeletePhoto is provided", () => {
+    const withDel = renderToStaticMarkup(
+      <>{renderBodyMarkdown("{{img:a}}", undefined, false, () => {})}</>
+    );
+    const withoutDel = html("{{img:a}}");
+    expect(withDel).toContain("nb-photo-del");
+    expect(withoutDel).not.toContain("nb-photo-del");
+  });
 });

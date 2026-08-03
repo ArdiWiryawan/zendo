@@ -535,6 +535,10 @@ export type NotebookEntry = {
   // imageIds referencing blobs in IndexedDB "zendo_images" (lib/imageStore).
   // Local-only by design — never synced. Optional: older persisted entries lack it.
   images?: string[];
+  // Multi-page notes. Additive: `body` stays the flat join of all pages so
+  // search/render/GC keep working on a single string. Absent = single-page
+  // legacy note (body canonical). Editor writes both on save.
+  pages?: string[];
   createdAt: ISODateString;
   updatedAt: ISODateString;
 };

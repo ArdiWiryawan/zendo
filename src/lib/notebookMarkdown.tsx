@@ -35,7 +35,8 @@ const IMG = /^{{img:([0-9A-Za-z_-]+)}}$/;
 export function renderBodyMarkdown(
   body: string,
   onOpenPhoto?: PhotoOpenHandler,
-  omitPhotos = false
+  omitPhotos = false,
+  onDeletePhoto?: (id: string) => void
 ): ReactNode[] {
   const out: ReactNode[] = [];
   let open: { type: ListKind; items: Array<{ text: string; checked?: boolean }> } | null = null;
@@ -92,6 +93,7 @@ export function renderBodyMarkdown(
             key={`img-${im[1]}-${out.length}`}
             id={im[1]}
             onOpen={onOpenPhoto ?? (() => {})}
+            onDelete={onDeletePhoto}
           />
         );
       }

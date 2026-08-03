@@ -542,6 +542,11 @@ export const id: Record<MessageKey, string> = {
   "notebook.takePhoto": "Ambil foto",
   "notebook.photoLabel": "Foto",
   "notebook.photoEmpty": "Foto yang kamu tambah tampil di sini",
+  "notebook.prevPage": "Halaman sebelumnya",
+  "notebook.nextPage": "Halaman berikutnya",
+  "notebook.addPage": "Tambah halaman",
+  "notebook.removePage": "Hapus halaman",
+  "notebook.removePageConfirm": "Hapus halaman ini? Teks dan fotonya ikut terhapus.",
 
   "packs.title": "Pack",
   "packs.subtitle": "Pertanyaan bertema untuk refleksi lebih dalam",
