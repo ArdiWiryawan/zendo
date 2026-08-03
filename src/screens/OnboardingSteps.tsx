@@ -855,18 +855,23 @@ export function KeystoneSetup({ onNext }: { onNext: () => void }) {
                 Goal {index + 1}
               </p>
               <p className="mb-3 font-semibold text-monk-text">{goal.title}</p>
-              <TextInput
-                label="Time (optional)"
-                id={`keystone-time-${goal.id}`}
-                placeholder="e.g. 08:00, pagi, sore"
-                value={parsed.time || ""}
-                onChange={(event) => {
-                  const commit3 = (time: string, when: string, action: string) => {
-                    setKeystoneAction(goal.id, formatIntention(when, action, time));
-                  };
-                  commit3(event.target.value, parsed.when, parsed.action);
-                }}
-              />
+              <div className="mb-4">
+                <label htmlFor={`keystone-time-${goal.id}`} className="mb-2 block text-sm font-medium text-monk-muted">
+                  Time (optional)
+                </label>
+                <input
+                  type="time"
+                  id={`keystone-time-${goal.id}`}
+                  value={parsed.time || ""}
+                  onChange={(event) => {
+                    const commit3 = (time: string, when: string, action: string) => {
+                      setKeystoneAction(goal.id, formatIntention(when, action, time));
+                    };
+                    commit3(event.target.value, parsed.when, parsed.action);
+                  }}
+                  className="w-full rounded-xl border border-monk-border bg-monk-surface px-4 py-3 text-sm text-monk-text transition-colors focus:border-monk-accent focus:outline-none focus:ring-1 focus:ring-monk-accent/40"
+                />
+              </div>
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                 <TextInput
                   label="When"
