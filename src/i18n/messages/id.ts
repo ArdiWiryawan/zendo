@@ -148,6 +148,7 @@ export const id: Record<MessageKey, string> = {
   "today.edit": "Ubah",
   "today.cancel": "Batal",
   "today.save": "Simpan",
+  "today.time": "Waktu (opsional)",
   "today.when": "Kapan…",
   "today.iWill": "Aku akan…",
   "today.whenPlaceholder": "Duduk setelah kopi",

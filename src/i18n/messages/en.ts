@@ -146,6 +146,7 @@ export const en = {
   "today.edit": "Edit",
   "today.cancel": "Cancel",
   "today.save": "Save",
+  "today.time": "Time (optional)",
   "today.when": "When…",
   "today.iWill": "I will…",
   "today.whenPlaceholder": "I sit down after coffee",

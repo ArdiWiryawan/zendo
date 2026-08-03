@@ -838,7 +838,7 @@ export function KeystoneSetup({ onNext }: { onNext: () => void }) {
     <>
       <ScreenIntro
         title="What action moves each goal forward?"
-        subtitle="Pair each action with a cue — after coffee, at your desk. Cues beat clock times."
+        subtitle="Set a time and cue for each action. Time for scheduling, cue for triggering."
       />
       <div className="space-y-4">
         {goals.map((goal, index) => {
@@ -855,20 +855,48 @@ export function KeystoneSetup({ onNext }: { onNext: () => void }) {
                 Goal {index + 1}
               </p>
               <p className="mb-3 font-semibold text-monk-text">{goal.title}</p>
+              <div className="mb-4">
+                <label htmlFor={`keystone-time-${goal.id}`} className="mb-2 block text-sm font-medium text-monk-muted">
+                  Time (optional)
+                </label>
+                <input
+                  type="time"
+                  id={`keystone-time-${goal.id}`}
+                  value={parsed.time || ""}
+                  onChange={(event) => {
+                    const commit3 = (time: string, when: string, action: string) => {
+                      setKeystoneAction(goal.id, formatIntention(when, action, time));
+                    };
+                    commit3(event.target.value, parsed.when, parsed.action);
+                  }}
+                  className="w-full rounded-xl border border-monk-border bg-monk-surface px-4 py-3 text-sm text-monk-text transition-colors focus:border-monk-accent focus:outline-none focus:ring-1 focus:ring-monk-accent/40"
+                />
+                <p className="mt-1 text-xs text-monk-muted">Clock time for this routine</p>
+              </div>
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                 <TextInput
                   label="When"
                   id={`keystone-when-${goal.id}`}
                   placeholder={whenPh}
                   value={parsed.when}
-                  onChange={(event) => commit(event.target.value, parsed.action)}
+                  onChange={(event) => {
+                    const commit3 = (time: string, when: string, action: string) => {
+                      setKeystoneAction(goal.id, formatIntention(when, action, time));
+                    };
+                    commit3(parsed.time || "", event.target.value, parsed.action);
+                  }}
                 />
                 <TextInput
                   label="I will"
                   id={`keystone-action-${goal.id}`}
                   placeholder={actionPh}
                   value={parsed.action}
-                  onChange={(event) => commit(parsed.when, event.target.value)}
+                  onChange={(event) => {
+                    const commit3 = (time: string, when: string, action: string) => {
+                      setKeystoneAction(goal.id, formatIntention(when, action, time));
+                    };
+                    commit3(parsed.time || "", parsed.when, event.target.value);
+                  }}
                 />
               </div>
               <p className="mt-2 text-xs text-monk-muted">One specific, repeatable action.</p>
