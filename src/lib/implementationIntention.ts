@@ -19,7 +19,7 @@ export function parseIntention(text: string): { when: string; action: string; ti
     const timeMatch = whenPart.match(/^([^\s]+)\s+(.*)$/);
     if (timeMatch && timeMatch[2]) {
       const firstToken = timeMatch[1];
-      const isTimeToken = /^\d{1,2}:\d{2}$/.test(firstToken) || /^(pagi|siang|sore|malam|morning|afternoon|evening|night)$/i.test(firstToken);
+      const isTimeToken = /^\d{1,2}[:.]\d{2}$/.test(firstToken) || /^(pagi|siang|sore|malam|morning|afternoon|evening|night)$/i.test(firstToken);
       if (isTimeToken) {
         return { time: firstToken, when: timeMatch[2].trim(), action: match[2].trim() };
       }
