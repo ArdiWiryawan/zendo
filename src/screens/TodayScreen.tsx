@@ -639,18 +639,12 @@ export function TodayScreen() {
                       const parsed = parseIntention(actionInput);
                       return (
                         <>
-                          <div>
-                            <label htmlFor="today-time-input" className="mb-2 block text-sm font-medium text-monk-muted">
-                              {t("today.time")}
-                            </label>
-                            <input
-                              type="time"
-                              id="today-time-input"
-                              value={parsed.time || ""}
-                              onChange={(e) => setActionInput(formatIntention(parsed.when, parsed.action, e.target.value))}
-                              className="w-full rounded-xl border border-monk-border bg-monk-surface px-4 py-3 text-sm text-monk-text transition-colors focus:border-monk-accent focus:outline-none focus:ring-1 focus:ring-monk-accent/40"
-                            />
-                          </div>
+                          <TextInput
+                            label={t("today.time")}
+                            value={parsed.time || ""}
+                            onChange={(e) => setActionInput(formatIntention(parsed.when, parsed.action, e.target.value))}
+                            placeholder="e.g. 08:00, pagi, sore"
+                          />
                           <TextInput
                             label={t("today.when")}
                             value={parsed.when}
