@@ -530,7 +530,10 @@ button {
   background: transparent;
   border: none;
   outline: none;
-  overflow: visible;
+  /* hidden, not visible: with overflow:visible a textarea's scrollHeight
+     stays at clientHeight, so auto-grow (resizeTextarea) can't measure
+     wrapped lines and they spill out of the sheet. */
+  overflow-y: hidden;
   overflow-wrap: anywhere;
   white-space: pre-wrap;
   resize: none;
@@ -568,7 +571,7 @@ button {
   background-position: 0 6px;
   border: none;
   outline: none;
-  overflow: visible;
+  overflow-y: hidden;
   resize: none;
 }
 

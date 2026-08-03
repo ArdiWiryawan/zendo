@@ -452,6 +452,11 @@ export function NotebookEditor({
       suppressPreviewRef.current = false;
     }, 400);
     requestAnimationFrame(() => {
+      // Textareas just mounted (preview→edit); without this the title/body
+      // keep their 1-line default height and wrapped lines spill out of the
+      // sheet over the folio/photo rows.
+      queueResize(titleRef.current);
+      queueResize(bodyRef.current);
       bodyRef.current?.focus();
     });
   }, []);
