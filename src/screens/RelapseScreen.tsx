@@ -119,7 +119,7 @@ export function RelapseScreen() {
       <div className="mt-5 space-y-4">
         <Textarea placeholder={t("relapse.whatHappened")} value={note} onChange={(event) => setNote(event.target.value)} />
         <Textarea
-          placeholder={t("relapse.forWhatPulled", "For what? What was I trying to get by pulling away?")}
+          placeholder="For what? What was I trying to get by pulling away?"
           value={reflection}
           onChange={(event) => setReflection(event.target.value)}
         />
@@ -137,7 +137,7 @@ export function RelapseScreen() {
           {t("relapse.save")}
         </PrimaryButton>
         <SecondaryButton className="w-full" onClick={() => navigate(`${routes.journal}?reason=${trigger}`)}>
-          {t("relapse.reflect", "Reflect on this in journal")}
+          Reflect on this in journal
         </SecondaryButton>
       </div>
     </>
