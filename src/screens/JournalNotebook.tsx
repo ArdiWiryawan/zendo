@@ -111,6 +111,26 @@ export default function JournalNotebook({ onEditingChange }: { onEditingChange?:
     return list;
   }, [entries, filterCat, searchQuery]);
 
+  const goBackToList = useCallback(() => {
+    setView("list");
+    setEditEntry(null);
+    onEditingChange?.(false);
+  }, [onEditingChange]);
+
+  // Intercept browser/OS back button while in edit view.
+  useEffect(() => {
+    if (view !== "edit") return;
+    // Push a dummy state so the back button has somewhere to pop to.
+    window.history.pushState({ nbEdit: true }, "");
+    const handler = (e: PopStateEvent) => {
+      // Only intercept if our dummy state was popped (not a real route change).
+      if (e.state?.nbEdit !== true) return;
+      goBackToList();
+    };
+    window.addEventListener("popstate", handler);
+    return () => window.removeEventListener("popstate", handler);
+  }, [view, goBackToList]);
+
   const openNew = () => {
     setEditEntry(null);
     setView("edit");
@@ -127,11 +147,7 @@ export default function JournalNotebook({ onEditingChange }: { onEditingChange?:
     return (
       <NotebookEditor
         entry={editEntry}
-        onBack={() => {
-          setView("list");
-          setEditEntry(null);
-          onEditingChange?.(false);
-        }}
+        onBack={goBackToList}
       />
     );
   }
