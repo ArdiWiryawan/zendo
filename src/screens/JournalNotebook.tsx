@@ -148,7 +148,7 @@ export default function JournalNotebook() {
             <button
               type="button"
               onClick={openNew}
-              className="flex min-h-10 items-center gap-1.5 rounded-full border border-monk-accent/40 bg-monk-accent-soft px-3 text-xs font-bold text-monk-accent transition active:scale-95"
+              className="flex min-h-10 items-center gap-1.5 rounded-full bg-monk-accent px-3.5 text-xs font-bold text-monk-bg shadow-[inset_0_1px_0_rgba(255,255,255,0.25),0_4px_12px_rgba(0,0,0,0.35)] transition active:scale-95"
             >
               <Plus size={14} strokeWidth={2} />
               {t("notebook.new")}
@@ -183,11 +183,11 @@ export default function JournalNotebook() {
         ) : null}
       </div>
 
-      <div className="-mx-1 flex gap-1.5 overflow-x-auto px-1 pb-1 scrollbar-none">
+      <div className="-mx-1 flex gap-1.5 overflow-x-auto px-1 pb-2 scrollbar-none">
         <button
           type="button"
           onClick={() => setFilterCat(null)}
-          className={`shrink-0 rounded-full border px-3 py-1.5 text-[11px] font-bold uppercase tracking-wider transition duration-200 active:scale-[0.97] ${
+          className={`shrink-0 rounded-full border px-3 py-1.5 text-xs font-semibold transition duration-200 active:scale-[0.97] ${
             !filterCat
               ? "border-monk-accent bg-monk-accent-soft text-monk-accent"
               : "border-monk-border text-monk-muted hover:border-monk-border-strong"
@@ -204,11 +204,11 @@ export default function JournalNotebook() {
               key={cat.id}
               type="button"
               onClick={() => setFilterCat(isActive ? null : cat.id)}
-              className="flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-1.5 text-[11px] font-bold uppercase tracking-wider transition duration-200 active:scale-[0.97]"
+              className="flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold transition duration-200 active:scale-[0.97]"
               style={{
-                borderColor: isActive ? hex : undefined,
-                color: isActive ? hex : undefined,
-                backgroundColor: isActive ? `${hex}18` : undefined
+                borderColor: isActive ? hex : "var(--color-border)",
+                color: isActive ? hex : "var(--color-text-muted)",
+                backgroundColor: isActive ? `${hex}18` : "var(--color-surface)"
               }}
             >
               <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: hex }} />
@@ -250,13 +250,14 @@ export default function JournalNotebook() {
         </div>
       ) : (
         <div className="space-y-3">
-          {sorted.map((entry) => {
+          {sorted.map((entry, index) => {
             const hex = catHex(entry.categoryId);
             const cat = categories.find((c) => c.id === entry.categoryId);
             return (
               <article
                 key={entry.id}
-                className={`nb-sheet group relative overflow-hidden p-4 ${
+                style={{ "--nb-i": index } as React.CSSProperties}
+                className={`nb-sheet group relative overflow-hidden p-4 pb-2.5 ${
                   entry.isPinned ? "ring-1 ring-monk-accent/25" : ""
                 }`}
               >
@@ -265,7 +266,7 @@ export default function JournalNotebook() {
                   onClick={() => openEdit(entry)}
                   className="w-full text-left"
                 >
-                  <div className="mb-1.5 flex items-start justify-between gap-3">
+                  <div className="mb-2 flex items-start justify-between gap-3">
                     <h3 className="notebook-card-title min-w-0 flex-1 pr-2">
                       {entry.title || t("notebook.untitled")}
                     </h3>
@@ -276,10 +277,10 @@ export default function JournalNotebook() {
                   <div className="notebook-card-body line-clamp-3 min-h-[1.5rem]">
                     {entry.body.trim() ? renderBodyMarkdown(entry.body) : t("notebook.noBody")}
                   </div>
-                  <div className="mt-3 flex flex-wrap items-center gap-2 text-[11px] text-monk-text-soft">
+                  <div className="mt-3 flex flex-wrap items-center gap-1.5 text-[11px] text-monk-text-soft">
                     <span
                       className="inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 font-semibold uppercase tracking-wide"
-                      style={{ borderColor: `${hex}55`, color: hex }}
+                      style={{ borderColor: `${hex}44`, color: hex }}
                     >
                       <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: hex }} />
                       {cat?.name ?? t("notebook.other")}
@@ -289,7 +290,7 @@ export default function JournalNotebook() {
                   </div>
                 </button>
 
-                <div className="mt-3 flex items-center justify-end gap-1 border-t border-monk-border/40 pt-2">
+                <div className="mt-1 flex items-center justify-end gap-0.5 border-t border-monk-border/30 pt-1">
                   <button
                     type="button"
                     aria-label={entry.isPinned ? t("notebook.unpin") : t("notebook.pin")}
@@ -322,7 +323,7 @@ export default function JournalNotebook() {
       <button
         type="button"
         onClick={openNew}
-        className="fixed bottom-[calc(env(safe-area-inset-bottom)+88px)] right-6 z-40 grid h-14 w-14 place-items-center rounded-full bg-monk-accent text-monk-bg shadow-[0_8px_24px_rgba(164,139,94,0.35)] transition duration-200 hover:scale-[1.05] hover:shadow-[0_12px_32px_rgba(164,139,94,0.45)] active:scale-90"
+        className="fixed bottom-[calc(env(safe-area-inset-bottom)+88px)] right-6 z-40 grid h-14 w-14 place-items-center rounded-full bg-monk-accent text-monk-bg shadow-[inset_0_1px_0_rgba(255,255,255,0.25),0_10px_26px_rgba(164,139,94,0.4)] transition duration-200 hover:scale-[1.05] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.3),0_14px_34px_rgba(164,139,94,0.5)] active:scale-90"
         aria-label={t("notebook.newNoteAria")}
       >
         <Plus size={24} strokeWidth={2} />
@@ -483,9 +484,9 @@ export function NotebookEditor({
         <button
           type="button"
           onClick={handleBack}
-          className="flex min-h-10 items-center gap-1.5 text-[11px] font-mono uppercase tracking-wider text-monk-muted transition hover:text-monk-accent"
+          className="flex min-h-10 items-center gap-1.5 text-xs font-medium text-monk-muted transition hover:text-monk-accent"
         >
-          <ArrowLeft size={13} strokeWidth={1.5} />
+          <ArrowLeft size={15} strokeWidth={1.5} />
           {t("notebook.back")}
         </button>
         <div className="flex min-w-0 items-center gap-2 text-[10px] font-mono text-monk-text-soft">
@@ -506,7 +507,7 @@ export function NotebookEditor({
         </div>
       </div>
 
-      <div className="mb-6 mt-4 flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
+      <div className="flex items-center gap-2 overflow-x-auto pb-6 pt-3 scrollbar-none">
         {categories.map((cat) => {
           const hex = catHex(cat.id);
           const active = catId === cat.id;
@@ -519,14 +520,14 @@ export function NotebookEditor({
                 setCatId(cat.id);
                 markDirty();
               }}
-              className="flex min-h-11 shrink-0 items-center gap-1.5 rounded-full border px-2.5 text-[11px] font-bold uppercase tracking-wider transition duration-200 active:scale-[0.97]"
+              className="flex min-h-9 shrink-0 items-center gap-1.5 rounded-full border px-2.5 text-xs font-semibold transition duration-200 active:scale-[0.97]"
               style={{
-                borderColor: active ? hex : undefined,
-                color: active ? hex : undefined,
-                backgroundColor: active ? `${hex}18` : undefined
+                borderColor: active ? hex : "var(--color-border-strong)",
+                color: active ? hex : "var(--color-text-muted)",
+                backgroundColor: active ? `${hex}18` : "var(--color-surface)"
               }}
             >
-              <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: hex }} />
+              <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: active ? hex : "var(--color-text-soft)" }} />
               {cat.name}
             </button>
           );
@@ -536,7 +537,7 @@ export function NotebookEditor({
           onClick={() => setShowNewCat((v) => !v)}
           aria-expanded={showNewCat}
           aria-controls="nb-new-cat"
-          className="flex min-h-11 shrink-0 items-center rounded-full border border-dashed border-monk-border px-2.5 text-[11px] font-bold uppercase tracking-wider text-monk-muted hover:border-monk-accent hover:text-monk-accent"
+          className="flex min-h-9 shrink-0 items-center rounded-full border border-dashed border-monk-border px-2.5 text-xs font-semibold text-monk-muted hover:border-monk-accent hover:text-monk-accent"
         >
           {t("notebook.addCategory")}
         </button>
@@ -547,7 +548,7 @@ export function NotebookEditor({
             markDirty();
           }}
           aria-pressed={isPinned}
-          className={`ml-auto flex min-h-11 shrink-0 items-center gap-1 rounded-full border px-2.5 text-[11px] font-bold uppercase tracking-wider transition ${
+          className={`ml-auto flex min-h-9 shrink-0 items-center gap-1 rounded-full border px-2.5 text-xs font-semibold transition ${
             isPinned
               ? "border-monk-accent/40 bg-monk-accent-soft text-monk-accent"
               : "border-monk-border text-monk-muted"
