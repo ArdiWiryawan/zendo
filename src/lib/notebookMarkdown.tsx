@@ -34,7 +34,8 @@ const IMG = /^{{img:([0-9A-Za-z_-]+)}}$/;
 /** Render a notebook as a React node group. Consecutive same-kind lines group into one list. */
 export function renderBodyMarkdown(
   body: string,
-  onOpenPhoto?: PhotoOpenHandler
+  onOpenPhoto?: PhotoOpenHandler,
+  omitPhotos = false
 ): ReactNode[] {
   const out: ReactNode[] = [];
   let open: { type: ListKind; items: Array<{ text: string; checked?: boolean }> } | null = null;
@@ -83,13 +84,17 @@ export function renderBodyMarkdown(
     const o = ORDERED.exec(t);
     if (im) {
       close();
-      out.push(
-        <InlinePhoto
-          key={`img-${im[1]}-${out.length}`}
-          id={im[1]}
-          onOpen={onOpenPhoto ?? (() => {})}
-        />
-      );
+      // In list/preview mode (omitPhotos) the marker line collapses entirely so a
+      // photo never acts as the note's thumbnail or cover.
+      if (!omitPhotos) {
+        out.push(
+          <InlinePhoto
+            key={`img-${im[1]}-${out.length}`}
+            id={im[1]}
+            onOpen={onOpenPhoto ?? (() => {})}
+          />
+        );
+      }
       continue;
     }
     if (h) {

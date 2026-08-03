@@ -96,4 +96,12 @@ describe("renderBodyMarkdown", () => {
     expect(second).toBeGreaterThan(first);
     expect(out.indexOf("nb-inline-photo", second + 1)).toBe(-1); // exactly two
   });
+  it("collapses marker lines entirely when omitPhotos (list/cover mode)", () => {
+    const out = renderToStaticMarkup(
+      <>{renderBodyMarkdown("first\n{{img:a}}\nsecond", undefined, true)}</>
+    );
+    expect(out).not.toContain("nb-inline-photo");
+    expect(out).toContain("first");
+    expect(out).toContain("second");
+  });
 });

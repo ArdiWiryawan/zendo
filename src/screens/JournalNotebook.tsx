@@ -8,7 +8,6 @@ import { Search, Plus, Pin, PinOff, Trash2, ArrowLeft, X, BookOpen, ImagePlus, C
 import { useT, useLanguage, type MessageKey } from "../i18n";
 import { autolistMarker, renderBodyMarkdown } from "../lib/notebookMarkdown";
 import { compressImage, putImage, deleteImage, matchImageMarkers } from "../lib/imageStore";
-import { InlinePhoto, PhotoLightbox, photoIdsInBody, useObjectUrl } from "../components/NotebookImages";
 
 const CATEGORY_HEX: Record<string, string> = {
   cat_pribadi: "#e07c6b",
@@ -85,7 +84,6 @@ export default function JournalNotebook() {
   const [confirmKind, setConfirmKind] = useState<null | "delete-list">(null);
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
   const [pendingDeleteTitle, setPendingDeleteTitle] = useState("");
-  const [listLightbox, setListLightbox] = useState<{ ids: string[]; index: number } | null>(null);
 
   const sorted = useMemo(() => {
     let list = [...entries];
@@ -280,11 +278,7 @@ export default function JournalNotebook() {
                   </div>
                   <div className="notebook-card-body min-h-[1.5rem]">
                     {entry.body.trim()
-                      ? renderBodyMarkdown(entry.body, (id) => {
-                          const ids = photoIdsInBody(entry.body);
-                          const i = ids.indexOf(id);
-                          if (i >= 0) setListLightbox({ ids, index: i });
-                        })
+                      ? renderBodyMarkdown(entry.body, undefined, true)
                       : t("notebook.noBody")}
                   </div>
                   <div className="mt-3 flex flex-wrap items-center gap-1.5 text-[11px] text-monk-text-soft">
@@ -356,14 +350,6 @@ export default function JournalNotebook() {
           setPendingDeleteId(null);
         }}
       />
-      {listLightbox ? (
-        <PhotoLightbox
-          ids={listLightbox.ids}
-          index={listLightbox.index}
-          onNavigate={(i) => setListLightbox((s) => (s ? { ...s, index: i } : s))}
-          onClose={() => setListLightbox(null)}
-        />
-      ) : null}
     </div>
   );
 }
