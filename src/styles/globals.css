@@ -616,6 +616,7 @@ button {
   display: flex;
   align-items: center;
   gap: 8px;
+  padding: 0 22px 8px 46px;
   font-family: 'Outfit', ui-sans-serif, system-ui, sans-serif;
   font-size: 0.72rem;
   font-weight: 650;
