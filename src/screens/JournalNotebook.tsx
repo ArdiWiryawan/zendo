@@ -80,7 +80,7 @@ function formatRelative(iso: string, t: Translate, locale: string) {
   return new Date(iso).toLocaleDateString(locale, { day: "numeric", month: "short" });
 }
 
-export default function JournalNotebook() {
+export default function JournalNotebook({ onEditingChange }: { onEditingChange?: (editing: boolean) => void }) {
   const store = useMonkStore();
   const t = useT();
   const lang = useLanguage();
@@ -114,11 +114,13 @@ export default function JournalNotebook() {
   const openNew = () => {
     setEditEntry(null);
     setView("edit");
+    onEditingChange?.(true);
   };
 
   const openEdit = (entry: NotebookEntry) => {
     setEditEntry(entry);
     setView("edit");
+    onEditingChange?.(true);
   };
 
   if (view === "edit") {
@@ -128,6 +130,7 @@ export default function JournalNotebook() {
         onBack={() => {
           setView("list");
           setEditEntry(null);
+          onEditingChange?.(false);
         }}
       />
     );

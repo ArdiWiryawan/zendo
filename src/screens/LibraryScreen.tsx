@@ -232,33 +232,28 @@ export function JournalLibraryScreen() {
 export function NotebookPage() {
   const navigate = useNavigate();
   const t = useT();
+  const [editing, setEditing] = useState(false);
   return (
     <div className="notebook-page-bg -mx-6 min-h-[calc(100dvh-120px)] px-6 pb-8 pt-2">
-      <div className="mb-5 flex items-start justify-between gap-3">
-        <div>
-          <h1 className="font-handwriting text-[2rem] leading-none text-monk-text">{t("notebook.title")}</h1>
-          <p className="mt-1 text-sm text-monk-muted">{t("notebook.subtitle")}</p>
+      {!editing && (
+        <div className="mb-5 flex items-start justify-between gap-3">
+          <div>
+            <h1 className="font-handwriting text-[2rem] leading-none text-monk-text">{t("notebook.title")}</h1>
+            <p className="mt-1 text-sm text-monk-muted">{t("notebook.subtitle")}</p>
+          </div>
+          <div className="flex items-center gap-1 pt-1">
+            <button
+              type="button"
+              onClick={() => navigate(routes.library)}
+              className="flex min-h-10 items-center gap-1 rounded-full px-2.5 text-xs font-semibold text-monk-text-soft transition hover:text-monk-accent"
+            >
+              <BookOpen size={13} strokeWidth={1.5} />
+              {t("library.nav")}
+            </button>
+          </div>
         </div>
-        <div className="flex items-center gap-1 pt-1">
-          <button
-            type="button"
-            onClick={() => navigate(routes.library)}
-            className="flex min-h-10 items-center gap-1 rounded-full px-2.5 text-xs font-semibold text-monk-text-soft transition hover:text-monk-accent"
-          >
-            <BookOpen size={13} strokeWidth={1.5} />
-            {t("library.nav")}
-          </button>
-          <button
-            type="button"
-            onClick={() => navigate(routes.journal)}
-            className="flex min-h-10 items-center gap-1 rounded-full px-2.5 text-xs font-semibold text-monk-text-soft transition hover:text-monk-accent"
-          >
-            <FileText size={13} strokeWidth={1.5} />
-            {t("nav.journal")}
-          </button>
-        </div>
-      </div>
-      <JournalNotebook />
+      )}
+      <JournalNotebook onEditingChange={setEditing} />
     </div>
   );
 }
