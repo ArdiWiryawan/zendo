@@ -286,9 +286,9 @@ export default function JournalNotebook() {
                       <Pin size={14} className="mt-1 shrink-0 text-monk-accent" strokeWidth={2} />
                     ) : null}
                   </div>
-                  <div className="notebook-card-body min-h-[1.5rem]">
+                  <div className="notebook-card-body min-h-[1.5rem] line-clamp-2">
                     {entry.body.trim()
-                      ? renderBodyMarkdown(entry.body, undefined, true)
+                      ? entry.body.replace(/\{\{img:[^}]+\}\}/g, "").trim().split("\n").find(l => l.trim()) ?? t("notebook.noBody")
                       : t("notebook.noBody")}
                   </div>
                   <div className="mt-3 flex flex-wrap items-center gap-1.5 text-[11px] text-monk-text-soft">
