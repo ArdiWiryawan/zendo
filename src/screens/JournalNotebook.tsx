@@ -4,7 +4,7 @@ import { PrimaryButton, SecondaryButton, GhostButton, CalmDialog } from "../comp
 import { createId } from "../lib/ids";
 import { nowIso } from "../lib/date";
 import type { NotebookEntry } from "../types/app";
-import { Search, Plus, Pin, PinOff, Trash2, ArrowLeft, X, BookOpen, ImagePlus } from "lucide-react";
+import { Search, Plus, Pin, PinOff, Trash2, ArrowLeft, X, BookOpen, ImagePlus, Camera } from "lucide-react";
 import { useT, useLanguage, type MessageKey } from "../i18n";
 import { autolistMarker, renderBodyMarkdown } from "../lib/notebookMarkdown";
 import { compressImage, getImage, putImage, deleteImage } from "../lib/imageStore";
@@ -396,7 +396,8 @@ export function NotebookEditor({
   const categories = store.notebookCategories;
   const titleRef = useRef<HTMLTextAreaElement>(null);
   const bodyRef = useRef<HTMLTextAreaElement>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const galleryInputRef = useRef<HTMLInputElement>(null);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
   const [title, setTitle] = useState(entry?.title ?? "");
   const [body, setBody] = useState(entry?.body ?? "");
   const [catId, setCatId] = useState(entry?.categoryId ?? categories[0]?.id ?? "cat_lainnya");
@@ -435,6 +436,11 @@ export function NotebookEditor({
     return t("notebook.untitled");
   }, [title, body, t]);
 
+  const resetInputs = () => {
+    if (galleryInputRef.current) galleryInputRef.current.value = "";
+    if (cameraInputRef.current) cameraInputRef.current.value = "";
+  };
+
   const handleAddImages = async (files: FileList | null) => {
     if (!files || files.length === 0) return;
     setPhotoError("");
@@ -446,18 +452,18 @@ export function NotebookEditor({
     for (const f of arr) {
       if (!ALLOWED_TYPES.includes(f.type)) {
         setPhotoError(t("notebook.photoInvalid"));
-        if (fileInputRef.current) fileInputRef.current.value = "";
+        resetInputs();
         return;
       }
       if (f.size > MAX_BYTES) {
         setPhotoError(t("notebook.photoInvalid"));
-        if (fileInputRef.current) fileInputRef.current.value = "";
+        resetInputs();
         return;
       }
     }
     if (images.length + arr.length > MAX_COUNT) {
       setPhotoError(t("notebook.photoInvalid"));
-      if (fileInputRef.current) fileInputRef.current.value = "";
+      resetInputs();
       return;
     }
 
@@ -477,7 +483,7 @@ export function NotebookEditor({
       setPhotoError(t("notebook.photoError"));
       for (const id of next) void deleteImage(id);
     }
-    if (fileInputRef.current) fileInputRef.current.value = "";
+    resetInputs();
   };
 
   const handleRemoveImage = (imgId: string) => {
@@ -684,8 +690,6 @@ export function NotebookEditor({
         </div>
       ) : null}
 
-      <ImageStrip images={images} onRemove={handleRemoveImage} onAdd={() => fileInputRef.current?.click()} addLabel={t("notebook.addPhoto")} removeLabel={t("notebook.removePhoto")} />
-
       {photoError ? (
         <div className="mb-4 rounded-monk border border-monk-danger/30 bg-monk-danger/5 px-3 py-2 text-sm text-monk-danger">
           {photoError}
@@ -693,7 +697,15 @@ export function NotebookEditor({
       ) : null}
 
       <input
-        ref={fileInputRef}
+        ref={galleryInputRef}
+        type="file"
+        accept="image/*"
+        multiple
+        className="hidden"
+        onChange={(e) => void handleAddImages(e.target.files)}
+      />
+      <input
+        ref={cameraInputRef}
         type="file"
         accept="image/*"
         multiple
@@ -740,6 +752,17 @@ export function NotebookEditor({
             })}
           </span>
         </div>
+        <ImageStrip
+          images={images}
+          count={images.length}
+          onRemove={handleRemoveImage}
+          onGallery={() => galleryInputRef.current?.click()}
+          onCamera={() => cameraInputRef.current?.click()}
+          galleryLabel={t("notebook.addFromGallery")}
+          cameraLabel={t("notebook.takePhoto")}
+          removeLabel={t("notebook.removePhoto")}
+          label={t("notebook.photoLabel")}
+        />
       </div>
 
       <div className="fixed inset-x-0 bottom-0 z-40 border-t border-monk-border bg-monk-bg/95 px-6 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur-md">
@@ -796,33 +819,49 @@ export function NotebookEditor({
   );
 }
 
-/** Horizontal strip of attached photos with an add button. Used in the editor. */
+/** Photo section inside the notebook page: count header, grid thumbnails, gallery + camera add buttons. */
 function ImageStrip({
   images,
+  count,
   onRemove,
-  onAdd,
-  addLabel,
-  removeLabel
+  onGallery,
+  onCamera,
+  galleryLabel,
+  cameraLabel,
+  removeLabel,
+  label
 }: {
   images: string[];
+  count: number;
   onRemove: (id: string) => void;
-  onAdd: () => void;
-  addLabel: string;
+  onGallery: () => void;
+  onCamera: () => void;
+  galleryLabel: string;
+  cameraLabel: string;
   removeLabel: string;
+  label: string;
 }) {
   return (
-    <div className="nb-open-page nb-open-enter mb-4" style={{ "--nb-cat": "var(--color-border)" } as React.CSSProperties}>
-      <div className="flex gap-2 overflow-x-auto px-1 py-2 scrollbar-none">
-        {images.map((imgId) => (
-          <PhotoThumb key={imgId} id={imgId} removeLabel={removeLabel} onRemove={() => onRemove(imgId)} />
-        ))}
-        <button
-          type="button"
-          onClick={onAdd}
-          aria-label={addLabel}
-          className="grid h-20 w-20 shrink-0 place-items-center rounded-lg border border-dashed border-monk-border text-monk-text-soft transition hover:border-monk-accent hover:text-monk-accent"
-        >
-          <ImagePlus size={18} strokeWidth={1.5} />
+    <div className="nb-photos">
+      <div className="nb-photos-head">
+        <span>{label}</span>
+        {count > 0 ? <span className="nb-photos-count">{count}</span> : null}
+      </div>
+      {images.length > 0 ? (
+        <div className="nb-photos-grid">
+          {images.map((imgId) => (
+            <PhotoThumb key={imgId} id={imgId} removeLabel={removeLabel} onRemove={() => onRemove(imgId)} />
+          ))}
+        </div>
+      ) : null}
+      <div className="nb-photos-actions">
+        <button type="button" onClick={onGallery} className="nb-photo-btn">
+          <ImagePlus size={15} strokeWidth={1.8} />
+          {galleryLabel}
+        </button>
+        <button type="button" onClick={onCamera} className="nb-photo-btn">
+          <Camera size={15} strokeWidth={1.8} />
+          {cameraLabel}
         </button>
       </div>
     </div>
@@ -833,15 +872,15 @@ function PhotoThumb({ id, removeLabel, onRemove }: { id: string; removeLabel: st
   const url = useObjectUrl(id);
   if (!url) return null;
   return (
-    <div className="relative h-20 w-20 shrink-0">
-      <img src={url} alt="" className="h-20 w-20 rounded-lg object-cover ring-1 ring-monk-border/40" />
+    <div className="nb-photo-cell">
+      <img src={url} alt="" loading="lazy" className="nb-photo-img" />
       <button
         type="button"
         aria-label={removeLabel}
         onClick={onRemove}
-        className="absolute -right-1.5 -top-1.5 grid h-6 w-6 place-items-center rounded-full bg-monk-danger text-monk-bg shadow active:scale-90"
+        className="nb-photo-remove"
       >
-        <X size={12} />
+        <X size={12} strokeWidth={2.2} />
       </button>
     </div>
   );

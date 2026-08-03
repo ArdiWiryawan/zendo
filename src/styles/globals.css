@@ -601,6 +601,122 @@ button {
   }
 }
 
+/* Photo section: sits below the folio, inside the notebook page sheet. */
+.nb-photos {
+  padding: 4px 22px 20px 46px;
+}
+
+.nb-photos-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: 'Outfit', ui-sans-serif, system-ui, sans-serif;
+  font-size: 0.72rem;
+  font-weight: 650;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--notebook-text-body);
+  opacity: 0.85;
+}
+
+.nb-photos-count {
+  display: inline-grid;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  place-items: center;
+  border-radius: 999px;
+  background: var(--nb-cat, var(--color-accent));
+  color: var(--notebook-bg);
+  font-size: 0.7rem;
+  font-weight: 700;
+  opacity: 1;
+}
+
+.nb-photos-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 12px;
+}
+
+@media (min-width: 520px) {
+  .nb-photos-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+.nb-photo-cell {
+  position: relative;
+  aspect-ratio: 4 / 3;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.18);
+}
+
+.nb-photo-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.nb-photo-remove {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  display: grid;
+  width: 26px;
+  height: 26px;
+  place-items: center;
+  border-radius: 999px;
+  background: rgba(15, 15, 15, 0.72);
+  color: #fff;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35);
+  transition: transform 0.15s ease, background 0.15s ease;
+}
+
+.nb-photo-remove:hover {
+  background: rgba(15, 15, 15, 0.9);
+}
+
+.nb-photo-remove:active {
+  transform: scale(0.9);
+}
+
+.nb-photos-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.nb-photo-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 36px;
+  padding: 0 14px;
+  border-radius: 999px;
+  border: 1px dashed var(--notebook-card-line);
+  background: transparent;
+  font-family: 'Outfit', ui-sans-serif, system-ui, sans-serif;
+  font-size: 0.82rem;
+  font-weight: 550;
+  color: var(--notebook-text-body);
+  transition: border-color 0.18s ease, color 0.18s ease, background 0.18s ease;
+}
+
+.nb-photo-btn:hover {
+  border-color: var(--nb-cat, var(--color-accent));
+  color: var(--nb-cat, var(--color-accent));
+  background: rgba(0, 0, 0, 0.04);
+}
+
+.nb-photo-btn:active {
+  transform: scale(0.97);
+}
+
 /* Open transition — subtle scale/fade into the page */
 @media (prefers-reduced-motion: no-preference) {
   .nb-open-enter {

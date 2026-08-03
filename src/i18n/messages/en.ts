@@ -536,6 +536,9 @@ export const en = {
   "notebook.photos": "{n} photos",
   "notebook.photoError": "Could not add photos",
   "notebook.photoInvalid": "Only images (JPEG, PNG, WebP, GIF) up to 10MB each",
+  "notebook.addFromGallery": "Add from gallery",
+  "notebook.takePhoto": "Take photo",
+  "notebook.photoLabel": "Photos",
 
   "packs.title": "Packs",
   "packs.subtitle": "Themed questions for deeper reflection",

@@ -538,6 +538,9 @@ export const id: Record<MessageKey, string> = {
   "notebook.photos": "{n} foto",
   "notebook.photoError": "Gagal menambah foto",
   "notebook.photoInvalid": "Hanya gambar (JPEG, PNG, WebP, GIF) maks 10MB per file",
+  "notebook.addFromGallery": "Tambah dari galeri",
+  "notebook.takePhoto": "Ambil foto",
+  "notebook.photoLabel": "Foto",
 
   "packs.title": "Pack",
   "packs.subtitle": "Pertanyaan bertema untuk refleksi lebih dalam",
