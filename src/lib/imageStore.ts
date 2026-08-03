@@ -66,7 +66,20 @@ export async function deleteImage(id: string): Promise<void> {
   });
 }
 
-/** Largest edge allowed after downscale; keeps IndexedDB usage + list render fast. */
+/** A line in the notebook body that embeds a photo at that position (Word-like block). */
+export const IMG_MARKER = /^{{img:([0-9A-Za-z_-]+)}}$/;
+
+/** Collect the photo ids referenced by {{img:…}} markers in a body string. */
+export function matchImageMarkers(body: string): Set<string> {
+  const ids = new Set<string>();
+  for (const line of body.split("\n")) {
+    const m = line.trim().match(IMG_MARKER);
+    if (m) ids.add(m[1]);
+  }
+  return ids;
+}
+
+/** Largest key allowed after compression; keeps IndexedDB usage + list render fast. */
 const MAX_EDGE = 1600;
 const JPEG_QUALITY = 0.82;
 

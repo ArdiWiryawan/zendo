@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { InlinePhoto, type PhotoOpenHandler } from "../components/NotebookImages";
 
 /**
  * Markdown-lite for the notebook. Line-based, one regex per type, no markdown
@@ -28,9 +29,13 @@ const HEADING = /^#{1,6}\s+(.*)$/;
 const TASK = /^\[([ xX])\]\s+(.*)$/;
 const BULLET = /^[-*]\s+(.*)$/;
 const ORDERED = /^(\d+)[.)]\s+(.*)$/;
+const IMG = /^{{img:([0-9A-Za-z_-]+)}}$/;
 
-/** Render a notebook body as React nodes. Consecutive same-kind lines group into one list. */
-export function renderBodyMarkdown(body: string): ReactNode[] {
+/** Render a notebook as a React node group. Consecutive same-kind lines group into one list. */
+export function renderBodyMarkdown(
+  body: string,
+  onOpenPhoto?: PhotoOpenHandler
+): ReactNode[] {
   const out: ReactNode[] = [];
   let open: { type: ListKind; items: Array<{ text: string; checked?: boolean }> } | null = null;
   let num = 1;
@@ -71,10 +76,22 @@ export function renderBodyMarkdown(body: string): ReactNode[] {
 
   for (const raw of body.split("\n")) {
     const t = raw.trim();
+    const im = IMG.exec(t);
     const h = HEADING.exec(t);
     const tk = TASK.exec(t);
     const b = BULLET.exec(t);
     const o = ORDERED.exec(t);
+    if (im) {
+      close();
+      out.push(
+        <InlinePhoto
+          key={`img-${im[1]}-${out.length}`}
+          id={im[1]}
+          onOpen={onOpenPhoto ?? (() => {})}
+        />
+      );
+      continue;
+    }
     if (h) {
       close();
       out.push(

@@ -7,7 +7,8 @@ import type { NotebookEntry } from "../types/app";
 import { Search, Plus, Pin, PinOff, Trash2, ArrowLeft, X, BookOpen, ImagePlus, Camera } from "lucide-react";
 import { useT, useLanguage, type MessageKey } from "../i18n";
 import { autolistMarker, renderBodyMarkdown } from "../lib/notebookMarkdown";
-import { compressImage, getImage, putImage, deleteImage } from "../lib/imageStore";
+import { compressImage, putImage, deleteImage, matchImageMarkers } from "../lib/imageStore";
+import { InlinePhoto, PhotoLightbox, photoIdsInBody, useObjectUrl } from "../components/NotebookImages";
 
 const CATEGORY_HEX: Record<string, string> = {
   cat_pribadi: "#e07c6b",
@@ -53,36 +54,6 @@ function resizeTextarea(el: HTMLTextAreaElement) {
   el.style.height = `${el.scrollHeight}px`;
 }
 
-/** Resolve an image id → object URL. Fetches blob from IndexedDB once, revokes on unmount/re-fetch. */
-function useObjectUrl(id: string | null): string | null {
-  const [url, setUrl] = useState<string | null>(null);
-  useEffect(() => {
-    if (!id) {
-      setUrl(null);
-      return;
-    }
-    let revoked = false;
-    let objectUrl: string | null = null;
-    let alive = true;
-    void getImage(id).then((blob) => {
-      if (!alive) return;
-      if (!blob) {
-        setUrl(null);
-        return;
-      }
-      objectUrl = URL.createObjectURL(blob);
-      if (!revoked) setUrl(objectUrl);
-    }).catch(() => {
-      if (alive) setUrl(null);
-    });
-    return () => {
-      alive = false;
-      if (objectUrl) URL.revokeObjectURL(objectUrl);
-      revoked = true;
-    };
-  }, [id]);
-  return url;
-}
 
 type Translate = (key: MessageKey, vars?: Record<string, string | number>) => string;
 
@@ -114,6 +85,7 @@ export default function JournalNotebook() {
   const [confirmKind, setConfirmKind] = useState<null | "delete-list">(null);
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
   const [pendingDeleteTitle, setPendingDeleteTitle] = useState("");
+  const [listLightbox, setListLightbox] = useState<{ ids: string[]; index: number } | null>(null);
 
   const sorted = useMemo(() => {
     let list = [...entries];
@@ -306,8 +278,14 @@ export default function JournalNotebook() {
                       <Pin size={14} className="mt-1 shrink-0 text-monk-accent" strokeWidth={2} />
                     ) : null}
                   </div>
-                  <div className="notebook-card-body line-clamp-3 min-h-[1.5rem]">
-                    {entry.body.trim() ? renderBodyMarkdown(entry.body) : t("notebook.noBody")}
+                  <div className="notebook-card-body min-h-[1.5rem]">
+                    {entry.body.trim()
+                      ? renderBodyMarkdown(entry.body, (id) => {
+                          const ids = photoIdsInBody(entry.body);
+                          const i = ids.indexOf(id);
+                          if (i >= 0) setListLightbox({ ids, index: i });
+                        })
+                      : t("notebook.noBody")}
                   </div>
                   <div className="mt-3 flex flex-wrap items-center gap-1.5 text-[11px] text-monk-text-soft">
                     <span
@@ -378,6 +356,14 @@ export default function JournalNotebook() {
           setPendingDeleteId(null);
         }}
       />
+      {listLightbox ? (
+        <PhotoLightbox
+          ids={listLightbox.ids}
+          index={listLightbox.index}
+          onNavigate={(i) => setListLightbox((s) => (s ? { ...s, index: i } : s))}
+          onClose={() => setListLightbox(null)}
+        />
+      ) : null}
     </div>
   );
 }
@@ -403,7 +389,6 @@ export function NotebookEditor({
   const [catId, setCatId] = useState(entry?.categoryId ?? categories[0]?.id ?? "cat_lainnya");
   const [isPinned, setIsPinned] = useState(entry?.isPinned ?? false);
   const [images, setImages] = useState<string[]>(entry?.images ?? []);
-  const [removedImages, setRemovedImages] = useState<string[]>([]);
   const [photoError, setPhotoError] = useState("");
   const [showNewCat, setShowNewCat] = useState(false);
   const [newCatName, setNewCatName] = useState("");
@@ -412,7 +397,6 @@ export function NotebookEditor({
   const [confirmKind, setConfirmKind] = useState<"leave" | "delete-editor" | null>(null);
   const entryIdRef = useRef(entry?.id ?? createId("nb_entry"));
   const createdAtRef = useRef(entry?.createdAt ?? nowIso());
-  const initialImagesRef = useRef(entry?.images ?? []);
 
   useEffect(() => {
     // Existing notes: do not steal focus/scroll. New note: focus title to write.
@@ -431,7 +415,7 @@ export function NotebookEditor({
     const firstLine = body
       .split("\n")
       .map((l) => l.trim())
-      .find(Boolean);
+      .find((l) => Boolean(l) && !l.startsWith("{{img:"));
     if (firstLine) return firstLine.slice(0, 80);
     return t("notebook.untitled");
   }, [title, body, t]);
@@ -476,24 +460,25 @@ export function NotebookEditor({
         next.push(id);
       }
       if (next.length > 0) {
+        // Insert each photo as a {{img:<id>}} marker line at the textarea cursor so
+        // text flows above and below it (Word-like placement).
+        const el = bodyRef.current;
+        const pos = el?.selectionStart ?? body.length;
+        const markers = next.map((id) => `{{img:${id}}}`).join("\n");
+        const prefix = pos > 0 && body[pos - 1] !== "\n" ? "\n" : "";
+        const nextBody = `${body.slice(0, pos)}${prefix}${markers}${pos === body.length ? "" : "\n"}${body.slice(pos)}`;
+        setBody(nextBody);
         setImages((prev) => [...prev, ...next]);
         markDirty();
+        requestAnimationFrame(() => {
+          if (el) resizeTextarea(el);
+        });
       }
     } catch (err) {
       setPhotoError(t("notebook.photoError"));
       for (const id of next) void deleteImage(id);
     }
     resetInputs();
-  };
-
-  const handleRemoveImage = (imgId: string) => {
-    setImages((prev) => prev.filter((i) => i !== imgId));
-    if (initialImagesRef.current.includes(imgId)) {
-      setRemovedImages((prev) => [...prev, imgId]);
-    } else {
-      void deleteImage(imgId);
-    }
-    markDirty();
   };
 
   const handleSave = useCallback(
@@ -510,13 +495,18 @@ export function NotebookEditor({
         createdAt: createdAtRef.current,
         updatedAt: timestamp
       });
-      for (const imgId of removedImages) void deleteImage(imgId);
+      // GC orphaned blobs: ids we tracked but whose {{img:…}} marker line no longer
+      // exists in the saved body (marker deleted while editing).
+      const referenced = matchImageMarkers(body);
+      for (const imgId of images) {
+        if (!referenced.has(imgId)) void deleteImage(imgId);
+      }
       setDirty(false);
       setSavedFlash(true);
       window.setTimeout(() => setSavedFlash(false), 1200);
       if (andBack) onBack();
     },
-    [body, catId, entry?.tags, isPinned, images, removedImages, onBack, resolveTitle, store]
+    [body, catId, entry?.tags, isPinned, images, onBack, resolveTitle, store]
   );
 
   // Enter-autolist + Backspace-unlist: native-feel list continuation in the
@@ -752,17 +742,18 @@ export function NotebookEditor({
             })}
           </span>
         </div>
-        <ImageStrip
-          images={images}
-          count={images.length}
-          onRemove={handleRemoveImage}
-          onGallery={() => galleryInputRef.current?.click()}
-          onCamera={() => cameraInputRef.current?.click()}
-          galleryLabel={t("notebook.addFromGallery")}
-          cameraLabel={t("notebook.takePhoto")}
-          removeLabel={t("notebook.removePhoto")}
-          label={t("notebook.photoLabel")}
-        />
+        <div className="nb-photos">
+        <div className="nb-photos-actions">
+          <button type="button" className="nb-photo-btn" onClick={() => galleryInputRef.current?.click()}>
+            <ImagePlus size={15} strokeWidth={1.8} />
+            {t("notebook.addFromGallery")}
+          </button>
+          <button type="button" className="nb-photo-btn" onClick={() => cameraInputRef.current?.click()}>
+            <Camera size={15} strokeWidth={1.8} />
+            {t("notebook.takePhoto")}
+          </button>
+        </div>
+      </div>
       </div>
 
       <div className="fixed inset-x-0 bottom-0 z-40 border-t border-monk-border bg-monk-bg/95 px-6 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur-md">
@@ -819,69 +810,3 @@ export function NotebookEditor({
   );
 }
 
-/** Photo section inside the notebook page: count header, grid thumbnails, gallery + camera add buttons. */
-function ImageStrip({
-  images,
-  count,
-  onRemove,
-  onGallery,
-  onCamera,
-  galleryLabel,
-  cameraLabel,
-  removeLabel,
-  label
-}: {
-  images: string[];
-  count: number;
-  onRemove: (id: string) => void;
-  onGallery: () => void;
-  onCamera: () => void;
-  galleryLabel: string;
-  cameraLabel: string;
-  removeLabel: string;
-  label: string;
-}) {
-  return (
-    <div className="nb-photos">
-      <div className="nb-photos-head">
-        <span>{label}</span>
-        {count > 0 ? <span className="nb-photos-count">{count}</span> : null}
-      </div>
-      {images.length > 0 ? (
-        <div className="nb-photos-grid">
-          {images.map((imgId) => (
-            <PhotoThumb key={imgId} id={imgId} removeLabel={removeLabel} onRemove={() => onRemove(imgId)} />
-          ))}
-        </div>
-      ) : null}
-      <div className="nb-photos-actions">
-        <button type="button" onClick={onGallery} className="nb-photo-btn">
-          <ImagePlus size={15} strokeWidth={1.8} />
-          {galleryLabel}
-        </button>
-        <button type="button" onClick={onCamera} className="nb-photo-btn">
-          <Camera size={15} strokeWidth={1.8} />
-          {cameraLabel}
-        </button>
-      </div>
-    </div>
-  );
-}
-
-function PhotoThumb({ id, removeLabel, onRemove }: { id: string; removeLabel: string; onRemove: () => void }) {
-  const url = useObjectUrl(id);
-  if (!url) return null;
-  return (
-    <div className="nb-photo-cell">
-      <img src={url} alt="" loading="lazy" className="nb-photo-img" />
-      <button
-        type="button"
-        aria-label={removeLabel}
-        onClick={onRemove}
-        className="nb-photo-remove"
-      >
-        <X size={12} strokeWidth={2.2} />
-      </button>
-    </div>
-  );
-}

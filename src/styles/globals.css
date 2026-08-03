@@ -601,7 +601,7 @@ button {
   }
 }
 
-/* Photo section: sits below the folio, inside the notebook page sheet. */
+/* Photo add buttons: sit below the folio, inside the notebook page sheet. */
 .nb-photos {
   padding: 4px 22px 20px 46px;
 }
@@ -619,76 +619,10 @@ button {
   opacity: 0.85;
 }
 
-.nb-photos-count {
-  display: inline-grid;
-  min-width: 18px;
-  height: 18px;
-  padding: 0 5px;
-  place-items: center;
-  border-radius: 999px;
-  background: var(--nb-cat, var(--color-accent));
-  color: var(--notebook-bg);
-  font-size: 0.7rem;
-  font-weight: 700;
-  opacity: 1;
-}
-
-.nb-photos-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
-  margin-top: 12px;
-}
-
-@media (min-width: 520px) {
-  .nb-photos-grid {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
-}
-
-.nb-photo-cell {
-  position: relative;
-  aspect-ratio: 4 / 3;
-  border-radius: 8px;
-  overflow: hidden;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.18);
-}
-
-.nb-photo-img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  display: block;
-}
-
-.nb-photo-remove {
-  position: absolute;
-  top: 6px;
-  right: 6px;
-  display: grid;
-  width: 26px;
-  height: 26px;
-  place-items: center;
-  border-radius: 999px;
-  background: rgba(15, 15, 15, 0.72);
-  color: #fff;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35);
-  transition: transform 0.15s ease, background 0.15s ease;
-}
-
-.nb-photo-remove:hover {
-  background: rgba(15, 15, 15, 0.9);
-}
-
-.nb-photo-remove:active {
-  transform: scale(0.9);
-}
-
 .nb-photos-actions {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
-  margin-top: 14px;
 }
 
 .nb-photo-btn {
@@ -715,6 +649,123 @@ button {
 
 .nb-photo-btn:active {
   transform: scale(0.97);
+}
+
+/* Inline photo embedded in the body via a {{img:<id>}} marker line. Centered block. */
+.nb-inline-photo {
+  display: block;
+  width: 100%;
+  margin: 10px 0;
+  padding: 0;
+  border: none;
+  background: transparent;
+  cursor: zoom-in;
+}
+
+.nb-inline-photo img {
+  display: block;
+  width: 100%;
+  max-height: 340px;
+  object-fit: contain;
+  border-radius: 8px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.18);
+}
+
+.nb-inline-photo:hover img {
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.28);
+}
+
+/* Full-screen photo lightbox */
+.nb-lightbox {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: grid;
+  place-items: center;
+  background: rgba(8, 8, 10, 0.92);
+  backdrop-filter: blur(6px);
+  cursor: zoom-out;
+}
+
+.nb-lightbox-stage {
+  max-width: 94vw;
+  max-height: 90vh;
+  cursor: default;
+}
+
+.nb-lightbox-img {
+  display: block;
+  max-width: 94vw;
+  max-height: 90vh;
+  object-fit: contain;
+  border-radius: 6px;
+  box-shadow: 0 12px 44px rgba(0, 0, 0, 0.5);
+}
+
+.nb-lightbox-close {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  display: grid;
+  width: 42px;
+  height: 42px;
+  place-items: center;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
+  cursor: pointer;
+  transition: background 0.18s ease, transform 0.12s ease;
+}
+
+.nb-lightbox-close:hover {
+  background: rgba(255, 255, 255, 0.18);
+}
+
+.nb-lightbox-close:active {
+  transform: scale(0.92);
+}
+
+.nb-lightbox-nav {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  display: grid;
+  width: 44px;
+  height: 44px;
+  place-items: center;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
+  cursor: pointer;
+  transition: background 0.18s ease, transform 0.12s ease;
+}
+
+.nb-lightbox-nav:hover {
+  background: rgba(255, 255, 255, 0.18);
+}
+
+.nb-lightbox-nav:active {
+  transform: translateY(-50%) scale(0.92);
+}
+
+.nb-lightbox-nav.prev {
+  left: 14px;
+}
+
+.nb-lightbox-nav.next {
+  right: 14px;
+}
+
+.nb-lightbox-count {
+  position: absolute;
+  bottom: 18px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-family: 'Outfit', ui-sans-serif, system-ui, sans-serif;
+  font-size: 0.8rem;
+  color: rgba(255, 255, 255, 0.8);
 }
 
 /* Open transition — subtle scale/fade into the page */

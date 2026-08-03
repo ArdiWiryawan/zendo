@@ -78,4 +78,22 @@ describe("renderBodyMarkdown", () => {
     expect(out).toContain("<h3");
     expect(out.match(/<ul/g)?.length).toBe(2);
   });
+  it("renders a {{img:…}} marker line as an inline photo button", () => {
+    const out = html("text\n{{img:abc123}}\nmore");
+    expect(out).toContain('class="nb-inline-photo"');
+    expect(out).toContain('data-photo-id="abc123"');
+  });
+  it("keeps a photo marker out of list/paragraph nodes", () => {
+    const out = html("{{img:xyz99}}\nplain");
+    expect(out).toContain('class="nb-inline-photo"');
+    expect(out).toContain('<p class="md-para">');
+  });
+  it("renders multiple photos in order above and below text", () => {
+    const out = html("first\n{{img:a}}\nsecond\n{{img:b}}\nlast");
+    expect(out.indexOf("first")).toBeLessThan(out.indexOf("nb-inline-photo"));
+    const first = out.indexOf("nb-inline-photo");
+    const second = out.indexOf("nb-inline-photo", first + 1);
+    expect(second).toBeGreaterThan(first);
+    expect(out.indexOf("nb-inline-photo", second + 1)).toBe(-1); // exactly two
+  });
 });
