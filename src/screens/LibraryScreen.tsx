@@ -108,7 +108,8 @@ export function JournalLibraryScreen() {
   const packSessions = store.journalPackSessions.filter(s => s.completedAt);
   const categories = store.notebookCategories;
 
-  const [libTab, setLibTab] = useState<"reflections" | "notebook" | "packs">("reflections");
+  const [libTab, setLibTab] = useState<"reflections" | "notebook" | "packs" | "learning">("reflections");
+  const learningSessions = [...store.learningSessions].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
 
   const catName = (id: string) => categories.find((c) => c.id === id)?.name ?? t("library.unknown");
   const subtitle =
@@ -116,7 +117,9 @@ export function JournalLibraryScreen() {
       ? t("library.reflectionsCount", { n: journalEntries.length })
       : libTab === "notebook"
         ? t("library.notesCount", { n: notebookEntries.length })
-        : t("library.packSessionsCount", { n: packSessions.length });
+        : libTab === "learning"
+          ? `${learningSessions.length} catatan belajar`
+          : t("library.packSessionsCount", { n: packSessions.length });
 
   return (
     <>
@@ -128,6 +131,7 @@ export function JournalLibraryScreen() {
       <div className="flex rounded-xl bg-monk-soft p-1 mb-5 border border-monk-border/40 overflow-x-auto">
         <button type="button" className={`flex-1 rounded-lg py-2 text-xs font-semibold tracking-wide transition whitespace-nowrap px-2 ${libTab === "reflections" ? "bg-monk-surface text-monk-text border border-monk-border-strong shadow-sm" : "text-monk-muted hover:text-monk-text"}`} onClick={() => setLibTab("reflections")}>{t("library.tab.reflections")}</button>
         <button type="button" className={`flex-1 rounded-lg py-2 text-xs font-semibold tracking-wide transition whitespace-nowrap px-2 ${libTab === "notebook" ? "bg-monk-surface text-monk-text border border-monk-border-strong shadow-sm" : "text-monk-muted hover:text-monk-text"}`} onClick={() => setLibTab("notebook")}>{t("library.tab.notebook")}</button>
+        <button type="button" className={`flex-1 rounded-lg py-2 text-xs font-semibold tracking-wide transition whitespace-nowrap px-2 ${libTab === "learning" ? "bg-monk-surface text-monk-text border border-monk-border-strong shadow-sm" : "text-monk-muted hover:text-monk-text"}`} onClick={() => setLibTab("learning")}>Belajar</button>
         <button type="button" className={`flex-1 rounded-lg py-2 text-xs font-semibold tracking-wide transition whitespace-nowrap px-2 ${libTab === "packs" ? "bg-monk-surface text-monk-text border border-monk-border-strong shadow-sm" : "text-monk-muted hover:text-monk-text"}`} onClick={() => setLibTab("packs")}>{t("library.tab.packs")}</button>
       </div>
       <div className="space-y-4 pb-8">
@@ -154,6 +158,39 @@ export function JournalLibraryScreen() {
                   <p className="text-xs text-monk-text-soft mt-1">{new Date(entry.updatedAt).toLocaleDateString(dateLocale, { day: "numeric", month: "short", year: "numeric" })}</p>
                 </div>
               ))
+        ) : libTab === "learning" ? (
+          learningSessions.length === 0
+            ? (
+              <EmptyState
+                title="Belum ada catatan belajar"
+                description="Catat apa yang kamu pelajari dari buku, kursus, podcast, atau video."
+                actionLabel="Tambah sesi belajar"
+                onAction={() => navigate(routes.learn)}
+              />
+            )
+            : (
+              <>
+                {learningSessions.map((l) => {
+                  const goal = store.goals.find((g) => g.id === l.relatedGoalId);
+                  return (
+                    <div key={l.id} className="p-4 bg-monk-surface border border-monk-border/40 rounded-xl">
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-xs font-bold uppercase tracking-wider text-monk-accent bg-monk-accent-soft px-2 py-0.5 rounded-full shrink-0">{l.sourceType}</span>
+                        <span className="text-xs text-monk-muted">{new Date(l.createdAt).toLocaleDateString(dateLocale, { day: "numeric", month: "short", year: "numeric" })}</span>
+                      </div>
+                      {l.sourceTitle && <p className="text-sm font-semibold text-monk-text mt-1">{l.sourceTitle}</p>}
+                      {l.lesson && <p className="text-xs text-monk-muted mt-1 line-clamp-3">{l.lesson}</p>}
+                      {l.actionIdea && <p className="text-xs text-monk-text-soft mt-1 italic line-clamp-2">→ {l.actionIdea}</p>}
+                      {goal && <p className="text-xs text-monk-success mt-1">🎯 {goal.title}</p>}
+                      <p className="text-xs text-monk-text-soft mt-1">{Math.round(l.actualDurationSeconds / 60)} menit</p>
+                    </div>
+                  );
+                })}
+                <GhostButton className="w-full mt-2" onClick={() => navigate(routes.learn)}>
+                  + Tambah sesi belajar
+                </GhostButton>
+              </>
+            )
         ) : libTab === "packs" ? (
           packSessions.length === 0
             ? (
