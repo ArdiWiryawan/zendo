@@ -651,6 +651,29 @@ button {
   transform: scale(0.97);
 }
 
+/* Live preview under the editor textarea: renders inline photos clickable while typing. */
+.nb-preview {
+  padding: 0 22px 0 46px;
+  font-family: 'Outfit', ui-sans-serif, system-ui, sans-serif;
+  font-size: 0.95rem;
+  line-height: 1.6;
+  color: var(--notebook-text-body);
+  pointer-events: auto;
+}
+
+.nb-preview .md-list {
+  margin: 6px 0;
+  padding-left: 1.25rem;
+}
+
+.nb-preview .md-para {
+  margin: 6px 0;
+}
+
+.nb-preview .md-heading {
+  margin: 10px 0 4px;
+}
+
 /* Inline photo embedded in the body via a {{img:<id>}} marker line. Centered block. */
 .nb-inline-photo {
   display: block;

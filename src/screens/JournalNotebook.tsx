@@ -8,6 +8,7 @@ import { Search, Plus, Pin, PinOff, Trash2, ArrowLeft, X, BookOpen, ImagePlus, C
 import { useT, useLanguage, type MessageKey } from "../i18n";
 import { autolistMarker, renderBodyMarkdown } from "../lib/notebookMarkdown";
 import { compressImage, putImage, deleteImage, matchImageMarkers } from "../lib/imageStore";
+import { PhotoLightbox, photoIdsInBody } from "../components/NotebookImages";
 
 const CATEGORY_HEX: Record<string, string> = {
   cat_pribadi: "#e07c6b",
@@ -376,6 +377,7 @@ export function NotebookEditor({
   const [isPinned, setIsPinned] = useState(entry?.isPinned ?? false);
   const [images, setImages] = useState<string[]>(entry?.images ?? []);
   const [photoError, setPhotoError] = useState("");
+  const [lightbox, setLightbox] = useState<{ ids: string[]; index: number } | null>(null);
   const [showNewCat, setShowNewCat] = useState(false);
   const [newCatName, setNewCatName] = useState("");
   const [dirty, setDirty] = useState(false);
@@ -410,6 +412,16 @@ export function NotebookEditor({
     if (galleryInputRef.current) galleryInputRef.current.value = "";
     if (cameraInputRef.current) cameraInputRef.current.value = "";
   };
+
+  // Click an inline photo in the live preview → open lightbox at its position.
+  const openPhotoInBody = useCallback(
+    (id: string) => {
+      const ids = photoIdsInBody(body);
+      const i = ids.indexOf(id);
+      if (i >= 0) setLightbox({ ids, index: i });
+    },
+    [body]
+  );
 
   const handleAddImages = async (files: FileList | null) => {
     if (!files || files.length === 0) return;
@@ -728,6 +740,8 @@ export function NotebookEditor({
             })}
           </span>
         </div>
+        {/* Live preview: renders inline photos so they are visible + clickable while editing. */}
+        <div className="nb-preview">{renderBodyMarkdown(body, openPhotoInBody)}</div>
         <div className="nb-photos">
         <div className="nb-photos-actions">
           <button type="button" className="nb-photo-btn" onClick={() => galleryInputRef.current?.click()}>
@@ -792,6 +806,14 @@ export function NotebookEditor({
           onBack();
         }}
       />
+      {lightbox ? (
+        <PhotoLightbox
+          ids={lightbox.ids}
+          index={lightbox.index}
+          onNavigate={(i) => setLightbox((s) => (s ? { ...s, index: i } : s))}
+          onClose={() => setLightbox(null)}
+        />
+      ) : null}
     </div>
   );
 }
