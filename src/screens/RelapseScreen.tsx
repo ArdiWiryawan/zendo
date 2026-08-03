@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useMonkStore } from "../store/useMonkStore";
 import { useT } from "../i18n";
 import { useCalmToast } from "../components/ui";
@@ -24,6 +24,7 @@ export function RelapseScreen() {
   const obstacles = (store.activeSeason?.obstacles ?? []).filter(Boolean).slice(0, 4);
   const [trigger, setTrigger] = useState<"boredom" | "stress" | "fatigue" | "loneliness" | "trigger_app" | "no_clear_plan" | "other">("boredom");
   const [note, setNote] = useState("");
+  const [reflection, setReflection] = useState("");
   const [recoveryAction, setRecoveryAction] = useState("");
   const [saved, setSaved] = useState(false);
   const triggers = [
@@ -118,18 +119,26 @@ export function RelapseScreen() {
       <div className="mt-5 space-y-4">
         <Textarea placeholder={t("relapse.whatHappened")} value={note} onChange={(event) => setNote(event.target.value)} />
         <Textarea
+          placeholder={t("relapse.forWhatPulled", "For what? What was I trying to get by pulling away?")}
+          value={reflection}
+          onChange={(event) => setReflection(event.target.value)}
+        />
+        <Textarea
           placeholder={t("relapse.harderTomorrow")}
           value={recoveryAction}
           onChange={(event) => setRecoveryAction(event.target.value)}
         />
         <PrimaryButton
           onClick={() => {
-            store.saveRelapseLog({ trigger, note, recoveryAction });
+            store.saveRelapseLog({ trigger, note, reflection, recoveryAction });
             setSaved(true);
           }}
         >
           {t("relapse.save")}
         </PrimaryButton>
+        <SecondaryButton className="w-full" onClick={() => navigate(`${routes.journal}?reason=${trigger}`)}>
+          {t("relapse.reflect", "Reflect on this in journal")}
+        </SecondaryButton>
       </div>
     </>
   );

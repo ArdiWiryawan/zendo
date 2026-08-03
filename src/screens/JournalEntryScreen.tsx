@@ -99,7 +99,21 @@ export function JournalEntryScreen() {
   const now = new Date();
   const isEvening = now.getHours() >= 17;
   const urlTab = searchParams.get("tab");
+  const reason = searchParams.get("reason");
   const defaultTab: "reflection" | "morning" = urlTab === "morning" || urlTab === "reflection" ? urlTab : (isEvening ? "reflection" : "morning");
+  const reasonPrompt = useMemo(() => {
+    if (!reason) return undefined;
+    const triggerLabels: Record<string, string> = {
+      boredom: "Why did I feel bored? What was missing?",
+      stress: "What was I stressed about? What felt uncertain?",
+      fatigue: "What drained my energy? What am I neglecting?",
+      loneliness: "What did I need from others? What connection did I seek?",
+      trigger_app: "What pulled me back to the app? What was the itch?",
+      no_clear_plan: "Where was my plan unclear? What did I not prepare for?",
+    };
+    const base = triggerLabels[reason] ?? "Why did I pull away from my plan?";
+    return `I chose to stop my focus because of ${reason.replace("_", " ")}. ${base}`;
+  }, [reason]);
   const [currentTab, setCurrentTab] = useState(defaultTab);
 
   const hasDraft =
@@ -247,6 +261,12 @@ export function JournalEntryScreen() {
           className="mt-5 space-y-4"
         >
           {/* Main Required Question */}
+          {reasonPrompt && (
+            <Card className="mb-3">
+              <label className="block font-semibold text-base leading-relaxed text-monk-text">Why I pulled away</label>
+              <p className="text-sm text-monk-muted mt-1">{reasonPrompt}</p>
+            </Card>
+          )}
           <Card>
             <div className="mb-3 space-y-1">
               <div className="text-[10px] uppercase tracking-widest text-monk-text-soft font-mono">{t("journal.promptChrome", { date: formatHumanDate(dateSeed) })}</div>

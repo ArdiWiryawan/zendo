@@ -93,6 +93,7 @@ type LearningInput = {
 type RelapseInput = {
   trigger: RelapseLog["trigger"];
   note?: string;
+  reflection?: string;
   recoveryAction?: string;
 };
 
@@ -1511,6 +1512,7 @@ export const useMonkStore = create<MonkStore>()(
       date: getTodayDateString(),
       trigger: input.trigger,
       note: input.note,
+      reflection: input.reflection,
       recoveryAction: input.recoveryAction,
       createdAt: timestamp,
       updatedAt: timestamp

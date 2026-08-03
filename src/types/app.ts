@@ -364,6 +364,7 @@ export type RelapseLog = {
     | "no_clear_plan"
     | "other";
   note?: string;
+  reflection?: string;
   recoveryAction?: string;
   createdAt: ISODateString;
   updatedAt: ISODateString;
