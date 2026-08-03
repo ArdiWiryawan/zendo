@@ -118,14 +118,15 @@ export default function JournalNotebook({ onEditingChange }: { onEditingChange?:
   }, [onEditingChange]);
 
   // Intercept browser/OS back button while in edit view.
+  const handlingBack = useRef(false);
   useEffect(() => {
     if (view !== "edit") return;
-    // Push a dummy state so the back button has somewhere to pop to.
     window.history.pushState({ nbEdit: true }, "");
-    const handler = (e: PopStateEvent) => {
-      // Only intercept if our dummy state was popped (not a real route change).
-      if (e.state?.nbEdit !== true) return;
+    const handler = () => {
+      if (handlingBack.current) return;
+      handlingBack.current = true;
       goBackToList();
+      setTimeout(() => { handlingBack.current = false; }, 300);
     };
     window.addEventListener("popstate", handler);
     return () => window.removeEventListener("popstate", handler);
