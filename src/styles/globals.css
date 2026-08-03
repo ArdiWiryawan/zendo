@@ -2,6 +2,8 @@
 @tailwind components;
 @tailwind utilities;
 :root {
+  /* reserve room for fixed bottom bar (~73-107px) on caret-into-view auto scroll */
+  scroll-padding-bottom: 110px;
   --color-bg: #080908;
   --color-bg-deep: #040504;
   --color-surface: #111211;

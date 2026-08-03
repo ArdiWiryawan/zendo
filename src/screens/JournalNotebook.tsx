@@ -672,7 +672,7 @@ export function NotebookEditor({
   };
 
   return (
-    <div className="space-y-0 pb-28 scroll-mb-28">
+    <div className="space-y-0 pb-36 scroll-mb-36">
       <div className="nb-editor-cover">
         <button
           type="button"
