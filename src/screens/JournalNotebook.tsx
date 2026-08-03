@@ -513,9 +513,11 @@ export function NotebookEditor({
   const addPage = () => {
     setPages((prev) => [...prev, ""]);
     setPageIndex(totalPages);
+    setPreviewing(false);
     markDirty();
     requestAnimationFrame(() => {
-      setPreviewing(false);
+      queueResize(titleRef.current);
+      queueResize(bodyRef.current);
       bodyRef.current?.focus();
     });
   };

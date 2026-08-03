@@ -765,6 +765,8 @@ button {
 /* Preview mode: the saved page rendered inside the sheet (photos interleaved). */
 .nb-preview-page {
   cursor: text;
+  overflow: hidden;
+  border-radius: 8px;
 }
 
 .nb-rendered-title {
