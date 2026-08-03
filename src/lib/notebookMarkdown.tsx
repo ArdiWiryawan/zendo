@@ -138,3 +138,49 @@ export function renderBodyMarkdown(
   close();
   return out;
 }
+
+/** True when a render node is an inline photo block from a {{img:…}} marker line. */
+function isInlinePhotoNode(node: ReactNode): boolean {
+  return (
+    typeof node === "object" &&
+    node !== null &&
+    "type" in node &&
+    (node as { type: unknown }).type === InlinePhoto
+  );
+}
+
+/**
+ * Group runs of ≥2 consecutive inline photos into a compact in-page grid so a
+ * note with many photos doesn't become a tall full-width stack.
+ *   - 2–4 consecutive → .nb-photo-grid.g2 (2 columns)
+ *   - 5+            → .nb-photo-grid.g3 (3 columns)
+ * A single photo or any text line between photos breaks the run (stays unwrapped
+ * = hero full-width). Pure transform of renderBodyMarkdown output; never mutates.
+ */
+export function groupPhotoRuns(nodes: ReactNode[]): ReactNode[] {
+  const out: ReactNode[] = [];
+  let run: ReactNode[] = [];
+  const flush = () => {
+    if (run.length === 0) return;
+    if (run.length >= 2) {
+      out.push(
+        <div key={`pg-${out.length}`} className={`nb-photo-grid ${run.length >= 5 ? "g3" : "g2"}`}>
+          {run}
+        </div>
+      );
+    } else {
+      out.push(run[0]);
+    }
+    run = [];
+  };
+  for (const node of nodes) {
+    if (isInlinePhotoNode(node)) {
+      run.push(node);
+    } else {
+      flush();
+      out.push(node);
+    }
+  }
+  flush();
+  return out;
+}

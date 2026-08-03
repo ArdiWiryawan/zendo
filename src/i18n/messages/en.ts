@@ -539,6 +539,7 @@ export const en = {
   "notebook.addFromGallery": "Add from gallery",
   "notebook.takePhoto": "Take photo",
   "notebook.photoLabel": "Photos",
+  "notebook.photoEmpty": "Photos you add appear here",
 
   "packs.title": "Packs",
   "packs.subtitle": "Themed questions for deeper reflection",

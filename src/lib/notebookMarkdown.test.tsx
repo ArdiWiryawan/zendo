@@ -1,9 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { autolistMarker, renderBodyMarkdown } from "./notebookMarkdown";
+import { autolistMarker, groupPhotoRuns, renderBodyMarkdown } from "./notebookMarkdown";
 import { renderToStaticMarkup } from "react-dom/server";
 
 function html(body: string): string {
   return renderToStaticMarkup(<>{renderBodyMarkdown(body)}</>);
+}
+
+function htmlGrouped(body: string): string {
+  return renderToStaticMarkup(<>{groupPhotoRuns(renderBodyMarkdown(body))}</>);
 }
 
 describe("autolistMarker", () => {
@@ -103,5 +107,28 @@ describe("renderBodyMarkdown", () => {
     expect(out).not.toContain("nb-inline-photo");
     expect(out).toContain("first");
     expect(out).toContain("second");
+  });
+});
+
+describe("groupPhotoRuns", () => {
+  it("wraps 2–4 consecutive photos in a g2 grid", () => {
+    const out = htmlGrouped("a\n{{img:x}}\n{{img:y}}\nb");
+    expect(out).toContain('class="nb-photo-grid g2"');
+    expect(out.match(/nb-inline-photo/g)?.length).toBe(2);
+  });
+  it("wraps 5+ consecutive photos in a g3 grid", () => {
+    const out = htmlGrouped("{{img:a}}\n{{img:b}}\n{{img:c}}\n{{img:d}}\n{{img:e}}");
+    expect(out).toContain('class="nb-photo-grid g3"');
+    expect(out.match(/nb-inline-photo/g)?.length).toBe(5);
+  });
+  it("text between photos splits into separate grids", () => {
+    const out = htmlGrouped("{{img:a}}\n{{img:b}}\ntext\n{{img:c}}\n{{img:d}}");
+    expect(out.match(/nb-photo-grid/g)?.length).toBe(2);
+    expect(out.match(/nb-inline-photo/g)?.length).toBe(4);
+  });
+  it("leaves a single photo unwrapped (hero)", () => {
+    const out = htmlGrouped("a\n{{img:x}}\nb");
+    expect(out).not.toContain("nb-photo-grid");
+    expect(out).toContain("nb-inline-photo");
   });
 });

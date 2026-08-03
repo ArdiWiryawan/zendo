@@ -541,6 +541,7 @@ export const id: Record<MessageKey, string> = {
   "notebook.addFromGallery": "Tambah dari galeri",
   "notebook.takePhoto": "Ambil foto",
   "notebook.photoLabel": "Foto",
+  "notebook.photoEmpty": "Foto yang kamu tambah tampil di sini",
 
   "packs.title": "Pack",
   "packs.subtitle": "Pertanyaan bertema untuk refleksi lebih dalam",

@@ -6,9 +6,9 @@ import { nowIso } from "../lib/date";
 import type { NotebookEntry } from "../types/app";
 import { Search, Plus, Pin, PinOff, Trash2, ArrowLeft, X, BookOpen, ImagePlus, Camera } from "lucide-react";
 import { useT, useLanguage, type MessageKey } from "../i18n";
-import { autolistMarker, renderBodyMarkdown } from "../lib/notebookMarkdown";
+import { autolistMarker, groupPhotoRuns, renderBodyMarkdown } from "../lib/notebookMarkdown";
 import { compressImage, putImage, deleteImage, matchImageMarkers } from "../lib/imageStore";
-import { InlinePhoto, PhotoLightbox, photoIdsInBody } from "../components/NotebookImages";
+import { PhotoLightbox, photoIdsInBody } from "../components/NotebookImages";
 
 const CATEGORY_HEX: Record<string, string> = {
   cat_pribadi: "#e07c6b",
@@ -369,6 +369,7 @@ export function NotebookEditor({
   const categories = store.notebookCategories;
   const titleRef = useRef<HTMLTextAreaElement>(null);
   const bodyRef = useRef<HTMLTextAreaElement>(null);
+  const sheetRef = useRef<HTMLDivElement>(null);
   const galleryInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const [title, setTitle] = useState(entry?.title ?? "");
@@ -378,6 +379,9 @@ export function NotebookEditor({
   const [images, setImages] = useState<string[]>(entry?.images ?? []);
   const [photoError, setPhotoError] = useState("");
   const [lightbox, setLightbox] = useState<{ ids: string[]; index: number } | null>(null);
+  // View-first for saved notes: the sheet opens as the rendered page with photos
+  // interleaved; tap the body to edit. New notes start in edit mode.
+  const [previewing, setPreviewing] = useState(Boolean(entry));
   const [showNewCat, setShowNewCat] = useState(false);
   const [newCatName, setNewCatName] = useState("");
   const [dirty, setDirty] = useState(false);
@@ -396,6 +400,42 @@ export function NotebookEditor({
   }, [entry]);
 
   const markDirty = () => setDirty(true);
+
+  // When the user clicks/taps outside the sheet (bottom bar, a button, the page
+  // background), show the rendered page so photos appear interleaved on the
+  // paper. Tap the page itself → back to editing.
+  const suppressPreviewRef = useRef(false);
+  useEffect(() => {
+    const onDown = (e: MouseEvent | TouchEvent) => {
+      if (suppressPreviewRef.current) {
+        suppressPreviewRef.current = false;
+        return;
+      }
+      const t = e.target as Node;
+      if (sheetRef.current && !sheetRef.current.contains(t) && body.trim()) {
+        setPreviewing(true);
+      }
+    };
+    document.addEventListener("mousedown", onDown);
+    document.addEventListener("touchstart", onDown);
+    return () => {
+      document.removeEventListener("mousedown", onDown);
+      document.removeEventListener("touchstart", onDown);
+    };
+  }, [body]);
+
+  const enterEdit = useCallback(() => {
+    suppressPreviewRef.current = true;
+    setPreviewing(false);
+    // Clear the one-shot suppression shortly after (the mousedown that enters
+    // edit must not also flip us back to preview).
+    window.setTimeout(() => {
+      suppressPreviewRef.current = false;
+    }, 400);
+    requestAnimationFrame(() => {
+      bodyRef.current?.focus();
+    });
+  }, []);
 
   const resolveTitle = useCallback(() => {
     const trimmed = title.trim();
@@ -702,33 +742,48 @@ export function NotebookEditor({
         onChange={(e) => void handleAddImages(e.target.files)}
       />
 
-      <div className="nb-open-page nb-open-enter" style={{ "--nb-cat": activeCatHex } as React.CSSProperties}>
-        <textarea
-          ref={titleRef}
-          rows={1}
-          aria-label={t("notebook.titlePlaceholder")}
-          placeholder={t("notebook.titlePlaceholder")}
-          value={title}
-          onChange={(e) => {
-            setTitle(e.target.value);
-            markDirty();
-            resizeTextarea(e.currentTarget);
-          }}
-          className="nb-page-title"
-        />
-        <textarea
-          ref={bodyRef}
-          aria-label={t("notebook.bodyPlaceholder")}
-          placeholder={t("notebook.bodyPlaceholder")}
-          value={body}
-          onKeyDown={handleBodyKeyDown}
-          onChange={(e) => {
-            setBody(e.target.value);
-            markDirty();
-            resizeTextarea(e.currentTarget);
-          }}
-          className="nb-page-body"
-        />
+      <div
+        ref={sheetRef}
+        className="nb-open-page nb-open-enter"
+        style={{ "--nb-cat": activeCatHex } as React.CSSProperties}
+      >
+        {previewing ? (
+          <div className="nb-preview-page" onClick={enterEdit}>
+            <div className="nb-rendered-title">{title || resolveTitle()}</div>
+            <div className="nb-page-body-rendered">
+              {groupPhotoRuns(renderBodyMarkdown(body, openPhotoInBody, false))}
+            </div>
+          </div>
+        ) : (
+          <>
+            <textarea
+              ref={titleRef}
+              rows={1}
+              aria-label={t("notebook.titlePlaceholder")}
+              placeholder={t("notebook.titlePlaceholder")}
+              value={title}
+              onChange={(e) => {
+                setTitle(e.target.value);
+                markDirty();
+                resizeTextarea(e.currentTarget);
+              }}
+              className="nb-page-title"
+            />
+            <textarea
+              ref={bodyRef}
+              aria-label={t("notebook.bodyPlaceholder")}
+              placeholder={t("notebook.bodyPlaceholder")}
+              value={body}
+              onKeyDown={handleBodyKeyDown}
+              onChange={(e) => {
+                setBody(e.target.value);
+                markDirty();
+                resizeTextarea(e.currentTarget);
+              }}
+              className="nb-page-body"
+            />
+          </>
+        )}
         <div className="nb-folio">
           <span>{t("notebook.words", { n: words })}</span>
           <span>·</span>
@@ -740,13 +795,15 @@ export function NotebookEditor({
             })}
           </span>
         </div>
-        {/* Photo strip below the text: only the inline photos render here (clickable),
-            never the body text — so writing is not duplicated. */}
-        {photoIdsInBody(body).length > 0 ? (
-          <div className="nb-preview">
-            {photoIdsInBody(body).map((id) => (
-              <InlinePhoto key={id} id={id} onOpen={openPhotoInBody} />
-            ))}
+        {previewing && photoIdsInBody(body).length > 0 ? (
+          <div className="nb-photos-head">
+            <span>{t("notebook.photoLabel")}</span>
+            <span className="nb-photos-count">{photoIdsInBody(body).length}</span>
+          </div>
+        ) : null}
+        {previewing && photoIdsInBody(body).length === 0 ? (
+          <div className="nb-photos-head">
+            <span>{t("notebook.photoEmpty")}</span>
           </div>
         ) : null}
         <div className="nb-photos">
