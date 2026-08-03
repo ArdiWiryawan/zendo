@@ -16,8 +16,8 @@ export function parseIntention(text: string): { when: string; action: string; ti
   const match = raw.match(/^When\s+(.+?),\s*I will\s+(.+)$/i);
   if (match) {
     const whenPart = match[1].trim();
-    const timeMatch = whenPart.match(/^(\d{1,2}:\d{2})\s+(.*)$/);
-    if (timeMatch) {
+    const timeMatch = whenPart.match(/^([^\s]+)\s+(.*)$/);
+    if (timeMatch && timeMatch[2]) {
       return { time: timeMatch[1], when: timeMatch[2].trim(), action: match[2].trim() };
     }
     return { when: whenPart, action: match[2].trim() };
