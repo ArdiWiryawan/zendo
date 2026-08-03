@@ -8,7 +8,7 @@ import { Search, Plus, Pin, PinOff, Trash2, ArrowLeft, X, BookOpen, ImagePlus, C
 import { useT, useLanguage, type MessageKey } from "../i18n";
 import { autolistMarker, renderBodyMarkdown } from "../lib/notebookMarkdown";
 import { compressImage, putImage, deleteImage, matchImageMarkers } from "../lib/imageStore";
-import { PhotoLightbox, photoIdsInBody } from "../components/NotebookImages";
+import { InlinePhoto, PhotoLightbox, photoIdsInBody } from "../components/NotebookImages";
 
 const CATEGORY_HEX: Record<string, string> = {
   cat_pribadi: "#e07c6b",
@@ -740,8 +740,15 @@ export function NotebookEditor({
             })}
           </span>
         </div>
-        {/* Live preview: renders inline photos so they are visible + clickable while editing. */}
-        <div className="nb-preview">{renderBodyMarkdown(body, openPhotoInBody)}</div>
+        {/* Photo strip below the text: only the inline photos render here (clickable),
+            never the body text — so writing is not duplicated. */}
+        {photoIdsInBody(body).length > 0 ? (
+          <div className="nb-preview">
+            {photoIdsInBody(body).map((id) => (
+              <InlinePhoto key={id} id={id} onOpen={openPhotoInBody} />
+            ))}
+          </div>
+        ) : null}
         <div className="nb-photos">
         <div className="nb-photos-actions">
           <button type="button" className="nb-photo-btn" onClick={() => galleryInputRef.current?.click()}>
