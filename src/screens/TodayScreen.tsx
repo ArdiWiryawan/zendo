@@ -334,7 +334,9 @@ export function TodayScreen() {
   const focusMinutes = Math.round(focusSeconds / 60);
 
   const [editingAction, setEditingAction] = useState(false);
-  const [actionInput, setActionInput] = useState("");
+  const [editTime, setEditTime] = useState("");
+  const [editWhen, setEditWhen] = useState("");
+  const [editAction, setEditAction] = useState("");
   const [closeDaySkipped, setCloseDaySkipped] = useState(() => isCloseDaySkipped(today));
   const [reentryDismissed, setReentryDismissed] = useState(() => isReentryDismissed(today));
   const [restDismissed, setRestDismissed] = useState(() => isRestSuggestionDismissed(today));
@@ -350,12 +352,7 @@ export function TodayScreen() {
   const [releaseNote, setReleaseNote] = useState("");
 
   useEffect(() => {
-    if (todayPlan?.mainAction) {
-      setActionInput(todayPlan.mainAction);
-    }
-  }, [todayPlan?.mainAction]);
-
-  useEffect(() => {
+    store.getOrCreateCurrentWeeklyPlan();
     store.getOrCreateCurrentWeeklyPlan();
   }, []);
 
@@ -624,7 +621,11 @@ export function TodayScreen() {
                       type="button"
                       className="text-xs font-bold text-monk-accent hover:underline active:scale-95"
                       onClick={() => {
-                        setActionInput(todayPlan.mainAction || goal?.keystoneAction || "");
+                        const initial = todayPlan.mainAction || goal?.keystoneAction || "";
+                        const parsed = parseIntention(initial);
+                        setEditTime(parsed.time || "");
+                        setEditWhen(parsed.when || "");
+                        setEditAction(parsed.action || "");
                         setEditingAction(true);
                       }}
                     >
@@ -635,38 +636,31 @@ export function TodayScreen() {
 
                 {editingAction ? (
                   <div className="mt-2 space-y-2">
-                    {(() => {
-                      const parsed = parseIntention(actionInput);
-                      return (
-                        <>
-                          <div>
-                            <label htmlFor="today-time-input" className="mb-2 block text-sm font-medium text-monk-muted">
-                              {t("today.time")}
-                            </label>
-                            <input
-                              type="time"
-                              id="today-time-input"
-                              value={parsed.time || ""}
-                              onChange={(e) => setActionInput(formatIntention(parsed.when, parsed.action, e.target.value))}
-                              className="w-full rounded-xl border border-monk-border bg-monk-surface px-4 py-3 text-sm text-monk-text transition-colors focus:border-monk-accent focus:outline-none focus:ring-1 focus:ring-monk-accent/40"
-                            />
-                          </div>
-                          <TextInput
-                            label={t("today.when")}
-                            value={parsed.when}
-                            onChange={(e) => setActionInput(formatIntention(e.target.value, parsed.action, parsed.time))}
-                            placeholder={t("today.whenPlaceholder")}
-                          />
-                          <p className="text-xs text-monk-muted">{t("today.whenHint")}</p>
-                          <TextInput
-                            label={t("today.iWill")}
-                            value={parsed.action}
-                            onChange={(e) => setActionInput(formatIntention(parsed.when, e.target.value, parsed.time))}
-                            placeholder={t("today.actionPlaceholder")}
-                          />
-                        </>
-                      );
-                    })()}
+                    <div>
+                      <label htmlFor="today-time-input" className="mb-2 block text-sm font-medium text-monk-muted">
+                        {t("today.time")}
+                      </label>
+                      <input
+                        type="time"
+                        id="today-time-input"
+                        value={editTime}
+                        onChange={(e) => setEditTime(e.target.value)}
+                        className="w-full rounded-xl border border-monk-border bg-monk-surface px-4 py-3 text-sm text-monk-text transition-colors focus:border-monk-accent focus:outline-none focus:ring-1 focus:ring-monk-accent/40"
+                      />
+                    </div>
+                    <TextInput
+                      label={t("today.when")}
+                      value={editWhen}
+                      onChange={(e) => setEditWhen(e.target.value)}
+                      placeholder={t("today.whenPlaceholder")}
+                    />
+                    <p className="text-xs text-monk-muted">{t("today.whenHint")}</p>
+                    <TextInput
+                      label={t("today.iWill")}
+                      value={editAction}
+                      onChange={(e) => setEditAction(e.target.value)}
+                      placeholder={t("today.actionPlaceholder")}
+                    />
                     <div className="flex justify-end gap-3 pt-1">
                       <button
                         type="button"
@@ -679,11 +673,12 @@ export function TodayScreen() {
                         type="button"
                         className="text-xs font-semibold text-monk-accent hover:underline"
                         onClick={() => {
-                          if (actionInput.trim()) {
+                          const formatted = formatIntention(editWhen, editAction, editTime);
+                          if (formatted.trim()) {
                             store.createOrUpdateDayPlan(today, {
                               dayType: "goal",
                               goalId: todayPlan.goalId,
-                              mainAction: actionInput.trim()
+                              mainAction: formatted.trim()
                             });
                             setEditingAction(false);
                             toast.show(t("toast.intentionSaved"));
@@ -721,7 +716,10 @@ export function TodayScreen() {
                           type="button"
                           className="text-xs font-bold text-monk-accent hover:underline"
                           onClick={() => {
-                            setActionInput(goal.keystoneAction);
+                            const parsed = parseIntention(goal.keystoneAction);
+                            setEditTime(parsed.time || "");
+                            setEditWhen(parsed.when || "");
+                            setEditAction(parsed.action || "");
                             setEditingAction(true);
                           }}
                         >
@@ -737,7 +735,9 @@ export function TodayScreen() {
                         type="button"
                         className="text-xs font-bold text-monk-accent hover:underline"
                         onClick={() => {
-                          setActionInput("");
+                          setEditTime("");
+                          setEditWhen("");
+                          setEditAction("");
                           setEditingAction(true);
                         }}
                       >
@@ -904,8 +904,11 @@ export function TodayScreen() {
                   <div className="mt-3">
                     <PrimaryButton
                       onClick={() => {
-                        if (!actionInput.trim()) {
-                          setActionInput(goal?.keystoneAction ?? "");
+                        if (!editAction.trim()) {
+                          const parsed = parseIntention(goal?.keystoneAction ?? "");
+                          setEditTime(parsed.time || "");
+                          setEditWhen(parsed.when || "");
+                          setEditAction(parsed.action || "");
                         }
                         setEditingAction(true);
                       }}

@@ -834,6 +834,31 @@ export function KeystoneSetup({ onNext }: { onNext: () => void }) {
     "first thing after coffee"
   ];
 
+  const [drafts, setDrafts] = useState<Record<string, { time: string; when: string; action: string }>>(() => {
+    const initial: Record<string, { time: string; when: string; action: string }> = {};
+    goals.forEach((goal) => {
+      const parsed = parseIntention(onboarding.keystoneActions[goal.id] ?? "");
+      initial[goal.id] = { time: parsed.time || "", when: parsed.when || "", action: parsed.action || "" };
+    });
+    return initial;
+  });
+
+  useEffect(() => {
+    goals.forEach((goal) => {
+      const parsed = parseIntention(onboarding.keystoneActions[goal.id] ?? "");
+      setDrafts((prev) => {
+        if (prev[goal.id] !== undefined) return prev;
+        return { ...prev, [goal.id]: { time: parsed.time || "", when: parsed.when || "", action: parsed.action || "" } };
+      });
+    });
+  }, [goals, onboarding.keystoneActions]);
+
+  const updateDraft = (goalId: string, field: "time" | "when" | "action", value: string) => {
+    setDrafts((prev) => ({ ...prev, [goalId]: { ...prev[goalId], [field]: value } }));
+    const d = { ...drafts[goalId], [field]: value };
+    setKeystoneAction(goalId, formatIntention(d.when, d.action, d.time));
+  };
+
   return (
     <>
       <ScreenIntro
@@ -842,13 +867,10 @@ export function KeystoneSetup({ onNext }: { onNext: () => void }) {
       />
       <div className="space-y-4">
         {goals.map((goal, index) => {
-          const parsed = parseIntention(onboarding.keystoneActions[goal.id] ?? "");
+          const d = drafts[goal.id] ?? { time: "", when: "", action: "" };
           const actionPh = actionPlaceholders[index % actionPlaceholders.length];
           const whenPh = whenPlaceholders[index % whenPlaceholders.length];
           const goalWhy = onboarding.goalWhys[goal.id] ?? "";
-          const commit = (when: string, action: string) => {
-            setKeystoneAction(goal.id, formatIntention(when, action));
-          };
           return (
             <Card key={goal.id}>
               <p className="mb-1 text-xs font-bold uppercase tracking-wider text-monk-muted">
@@ -862,13 +884,8 @@ export function KeystoneSetup({ onNext }: { onNext: () => void }) {
                 <input
                   type="time"
                   id={`keystone-time-${goal.id}`}
-                  value={parsed.time || ""}
-                  onChange={(event) => {
-                    const commit3 = (time: string, when: string, action: string) => {
-                      setKeystoneAction(goal.id, formatIntention(when, action, time));
-                    };
-                    commit3(event.target.value, parsed.when, parsed.action);
-                  }}
+                  value={d.time}
+                  onChange={(event) => updateDraft(goal.id, "time", event.target.value)}
                   className="w-full rounded-xl border border-monk-border bg-monk-surface px-4 py-3 text-sm text-monk-text transition-colors focus:border-monk-accent focus:outline-none focus:ring-1 focus:ring-monk-accent/40"
                 />
               </div>
@@ -877,25 +894,15 @@ export function KeystoneSetup({ onNext }: { onNext: () => void }) {
                   label="When"
                   id={`keystone-when-${goal.id}`}
                   placeholder={whenPh}
-                  value={parsed.when}
-                  onChange={(event) => {
-                    const commit3 = (time: string, when: string, action: string) => {
-                      setKeystoneAction(goal.id, formatIntention(when, action, time));
-                    };
-                    commit3(parsed.time || "", event.target.value, parsed.action);
-                  }}
+                  value={d.when}
+                  onChange={(event) => updateDraft(goal.id, "when", event.target.value)}
                 />
                 <TextInput
                   label="I will"
                   id={`keystone-action-${goal.id}`}
                   placeholder={actionPh}
-                  value={parsed.action}
-                  onChange={(event) => {
-                    const commit3 = (time: string, when: string, action: string) => {
-                      setKeystoneAction(goal.id, formatIntention(when, action, time));
-                    };
-                    commit3(parsed.time || "", parsed.when, event.target.value);
-                  }}
+                  value={d.action}
+                  onChange={(event) => updateDraft(goal.id, "action", event.target.value)}
                 />
               </div>
               <p className="mt-2 text-xs text-monk-muted">One specific, repeatable action.</p>
