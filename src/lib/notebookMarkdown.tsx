@@ -39,6 +39,8 @@ export function renderBodyMarkdown(
   onDeletePhoto?: (id: string) => void
 ): ReactNode[] {
   const out: ReactNode[] = [];
+  if (!body) return out;
+
   let open: { type: ListKind; items: Array<{ text: string; checked?: boolean }> } | null = null;
   let num = 1;
 
@@ -128,7 +130,6 @@ export function renderBodyMarkdown(
       num++;
     } else {
       close();
-      if (!t) continue; // blank line: closes lists, renders no node
       out.push(
         <p key={out.length} className="md-para">
           {raw || " "}
