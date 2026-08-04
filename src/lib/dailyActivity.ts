@@ -17,7 +17,8 @@ export function getDailyActivity(store: MonkMVPState, date: string) {
     .map((plan) => plan.id);
   const focusSessions = store.focusSessions.filter((session) => {
     const sessionDate = (session.endedAt ?? session.endTime ?? session.startedAt ?? session.startTime).slice(0, 10);
-    return (dayPlanIds.includes(session.dayPlanId) || sessionDate === date) && ["completed", "ended_early"].includes(session.status);
+    const sameSeason = !seasonId || session.seasonId === seasonId;
+    return (dayPlanIds.includes(session.dayPlanId) || (sessionDate === date && sameSeason)) && ["completed", "ended_early"].includes(session.status);
   });
   const learningSessions = store.learningSessions.filter(
     (session) => (session.endedAt ?? session.startedAt).slice(0, 10) === date && session.status === "completed" && (!seasonId || session.seasonId === seasonId)
@@ -27,7 +28,8 @@ export function getDailyActivity(store: MonkMVPState, date: string) {
 }
 
 export function getDailyStatusForDate(store: MonkMVPState, date: string): TimelineStatus {
-  const day = store.timelineDays.find((item) => item.date === date);
+  const seasonId = store.activeSeason?.id;
+  const day = store.timelineDays.find((item) => item.date === date && (!seasonId || item.seasonId === seasonId));
   // Retro/plan-only states are authoritative: relapse, rest, and an explicitly
   // logged-but-sessionless day (retro "Focus Goal" resolves 'partial' in the
   // store, but no session exists to recompute from). Honor them verbatim.

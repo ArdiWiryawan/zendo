@@ -28,12 +28,11 @@ export function SeasonEndScreen() {
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const t = useT();
   const questions = [t("seasonEnd.q1"), t("seasonEnd.q2"), t("seasonEnd.q3"), t("seasonEnd.q4"), t("seasonEnd.q5")];
-  const seasonId = store.activeSeason?.id;
   const season = store.activeSeason;
   const daysLeft = season ? getDaysLeft(season.endDate) : 0;
   const released = store.releasedSeasonGoals
     .map((entry) => ({ entry, goal: store.goals.find((g) => g.id === entry.goalId) }))
-    .filter((item) => item.goal && item.goal!.seasonId === seasonId);
+    .filter((item) => item.goal);
   return (
     <>
       <PageHeader title={t("seasonEnd.title")} subtitle={t("seasonEnd.subtitle")} />

@@ -67,6 +67,7 @@ const ARRAY_KEYS: (keyof MonkMVPState)[] = [
   "journalPackSessions",
   "energyLogs",
   "releasedSeasonGoals",
+  "notificationReminders",
 ] as const;
 
 /** Scalar/state fields — newer updatedAt wins. */
@@ -96,6 +97,27 @@ export function mergeRemoteState(local: MonkMVPState, remote: Partial<MonkMVPSta
     const l = local[key];
     const r = remote[key];
     if (r !== undefined) out[key] = mergeScalar(l as never, r as never);
+  }
+
+  // purchasedPackIds is a monotonic string set (no per-id updatedAt) — a
+  // purchase on ANY device must never vanish, so union both sides.
+  const lp = local.purchasedPackIds ?? [];
+  const rp = remote.purchasedPackIds;
+  if (Array.isArray(rp)) out.purchasedPackIds = Array.from(new Set([...lp, ...rp]));
+
+  // weeklyReviews is a Record keyed by weekId; WeeklyReview.date is the write
+  // timestamp, so per-week keep the later write (order-independent).
+  const lr = local.weeklyReviews ?? {};
+  const rr = remote.weeklyReviews;
+  if (rr && typeof rr === "object") {
+    const merged = { ...lr };
+    for (const [k, rv] of Object.entries(rr)) {
+      const lv = merged[k];
+      if (!lv || !rv || String(rv.date) >= String(lv.date)) {
+        (merged as Record<string, unknown>)[k] = rv;
+      }
+    }
+    out.weeklyReviews = merged as MonkMVPState["weeklyReviews"];
   }
 
   return out;

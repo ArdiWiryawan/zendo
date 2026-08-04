@@ -330,11 +330,20 @@ export function JournalEntryScreen() {
               if (tomorrowText) {
                 const tomorrowDate = addDaysToDate(dateSeed, 1);
                 const goalId = targetPlan?.goalId ?? selectActiveGoals(store)[0]?.id;
-                store.saveTomorrowIntention?.(tomorrowDate, tomorrowText);
                 const isRest = targetPlan?.dayType === "rest";
                 if (isRest) {
-                  store.createOrUpdateDayPlan(tomorrowDate, { dayType: "rest" });
-                  wroteTomorrow = true;
+                  // Rest-day "tomorrow I will…" is an explicit resume action → a
+                  // GOAL day for tomorrow (week budget is 1 rest day; a written
+                  // action means intent to resume). Save intention text as mainAction.
+                  if (goalId) {
+                    store.createOrUpdateDayPlan(tomorrowDate, {
+                      dayType: "goal",
+                      goalId,
+                      mainAction: tomorrowText
+                    });
+                    wroteTomorrow = true;
+                  }
+                  // ponytail: no active goal → skip tomorrow plan write.
                 } else if (goalId) {
                   store.createOrUpdateDayPlan(tomorrowDate, {
                     dayType: "goal",

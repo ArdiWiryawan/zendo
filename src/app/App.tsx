@@ -160,6 +160,7 @@ import {
 export default function App() {
   const hydrate = useMonkStore((state) => state.hydrate);
   const recordOpen = useMonkStore((state) => state.recordOpen);
+  const syncPurchases = useMonkStore((state) => state.syncPurchases);
   const [ready, setReady] = useState(false);
 
   const focusSessions = useMonkStore((state) => state.focusSessions);
@@ -174,8 +175,9 @@ export default function App() {
   useEffect(() => {
     hydrate();
     recordOpen();
+    syncPurchases();
     setReady(true);
-  }, [hydrate, recordOpen]);
+  }, [hydrate, recordOpen, syncPurchases]);
 
   useEffect(() => {
     if (!ready) return;
@@ -184,21 +186,28 @@ export default function App() {
 
   useEffect(() => {
     if (!activeSession || activeSession.status !== "running") return;
-    const startMs = new Date(activeSession.startTime).getTime();
-    const currentPhase = getCurrentFocusPhase(activeSession);
-    const targetSeconds = currentPhase.plannedMinutes * 60;
 
     const notify = (title: string, body: string) => {
       if (Notification.permission === "granted") new Notification(title, { body, icon: "/apple-touch-icon.png", silent: true });
     };
 
     const tick = () => {
-      const elapsed = Math.floor((Date.now() - startMs) / 1000);
-      if (elapsed >= targetSeconds) {
-        const phases = activeSession.phases ?? [];
-        const currentIndex = activeSession.currentPhaseIndex ?? 0;
+      // Re-read the session from the store: a tick fired by visibilitychange can
+      // overlap the interval callback, and if advanceFocusPhase already reset
+      // startTime/currentPhaseIndex, the stale closure would advance AGAIN
+      // (skipping the break) or complete twice. Fresh state makes the second
+      // tick a no-op (elapsed recomputed against the new phase startTime).
+      const fresh = useMonkStore.getState().focusSessions.find((s) => s.id === activeSession.id);
+      if (!fresh || fresh.status !== "running") return;
+      const phaseStartMs = new Date(fresh.startTime).getTime();
+      const freshPhase = getCurrentFocusPhase(fresh);
+      const freshTargetSeconds = freshPhase.plannedMinutes * 60;
+      const elapsed = Math.floor((Date.now() - phaseStartMs) / 1000);
+      if (elapsed >= freshTargetSeconds) {
+        const phases = fresh.phases ?? [];
+        const currentIndex = fresh.currentPhaseIndex ?? 0;
         if (currentIndex < phases.length - 1) {
-          advanceFocusPhase(activeSession.id);
+          advanceFocusPhase(fresh.id);
           playZenBell();
           if ("vibrate" in navigator) navigator.vibrate([200, 100, 200]);
           const nextPhase = phases[currentIndex + 1];
@@ -207,13 +216,13 @@ export default function App() {
             nextPhase?.type === "break" ? "Step away and recharge." : "Back to deep work. You've got this."
           );
         } else {
-          completeFocusSession(activeSession.id, true);
+          completeFocusSession(fresh.id, true);
           playZenBell();
           if ("vibrate" in navigator) navigator.vibrate(300);
           notify("Session complete", "You did the work. Rest well.");
         }
       } else {
-        tickFocusSession(activeSession.id, Math.max(0, elapsed));
+        tickFocusSession(fresh.id, Math.max(0, elapsed));
       }
     };
 

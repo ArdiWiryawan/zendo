@@ -1,4 +1,5 @@
 import { useState, useMemo, useRef, useEffect, useCallback } from "react";
+import { useSearchParams } from "react-router-dom";
 import { useMonkStore } from "../store/useMonkStore";
 import { PrimaryButton, SecondaryButton, GhostButton, CalmDialog } from "../components/ui";
 import { createId } from "../lib/ids";
@@ -80,7 +81,7 @@ function formatRelative(iso: string, t: Translate, locale: string) {
   return new Date(iso).toLocaleDateString(locale, { day: "numeric", month: "short" });
 }
 
-export default function JournalNotebook({ onEditingChange }: { onEditingChange?: (editing: boolean) => void }) {
+export default function JournalNotebook({ onEditingChange, initialEntryId }: { onEditingChange?: (editing: boolean) => void; initialEntryId?: string }) {
   const store = useMonkStore();
   const t = useT();
   const lang = useLanguage();
@@ -94,6 +95,19 @@ export default function JournalNotebook({ onEditingChange }: { onEditingChange?:
   const [confirmKind, setConfirmKind] = useState<null | "delete-list">(null);
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
   const [pendingDeleteTitle, setPendingDeleteTitle] = useState("");
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  // Deep-link from Library: ?open=<entryId> opens that note's editor directly.
+  useEffect(() => {
+    const openId = initialEntryId ?? searchParams.get("open");
+    if (!openId || view !== "list") return;
+    const target = entries.find((e) => e.id === openId);
+    if (!target) return;
+    openEdit(target);
+    const next = new URLSearchParams(searchParams);
+    next.delete("open");
+    setSearchParams(next, { replace: true });
+  }, [initialEntryId, searchParams, view, entries]);
 
   const sorted = useMemo(() => {
     let list = [...entries];
@@ -117,20 +131,13 @@ export default function JournalNotebook({ onEditingChange }: { onEditingChange?:
     onEditingChange?.(false);
   }, [onEditingChange]);
 
-  // Intercept browser/OS back button while in edit view.
-  const handlingBack = useRef(false);
+  // Intercept browser/OS back button while in edit view: push a history entry so
+  // popstate fires on back; NotebookEditor's own popstate listener (which knows
+  // the dirty state) routes it through the save/discard confirm dialog.
   useEffect(() => {
     if (view !== "edit") return;
     window.history.pushState({ nbEdit: true }, "");
-    const handler = () => {
-      if (handlingBack.current) return;
-      handlingBack.current = true;
-      goBackToList();
-      setTimeout(() => { handlingBack.current = false; }, 300);
-    };
-    window.addEventListener("popstate", handler);
-    return () => window.removeEventListener("popstate", handler);
-  }, [view, goBackToList]);
+  }, [view]);
 
   const openNew = () => {
     setEditEntry(null);
@@ -580,6 +587,13 @@ export function NotebookEditor({
       return;
     }
 
+    // Capture the insertion target synchronously: the compress/put loop below is
+    // async, and re-reading pageIndex/selectionStart afterwards would target a
+    // page the user has navigated to meanwhile (or clobber keystrokes typed
+    // during the upload).
+    const targetPage = pageIndex;
+    const insertPos = bodyRef.current?.selectionStart;
+
     const next: string[] = [];
     try {
       for (const file of arr) {
@@ -590,17 +604,21 @@ export function NotebookEditor({
       }
       if (next.length > 0) {
         // Insert each photo as a {{img:<id>}} marker line at the textarea cursor so
-        // text flows above and below it (Word-like placement).
-        const el = bodyRef.current;
-        const pos = el?.selectionStart ?? body.length;
+        // text flows above and below it (Word-like placement). Recompute against
+        // the LATEST text of the captured page so no edits made during the upload
+        // are lost.
         const markers = next.map((id) => `{{img:${id}}}`).join("\n");
-        const prefix = pos > 0 && body[pos - 1] !== "\n" ? "\n" : "";
-        const nextBody = `${body.slice(0, pos)}${prefix}${markers}${pos === body.length ? "" : "\n"}${body.slice(pos)}`;
-        setPageText(nextBody);
+        setPages((prev) => {
+          const pageText = prev[targetPage] ?? "";
+          const pos = insertPos !== undefined ? Math.min(insertPos, pageText.length) : pageText.length;
+          const prefix = pos > 0 && pageText[pos - 1] !== "\n" ? "\n" : "";
+          const nextBody = `${pageText.slice(0, pos)}${prefix}${markers}${pos === pageText.length ? "" : "\n"}${pageText.slice(pos)}`;
+          return prev.map((p, i) => (i === targetPage ? nextBody : p));
+        });
         setImages((prev) => [...prev, ...next]);
         markDirty();
         requestAnimationFrame(() => {
-          if (el) resizeTextarea(el);
+          if (bodyRef.current) resizeTextarea(bodyRef.current);
         });
       }
     } catch (err) {
@@ -688,7 +706,10 @@ export function NotebookEditor({
 
   const activeCatHex = catHex(catId);
   const words = pages.reduce((n, p) => n + wordCount(p), 0);
-  const canSave = title.trim().length > 0 || body.trim().length > 0;
+  // Save gate must consider ALL pages, not just the page in view: a note whose
+  // content lives on another page but whose current page is empty would
+  // otherwise be permanently unsaveable.
+  const canSave = title.trim().length > 0 || allBody.trim().length > 0;
 
   const handleBack = () => {
     if (dirty && canSave) {
@@ -697,6 +718,18 @@ export function NotebookEditor({
     }
     onBack();
   };
+
+  // Browser/OS back button while editing must route through the dirty check too
+  // (the parent only pushes history state; the dirty confirm lives here).
+  const handleBackRef = useRef(handleBack);
+  useEffect(() => {
+    handleBackRef.current = handleBack;
+  });
+  useEffect(() => {
+    const handler = () => handleBackRef.current();
+    window.addEventListener("popstate", handler);
+    return () => window.removeEventListener("popstate", handler);
+  }, []);
 
   return (
     <div className="space-y-0 pb-36 scroll-mb-36">

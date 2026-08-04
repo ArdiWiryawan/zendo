@@ -43,7 +43,8 @@ export function WeekScreen() {
 
   const stats = useMemo(() => {
     if (!weeklyPlan) return null;
-    const plans = weekDates.map((date) => store.dayPlans.find((d) => d.date === date));
+    const seasonId = weeklyPlan.seasonId;
+    const plans = weekDates.map((date) => store.dayPlans.find((d) => d.date === date && d.seasonId === seasonId));
     const completed = plans.filter((p) => p?.status === "completed").length;
     const partial = plans.filter((p) => p?.status === "partial").length;
     const rest = plans.filter((p) => p?.dayType === "rest" || p?.status === "rest").length;
@@ -149,7 +150,7 @@ export function WeekScreen() {
                 aria-label={t("week.daysAria")}
               >
                 {weekDates.map((date) => {
-                  const dayPlan = store.dayPlans.find((d) => d.date === date);
+                  const dayPlan = store.dayPlans.find((d) => d.date === date && d.seasonId === weeklyPlan.seasonId);
                   const weekday = new Date(date + "T00:00:00").toLocaleDateString("en-US", { weekday: "short" });
                   const dayNum = date.slice(8);
                   const isToday = date === today;

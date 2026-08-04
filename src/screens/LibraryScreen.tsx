@@ -109,6 +109,8 @@ export function JournalLibraryScreen() {
   const categories = store.notebookCategories;
 
   const [libTab, setLibTab] = useState<"reflections" | "notebook" | "packs" | "learning">("reflections");
+  const [openPackSessionId, setOpenPackSessionId] = useState<string | null>(null);
+  const [openLearningId, setOpenLearningId] = useState<string | null>(null);
   const learningSessions = [...store.learningSessions].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
 
   const catName = (id: string) => categories.find((c) => c.id === id)?.name ?? t("library.unknown");
@@ -149,14 +151,14 @@ export function JournalLibraryScreen() {
             : [...notebookEntries]
               .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
               .map((entry) => (
-                <div key={entry.id} className="p-4 bg-monk-surface border border-monk-border/40 rounded-xl transition hover:border-monk-accent">
+                <button key={entry.id} type="button" onClick={() => navigate(`${routes.notebook}?open=${entry.id}`)} className="w-full text-left p-4 bg-monk-surface border border-monk-border/40 rounded-xl transition hover:border-monk-accent active:scale-[0.99]">
                   <div className="flex items-center justify-between mb-1">
                     <span className="text-sm font-semibold text-monk-text truncate mr-2">{entry.title || t("library.untitled")}</span>
                     <span className="text-xs font-bold uppercase tracking-wider text-monk-accent bg-monk-accent-soft px-2 py-0.5 rounded-full shrink-0">{catName(entry.categoryId)}</span>
                   </div>
                   <p className="text-xs text-monk-muted mt-1 line-clamp-2">{entry.body.replace(/\n/g, " ").slice(0, 200)}</p>
                   <p className="text-xs text-monk-text-soft mt-1">{new Date(entry.updatedAt).toLocaleDateString(dateLocale, { day: "numeric", month: "short", year: "numeric" })}</p>
-                </div>
+                </button>
               ))
         ) : libTab === "learning" ? (
           learningSessions.length === 0
@@ -172,17 +174,37 @@ export function JournalLibraryScreen() {
               <>
                 {learningSessions.map((l) => {
                   const goal = store.goals.find((g) => g.id === l.relatedGoalId);
+                  const open = openLearningId === l.id;
                   return (
-                    <div key={l.id} className="p-4 bg-monk-surface border border-monk-border/40 rounded-xl">
-                      <div className="flex items-center justify-between mb-1">
-                        <span className="text-xs font-bold uppercase tracking-wider text-monk-accent bg-monk-accent-soft px-2 py-0.5 rounded-full shrink-0">{l.sourceType}</span>
-                        <span className="text-xs text-monk-muted">{new Date(l.createdAt).toLocaleDateString(dateLocale, { day: "numeric", month: "short", year: "numeric" })}</span>
-                      </div>
-                      {l.sourceTitle && <p className="text-sm font-semibold text-monk-text mt-1">{l.sourceTitle}</p>}
-                      {l.lesson && <p className="text-xs text-monk-muted mt-1 line-clamp-3">{l.lesson}</p>}
-                      {l.actionIdea && <p className="text-xs text-monk-text-soft mt-1 italic line-clamp-2">→ {l.actionIdea}</p>}
-                      {goal && <p className="text-xs text-monk-success mt-1">🎯 {goal.title}</p>}
-                      <p className="text-xs text-monk-text-soft mt-1">{Math.round(l.actualDurationSeconds / 60)} menit</p>
+                    <div key={l.id} className="rounded-xl border border-monk-border/40 bg-monk-surface">
+                      <button type="button" onClick={() => setOpenLearningId(open ? null : l.id)} className="w-full text-left p-4 transition hover:border-monk-accent">
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="text-xs font-bold uppercase tracking-wider text-monk-accent bg-monk-accent-soft px-2 py-0.5 rounded-full shrink-0">{l.sourceType}</span>
+                          <span className="text-xs text-monk-muted">{new Date(l.createdAt).toLocaleDateString(dateLocale, { day: "numeric", month: "short", year: "numeric" })}</span>
+                        </div>
+                        {l.sourceTitle && <p className="text-sm font-semibold text-monk-text mt-1">{l.sourceTitle}</p>}
+                        {l.lesson && <p className="text-xs text-monk-muted mt-1 line-clamp-3">{l.lesson}</p>}
+                        {l.actionIdea && <p className="text-xs text-monk-text-soft mt-1 italic line-clamp-2">→ {l.actionIdea}</p>}
+                        {goal && <p className="text-xs text-monk-success mt-1">🎯 {goal.title}</p>}
+                        <p className="text-xs text-monk-text-soft mt-1">{Math.round(l.actualDurationSeconds / 60)} menit</p>
+                      </button>
+                      {open && (l.content || l.lesson || l.actionIdea) && (
+                        <div className="space-y-3 border-t border-monk-border/40 p-4">
+                          {l.content && <p className="text-xs leading-6 text-monk-text whitespace-pre-wrap">{l.content}</p>}
+                          {l.lesson && (
+                            <div>
+                              <span className="block text-xs font-bold uppercase tracking-wider text-monk-muted">Lesson</span>
+                              <p className="mt-0.5 text-xs leading-relaxed text-monk-text">{l.lesson}</p>
+                            </div>
+                          )}
+                          {l.actionIdea && (
+                            <div>
+                              <span className="block text-xs font-bold uppercase tracking-wider text-monk-accent">Action</span>
+                              <p className="mt-0.5 text-xs leading-relaxed text-monk-text-soft">{l.actionIdea}</p>
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </div>
                   );
                 })}
@@ -205,24 +227,44 @@ export function JournalLibraryScreen() {
               .sort((a, b) => new Date(b.completedAt!).getTime() - new Date(a.completedAt!).getTime())
               .map((session) => {
                 const pack = store.journalPacks.find((p) => p.id === session.packId);
+                const open = openPackSessionId === session.id;
                 return (
-                  <div key={session.id} className="p-4 bg-monk-surface border border-monk-border/40 rounded-xl transition hover:border-monk-accent">
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className="text-sm">{t("library.packEmoji")}</span>
-                      <span className="text-sm font-semibold text-monk-text">{pack?.title ?? t("library.unknownPack")}</span>
-                    </div>
-                    <p className="text-xs text-monk-muted mt-1">{t("library.answersCount", { n: session.answers.length })}</p>
-                    <p className="text-xs text-monk-text-soft mt-1">
-                      {session.completedAt
-                        ? t("library.completed", {
-                            date: new Date(session.completedAt).toLocaleDateString(dateLocale, {
-                              day: "numeric",
-                              month: "short",
-                              year: "numeric",
-                            }),
+                  <div key={session.id} className="rounded-xl border border-monk-border/40 bg-monk-surface">
+                    <button type="button" onClick={() => setOpenPackSessionId(open ? null : session.id)} className="w-full text-left p-4 transition hover:border-monk-accent">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="text-sm">{t("library.packEmoji")}</span>
+                        <span className="text-sm font-semibold text-monk-text">{pack?.title ?? t("library.unknownPack")}</span>
+                      </div>
+                      <p className="text-xs text-monk-muted mt-1">{t("library.answersCount", { n: session.answers.length })}</p>
+                      <p className="text-xs text-monk-text-soft mt-1">
+                        {session.completedAt
+                          ? t("library.completed", {
+                              date: new Date(session.completedAt).toLocaleDateString(dateLocale, {
+                                day: "numeric",
+                                month: "short",
+                                year: "numeric",
+                              }),
+                            })
+                          : ""}
+                      </p>
+                    </button>
+                    {open && (
+                      <div className="space-y-3 border-t border-monk-border/40 p-4">
+                        {session.answers.filter((a) => a.answer?.trim()).length === 0 ? (
+                          <p className="text-xs text-monk-muted">{t("library.answersEmpty")}</p>
+                        ) : (
+                          session.answers.map((a) => {
+                            const q = pack?.questions.find((question) => question.id === a.questionId);
+                            return (
+                              <div key={a.questionId}>
+                                <span className="block text-xs font-bold uppercase tracking-wider text-monk-muted">{q?.question ?? a.questionId}</span>
+                                <p className="mt-0.5 text-xs font-medium leading-relaxed text-monk-text whitespace-pre-wrap">{a.answer}</p>
+                              </div>
+                            );
                           })
-                        : ""}
-                    </p>
+                        )}
+                      </div>
+                    )}
                   </div>
                 );
               })

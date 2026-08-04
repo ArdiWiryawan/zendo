@@ -525,6 +525,7 @@ export const BUILT_IN_JOURNAL_PACKS: JournalPack[] = [
     description: "Build the habits that build you — premium deep-dive.",
     icon: "Flame",
     isPremium: true,
+    priceRp: 29000,
     estimatedMinutes: 25,
     questions: [
       { id: "dd_1", order: 1, question: "What is the one habit that, if you mastered it, would make everything else easier?" },
@@ -546,6 +547,7 @@ export const BUILT_IN_JOURNAL_PACKS: JournalPack[] = [
     description: "Face the parts of yourself you usually avoid.",
     icon: "Moon",
     isPremium: true,
+    priceRp: 29000,
     estimatedMinutes: 20,
     questions: [
       { id: "ss_1", order: 1, question: "What emotion do you avoid feeling the most? Where does it live in your body?" },
@@ -565,6 +567,7 @@ export const BUILT_IN_JOURNAL_PACKS: JournalPack[] = [
     description: "Reconnect with your imagination and sense of wonder.",
     icon: "Paintbrush",
     isPremium: true,
+    priceRp: 19000,
     estimatedMinutes: 15,
     questions: [
       { id: "cp_1", order: 1, question: "Draw 25 circles (5x5 grid). Set a 3-minute timer and turn each into something unique." },
@@ -582,6 +585,7 @@ export const BUILT_IN_JOURNAL_PACKS: JournalPack[] = [
     description: "Examine the invisible beliefs running your life.",
     icon: "Lightbulb",
     isPremium: true,
+    priceRp: 29000,
     estimatedMinutes: 20,
     questions: [
       { id: "mb_1", order: 1, question: "What is a view about the world that has changed for you as you've gotten older?" },
@@ -601,6 +605,7 @@ export const BUILT_IN_JOURNAL_PACKS: JournalPack[] = [
     description: "The rest of the 100 prompts collection — all in one pack.",
     icon: "Scroll",
     isPremium: true,
+    priceRp: 49000,
     estimatedMinutes: 30,
     questions: [
       { id: "c100_1", order: 1, question: "What sensations or experiences do you tend to avoid in your life? Why?" },

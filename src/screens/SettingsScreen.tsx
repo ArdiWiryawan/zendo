@@ -34,7 +34,7 @@ import {
   getJournalAnswerItems,
   getJournalQuestionLabels,
 } from "../i18n/prompts";
-import type { AppLanguage } from "../types/app";
+import type { AppLanguage, MonkMVPState } from "../types/app";
 
 function syncLabel(status: SyncStatus, tUI: (k: any) => string) {
   if (status === "syncing") return tUI("sync.syncing");
@@ -84,20 +84,7 @@ export default function SettingsScreen() {
   };
 
   const applyImport = (data: Record<string, unknown>) => {
-    const separateKeys = new Set(["focusSessions", "learningSessions", "timelineEvents"]);
-    const mainState: Record<string, unknown> = {};
-    Object.entries(data).forEach(([key, value]) => {
-      if (separateKeys.has(key)) {
-        localStorage.setItem(key, JSON.stringify(value));
-      } else {
-        mainState[key] = value;
-      }
-    });
-    if (Object.keys(mainState).length > 0) {
-      const existing = localStorage.getItem("monk_mode_pwa_state_v1");
-      const base = existing ? JSON.parse(existing) : {};
-      localStorage.setItem("monk_mode_pwa_state_v1", JSON.stringify({ ...base, ...mainState }));
-    }
+    store.importState(data as Partial<MonkMVPState>);
     setExported("✓ Imported successfully. Reload to apply.");
   };
 

@@ -23,3 +23,20 @@ create policy "Allow anon read/write"
 insert into zendo_state (id, state_json)
 values ('global', '{}'::jsonb)
 on conflict (id) do nothing;
+
+-- Mayar payment purchases. Webhook records a row per paid pack; the client
+-- reads these to unlock premium packs across devices.
+create table if not exists zendo_purchases (
+  id text primary key,
+  pack_id text not null,
+  amount int not null,
+  paid_at timestamptz default now()
+);
+
+alter table zendo_purchases enable row level security;
+
+create policy "Allow anon read purchases"
+  on zendo_purchases
+  for select
+  to anon
+  using (true);

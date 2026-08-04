@@ -42,3 +42,14 @@ export async function setState(state: ZendoState): Promise<void> {
     .update({ state_json, updated_at: new Date().toISOString() })
     .eq('id', 'global')
 }
+
+/** Pack ids confirmed paid via the Mayar webhook (readable by anon per RLS). */
+export async function getPurchases(): Promise<string[]> {
+  const client = getSupabase()
+  if (!client) return []
+  const { data, error } = await client
+    .from('zendo_purchases')
+    .select('pack_id')
+  if (error) return []
+  return (data ?? []).map((row) => row.pack_id).filter(Boolean)
+}

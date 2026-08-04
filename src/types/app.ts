@@ -554,6 +554,8 @@ export type JournalPack = {
   questions: JournalPackQuestion[];
   estimatedMinutes: number;
   isPremium: boolean;
+  /** Price in Indonesian Rupiah for Mayar payment-link checkout. Only premium packs. */
+  priceRp?: number;
   createdAt: ISODateString;
 };
 

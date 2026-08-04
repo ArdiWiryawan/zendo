@@ -121,7 +121,6 @@ type MonkActions = {
   getOrCreateCurrentWeeklyPlan: () => WeeklyPlan | undefined;
   createOrUpdateDayPlan: (dateString: string, input: PickTodayInput) => void;
   clearDayPlan: (dateString: string) => void;
-  saveTomorrowIntention: (dateString: string, text: string) => void;
   toggleTodayCompletion: () => void;
   updateTodayEnergy: (energyLevel: EnergyLevel) => void;
   completeTodayMainAction: () => void;
@@ -169,6 +168,7 @@ type MonkActions = {
   savePackAnswer: (sessionId: string, questionId: string, answer: string) => void;
   completeJournalPack: (sessionId: string) => void;
   purchasePack: (packId: string) => void;
+  syncPurchases: () => Promise<void>;
 };
 
 export type MonkStore = StoreSnapshot & MonkActions;
@@ -504,6 +504,8 @@ export const useMonkStore = create<MonkStore>()(
         // Always use latest pack definitions (stale localStorage must not overwrite)
         journalPacks: fresh.journalPacks,
         purchasedPackIds: stored.purchasedPackIds ?? [],
+        weeklyReviews: stored.weeklyReviews ?? {},
+        releasedSeasonGoals: stored.releasedSeasonGoals ?? [],
         focusSessions,
         timelineDays,
         timelineEvents,
@@ -832,6 +834,7 @@ export const useMonkStore = create<MonkStore>()(
         ? datesInRange(weeklyPlan.startDate, 7).map<DayPlan>((date, index) => {
             const theme = planningSequence[index] ?? "rest";
             const goal = goals.find((item) => item.id === theme);
+            void goal;
             return {
               id: createId("day"),
               seasonId,
@@ -947,7 +950,8 @@ export const useMonkStore = create<MonkStore>()(
     const dayPlans = state.dayPlans.filter((day) => day.id !== existing.id);
     const focusSessions = state.focusSessions.filter((session) => session.dayPlanId !== existing.id);
     const learningSessions = state.learningSessions.filter(
-      (session) => (session.endedAt ?? session.startedAt).slice(0, 10) !== dateString
+      (session) =>
+        !(session.seasonId === existing.seasonId && (session.endedAt ?? session.startedAt).slice(0, 10) === dateString)
     );
     const learningEntries = state.learningEntries.filter((entry) => entry.dayPlanId !== existing.id);
     let next: MonkMVPState = {
@@ -958,26 +962,13 @@ export const useMonkStore = create<MonkStore>()(
       learningEntries
     };
     next = { ...next, weeklyPlans: updateAllocationCounts(next, existing.weeklyPlanId) };
-    const timelineDays = state.timelineDays.filter((day) => day.date !== dateString);
+    // Scope by season — the same calendar date may exist in a previous season's
+    // timeline; deleting it there would corrupt history.
+    const timelineDays = state.timelineDays.filter(
+      (day) => !(day.seasonId === existing.seasonId && day.date === dateString)
+    );
     next = { ...next, timelineDays };
     set(next);
-  },
-
-  saveTomorrowIntention: (dateString, text) => {
-    const state = get();
-    const season = state.activeSeason;
-    if (!season || !text.trim()) return;
-    const tomorrow = addDaysToDate(dateString, 1);
-    const todayPlan = state.dayPlans.find((day) => day.seasonId === season.id && day.date === dateString);
-    const goalId = todayPlan?.goalId ?? getActiveGoals(state)[0]?.id;
-    const todayStatus: "active" | "completed" | "planned" | "missed" | undefined =
-      todayPlan?.status !== "rest" ? (todayPlan?.status as "active" | "completed" | "planned" | "missed" | undefined) : undefined;
-    get().createOrUpdateDayPlan(tomorrow, {
-      dayType: todayPlan?.dayType ?? "goal",
-      goalId,
-      mainAction: text,
-      status: todayStatus
-    });
   },
 
   toggleTodayCompletion: () => {
@@ -1108,7 +1099,8 @@ export const useMonkStore = create<MonkStore>()(
   resetFocusSession: (sessionId) => {
     const state = get();
     const session = state.focusSessions.find((s) => s.id === sessionId);
-    if (!session) return;
+    // Guard: never resurrect a session that already ended (completed/ended_early).
+    if (!session || (session.status !== "running" && session.status !== "paused")) return;
     const timestamp = nowIso();
     const preset = session.preset ?? session.timerMode ?? "deep_work";
     const phases = createFocusPhases(preset, session.durationMinutes);
@@ -1149,7 +1141,10 @@ export const useMonkStore = create<MonkStore>()(
   advanceFocusPhase: (sessionId) => {
     const state = get();
     const session = state.focusSessions.find((s) => s.id === sessionId);
-    if (!session) return;
+    // Idempotence guard: a tick (interval or visibilitychange) can fire twice for
+    // the same phase boundary; once the session left "running" we must not advance
+    // again or we'd skip the break / double-complete.
+    if (!session || session.status !== "running") return;
     const phases = session.phases?.length
       ? session.phases
       : createFocusPhases(session.preset ?? session.timerMode ?? "deep_work", session.durationMinutes);
@@ -1189,7 +1184,7 @@ export const useMonkStore = create<MonkStore>()(
   pauseFocusSession: (sessionId) => {
     const state = get();
     const session = state.focusSessions.find((s) => s.id === sessionId);
-    if (!session) return;
+    if (!session || session.status !== "running") return;
     const currentPhase = getCurrentFocusPhase(session);
     const targetSeconds = currentPhase.plannedMinutes * 60;
     const elapsed = Math.min(
@@ -1208,7 +1203,7 @@ export const useMonkStore = create<MonkStore>()(
   resumeFocusSession: (sessionId) => {
     const state = get();
     const session = state.focusSessions.find((s) => s.id === sessionId);
-    if (!session) return;
+    if (!session || session.status !== "paused") return;
     const currentPhase = getCurrentFocusPhase(session);
     const phaseElapsed = currentPhase.plannedMinutes * 60 - Math.max(0, currentPhase.plannedMinutes * 60 - (session.elapsedSeconds ?? 0));
     const adjustedStart = new Date(Date.now() - phaseElapsed * 1000).toISOString();
@@ -1224,7 +1219,9 @@ export const useMonkStore = create<MonkStore>()(
   completeFocusSession: (sessionId, completeMainAction = false) => {
     const state = get();
     const session = state.focusSessions.find((item) => item.id === sessionId);
-    if (!session) return;
+    // Guard: a stale tick can fire completeFocusSession after the session already
+    // completed; without this we'd append a duplicate timeline event + summary.
+    if (!session || session.status !== "running") return;
     const endTimestamp = nowIso();
     const phases = session.phases?.length
       ? session.phases
@@ -1334,7 +1331,9 @@ export const useMonkStore = create<MonkStore>()(
   abandonFocusSession: (sessionId) => {
     const state = get();
     const session = state.focusSessions.find((s) => s.id === sessionId);
-    if (!session) return;
+    // Guard: abandoning a session that already completed would downgrade it from
+    // "completed" to "ended_early" and lose the completion.
+    if (!session || (session.status !== "running" && session.status !== "paused")) return;
 
     const currentPhase = getCurrentFocusPhase(session);
     const elapsedSeconds = Math.min(
@@ -1879,6 +1878,23 @@ export const useMonkStore = create<MonkStore>()(
     set({
       purchasedPackIds: [...state.purchasedPackIds, packId]
     });
+  },
+
+  syncPurchases: async () => {
+    // Pull packs confirmed paid via the Mayar webhook (Supabase) and merge them
+    // into the local unlock set. Safe to call on app start / after checkout.
+    try {
+      const { getPurchases } = await import("../lib/supabase");
+      const paid = await getPurchases();
+      if (paid.length === 0) return;
+      const state = get();
+      const next = Array.from(new Set([...state.purchasedPackIds, ...paid]));
+      if (next.length !== state.purchasedPackIds.length) {
+        set({ purchasedPackIds: next });
+      }
+    } catch {
+      /* offline or unconfigured — non-fatal */
+    }
   },
 
   importState: (data) => {

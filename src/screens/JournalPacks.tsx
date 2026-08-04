@@ -387,17 +387,61 @@ function PurchaseModal({ packId, onClose }: { packId: string; onClose: () => voi
   const t = useT();
   const pack = store.journalPacks.find((p) => p.id === packId);
   const [processing, setProcessing] = useState(false);
+  const [error, setError] = useState("");
   const [done, setDone] = useState(false);
+  const [demo, setDemo] = useState(false);
+
+  // After Mayar redirects back (?purchased=<packId>), the webhook has persisted
+  // the purchase — mark it unlocked immediately and refresh from Supabase.
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("purchased") === packId) {
+      store.purchasePack(packId);
+      store.syncPurchases();
+      setDone(true);
+      params.delete("purchased");
+      window.history.replaceState({}, "", window.location.pathname + window.location.search);
+    }
+  }, [packId, store]);
 
   if (!pack) return null;
 
-  const handlePurchase = () => {
+  const handlePurchase = async () => {
     setProcessing(true);
-    setTimeout(() => {
+    setError("");
+    try {
+      const resp = await fetch("/api/mayar-checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ packId }),
+      });
+      const contentType = resp.headers.get("content-type") ?? "";
+      // `/api/*` isn't served by `vite dev` (returns the SPA fallback HTML).
+      // Treat a non-JSON reply as "no endpoint" → client-side demo unlock.
+      if (!resp.ok || !contentType.includes("application/json")) {
+        setDemo(true);
+        store.purchasePack(packId);
+        setDone(true);
+        setProcessing(false);
+        return;
+      }
+      const json = await resp.json().catch(() => ({}));
+      if (!json?.link) {
+        setError("No checkout link returned");
+        setProcessing(false);
+        return;
+      }
+      setDemo(Boolean(json.demo));
+      // Redirect to Mayar's hosted checkout (or straight back, in demo mode).
+      // On success Mayar sends the buyer back to the redirectUrl with
+      // ?purchased=<packId>.
+      window.location.href = json.link;
+    } catch {
+      setDemo(true);
       store.purchasePack(packId);
-      setProcessing(false);
       setDone(true);
-    }, 1200);
+      setProcessing(false);
+    }
   };
 
   return (
@@ -433,7 +477,8 @@ function PurchaseModal({ packId, onClose }: { packId: string; onClose: () => voi
             <div className="mb-5 space-y-1 rounded-monk border border-monk-border bg-monk-soft p-4 text-sm text-monk-text-soft">
               <p>{t("packs.deepQuestions", { n: pack.questions.length })}</p>
               <p>{t("packs.reflectMinutes", { n: pack.estimatedMinutes })}</p>
-              <p className="pt-1 font-semibold text-monk-accent">{t("packs.price")}</p>
+              <p className="pt-1 font-semibold text-monk-accent">{t("packs.priceRp", { price: pack.priceRp ?? 29000 })}</p>
+              {demo ? <p className="pt-1 text-xs font-semibold text-monk-accent">{t("packs.demoMode")}</p> : null}
             </div>
 
             {processing ? (
@@ -444,10 +489,11 @@ function PurchaseModal({ packId, onClose }: { packId: string; onClose: () => voi
                   {t("packs.notNow")}
                 </SecondaryButton>
                 <PrimaryButton className="flex-1" onClick={handlePurchase}>
-                  {t("packs.mockBuy")}
+                  {t("packs.buy")}
                 </PrimaryButton>
               </div>
             )}
+            {error ? <p className="mt-2 text-center text-xs text-monk-danger">{error}</p> : null}
           </>
         )}
       </div>

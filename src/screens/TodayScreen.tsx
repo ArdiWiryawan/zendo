@@ -97,7 +97,19 @@ function CloseDayCard({ onSkip }: { onSkip?: () => void }) {
           if (tomorrowText) {
             const isRest = todayPlan?.dayType === "rest";
             if (isRest) {
-              store.createOrUpdateDayPlan(addDaysToDate(today, 1), { dayType: "rest" });
+              // Rest-day "tomorrow I will…" is an explicit resume action, so it
+              // creates a GOAL day for tomorrow (not another rest day — the week
+              // budget is 1 rest day, and a written action means intent to resume).
+              const goalId = selectActiveGoals(store)[0]?.id;
+              if (goalId) {
+                store.createOrUpdateDayPlan(addDaysToDate(today, 1), {
+                  dayType: "goal",
+                  goalId,
+                  mainAction: tomorrowText
+                });
+              }
+              // ponytail: no active goal → skip tomorrow plan write; add freeform
+              // tomorrow when the plan model allows text without a goal.
             } else if (todayPlan?.goalId) {
               store.createOrUpdateDayPlan(addDaysToDate(today, 1), {
                 dayType: "goal",
