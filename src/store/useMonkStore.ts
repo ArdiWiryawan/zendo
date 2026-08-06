@@ -41,6 +41,7 @@ import type {
   BadHabit,
   BadHabitCategory,
   BadHabitDraft,
+  DateOnlyString,
   DayPlan,
   EnergyLevel,
   EnergyLog,
@@ -95,6 +96,7 @@ type RelapseInput = {
   note?: string;
   reflection?: string;
   recoveryAction?: string;
+  date?: DateOnlyString;
 };
 
 type MonkActions = {
@@ -1500,7 +1502,10 @@ export const useMonkStore = create<MonkStore>()(
 
   saveRelapseLog: (input) => {
     const state = get();
-    const plan = findTodayPlan(state);
+    const date = input.date ?? getTodayDateString();
+    const plan =
+      (input.date && state.dayPlans.find((p) => p.seasonId === state.activeSeason?.id && p.date === input.date)) ||
+      findTodayPlan(state);
     if (!state.activeSeason) return;
     const timestamp = nowIso();
     const entry: RelapseLog = {
@@ -1508,7 +1513,7 @@ export const useMonkStore = create<MonkStore>()(
       seasonId: state.activeSeason.id,
       weeklyPlanId: plan?.weeklyPlanId,
       dayPlanId: plan?.id,
-      date: getTodayDateString(),
+      date,
       trigger: input.trigger,
       note: input.note,
       reflection: input.reflection,

@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import type { MonkMVPState } from "../types/app";
 import { createInitialState } from "../constants/defaultData";
-import { getTodayDateString } from "../lib/date";
+import { getTodayDateString, addDaysToDate } from "../lib/date";
 import { getCoreDailyStatusForDate, getDailyStatusForDate } from "../lib/dailyActivity";
 import { useMonkStore } from "./useMonkStore";
 
@@ -98,5 +98,32 @@ describe("retro focus goal resolves partial", () => {
     const timelineDay = useMonkStore.getState().timelineDays.find((d) => d.date === today);
     expect(timelineDay?.status).toBe("relapse");
     expect(getDailyStatusForDate(useMonkStore.getState(), today)).toBe("relapse");
+  });
+
+  it("reentry answer logs against the missed date, not today", () => {
+    const state = useMonkStore.getState();
+    state.setSeasonDuration(30);
+    state.createSeasonFromOnboarding();
+    // Yesterday was a missed goal day; today is a fresh open day.
+    state.createOrUpdateDayPlan(addDaysToDate(today, -1), {
+      dayType: "goal",
+      goalId: undefined,
+      mainAction: "Focus block"
+    });
+    state.createOrUpdateDayPlan(today, {
+      dayType: "goal",
+      goalId: undefined,
+      mainAction: "Focus block"
+    });
+
+    // Re-entry card answers point at the missed day (H2a fix).
+    state.saveRelapseLog({ trigger: "fatigue", date: addDaysToDate(today, -1) });
+
+    const yesterday = addDaysToDate(today, -1);
+    const yesterdayTimeline = useMonkStore.getState().timelineDays.find((d) => d.date === yesterday);
+    expect(yesterdayTimeline?.status).toBe("relapse");
+    expect(getDailyStatusForDate(useMonkStore.getState(), yesterday)).toBe("relapse");
+    // Today stays open — answering a diagnostic is not a relapse.
+    expect(getDailyStatusForDate(useMonkStore.getState(), today)).not.toBe("relapse");
   });
 });

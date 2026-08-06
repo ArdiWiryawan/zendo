@@ -1,4 +1,4 @@
-import type { MonkMVPState, TimelineStatus } from "../types/app";
+import type { MonkMVPState, RelapseLog, TimelineStatus } from "../types/app";
 import { addDaysToDate, getTodayDateString, parseLocalDateKey } from "./date";
 import { differenceInCalendarDays } from "date-fns";
 import { resolveDailyActivityStatus, getDailyStatusHelper } from "../constants/dailyActivityStatus";
@@ -127,6 +127,26 @@ export function dismissReentry(date: string) {
   } catch {
     /* ignore */
   }
+}
+
+export function isReentryAnswered(date: string): boolean {
+  try {
+    return localStorage.getItem(`zendo.reentry.answered.${date}`) === "1";
+  } catch {
+    return false;
+  }
+}
+
+export function markReentryAnswered(date: string) {
+  try {
+    localStorage.setItem(`zendo.reentry.answered.${date}`, "1");
+  } catch {
+    /* ignore */
+  }
+}
+
+export function getRelapseForDate(store: Pick<MonkMVPState, "relapseLogs">, date: string): RelapseLog | undefined {
+  return store.relapseLogs.find((log) => log.date === date);
 }
 
 export function isReentryChipHidden(date: string): boolean {

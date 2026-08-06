@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import type { RelapseLog } from "../types/app";
 import { useNavigate } from "react-router-dom";
 import { Moon, BookOpen, Check, ChevronRight, MoreHorizontal, Sun } from "lucide-react";
 import { useMonkStore } from "../store/useMonkStore";
@@ -12,7 +13,7 @@ import { formatIntention, parseIntention } from "../lib/implementationIntention"
 import { playZenBell, unlockAudio } from "../lib/audio";
 import { loadLastFocus, saveLastFocus } from "../lib/storage";
 import { getCoachStep, dismissCoachStep } from "../lib/coach";
-import { isCloseDaySkipped, skipCloseDay, getDayPart, isReentryDismissed, dismissReentry, isReentryChipHidden, hideReentryChip, shouldOfferReentry, isReflectionThreadDismissed, dismissReflectionThread } from "../lib/dailyActivity";
+import { isCloseDaySkipped, skipCloseDay, getDayPart, isReentryDismissed, dismissReentry, isReentryChipHidden, hideReentryChip, shouldOfferReentry, isReentryAnswered, markReentryAnswered, getRelapseForDate, isReflectionThreadDismissed, dismissReflectionThread } from "../lib/dailyActivity";
 import { isRestSuggestionDismissed, dismissRestSuggestion, shouldSuggestRest } from "../lib/restSuggestion";
 import { selectTodayPlan, selectActiveGoals, selectCurrentWeeklyPlan, selectEnergyForDate, selectTodayLearningSessions, selectTotalFocusSecondsForDate } from "../store/selectors";
 import {
@@ -159,7 +160,8 @@ function ReEntryBanner({ onDismissedChange }: { onDismissedChange?: (dismissed: 
   const hasReflection = !!todayEntry?.answers.whatMovedToday?.trim();
   const [dismissed, setDismissedState] = useState(() => isReentryDismissed(today));
   const [chipHidden, setChipHidden] = useState(() => isReentryChipHidden(today));
-  const [logged, setLogged] = useState(false);
+  const [logged, setLogged] = useState(() => isReentryAnswered(today));
+  const [reentryNote, setReentryNote] = useState("");
   const setDismissed = (value: boolean) => {
     setDismissedState(value);
     onDismissedChange?.(value);
@@ -217,10 +219,31 @@ function ReEntryBanner({ onDismissedChange }: { onDismissedChange?: (dismissed: 
     "other",
   ] as const;
 
+  // Replay yesterday's own words so the diagnostic stays concrete, not shaming.
+  const prevLog = logged ? undefined : getRelapseForDate(store, addDaysToDate(today, -1));
+  const prevWords =
+    prevLog && (prevLog.trigger || prevLog.note)
+      ? [prevLog.trigger && t(`relapse.trigger.${prevLog.trigger}`), prevLog.note?.trim()]
+          .filter(Boolean)
+          .join(" — ")
+      : null;
+
+  // Log against YESTERDAY's plan so today stays "open" — answering a diagnostic is not a relapse.
+  const saveLog = (trigger: RelapseLog["trigger"]) => {
+    store.saveRelapseLog({ trigger, note: reentryNote.trim(), recoveryAction: "", date: addDaysToDate(today, -1) });
+    markReentryAnswered(today);
+    setLogged(true);
+  };
+
   return (
     <Card className="border-monk-accent/25 bg-monk-accent-soft/30 p-4">
       <p className="text-sm font-semibold">{t("today.reentry.title")}</p>
       <p className="mt-1 text-sm text-monk-muted">{t("today.reentry.body")}</p>
+      {prevWords ? (
+        <p className="mt-1.5 text-xs leading-5 text-monk-muted/90">
+          {t("today.reentry.previous", { trigger: prevWords })}
+        </p>
+      ) : null}
       {whyLine ? (
         <p className="mt-1.5 text-xs leading-5 text-monk-muted/90">{t("today.reentry.why", { why: whyLine })}</p>
       ) : null}
@@ -251,20 +274,23 @@ function ReEntryBanner({ onDismissedChange }: { onDismissedChange?: (dismissed: 
       </div>
       <div className="mt-3">
         {logged ? (
-          <p className="text-xs font-medium text-monk-success">{t("today.reentry.logged")}</p>
+          <p className="text-xs font-medium text-monk-success">{t("today.reentry.answered")}</p>
         ) : (
           <>
             <p className="text-xs text-monk-muted">{t("today.reentry.whatPulled")}</p>
+            <Textarea
+              className="mt-1.5 min-h-[64px]"
+              placeholder={t("today.reentry.notePlaceholder")}
+              value={reentryNote}
+              onChange={(event) => setReentryNote(event.target.value)}
+            />
             <div className="mt-1.5 flex flex-wrap gap-1.5">
               {reentryTriggers.map((value) => (
                 <ChoiceChip
                   key={value}
                   label={t(`relapse.trigger.${value}`)}
                   selected={false}
-                  onClick={() => {
-                    store.saveRelapseLog({ trigger: value, note: "", recoveryAction: "" });
-                    setLogged(true);
-                  }}
+                  onClick={() => saveLog(value)}
                 />
               ))}
             </div>
@@ -392,6 +418,7 @@ export function TodayScreen() {
     todayPlan.status !== "completed" &&
     !hasReflection &&
     !reentryDismissed &&
+    !isReentryAnswered(today) &&
     shouldOfferReentry(store, season.startDate, today);
   const dayPart = getDayPart();
   const allocation = todayPlan?.goalId && weeklyPlan
