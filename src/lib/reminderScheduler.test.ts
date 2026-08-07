@@ -81,6 +81,64 @@ describe("computeNextFireTime", () => {
   });
 });
 
+describe("rest-day skip for focus cues", () => {
+  it("daily_start on a rest day today rolls to tomorrow at the same time", () => {
+    const r = reminder({ type: "daily_start", time: "07:00" });
+    const next = computeNextFireTime(r, {
+      now: WED_MORNING,
+      today: WED,
+      isRest: (d) => d === WED
+    })!;
+    expect(new Date(next).toISOString().slice(0, 10)).toBe("2026-08-06");
+    expect(new Date(next).getHours()).toBe(7);
+    expect(new Date(next).getMinutes()).toBe(0);
+  });
+
+  it("daily_start rolls past consecutive rest days", () => {
+    const r = reminder({ type: "daily_start", time: "07:00" });
+    const next = computeNextFireTime(r, {
+      now: WED_MORNING,
+      today: WED,
+      isRest: (d) => d === WED || d === "2026-08-06"
+    })!;
+    expect(new Date(next).toISOString().slice(0, 10)).toBe("2026-08-07");
+    expect(new Date(next).getHours()).toBe(7);
+  });
+
+  it("daily_reflection skips a rest day too", () => {
+    const r = reminder({ type: "daily_reflection", time: "20:00" });
+    const next = computeNextFireTime(r, {
+      now: WED_MORNING,
+      today: WED,
+      isRest: (d) => d === WED
+    })!;
+    expect(new Date(next).toISOString().slice(0, 10)).toBe("2026-08-06");
+    expect(new Date(next).getHours()).toBe(20);
+  });
+
+  it("weekly_review is not skipped on a rest day", () => {
+    const r = reminder({ type: "weekly_review", time: "18:00", dayOfWeek: 0 });
+    const next = computeNextFireTime(r, {
+      now: WED_MORNING,
+      today: WED,
+      isRest: () => true
+    })!;
+    expect(new Date(next).getDay()).toBe(0); // Sunday
+    expect(new Date(next).getHours()).toBe(18);
+  });
+
+  it("rolls a passed-time target past a rest tomorrow", () => {
+    const r = reminder({ type: "daily_start", time: "07:00" });
+    const next = computeNextFireTime(r, {
+      now: new Date(WED + "T09:00:00"),
+      today: WED,
+      isRest: (d) => d === "2026-08-06"
+    })!;
+    expect(new Date(next).toISOString().slice(0, 10)).toBe("2026-08-07");
+    expect(new Date(next).getHours()).toBe(7);
+  });
+});
+
 describe("selectNextFire", () => {
   it("picks the earliest fire across enabled reminders", () => {
     const r1 = reminder({ id: "a", type: "daily_start", time: "09:00" });

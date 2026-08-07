@@ -9,7 +9,7 @@
 // Pure next-fire computation lives in `computeNextFireTime` so it is testable
 // without timers.
 
-import { getTodayDateString } from "./date";
+import { addDaysToDate, getTodayDateString } from "./date";
 import { createDefaultReminders } from "../constants/defaultData";
 import { useMonkStore } from "../store/useMonkStore";
 import { t } from "../i18n";
@@ -23,6 +23,8 @@ export type ReminderContext = {
   now?: Date;
   today?: string;
   seasonEnd?: string;
+  /** Rest-day check for focus cues: when provided, daily cues roll to the next non-rest day. */
+  isRest?: (date: string) => boolean;
 };
 
 function parseTime(time: string | undefined): { h: number; m: number } | null {
@@ -50,10 +52,11 @@ function targetTime(day: string, time: string | undefined): number {
  * should not fire again.
  *
  * Daily types: next occurrence of `time` at/after `now` (today if not passed,
- * else tomorrow). Weekly: same, restricted to `dayOfWeek`. Season types: only
- * when an active season exists — countdown fires at `time` on
- * end - daysBeforeSeasonEnd; season_end at `time` on the end date. Season
- * types return null once the end date is past.
+ * else tomorrow), rolling past rest days when `ctx.isRest` is given. Weekly:
+ * same, restricted to `dayOfWeek`. Season types: only when an active season
+ * exists — countdown fires at `time` on end - daysBeforeSeasonEnd; season_end
+ * at `time` on the end date. Season types return null once the end date is
+ * past.
  */
 export function computeNextFireTime(
   reminder: NotificationReminder,
@@ -67,8 +70,19 @@ export function computeNextFireTime(
   switch (reminder.type) {
     case "daily_start":
     case "daily_reflection": {
-      const todayTarget = targetTime(today, time);
-      return todayTarget > now.getTime() ? todayTarget : todayTarget + 86_400_000;
+      // Focus cues never fire on a rest day: roll forward day-by-day to the
+      // next non-rest day, keeping the same wall-clock time.
+      let target = targetTime(today, time);
+      const candidateDay = target > now.getTime() ? today : addDaysToDate(today, 1);
+      if (target <= now.getTime()) target += 86_400_000;
+      if (ctx.isRest) {
+        let cursor = candidateDay;
+        while (ctx.isRest(cursor)) {
+          target += 86_400_000;
+          cursor = addDaysToDate(cursor, 1);
+        }
+      }
+      return target;
     }
     case "weekly_review": {
       const target = targetTime(today, time);
@@ -87,6 +101,14 @@ export function computeNextFireTime(
         : end - (reminder.daysBeforeSeasonEnd ?? 3) * 86_400_000;
     }
   }
+}
+
+/** Rest-day check for focus cues in the active season. */
+function isRestDay(state: MonkMVPState, date: string): boolean {
+  const seasonId = state.activeSeason?.id;
+  if (!seasonId) return false;
+  const plan = state.dayPlans.find((p) => p.seasonId === seasonId && p.date === date);
+  return !!plan && plan.dayType === "rest";
 }
 
 /** Any enabled, scheduleable reminder for a state snapshot. */
@@ -201,9 +223,14 @@ export function initReminderScheduler(handler: FireHandler): () => void {
   const schedule = () => {
     clearTimer();
     ensureReminders();
-    const reminders = selectEnabledReminders(useMonkStore.getState());
+    const state = useMonkStore.getState();
+    const reminders = selectEnabledReminders(state);
     const now = new Date();
-    const next = selectNextFire(reminders, { now, seasonEnd: useMonkStore.getState().activeSeason?.endDate });
+    const next = selectNextFire(reminders, {
+      now,
+      seasonEnd: state.activeSeason?.endDate,
+      isRest: (date) => isRestDay(state, date)
+    });
     if (next === null) return;
     const delay = Math.min(Math.max(next - now.getTime(), 0), MAX_DELAY_MS);
     timeout = setTimeout(() => {
@@ -213,7 +240,11 @@ export function initReminderScheduler(handler: FireHandler): () => void {
       // guard: skip firing when within 500ms of the last fire (re-entrancy)
       if (fireNow.getTime() - firedAt >= 500) {
         const due = selectEnabledReminders(fresh).filter((r) => {
-          const t = computeNextFireTime(r, { now: fireNow, seasonEnd: fresh.activeSeason?.endDate });
+          const t = computeNextFireTime(r, {
+            now: fireNow,
+            seasonEnd: fresh.activeSeason?.endDate,
+            isRest: (date) => isRestDay(fresh, date)
+          });
           return t !== null && t <= fireNow.getTime() + 500;
         });
         for (const r of due) {
