@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Flame } from "lucide-react";
 import {
   Card,
   ChoiceCard,
@@ -13,16 +14,20 @@ import {
   getDaysPassed,
   getSeasonProgress,
 } from "../lib/date";
+import { getFocusStreak } from "../lib/focusStreak";
 import { selectActiveGoals } from "../store/selectors";
 import { useMonkStore } from "../store/useMonkStore";
+import { useT } from "../i18n";
 
 export function SeasonProgressCard({ compact = false }: { compact?: boolean }) {
   const store = useMonkStore();
+  const t = useT();
   const { activeSeason } = store;
   if (!activeSeason) return null;
   const daysPassed = getDaysPassed(activeSeason.startDate);
   const daysLeft = getDaysLeft(activeSeason.endDate);
   const progress = getSeasonProgress(activeSeason);
+  const { count, best } = getFocusStreak(store);
   const goals = selectActiveGoals(store);
   return (
     <Card className="bg-monk-surface p-4">
@@ -37,6 +42,15 @@ export function SeasonProgressCard({ compact = false }: { compact?: boolean }) {
         {compact
           ? `Day ${daysPassed} · ${daysLeft}d left`
           : `Day ${daysPassed} of ${activeSeason.durationDays} · ends ${formatHumanDate(activeSeason.endDate)}`}
+      </p>
+      <p className="mt-2 flex items-center gap-1.5 text-xs text-monk-muted">
+        <Flame size={13} strokeWidth={1.5} className="text-monk-warning" />
+        <span className="font-medium text-monk-text-soft">
+          {count === 1 ? t("season.streak", { n: count }) : t("season.streakPlural", { n: count })}
+        </span>
+        {best > count ? (
+          <span className="font-mono text-monk-muted/80">{t("season.bestStreak", { n: best })}</span>
+        ) : null}
       </p>
       {!compact && goals.length ? (
         <div className="mt-4 flex flex-wrap gap-2">

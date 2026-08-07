@@ -18,6 +18,7 @@ import {
   Globe,
   HardDrive,
   Moon,
+  RotateCcw,
   ShieldAlert,
   Trash2,
   Upload,
@@ -212,6 +213,43 @@ export default function SettingsScreen() {
                 }}
               />
             </SettingsRow>
+            <div className="px-3 py-2">
+              <div className="mb-2 flex items-center justify-between">
+                <p className="text-sm font-semibold text-monk-text">{tUI("settings.reminders")}</p>
+                <GhostButton onClick={store.resetReminders} aria-label={tUI("settings.remindersResetAria")} className="!min-h-7 !px-2.5 text-xs">
+                  <RotateCcw className="w-3.5 h-3.5 mr-1" />
+                  {tUI("settings.remindersReset")}
+                </GhostButton>
+              </div>
+              <p className="mb-2 text-xs text-monk-muted/70 leading-4">{tUI("settings.remindersDesc")}</p>
+              <div className="divide-y divide-monk-border/30 rounded-monk border border-monk-border/40">
+                {store.notificationReminders.map((reminder) => (
+                  <div key={reminder.id} className="flex items-center justify-between gap-3 px-3 py-2">
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-medium text-monk-text">{tUI(`reminder.${reminder.type}`)}</p>
+                      <div className="mt-1 flex items-center gap-2">
+                        <input
+                          type="time"
+                          value={reminder.time ?? ""}
+                          onChange={(e) => store.updateReminder(reminder.id, { time: e.target.value })}
+                          disabled={!reminder.enabled}
+                          aria-label={tUI(`reminder.${reminder.type}`)}
+                          className="min-h-7 rounded-monk border border-monk-border/40 bg-monk-soft px-2 py-1 text-xs text-monk-text outline-none transition focus:border-monk-accent disabled:opacity-40"
+                        />
+                        {reminder.type === "season_countdown" ? (
+                          <span className="text-[10px] text-monk-muted">{tUI("reminder.season_countdownPrefix")} {reminder.daysBeforeSeasonEnd ?? 3} {tUI("reminder.season_countdownSuffix")}</span>
+                        ) : null}
+                      </div>
+                    </div>
+                    <MonkToggle
+                      checked={reminder.enabled}
+                      aria-label={tUI(`reminder.${reminder.type}`)}
+                      onToggle={() => store.updateReminder(reminder.id, { enabled: !reminder.enabled })}
+                    />
+                  </div>
+                ))}
+              </div>
+            </div>
             <SettingsRow icon={Moon} title={tUI("settings.detox")} description={tUI("settings.detoxDesc")}>
               <MonkToggle
                 checked={store.appSettings.greyModeGuideCompleted}

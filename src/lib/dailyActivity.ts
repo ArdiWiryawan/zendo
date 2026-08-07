@@ -149,6 +149,22 @@ export function getRelapseForDate(store: Pick<MonkMVPState, "relapseLogs">, date
   return store.relapseLogs.find((log) => log.date === date);
 }
 
+export function isNmt2Dismissed(date: string): boolean {
+  try {
+    return localStorage.getItem(`zendo.nmt2.dismissed.${date}`) === "1";
+  } catch {
+    return false;
+  }
+}
+
+export function dismissNmt2(date: string) {
+  try {
+    localStorage.setItem(`zendo.nmt2.dismissed.${date}`, "1");
+  } catch {
+    /* ignore */
+  }
+}
+
 export function isReentryChipHidden(date: string): boolean {
   try {
     return localStorage.getItem(`zendo.reentry.chipHidden.${date}`) === "1";

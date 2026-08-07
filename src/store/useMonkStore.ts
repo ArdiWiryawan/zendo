@@ -3,6 +3,7 @@ import { persist } from "zustand/middleware";
 import { deleteImage } from "../lib/imageStore";
 import {
   createDefaultOnboarding,
+  createDefaultReminders,
   createInitialState,
   defaultWeeklyTargets,
   frictionActionsForHabit
@@ -56,6 +57,7 @@ import type {
   LearningSourceType,
   NotebookCategory,
   NotebookEntry,
+  NotificationReminder,
   TimelineEvent,
   TimelineEventType,
   FocusSessionPreset,
@@ -79,6 +81,7 @@ type PickTodayInput = {
   dayType: "goal" | "rest";
   energyLevel?: EnergyLevel;
   mainAction?: string;
+  highlight?: string;
   status?: "active" | "completed" | "planned" | "missed";
 };
 
@@ -124,6 +127,7 @@ type MonkActions = {
   createOrUpdateDayPlan: (dateString: string, input: PickTodayInput) => void;
   clearDayPlan: (dateString: string) => void;
   toggleTodayCompletion: () => void;
+  setTodayHighlight: (highlight: string) => void;
   updateTodayEnergy: (energyLevel: EnergyLevel) => void;
   completeTodayMainAction: () => void;
   startFocusSession: (preset?: FocusSessionPreset, customMinutes?: number) => FocusSession | undefined;
@@ -147,6 +151,8 @@ type MonkActions = {
   updateGoalWhy: (goalId: string, why: string) => void;
   releaseGoalFromSeason: (goalId: string, note?: string) => void;
   updateSettings: (patch: Partial<AppSettings>) => void;
+  updateReminder: (id: string, patch: Partial<NotificationReminder>) => void;
+  resetReminders: () => void;
   importState: (data: Partial<MonkMVPState>) => void;
 
   // Weekly re-decide review
@@ -518,7 +524,13 @@ export const useMonkStore = create<MonkStore>()(
         onboarding: {
           ...createDefaultOnboarding(),
           ...stored.onboarding
-        }
+        },
+        // Seed habit cues on first run / legacy states (empty array → defaults).
+        // Keeps id+type identity so updateReminder/sync merge never dupe a type.
+        notificationReminders:
+          Array.isArray(stored.notificationReminders) && stored.notificationReminders.length > 0
+            ? stored.notificationReminders
+            : createDefaultReminders()
       });
     }
   },
@@ -926,6 +938,7 @@ export const useMonkStore = create<MonkStore>()(
       dayType: input.dayType,
       goalId: input.dayType === "goal" ? input.goalId : undefined,
       mainAction: input.dayType === "goal" ? (input.mainAction !== undefined ? input.mainAction : (existing?.mainAction ?? goal?.keystoneAction)) : undefined,
+      highlight: input.highlight !== undefined ? input.highlight : existing?.highlight,
       energyLevel: input.energyLevel ?? existing?.energyLevel,
       status: input.status ?? (existing?.status ?? "active"),
       createdAt: existing?.createdAt ?? timestamp,
@@ -991,6 +1004,16 @@ export const useMonkStore = create<MonkStore>()(
       timelineDays: updatedTimelineDays(base, dayPlan)
     };
     set(next);
+  },
+
+  setTodayHighlight: (highlight) => {
+    const state = get();
+    const plan = findTodayPlan(state);
+    if (!plan) return;
+    const dayPlan = { ...plan, highlight: highlight.trim() || undefined, updatedAt: nowIso() };
+    set({
+      dayPlans: state.dayPlans.map((day) => (day.id === dayPlan.id ? dayPlan : day))
+    });
   },
 
   updateTodayEnergy: (energyLevel) => {
@@ -1754,6 +1777,21 @@ export const useMonkStore = create<MonkStore>()(
     set({
       appSettings: { ...state.appSettings, ...patch, updatedAt: nowIso() }
     });
+  },
+
+  // ── Reminders (habit cues) ──
+
+  updateReminder: (id, patch) => {
+    const state = get();
+    set({
+      notificationReminders: state.notificationReminders.map((rem) =>
+        rem.id === id ? { ...rem, ...patch, updatedAt: nowIso() } : rem
+      )
+    });
+  },
+
+  resetReminders: () => {
+    set({ notificationReminders: createDefaultReminders() });
   },
 
   // ── Notebook Actions ──

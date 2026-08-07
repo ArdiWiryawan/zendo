@@ -1,107 +1,15 @@
 import { Suspense, lazy, useEffect, useMemo, useRef, useState } from "react";
-import { Link, Navigate, Route, Routes, useLocation, useNavigate, useSearchParams } from "react-router-dom";
-import { supabase as getSupabase } from "../lib/supabase";
-import { startMusic, stopMusic, toggleMusic } from "../lib/focusMusic";
+import { Navigate, Route, Routes, useLocation, useNavigate } from "react-router-dom";
 import LoginScreen from "../components/LoginScreen";
 import SignupScreen from "../components/SignupScreen";
 import PwaInstallBanner from "../components/PwaInstallBanner";
 import { startEveningNudgeWatcher } from "../lib/eveningNudge";
-import {
-  ArrowLeft,
-  BookOpen,
-  Calendar,
-  Check,
-  ChevronRight,
-  Volume2,
-  VolumeX,
-  EyeOff,
-  FileText,
-  History,
-  Minus,
-  Moon,
-  Plus,
-  Target,
-  Timer,
-  Flag,
-  Flame,
-  Trophy,
-  Lightbulb,
-  Sun
-} from "lucide-react";
-import {
-  AppShell,
-  CalmAlert,
-  CalmDialog,
-  Card,
-  ChoiceCard,
-  ChoiceChip,
-  DurationCard,
-  EmptyState,
-  GhostButton,
-  OnboardingShell,
-  PageHeader,
-  PrimaryButton,
-  SeasonPreviewCard,
-  SecondaryButton,
-  SectionHeader,
-  SettingsLink,
-  TextInput,
-  Textarea,
-  useCalmToast
-} from "../components/ui";
-import { useSyncStatus, type SyncStatus } from "../lib/syncStatus";
-import { habitOptions, learningTypes, defaultWeeklyTargets } from "../constants/defaultData";
-import { DAILY_STATUS_LABELS, getDailyStatusHelper, resolveDailyActivityStatus } from "../constants/dailyActivityStatus";
-import { FOCUS_PRESETS, getCompletedSeconds, getCurrentFocusPhase } from "../constants/focusPresets";
-import {
-  formatFocusSessionTimelineDescription,
-  getFocusSessionPreset,
-  normalizeFocusSessionRecord,
-  resolveFocusSessionStatus
-} from "../constants/focusSessionStatus";
+import { initReminderScheduler } from "../lib/reminderScheduler";
+import { AppShell, OnboardingShell, useCalmToast } from "../components/ui";
 import { onboardingOrder, routes } from "../constants/routes";
-import { CORE_VALUES } from "../constants/whyValues";
-import {
-  addDaysToDate,
-  datesInRange,
-  formatHumanDate,
-  getDayNumber,
-  getDaysLeft,
-  getDaysPassed,
-  getSeasonDayLabel,
-  getSeasonProgress,
-  getTodayDateString,
-  nowIso
-} from "../lib/date";
-import { createId } from "../lib/ids";
-import { formatIntention, parseIntention } from "../lib/implementationIntention";
-import { capacityCheck, planStrengthLabel, scorePlan } from "../lib/planScoring";
-import { dismissCoachStep, getCoachStep, type CoachStepId } from "../lib/coach";
-import { exportStateAsJson, JOURNAL_DRAFT_KEY, loadLastFocus, saveLastFocus } from "../lib/storage";
-import {
-  validateGoalBrainDump,
-  validateHabitAudit,
-  validateJournalEntry,
-  validateKeystoneActions,
-  validateNarrowGoals,
-  validateSeasonDuration,
-  validateWeeklyAllocation
-} from "../lib/validation";
-import { selectActiveGoals, selectCurrentWeeklyPlan, selectTodayPlan, selectJournalEntryForToday, selectEnergyForDate, selectTodayLearningSessions, selectTotalFocusSecondsForDate } from "../store/selectors";
 import { useMonkStore } from "../store/useMonkStore";
-import type { EnergyLevel, FocusSession, FocusSessionPreset, JournalAnswers, JournalEntry, LearningType, SeasonDurationPreset, TimelineStatus, LearningSourceType, LearningSession, TimelineEvent, TimelineEventType, MonkMVPState } from "../types/app";
-import { playZenBell, unlockAudio } from "../lib/audio";
-import { CircularProgress } from "../components/CircularProgress";
-import JournalNotebook, { NotebookEditor } from "../screens/JournalNotebook";
-import JournalPacks from "../screens/JournalPacks";
-import { t, useT, useLanguage } from "../i18n";
-import {
-  getDailyJournalPromptForDate,
-  getJournalAnswerItems,
-  getPromptPack,
-  getJournalQuestionLabels,
-} from "../i18n/prompts";
-import type { AppLanguage } from "../types/app";
+import { playZenBell } from "../lib/audio";
+import { getCurrentFocusPhase } from "../constants/focusPresets";
 
 // ponytail: TodayScreen + FocusScreen loaded eagerly (primary screens); others lazy-split
 const FocusScreen = lazy(() => import("../screens/FocusScreen"));
@@ -116,46 +24,9 @@ const JournalLibraryScreenLazy = lazy(() => import("../screens/LibraryScreen").t
 const NotebookPageLazy = lazy(() => import("../screens/LibraryScreen").then(m => ({ default: m.NotebookPage })));
 const PacksPageLazy = lazy(() => import("../screens/LibraryScreen").then(m => ({ default: m.PacksPage })));
 const ArchiveScreenLazy = lazy(() => import("../screens/ArchiveScreen").then(m => ({ default: m.ArchiveScreen })));
-import { TodayScreen, DefenseChips } from "../screens/TodayScreen";
-import { FocusSessionPanel, FocusSessionStarter } from "../screens/FocusSession";
-import { FrictionWhy, SeasonProgressCard, WhyEditor } from "../components/SeasonWidgets";
+import { TodayScreen } from "../screens/TodayScreen";
 import { WelcomeScreen } from "../screens/WelcomeScreen";
-import {
-  ScreenIntro,
-  ValuesStep,
-  VisionStep,
-  RealityCheck,
-  PastObstacles,
-  HabitAudit,
-  RemoveDistractions,
-  GreyMode,
-  GoalBrainDump,
-  SeasonSetup,
-  NarrowGoals,
-  KeystoneSetup,
-  ObstacleStep,
-  WeekSetup,
-  TodayPreviewStep,
-  CoachHint,
-  PlanTomorrow,
-  WeeklyStatusIndicators,
-} from "../screens/OnboardingSteps";
-import {
-  getDailyActivity,
-  getDailyStatusForDate,
-  getCoreDailyStatusForDate,
-  getDailyHelperForDate,
-  getFocusSummaryForDate,
-  getLearningSummaryForDate,
-  isCloseDaySkipped,
-  skipCloseDay,
-  getDayPart,
-  isReentryDismissed,
-  dismissReentry,
-  isReentryChipHidden,
-  hideReentryChip,
-  shouldOfferReentry,
-} from "../lib/dailyActivity";
+import { ValuesStep, VisionStep, RealityCheck, PastObstacles, HabitAudit, RemoveDistractions, GreyMode, GoalBrainDump, SeasonSetup, NarrowGoals, KeystoneSetup, ObstacleStep, WeekSetup, TodayPreviewStep } from "../screens/OnboardingSteps";
 
 export default function App() {
   const hydrate = useMonkStore((state) => state.hydrate);
@@ -182,6 +53,24 @@ export default function App() {
   useEffect(() => {
     if (!ready) return;
     return startEveningNudgeWatcher();
+  }, [ready]);
+
+  const reminderToast = useCalmToast();
+  const reminderToastRef = useRef(reminderToast);
+  reminderToastRef.current = reminderToast;
+
+  useEffect(() => {
+    if (!ready) return;
+    return initReminderScheduler({
+      osNotify: (title, body) => {
+        try {
+          new Notification(title, { body, icon: "/apple-touch-icon.png", silent: true });
+        } catch {
+          /* permission revoked between check and fire — in-app toast still shown */
+        }
+      },
+      toast: (message) => reminderToastRef.current.show(message)
+    });
   }, [ready]);
 
   useEffect(() => {
@@ -249,6 +138,7 @@ export default function App() {
   return (
     <>
       <PwaInstallBanner />
+      <reminderToast.Toast />
       <Routes>
         <Route path={routes.root} element={<RootRedirect />} />
         <Route path="/onboarding/*" element={<OnboardingGate />} />

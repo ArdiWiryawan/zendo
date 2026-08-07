@@ -13,8 +13,9 @@ import { formatIntention, parseIntention } from "../lib/implementationIntention"
 import { playZenBell, unlockAudio } from "../lib/audio";
 import { loadLastFocus, saveLastFocus } from "../lib/storage";
 import { getCoachStep, dismissCoachStep } from "../lib/coach";
-import { isCloseDaySkipped, skipCloseDay, getDayPart, isReentryDismissed, dismissReentry, isReentryChipHidden, hideReentryChip, shouldOfferReentry, isReentryAnswered, markReentryAnswered, getRelapseForDate, isReflectionThreadDismissed, dismissReflectionThread } from "../lib/dailyActivity";
+import { isCloseDaySkipped, skipCloseDay, getDayPart, isReentryDismissed, dismissReentry, isReentryChipHidden, hideReentryChip, shouldOfferReentry, isReentryAnswered, markReentryAnswered, getRelapseForDate, isReflectionThreadDismissed, dismissReflectionThread, isNmt2Dismissed, dismissNmt2 } from "../lib/dailyActivity";
 import { isRestSuggestionDismissed, dismissRestSuggestion, shouldSuggestRest } from "../lib/restSuggestion";
+import { shouldWarnMissTwice } from "../lib/focusStreak";
 import { selectTodayPlan, selectActiveGoals, selectCurrentWeeklyPlan, selectEnergyForDate, selectTodayLearningSessions, selectTotalFocusSecondsForDate } from "../store/selectors";
 import {
   CalmDialog,
@@ -301,6 +302,45 @@ function ReEntryBanner({ onDismissedChange }: { onDismissedChange?: (dismissed: 
   );
 }
 
+function Nmt2Banner({
+  onOpenIntention,
+  onDismissedChange
+}: {
+  onOpenIntention: () => void;
+  onDismissedChange?: (dismissed: boolean) => void;
+}) {
+  const store = useMonkStore();
+  const t = useT();
+  const today = getTodayDateString();
+  const [dismissed, setDismissed] = useState(() => isNmt2Dismissed(today));
+
+  if (dismissed || !shouldWarnMissTwice(store, today)) return null;
+
+  const dismiss = () => {
+    dismissNmt2(today);
+    setDismissed(true);
+    onDismissedChange?.(true);
+  };
+
+  return (
+    <Card className="border-monk-warning/25 bg-monk-warning-soft/30 p-4">
+      <p className="text-sm font-semibold">{t("nmt2.title")}</p>
+      <div className="mt-3 flex flex-wrap gap-2">
+        <PrimaryButton
+          className="min-h-11 w-auto flex-1 rounded-full px-4 text-sm"
+          onClick={() => {
+            dismiss();
+            onOpenIntention();
+          }}
+        >
+          {t("nmt2.cta")}
+        </PrimaryButton>
+        <GhostButton onClick={dismiss}>{t("nmt2.dismiss")}</GhostButton>
+      </div>
+    </Card>
+  );
+}
+
 function ReflectionThreadHint() {
   const store = useMonkStore();
   const t = useT();
@@ -375,8 +415,12 @@ export function TodayScreen() {
   const [editTime, setEditTime] = useState("");
   const [editWhen, setEditWhen] = useState("");
   const [editAction, setEditAction] = useState("");
+  const [editingHighlight, setEditingHighlight] = useState(false);
+  const [editHighlight, setEditHighlight] = useState("");
   const [closeDaySkipped, setCloseDaySkipped] = useState(() => isCloseDaySkipped(today));
   const [reentryDismissed, setReentryDismissed] = useState(() => isReentryDismissed(today));
+  const [nmt2Dismissed, setNmt2Dismissed] = useState(() => isNmt2Dismissed(today));
+  const nmt2Visible = !nmt2Dismissed && shouldWarnMissTwice(store, today);
   const [restDismissed, setRestDismissed] = useState(() => isRestSuggestionDismissed(today));
   const [coachTick, setCoachTick] = useState(0);
   const [undoPlan, setUndoPlan] = useState<null | {
@@ -479,6 +523,7 @@ export function TodayScreen() {
 
   const checklist = todayPlan
     ? [
+        { id: "highlight", label: t("today.check.highlight"), done: !!todayPlan?.highlight?.trim(), hide: isRest },
         { id: "morning", label: t("today.check.morning"), done: hasMorningPages, hide: false },
         { id: "focus", label: isRest ? t("today.check.restHeld") : t("today.check.focusDone"), done: isDone, hide: false },
         { id: "learn", label: t("today.check.learn"), done: hasLearning, hide: isRest },
@@ -527,8 +572,18 @@ export function TodayScreen() {
         rightSlot={<SettingsLink />}
       />
       <div className="space-y-5">
-        <WhyStrip compact={reentryVisible} />
-        <ReEntryBanner onDismissedChange={setReentryDismissed} />
+        <WhyStrip compact={reentryVisible || nmt2Visible} />
+        {nmt2Visible ? (
+          <Nmt2Banner
+            onDismissedChange={setNmt2Dismissed}
+            onOpenIntention={() => {
+              setEditingAction(true);
+              document.querySelector(".today-primary-anchor")?.scrollIntoView({ behavior: "smooth", block: "start" });
+            }}
+          />
+        ) : (
+          <ReEntryBanner onDismissedChange={setReentryDismissed} />
+        )}
         {!restDismissed && shouldSuggestRest(store, today) && !isRest ? (
           <Card className="border-monk-rest/25 bg-monk-rest-soft/30 p-4">
             <p className="text-sm font-semibold">{t("today.restSuggestion.title")}</p>
@@ -553,7 +608,7 @@ export function TodayScreen() {
             </div>
           </Card>
         ) : null}
-        {coachStep && !reentryVisible ? (
+        {coachStep && !reentryVisible && !nmt2Visible ? (
           <CoachHint
             step={coachStep}
             onDismiss={() => {
@@ -641,7 +696,10 @@ export function TodayScreen() {
                   onClick={() => {
                     unlockAudio();
                     const willBeCompleted = !isDone;
-                    if (willBeCompleted) playZenBell();
+                    if (willBeCompleted) {
+                      playZenBell();
+                      if (todayPlan?.highlight?.trim()) toast.show(t("today.highlightDone"));
+                    }
                     store.toggleTodayCompletion();
                   }}
                 >
@@ -786,6 +844,81 @@ export function TodayScreen() {
                   );
                 })()}
               </div>
+
+              {!isRest ? (
+                <div className="mt-3 rounded-xl border border-monk-accent/15 bg-monk-accent-soft/30 p-3">
+                  {editingHighlight ? (
+                    <div className="space-y-2">
+                      <TextInput
+                        label={t("today.highlight")}
+                        value={editHighlight}
+                        onChange={(e) => setEditHighlight(e.target.value)}
+                        placeholder={t("today.highlightPlaceholder")}
+                        autoFocus
+                      />
+                      <div className="flex items-center justify-end gap-3">
+                        <button
+                          type="button"
+                          className="text-xs font-semibold text-monk-muted hover:underline"
+                          onClick={() => setEditingHighlight(false)}
+                        >
+                          {t("today.cancel")}
+                        </button>
+                        <button
+                          type="button"
+                          className="text-xs font-semibold text-monk-accent hover:underline"
+                          onClick={() => {
+                            if (editHighlight.trim()) {
+                              store.setTodayHighlight(editHighlight);
+                              toast.show(t("toast.saved"));
+                            } else {
+                              store.setTodayHighlight("");
+                            }
+                            setEditingHighlight(false);
+                          }}
+                        >
+                          {t("today.highlightSave")}
+                        </button>
+                      </div>
+                    </div>
+                  ) : todayPlan?.highlight?.trim() ? (
+                    <div className="flex items-start justify-between gap-2">
+                      <p className="text-sm font-semibold leading-5 text-monk-accent">
+                        <span aria-hidden className="mr-1.5">★</span>
+                        {todayPlan.highlight}
+                      </p>
+                      {!isDone ? (
+                        <button
+                          type="button"
+                          className="shrink-0 text-xs font-bold text-monk-accent hover:underline"
+                          onClick={() => {
+                            setEditHighlight(todayPlan.highlight || "");
+                            setEditingHighlight(true);
+                          }}
+                        >
+                          {t("today.edit")}
+                        </button>
+                      ) : null}
+                    </div>
+                  ) : (
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="text-sm text-monk-muted">{t("today.highlightEmpty")}</p>
+                      {!isDone ? (
+                        <button
+                          type="button"
+                          className="shrink-0 text-xs font-bold text-monk-accent hover:underline"
+                          onClick={() => {
+                            setEditHighlight("");
+                            setEditingHighlight(true);
+                          }}
+                        >
+                          {t("today.edit")}
+                        </button>
+                      ) : null}
+                    </div>
+                  )}
+                </div>
+              ) : null}
 
               {(focusMinutes > 0 || hasLearning) ? (
                 <div className="mt-4 flex flex-wrap gap-3 text-xs text-monk-muted">

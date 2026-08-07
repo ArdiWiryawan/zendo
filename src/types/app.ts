@@ -155,6 +155,7 @@ export type DayPlan = {
   dayType: DayType;
   goalId?: string;
   mainAction?: string;
+  highlight?: string;
   learningPlan?: LearningPlan;
   energyLevel?: EnergyLevel;
   status: DayStatus;
@@ -395,6 +396,8 @@ export type NotificationReminder = {
     | "season_end";
   enabled: boolean;
   time?: string;
+  /** 0=Sunday … 6=Saturday — only used by weekly_review. */
+  dayOfWeek?: number;
   daysBeforeSeasonEnd?: number;
   message: string;
   createdAt: ISODateString;

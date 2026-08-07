@@ -6,6 +6,7 @@ import type {
   BadHabitDraft,
   FrictionAction,
   MonkMVPState,
+  NotificationReminder,
   OnboardingState
 } from "../types/app";
 import { EyeOff, Gamepad2, MessagesSquare, Moon, MoreHorizontal, ShoppingBag, Youtube, Zap } from "lucide-react";
@@ -114,7 +115,7 @@ export function createInitialState(): MonkMVPState {
     journalEntries: [],
     relapseLogs: [],
     timelineDays: [],
-    notificationReminders: [],
+    notificationReminders: createDefaultReminders(),
     onboarding: createDefaultOnboarding(),
     learningSessions: [],
     timelineEvents: [],
@@ -127,6 +128,33 @@ export function createInitialState(): MonkMVPState {
     weeklyReviews: {},
     releasedSeasonGoals: []
   };
+}
+
+/**
+ * Default habit cues. `message` carries i18n keys; the scheduler interpolates
+ * the {n}-day countdown when it fires. Times are "HH:mm" in the user's local
+ * timezone (page-level scheduling — no push infrastructure).
+ */
+export function createDefaultReminders(): NotificationReminder[] {
+  const timestamp = nowIso();
+  const base = (type: NotificationReminder["type"], time: string, extras: Partial<NotificationReminder> = {}): NotificationReminder => ({
+    id: createId(`rem_${type}`),
+    type,
+    enabled: true,
+    time,
+    message: `reminder.${type}Msg`,
+    createdAt: timestamp,
+    updatedAt: timestamp,
+    ...extras
+  });
+
+  return [
+    base("daily_start", "07:00"),
+    base("daily_reflection", "20:00"),
+    base("weekly_review", "18:00", { dayOfWeek: 0 }),
+    base("season_countdown", "08:00", { daysBeforeSeasonEnd: 3 }),
+    base("season_end", "08:00")
+  ];
 }
 
 export function frictionActionsForHabit(habit: BadHabitDraft): FrictionAction[] {
