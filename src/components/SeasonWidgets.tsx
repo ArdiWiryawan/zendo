@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { Flame } from "lucide-react";
 import {
   Card,
   ChoiceCard,
@@ -44,7 +43,6 @@ export function SeasonProgressCard({ compact = false }: { compact?: boolean }) {
           : `Day ${daysPassed} of ${activeSeason.durationDays} · ends ${formatHumanDate(activeSeason.endDate)}`}
       </p>
       <p className="mt-2 flex items-center gap-1.5 text-xs text-monk-muted">
-        <Flame size={13} strokeWidth={1.5} className="text-monk-warning" />
         <span className="font-medium text-monk-text-soft">
           {count === 1 ? t("season.streak", { n: count }) : t("season.streakPlural", { n: count })}
         </span>

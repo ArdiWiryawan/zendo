@@ -10,8 +10,10 @@ import type { DayPlan, EnergyLevel, Goal, MonkMVPState, TimelineDay, WeeklyPlan,
 export function selectActiveGoals(state: MonkMVPState): Goal[] {
   const season = state.activeSeason;
   if (!season) return [];
+  // Legacy goals may predate seasonId; with a single active season they belong
+  // to it — otherwise the Today picker silently dies.
   return state.goals.filter(
-    (goal) => goal.seasonId === season.id && goal.status === "active"
+    (goal) => goal.status === "active" && (goal.seasonId === season.id || !goal.seasonId)
   );
 }
 

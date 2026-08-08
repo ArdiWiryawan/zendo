@@ -4,7 +4,7 @@ import { createBrowserRouter, RouterProvider } from "react-router-dom";
 import App from "./app/App";
 import "./styles/globals.css";
 import { registerSW } from "virtual:pwa-register";
-import { getState, setState } from "./lib/supabase";
+import { getState, isSyncActive, setState } from "./lib/supabase";
 import { useMonkStore } from "./store/useMonkStore";
 import { setSyncStatus } from "./lib/syncStatus";
 import { mergeRemoteState } from "./lib/syncMerge";
@@ -25,7 +25,7 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
 
 // Initialize Supabase sync after app renders (non-blocking)
 async function initSync(): Promise<void> {
-  const onOnline = () => setSyncStatus("synced");
+  const onOnline = () => void isSyncActive().then((active) => setSyncStatus(active ? "synced" : "offline"));
   const onOffline = () => setSyncStatus("offline");
   window.addEventListener("online", onOnline);
   window.addEventListener("offline", onOffline);
@@ -36,6 +36,12 @@ async function initSync(): Promise<void> {
   }
 
   try {
+    if (!(await isSyncActive())) {
+      // No account (or Supabase not configured) — sync is local-only. Do not
+      // claim "synced".
+      setSyncStatus("offline");
+      return;
+    }
     setSyncStatus("syncing");
     const remote = await Promise.race([
       getState(),
@@ -60,13 +66,19 @@ async function initSync(): Promise<void> {
           setSyncStatus("offline");
           return;
         }
-        setSyncStatus("syncing");
-        void setState(next)
-          .then(() => setSyncStatus("synced"))
-          .catch(() => setSyncStatus(navigator.onLine ? "error" : "offline"));
+        void isSyncActive().then((active) => {
+          if (!active) {
+            setSyncStatus("offline");
+            return;
+          }
+          setSyncStatus("syncing");
+          void setState(next)
+            .then(() => setSyncStatus("synced"))
+            .catch(() => setSyncStatus(navigator.onLine ? "error" : "offline"));
+        });
       }, 800);
     });
-    setSyncStatus("synced");
+    if (await isSyncActive()) setSyncStatus("synced");
   } catch (err) {
     console.warn("[supabase] offline mode", err);
     setSyncStatus("offline");

@@ -340,8 +340,8 @@ export type JournalAnswers = {
 export type JournalEntry = {
   id: string;
   seasonId: string;
-  weeklyPlanId: string;
-  dayPlanId: string;
+  weeklyPlanId?: string;
+  dayPlanId?: string;
   date: DateOnlyString;
   answers: JournalAnswers;
   mood?: "calm" | "clear" | "tired" | "restless" | "focused";

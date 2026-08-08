@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo, useRef } from "react";
 import { useNavigate, useSearchParams, useBlocker } from "react-router-dom";
 import { BookOpen, FileText } from "lucide-react";
 import { useMonkStore } from "../store/useMonkStore";
-import { useT } from "../i18n";
+import { useT, type MessageKey } from "../i18n";
 import { getDailyJournalPromptForDate } from "../i18n/prompts";
 import {
   CalmAlert,
@@ -103,17 +103,9 @@ export function JournalEntryScreen() {
   const defaultTab: "reflection" | "morning" = urlTab === "morning" || urlTab === "reflection" ? urlTab : (isEvening ? "reflection" : "morning");
   const reasonPrompt = useMemo(() => {
     if (!reason) return undefined;
-    const triggerLabels: Record<string, string> = {
-      boredom: "Why did I feel bored? What was missing?",
-      stress: "What was I stressed about? What felt uncertain?",
-      fatigue: "What drained my energy? What am I neglecting?",
-      loneliness: "What did I need from others? What connection did I seek?",
-      trigger_app: "What pulled me back to the app? What was the itch?",
-      no_clear_plan: "Where was my plan unclear? What did I not prepare for?",
-    };
-    const base = triggerLabels[reason] ?? "Why did I pull away from my plan?";
-    return `I chose to stop my focus because of ${reason.replace("_", " ")}. ${base}`;
-  }, [reason]);
+    const base = t(`journal.reason.${reason}` as MessageKey);
+    return t("journal.reason.prefix", { reason: reason.replace("_", " ") }) + base;
+  }, [reason, t]);
   const [currentTab, setCurrentTab] = useState(defaultTab);
 
   const hasDraft =
@@ -141,11 +133,10 @@ export function JournalEntryScreen() {
     return text.trim() ? text.trim().split(/\s+/).length : 0;
   }, [answers.morningPages]);
 
-  const canSave = targetPlan && (
+  const canSave =
     currentTab === "morning"
       ? !!answers.morningPages?.trim()
-      : !!answers.whatMovedToday?.trim()
-  );
+      : !!answers.whatMovedToday?.trim();
 
   return (
     <>
@@ -159,7 +150,7 @@ export function JournalEntryScreen() {
             <button
               type="button"
               onClick={() => navigate(routes.library)}
-              className="grid h-9 w-9 place-items-center rounded-full border border-monk-border bg-monk-surface text-monk-muted hover:text-monk-accent hover:border-monk-accent transition active:scale-90"
+              className="grid min-h-10 min-w-10 place-items-center rounded-full border border-monk-border bg-monk-surface text-monk-muted hover:text-monk-accent hover:border-monk-accent transition active:scale-90"
               aria-label={t("journal.ariaLibrary")}
             >
               <BookOpen size={16} strokeWidth={1.5} />
@@ -169,9 +160,15 @@ export function JournalEntryScreen() {
         }
       />
       {!targetPlan ? (
-        <div className="space-y-3">
-          <CalmAlert type="warning" title={isRequestedDate ? t("journal.needFocusDate") : t("journal.needFocus")} />
-          <PrimaryButton onClick={() => navigate(routes.today)}>{t("journal.setFocusToday")}</PrimaryButton>
+        <div className="space-y-2">
+          <CalmAlert type="info" title={t("journal.noPlanNote")} />
+          <button
+            type="button"
+            onClick={() => navigate(routes.today)}
+            className="text-xs font-medium text-monk-accent hover:underline"
+          >
+            {t("journal.setFocusToday")}
+          </button>
         </div>
       ) : null}
 
@@ -263,7 +260,7 @@ export function JournalEntryScreen() {
           {/* Main Required Question */}
           {reasonPrompt && (
             <Card className="mb-3">
-              <label className="block font-semibold text-base leading-relaxed text-monk-text">Why I pulled away</label>
+              <label className="block font-semibold text-base leading-relaxed text-monk-text">{t("journal.whyPulledAway")}</label>
               <p className="text-sm text-monk-muted mt-1">{reasonPrompt}</p>
             </Card>
           )}
@@ -309,7 +306,7 @@ export function JournalEntryScreen() {
             title={tomorrowSaved ? t("journal.tomorrowSaved") : t("journal.saved")}
           />
         ) : null}
-        {!canSave && targetPlan ? (
+        {!canSave ? (
           <p className="text-xs text-monk-text-soft text-center">
             {currentTab === "morning"
               ? t("journal.needWriteMorning")

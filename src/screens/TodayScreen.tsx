@@ -584,7 +584,7 @@ export function TodayScreen() {
         ) : (
           <ReEntryBanner onDismissedChange={setReentryDismissed} />
         )}
-        {!restDismissed && shouldSuggestRest(store, today) && !isRest ? (
+        {!restDismissed && shouldSuggestRest(store, today) && !isRest && !reentryVisible && !nmt2Visible && !coachStep ? (
           <Card className="border-monk-rest/25 bg-monk-rest-soft/30 p-4">
             <p className="text-sm font-semibold">{t("today.restSuggestion.title")}</p>
             <p className="mt-1 text-sm text-monk-muted">{t("today.restSuggestion.body")}</p>
@@ -654,7 +654,7 @@ export function TodayScreen() {
                       <button
                         type="button"
                         aria-label={t("release.triggerLabel")}
-                        className="grid h-7 w-7 place-items-center rounded-full text-monk-muted transition hover:bg-monk-soft hover:text-monk-text active:scale-90"
+                        className="grid min-h-10 min-w-10 place-items-center rounded-full text-monk-muted transition hover:bg-monk-soft hover:text-monk-text active:scale-90"
                         onClick={() => {
                           setReleaseNote("");
                           setReleaseOpen(true);
@@ -1405,13 +1405,19 @@ function FlowPickToday({ goals }: { goals: ReturnType<typeof selectActiveGoals> 
   if (!weeklyPlan) {
     return (
       <EmptyState
-        title="Shape this week."
-        description="Six focus days. One rest day. Your weekly plan appears once a season is active."
+        title={t("today.emptyTitle")}
+        description={t("today.emptyBody")}
       />
     );
   }
 
-  const ranked = weeklyPlan.goalAllocations
+  // Integrity fallback: if the weekly plan lost its allocations (legacy/orphan
+  // data) but goals exist, render the goals directly so the user can always pick.
+  const allocations = weeklyPlan.goalAllocations.length > 0
+    ? weeklyPlan.goalAllocations
+    : goals.map((goal) => ({ goalId: goal.id, targetCount: 1, completedCount: 0 }));
+
+  const ranked = allocations
     .map((allocation) => {
       const remaining = Math.max(0, allocation.targetCount - allocation.completedCount);
       return { allocation, remaining };

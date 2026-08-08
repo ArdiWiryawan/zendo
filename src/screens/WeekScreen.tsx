@@ -386,13 +386,13 @@ export function WeekScreen() {
                           ) : null}
                         </div>
                         <div className="shrink-0 text-right">
-                          <p className={`font-mono text-sm tabular-nums font-bold ${complete ? "text-monk-success" : behind ? "text-monk-warning" : progress > 0 ? "text-monk-accent" : "text-monk-muted"}`}>
+                          <p className={`font-mono text-sm tabular-nums font-bold ${complete ? "text-monk-success" : behind ? "text-monk-muted" : progress > 0 ? "text-monk-accent" : "text-monk-muted"}`}>
                             {allocation.completedCount}
                             <span className="font-semibold text-monk-muted/70">/{allocation.targetCount}</span>
                           </p>
                           {progress > 0 ? (
                             <p className="mt-0.5 text-[10px] font-semibold uppercase tracking-wide text-monk-muted/80">
-                              {complete ? t("week.statusMet") : behind ? t("week.statusBehind") : t("week.statusProgress")}
+                              {complete ? t("week.statusMet") : t("week.statusProgress")}
                             </p>
                           ) : null}
                         </div>

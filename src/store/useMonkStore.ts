@@ -223,7 +223,11 @@ function archiveIntoPastSeasons(state: MonkMVPState, archived: Season): Season[]
 function getActiveGoals(state: MonkMVPState) {
   const season = state.activeSeason;
   if (!season) return [];
-  return state.goals.filter((goal) => goal.seasonId === season.id && goal.status === "active");
+  // Legacy goals may predate seasonId (and weeklyTargetCount); with a single
+  // active season they belong to it — otherwise the Today picker silently dies.
+  return state.goals.filter(
+    (goal) => goal.status === "active" && (goal.seasonId === season.id || !goal.seasonId)
+  );
 }
 
 function findTodayPlan(state: MonkMVPState) {
@@ -278,7 +282,11 @@ function updatedTimelineDays(state: MonkMVPState, dayPlan: DayPlan): TimelineDay
     .reduce((sum, entry) => sum + (entry.durationMinutes ?? 0), 0) +
     getLearningSessionsForDay(state, dayPlan)
       .reduce((sum, session) => sum + Math.round(session.actualDurationSeconds / 60), 0);
-  const journalCompleted = state.journalEntries.some((entry) => entry.dayPlanId === dayPlan.id);
+  const journalCompleted = state.journalEntries.some(
+    (entry) =>
+      entry.dayPlanId === dayPlan.id ||
+      (entry.seasonId === dayPlan.seasonId && entry.date === dayPlan.date)
+  );
   const relapseCount = state.relapseLogs.filter((log) => log.dayPlanId === dayPlan.id).length;
   const existing = state.timelineDays.find(
     (day) => day.seasonId === dayPlan.seasonId && day.date === dayPlan.date
@@ -310,7 +318,23 @@ function getOrCreateWeekState(state: MonkMVPState, dateString = getTodayDateStri
   const existing = state.weeklyPlans.find(
     (plan) => plan.seasonId === season.id && plan.weekNumber === weekNumber
   );
-  if (existing) return { weeklyPlan: existing, state };
+  if (existing) {
+    // Self-heal: a plan whose allocations were lost (legacy data, orphan goals)
+    // is re-seeded from the active goals so the Today picker never runs dry.
+    if (existing.goalAllocations.length === 0 && getActiveGoals(state).length > 0) {
+      const healed = {
+        ...existing,
+        goalAllocations: getActiveGoals(state).map((g) => ({
+          goalId: g.id,
+          targetCount: g.weeklyTargetCount > 0 ? g.weeklyTargetCount : 1,
+          completedCount: 0
+        })),
+        updatedAt: nowIso()
+      };
+      return { weeklyPlan: healed, state: { ...state, weeklyPlans: state.weeklyPlans.map((p) => (p.id === existing.id ? healed : p)) } };
+    }
+    return { weeklyPlan: existing, state };
+  }
 
   const timestamp = nowIso();
   const activeGoals = getActiveGoals(state);
@@ -324,7 +348,7 @@ function getOrCreateWeekState(state: MonkMVPState, dateString = getTodayDateStri
     mode: season.mode,
     goalAllocations: activeGoals.map((g) => ({
       goalId: g.id,
-      targetCount: g.weeklyTargetCount,
+      targetCount: g.weeklyTargetCount > 0 ? g.weeklyTargetCount : 1,
       completedCount: 0
     })),
     restDayTarget: 1,
@@ -1466,7 +1490,7 @@ export const useMonkStore = create<MonkStore>()(
         ? state.dayPlans.find((p) => p.seasonId === state.activeSeason?.id && p.date === date)
         : findTodayPlan(state)) ??
       state.dayPlans.find((p) => p.seasonId === state.activeSeason?.id && p.date === date);
-    if (!state.activeSeason || !plan) return;
+    if (!state.activeSeason) return;
     const timestamp = nowIso();
     const existing = state.journalEntries.find(
       (entry) => entry.seasonId === state.activeSeason?.id && entry.date === date
@@ -1474,8 +1498,8 @@ export const useMonkStore = create<MonkStore>()(
     const entry = {
       id: existing?.id ?? createId("journal"),
       seasonId: state.activeSeason.id,
-      weeklyPlanId: plan.weeklyPlanId,
-      dayPlanId: plan.id,
+      weeklyPlanId: plan?.weeklyPlanId,
+      dayPlanId: plan?.id,
       date,
       answers,
       createdAt: existing?.createdAt ?? timestamp,
@@ -1516,9 +1540,35 @@ export const useMonkStore = create<MonkStore>()(
     const updatedEvents = state.timelineEvents.filter((ev) => ev.sourceId !== entry.id);
 
     const base = { ...snapshot(state), journalEntries };
+    let timelineDays = state.timelineDays;
+    if (plan) {
+      timelineDays = updatedTimelineDays(base, plan);
+    } else {
+      // Standalone entry (no day plan for that date): upsert a timeline row so
+      // journalCompleted still reads true. No auto-created day plan.
+      const seasonId = state.activeSeason!.id;
+      const existingDay = state.timelineDays.find((day) => day.seasonId === seasonId && day.date === date);
+      const nextDay: TimelineDay = {
+        id: existingDay?.id ?? createId("timeline"),
+        seasonId,
+        date,
+        dayType: existingDay?.dayType ?? "goal",
+        goalId: existingDay?.goalId,
+        status: existingDay?.status ?? "not_started",
+        focusMinutes: existingDay?.focusMinutes ?? 0,
+        learningMinutes: existingDay?.learningMinutes ?? 0,
+        journalCompleted: true,
+        relapseCount: existingDay?.relapseCount ?? 0,
+        createdAt: existingDay?.createdAt ?? timestamp,
+        updatedAt: timestamp
+      };
+      timelineDays = existingDay
+        ? state.timelineDays.map((day) => (day.id === existingDay.id ? nextDay : day))
+        : [...state.timelineDays, nextDay];
+    }
     set({
       journalEntries,
-      timelineDays: updatedTimelineDays(base, plan),
+      timelineDays,
       timelineEvents: [...updatedEvents, event]
     });
   },
