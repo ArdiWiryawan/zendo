@@ -66,6 +66,7 @@ export function OnboardingShell({
   onBack?: () => void;
 }) {
   const shellRef = useRef<HTMLDivElement>(null);
+  const tUI = useT();
 
   useEffect(() => {
     window.scrollTo(0, 0);
@@ -95,7 +96,7 @@ export function OnboardingShell({
                 <button
                   onClick={onBack}
                   className="-ml-2 grid min-h-12 min-w-12 shrink-0 place-items-center text-monk-muted transition-colors hover:text-monk-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-monk-accent focus-visible:ring-offset-2 focus-visible:ring-offset-monk-bg"
-                  aria-label="Go back"
+                  aria-label={tUI("ui.goBack")}
                 >
                   <ArrowLeft size={20} strokeWidth={2} />
                 </button>
@@ -232,6 +233,7 @@ export function TextInput({
   const inputId = id ?? (label ? autoId : undefined);
   const count = typeof value === 'string' ? value.length : 0;
   const min = minLength ?? 0;
+  const tUI = useT();
 
   return (
     <div className="w-full">
@@ -248,7 +250,7 @@ export function TextInput({
           aria-live="polite"
           className={`mt-1 text-right text-xs tabular-nums ${count < min ? "text-monk-danger" : "text-monk-muted"}`}
         >
-          {count}/{min} characters
+          {tUI("ui.charCount", { count, min })}
         </div>
       )}
     </div>
@@ -274,6 +276,7 @@ export function Textarea({
   const inputId = id ?? (label ? autoId : undefined);
   const count = typeof value === 'string' ? value.length : 0;
   const min = minLength ?? 0;
+  const tUI = useT();
 
   return (
     <div className="w-full">
@@ -290,7 +293,7 @@ export function Textarea({
           aria-live="polite"
           className={`mt-1 text-right text-xs tabular-nums ${count < min ? "text-monk-danger" : "text-monk-muted"}`}
         >
-          {count}/{min} characters
+          {tUI("ui.charCount", { count, min })}
         </div>
       )}
     </div>
@@ -368,19 +371,20 @@ export function ChoiceCard({
 export function StepIndicator({ currentStep, totalSteps, phaseLabel }: { currentStep: number; totalSteps: number; phaseLabel?: string }) {
   const completed = Math.max(0, Math.min(currentStep, totalSteps));
   const width = Math.max(4, Math.min(100, (currentStep / totalSteps) * 100));
+  const tUI = useT();
   return (
     <div
       role="progressbar"
       aria-valuemin={1}
       aria-valuemax={totalSteps}
       aria-valuenow={currentStep}
-      aria-label={`Progress: step ${currentStep} of ${totalSteps}${phaseLabel ? `, ${phaseLabel}` : ""}`}
+      aria-label={tUI("ui.progressStep", { currentStep, totalSteps }) + (phaseLabel ? `, ${phaseLabel}` : "")}
     >
       <div className="mb-2 flex items-center justify-between gap-3">
         <p className="text-xs font-medium text-monk-muted">
           {phaseLabel ? <span className="text-monk-text">{phaseLabel}</span> : null}
           {phaseLabel ? <span className="mx-1.5 text-monk-text-soft" aria-hidden>·</span> : null}
-          Step {currentStep} of {totalSteps}
+          {tUI("ui.stepXofY", { currentStep, totalSteps })}
         </p>
         <p className="text-xs font-semibold tabular-nums text-monk-text-soft">{Math.round(width)}%</p>
       </div>
@@ -659,15 +663,16 @@ export function SeasonPreviewCard({
   endLabel: string;
   durationLabel: string;
 }) {
+  const tUI = useT();
   return (
     <div className="rounded-monk border border-monk-border bg-monk-surface p-5">
-      <p className="mb-4 text-xs font-bold uppercase tracking-wider text-monk-muted">Your Season</p>
+      <p className="mb-4 text-xs font-bold uppercase tracking-wider text-monk-muted">{tUI("ui.yourSeason")}</p>
       <div className="flex items-center gap-3">
         <div className="flex flex-col items-center">
           <div className="grid h-9 w-9 place-items-center rounded-full border border-monk-accent bg-monk-accent-soft">
             <Flag size={14} className="text-monk-accent" />
           </div>
-          <span className="mt-1.5 text-xs font-bold uppercase tracking-wider text-monk-accent">Start</span>
+          <span className="mt-1.5 text-xs font-bold uppercase tracking-wider text-monk-accent">{tUI("ui.start")}</span>
         </div>
         <div className="flex-1">
           <div className="relative h-1 rounded-full bg-monk-soft">
@@ -681,7 +686,7 @@ export function SeasonPreviewCard({
           <div className="grid h-9 w-9 place-items-center rounded-full border border-monk-border bg-monk-soft">
             <Calendar size={14} className="text-monk-muted" />
           </div>
-          <span className="mt-1.5 text-xs font-bold uppercase tracking-wider text-monk-muted">End</span>
+          <span className="mt-1.5 text-xs font-bold uppercase tracking-wider text-monk-muted">{tUI("ui.end")}</span>
         </div>
       </div>
       <div className="mt-4 flex justify-between text-xs text-monk-text-soft">

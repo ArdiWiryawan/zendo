@@ -427,7 +427,7 @@ function PurchaseModal({ packId, onClose }: { packId: string; onClose: () => voi
       }
       const json = await resp.json().catch(() => ({}));
       if (!json?.link) {
-        setError("No checkout link returned");
+        setError(t("packs.checkoutError"));
         setProcessing(false);
         return;
       }

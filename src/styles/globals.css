@@ -11,7 +11,7 @@
   --color-surface-raised: #1F221F;
   --color-text: #E5E2DA;
   --color-text-muted: #908C83;
-  --color-text-soft: #7A766D;
+  --color-text-soft: #868279;
   --color-border: #1B1D1B;
   --color-border-strong: #252825;
   --color-accent: #A48B5E;
@@ -664,8 +664,8 @@ button {
   top: 6px;
   right: 6px;
   display: grid;
-  width: 26px;
-  height: 26px;
+  width: 40px;
+  height: 40px;
   place-items: center;
   border-radius: 999px;
   border: none;
@@ -719,8 +719,8 @@ button {
 
 .nb-page-btn {
   display: inline-grid;
-  width: 34px;
-  height: 34px;
+  width: 40px;
+  height: 40px;
   place-items: center;
   border-radius: 999px;
   border: 1px solid var(--notebook-card-line);

@@ -120,7 +120,7 @@ export function JournalLibraryScreen() {
       : libTab === "notebook"
         ? t("library.notesCount", { n: notebookEntries.length })
         : libTab === "learning"
-          ? `${learningSessions.length} catatan belajar`
+          ? t("library.learningSessionsCount", { n: learningSessions.length })
           : t("library.packSessionsCount", { n: packSessions.length });
 
   return (
@@ -133,7 +133,7 @@ export function JournalLibraryScreen() {
       <div className="flex rounded-xl bg-monk-soft p-1 mb-5 border border-monk-border/40 overflow-x-auto">
         <button type="button" className={`flex-1 rounded-lg py-2 text-xs font-semibold tracking-wide transition whitespace-nowrap px-2 ${libTab === "reflections" ? "bg-monk-surface text-monk-text border border-monk-border-strong shadow-sm" : "text-monk-muted hover:text-monk-text"}`} onClick={() => setLibTab("reflections")}>{t("library.tab.reflections")}</button>
         <button type="button" className={`flex-1 rounded-lg py-2 text-xs font-semibold tracking-wide transition whitespace-nowrap px-2 ${libTab === "notebook" ? "bg-monk-surface text-monk-text border border-monk-border-strong shadow-sm" : "text-monk-muted hover:text-monk-text"}`} onClick={() => setLibTab("notebook")}>{t("library.tab.notebook")}</button>
-        <button type="button" className={`flex-1 rounded-lg py-2 text-xs font-semibold tracking-wide transition whitespace-nowrap px-2 ${libTab === "learning" ? "bg-monk-surface text-monk-text border border-monk-border-strong shadow-sm" : "text-monk-muted hover:text-monk-text"}`} onClick={() => setLibTab("learning")}>Belajar</button>
+        <button type="button" className={`flex-1 rounded-lg py-2 text-xs font-semibold tracking-wide transition whitespace-nowrap px-2 ${libTab === "learning" ? "bg-monk-surface text-monk-text border border-monk-border-strong shadow-sm" : "text-monk-muted hover:text-monk-text"}`} onClick={() => setLibTab("learning")}>{t("library.tab.learning")}</button>
         <button type="button" className={`flex-1 rounded-lg py-2 text-xs font-semibold tracking-wide transition whitespace-nowrap px-2 ${libTab === "packs" ? "bg-monk-surface text-monk-text border border-monk-border-strong shadow-sm" : "text-monk-muted hover:text-monk-text"}`} onClick={() => setLibTab("packs")}>{t("library.tab.packs")}</button>
       </div>
       <div className="space-y-4 pb-8">
@@ -164,9 +164,9 @@ export function JournalLibraryScreen() {
           learningSessions.length === 0
             ? (
               <EmptyState
-                title="Belum ada catatan belajar"
-                description="Catat apa yang kamu pelajari dari buku, kursus, podcast, atau video."
-                actionLabel="Tambah sesi belajar"
+                title={t("library.learningEmpty.title")}
+                description={t("library.learningEmpty.desc")}
+                actionLabel={t("library.learningEmpty.action")}
                 onAction={() => navigate(routes.learn)}
               />
             )
@@ -186,20 +186,20 @@ export function JournalLibraryScreen() {
                         {l.lesson && <p className="text-xs text-monk-muted mt-1 line-clamp-3">{l.lesson}</p>}
                         {l.actionIdea && <p className="text-xs text-monk-text-soft mt-1 italic line-clamp-2">→ {l.actionIdea}</p>}
                         {goal && <p className="text-xs text-monk-success mt-1">🎯 {goal.title}</p>}
-                        <p className="text-xs text-monk-text-soft mt-1">{Math.round(l.actualDurationSeconds / 60)} menit</p>
+                        <p className="text-xs text-monk-text-soft mt-1">{t("library.minutesUnit", { n: Math.round(l.actualDurationSeconds / 60) })}</p>
                       </button>
                       {open && (l.content || l.lesson || l.actionIdea) && (
                         <div className="space-y-3 border-t border-monk-border/40 p-4">
                           {l.content && <p className="text-xs leading-6 text-monk-text whitespace-pre-wrap">{l.content}</p>}
                           {l.lesson && (
                             <div>
-                              <span className="block text-xs font-bold uppercase tracking-wider text-monk-muted">Lesson</span>
+                              <span className="block text-xs font-bold uppercase tracking-wider text-monk-muted">{t("library.lesson")}</span>
                               <p className="mt-0.5 text-xs leading-relaxed text-monk-text">{l.lesson}</p>
                             </div>
                           )}
                           {l.actionIdea && (
                             <div>
-                              <span className="block text-xs font-bold uppercase tracking-wider text-monk-accent">Action</span>
+                              <span className="block text-xs font-bold uppercase tracking-wider text-monk-accent">{t("library.action")}</span>
                               <p className="mt-0.5 text-xs leading-relaxed text-monk-text-soft">{l.actionIdea}</p>
                             </div>
                           )}
@@ -209,7 +209,7 @@ export function JournalLibraryScreen() {
                   );
                 })}
                 <GhostButton className="w-full mt-2" onClick={() => navigate(routes.learn)}>
-                  + Tambah sesi belajar
+                  {t("library.learningAddSession")}
                 </GhostButton>
               </>
             )

@@ -37,7 +37,8 @@ import {
 } from "../i18n/prompts";
 import type { AppLanguage, MonkMVPState } from "../types/app";
 
-function syncLabel(status: SyncStatus, tUI: (k: any) => string) {
+function syncLabel(status: SyncStatus, tUI: (k: any) => string, localOnly: boolean) {
+  if (localOnly) return tUI("sync.localOnly");
   if (status === "syncing") return tUI("sync.syncing");
   if (status === "offline") return tUI("sync.offline");
   if (status === "error") return tUI("sync.error");
@@ -45,7 +46,8 @@ function syncLabel(status: SyncStatus, tUI: (k: any) => string) {
   return tUI("sync.idle");
 }
 
-function syncDotColor(status: SyncStatus) {
+function syncDotColor(status: SyncStatus, localOnly: boolean) {
+  if (localOnly) return "bg-monk-muted";
   if (status === "synced") return "bg-monk-success";
   if (status === "syncing") return "bg-blue-400 animate-pulse";
   if (status === "error") return "bg-monk-danger";
@@ -67,6 +69,8 @@ export default function SettingsScreen() {
   const [session, setSession] = useState<{ email?: string } | null>(null);
   const syncStatus = useSyncStatus();
   const tUI = useT();
+  // No session (or Supabase not configured) — nothing to sync, don't claim "Synced".
+  const localOnly = !session;
   const lang = (store.appSettings.language ?? "id") as AppLanguage;
   const labels = getJournalQuestionLabels(lang);
   const sb = typeof getSupabase === "function" ? (getSupabase as () => any)() : null;
@@ -86,7 +90,7 @@ export default function SettingsScreen() {
 
   const applyImport = (data: Record<string, unknown>) => {
     store.importState(data as Partial<MonkMVPState>);
-    setExported("✓ Imported successfully. Reload to apply.");
+    setExported(tUI("settings.importSuccess"));
   };
 
   const downloadReminderIcs = () => {
@@ -216,7 +220,7 @@ export default function SettingsScreen() {
             <div className="px-3 py-2">
               <div className="mb-2 flex items-center justify-between">
                 <p className="text-sm font-semibold text-monk-text">{tUI("settings.reminders")}</p>
-                <GhostButton onClick={store.resetReminders} aria-label={tUI("settings.remindersResetAria")} className="!min-h-7 !px-2.5 text-xs">
+                <GhostButton onClick={store.resetReminders} aria-label={tUI("settings.remindersResetAria")} className="!min-h-10 !px-2.5 text-xs">
                   <RotateCcw className="w-3.5 h-3.5 mr-1" />
                   {tUI("settings.remindersReset")}
                 </GhostButton>
@@ -268,17 +272,17 @@ export default function SettingsScreen() {
             {/* Quick Exports */}
             <Card className="divide-y divide-monk-border/30 overflow-hidden p-0">
               <SettingsRow icon={Calendar} title={tUI("settings.calendar")} description={tUI("settings.calendarDesc")}>
-                <GhostButton onClick={downloadReminderIcs} aria-label="Download .ics" className="shrink-0 !px-2 !min-h-8">
+                <GhostButton onClick={downloadReminderIcs} aria-label={tUI("settings.downloadIcsAria")} className="shrink-0 !px-2 !min-h-10">
                   <Download className="w-4 h-4" />
                 </GhostButton>
               </SettingsRow>
               <SettingsRow icon={FileText} title={tUI("settings.seasonLog")} description={tUI("settings.seasonLogDesc")}>
-                <GhostButton onClick={downloadSeasonLogMd} aria-label="Download .md" className="shrink-0 !px-2 !min-h-8">
+                <GhostButton onClick={downloadSeasonLogMd} aria-label={tUI("settings.downloadMdAria")} className="shrink-0 !px-2 !min-h-10">
                   <Download className="w-4 h-4" />
                 </GhostButton>
               </SettingsRow>
               <SettingsRow icon={HardDrive} title={tUI("settings.backup")} description={tUI("settings.backupDesc")}>
-                <GhostButton onClick={downloadBackup} aria-label={tUI("settings.downloadBackup")} className="shrink-0 !px-2 !min-h-8">
+                <GhostButton onClick={downloadBackup} aria-label={tUI("settings.downloadBackup")} className="shrink-0 !px-2 !min-h-10">
                   <Download className="w-4 h-4" />
                 </GhostButton>
               </SettingsRow>
@@ -291,8 +295,8 @@ export default function SettingsScreen() {
                   <FileJson size={11} strokeWidth={1.5} className="text-monk-accent" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <h4 className="text-sm font-semibold text-monk-text">Data (JSON)</h4>
-                  <p className="text-xs text-monk-muted mt-0.5">Export or import your full data.</p>
+                  <h4 className="text-sm font-semibold text-monk-text">{tUI("settings.dataJson")}</h4>
+                  <p className="text-xs text-monk-muted mt-0.5">{tUI("settings.dataJsonDesc")}</p>
                 </div>
                 <div className="flex gap-2 shrink-0">
                   <GhostButton
@@ -311,8 +315,8 @@ export default function SettingsScreen() {
                       timelineEvents: store.timelineEvents,
                       appSettings: store.appSettings,
                     }, null, 2))}
-                    aria-label="Export JSON"
-                    className="shrink-0 !px-2 !min-h-8"
+                    aria-label={tUI("settings.exportJsonAria")}
+                    className="shrink-0 !px-2 !min-h-10"
                   >
                     <Download className="w-4 h-4" />
                   </GhostButton>
@@ -328,13 +332,13 @@ export default function SettingsScreen() {
                             setPendingImport(data);
                             setConfirmKind("import");
                           } else {
-                            alert("Invalid Zendo backup file.");
+                            alert(tUI("settings.invalidBackup"));
                           }
-                        } catch { alert("Failed to parse file."); }
+                        } catch { alert(tUI("settings.parseFailed")); }
                       };
                       reader.readAsText(file);
                     }} />
-                    <span className="inline-flex items-center justify-center h-8 w-8 text-monk-muted border border-monk-border rounded-full hover:border-monk-accent hover:text-monk-accent transition active:scale-95" aria-label="Import JSON">
+                    <span className="inline-flex items-center justify-center min-h-10 min-w-10 text-monk-muted border border-monk-border rounded-full hover:border-monk-accent hover:text-monk-accent transition active:scale-95" aria-label={tUI("settings.importJsonAria")}>
                       <Upload className="w-4 h-4" />
                     </span>
                   </label>
@@ -347,7 +351,7 @@ export default function SettingsScreen() {
 
         {/* Account & Sync */}
         <motion.div variants={sectionReveal} initial="hidden" whileInView="visible" viewport={{ once: true, amount: 0.2 }}>
-          <SectionHeader icon={Cloud} label="Account" />
+          <SectionHeader icon={Cloud} label={tUI("settings.account")} />
           <Card className="group hover:border-monk-accent/50 transition-all" important>
             <div className="flex items-center gap-2">
               <div className={`grid h-5 w-5 shrink-0 place-items-center rounded border transition-colors ${
@@ -358,12 +362,14 @@ export default function SettingsScreen() {
                 <Cloud size={11} strokeWidth={1.5} className="text-monk-accent" />
               </div>
               <div className="flex-1 min-w-0">
-                <h4 className="text-sm font-medium text-monk-text">Sync</h4>
-                <p className="text-xs text-monk-muted/70 mt-0.5">Connect to sync across devices. Works offline without an account.</p>
+                <h4 className="text-sm font-medium text-monk-text">{tUI("settings.sync")}</h4>
+                <p className="text-xs text-monk-muted/70 mt-0.5">
+                  {localOnly ? tUI("sync.localOnlyDesc") : tUI("settings.syncDesc")}
+                </p>
               </div>
               <div className="flex items-center gap-1.5 shrink-0">
-                <span className={`h-2 w-2 rounded-full ${syncDotColor(syncStatus)}`} />
-                <span className="text-[10px] font-medium text-monk-muted">{syncLabel(syncStatus, tUI)}</span>
+                <span className={`h-2 w-2 rounded-full ${syncDotColor(syncStatus, localOnly)}`} />
+                <span className="text-[10px] font-medium text-monk-muted">{syncLabel(syncStatus, tUI, localOnly)}</span>
               </div>
             </div>
 
@@ -371,13 +377,13 @@ export default function SettingsScreen() {
               <div className="flex items-center justify-between mt-3 pt-2 border-t border-monk-border/30">
                 <p className="text-xs font-medium text-monk-text truncate">{session.email}</p>
                 <GhostButton onClick={handleLogout} className="text-xs !min-h-8 !px-3">
-                  Logout
+                  {tUI("settings.logout")}
                 </GhostButton>
               </div>
             ) : (
               <div className="mt-3 pt-2 border-t border-monk-border/30">
                 <GhostButton onClick={() => navigate(routes.login)} className="text-xs !min-h-8 !px-3 w-full justify-center">
-                  Connect Account
+                  {tUI("settings.connectAccount")}
                 </GhostButton>
               </div>
             )}
@@ -386,10 +392,10 @@ export default function SettingsScreen() {
 
         {/* Season */}
         <motion.div variants={sectionReveal} initial="hidden" whileInView="visible" viewport={{ once: true, amount: 0.2 }}>
-          <SectionHeader icon={Calendar} label="Season" />
+          <SectionHeader icon={Calendar} label={tUI("settings.season")} />
           <Card className="p-0 overflow-hidden">
-            <SettingsRow icon={Calendar} title="Archive Season" description="End current season, preserve all progress.">
-              <GhostButton onClick={store.archiveSeason}>Archive</GhostButton>
+            <SettingsRow icon={Calendar} title={tUI("settings.archiveSeason")} description={tUI("settings.archiveSeasonDesc")}>
+              <GhostButton onClick={store.archiveSeason}>{tUI("settings.archive")}</GhostButton>
             </SettingsRow>
             <SettingsRow icon={Calendar} title={tUI("seasons.settingsRow")} description={tUI("seasons.settingsRowDesc")}>
               <GhostButton onClick={() => navigate(routes.seasons)}>{tUI("seasons.open")}</GhostButton>

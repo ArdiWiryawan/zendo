@@ -17,7 +17,7 @@ import { CircularProgress } from "../components/CircularProgress";
 import { selectEnergyForDate } from "../store/selectors";
 import { useMonkStore } from "../store/useMonkStore";
 import type { FocusSession, FocusSessionPreset } from "../types/app";
-import { useT } from "../i18n";
+import { useT, type MessageKey } from "../i18n";
 import { FrictionWhy } from "../components/SeasonWidgets";
 
 export function formatTimer(seconds: number) {
@@ -26,6 +26,8 @@ export function formatTimer(seconds: number) {
   const secsStr = (safeSeconds % 60).toString().padStart(2, "0");
   return `${minsStr}:${secsStr}`;
 }
+
+type Translate = (key: MessageKey, vars?: Record<string, string | number>) => string;
 
 function getSessionPhases(session: FocusSession) {
   return session.phases?.length
@@ -41,10 +43,14 @@ function getPhasePosition(session: FocusSession, type = getCurrentFocusPhase(ses
   return { current: Math.max(1, current), total: Math.max(1, total) };
 }
 
-function getPhaseRoundLabel(session: FocusSession) {
+function getPhaseRoundLabel(session: FocusSession, t: Translate) {
   const phase = getCurrentFocusPhase(session);
   const position = getPhasePosition(session, phase.type);
-  return `${phase.type === "break" ? "Break" : "Focus"} ${position.current} of ${position.total}`;
+  return t("focus.phaseRound", {
+    label: phase.type === "break" ? t("focus.break") : t("focus.focus"),
+    current: position.current,
+    total: position.total,
+  });
 }
 
 function getRemainingFocusBlocks(session: FocusSession) {
@@ -53,18 +59,18 @@ function getRemainingFocusBlocks(session: FocusSession) {
   return phases.slice(currentIndex + 1).filter((item) => item.type === "focus").length;
 }
 
-function getSessionLeftLabel(session: FocusSession) {
+function getSessionLeftLabel(session: FocusSession, t: Translate) {
   const preset = session.preset ?? session.timerMode ?? "deep_work";
   const remainingFocusBlocks = getRemainingFocusBlocks(session);
-  if (preset === "custom") return "Single focus block";
-  if (remainingFocusBlocks === 0) return "Final focus block";
+  if (preset === "custom") return t("focus.singleBlock");
+  if (remainingFocusBlocks === 0) return t("focus.finalBlock");
   if (preset === "pomodoro") {
-    return `${remainingFocusBlocks} ${remainingFocusBlocks === 1 ? "cycle" : "cycles"} after this`;
+    return t("focus.cyclesLeft", { n: remainingFocusBlocks });
   }
-  return `${remainingFocusBlocks} focus ${remainingFocusBlocks === 1 ? "block" : "blocks"} after this`;
+  return t("focus.blocksLeft", { n: remainingFocusBlocks });
 }
 
-function getBreakGuidance(session: FocusSession): {
+function getBreakGuidance(session: FocusSession, t: Translate): {
   title: string;
   description: string;
   activities: { label: string; emoji: string }[];
@@ -72,36 +78,36 @@ function getBreakGuidance(session: FocusSession): {
   const phase = getCurrentFocusPhase(session);
   if (phase.plannedMinutes >= 10) {
     return {
-      title: "10-min recharge",
-      description: "Real recovery needs a scene change. Try:",
+      title: t("focus.break10Title"),
+      description: t("focus.break10Desc"),
       activities: [
-        { label: "Doodle freely — no goal, just pen on paper", emoji: "✏️" },
-        { label: "Walk outside or to a window", emoji: "🚶" },
-        { label: "Stretch neck, shoulders, hips", emoji: "🧘" },
-        { label: "Refill water, grab a snack", emoji: "🥜" },
+        { label: t("focus.break10Act1"), emoji: "✏️" },
+        { label: t("focus.break10Act2"), emoji: "🚶" },
+        { label: t("focus.break10Act3"), emoji: "🧘" },
+        { label: t("focus.break10Act4"), emoji: "🥜" },
       ],
     };
   }
   return {
-    title: "5-min reset",
-    description: "Short movement beats passive scrolling. Pick one:",
+    title: t("focus.break5Title"),
+    description: t("focus.break5Desc"),
     activities: [
-      { label: "Stand & shake out your hands", emoji: "🤲" },
-      { label: "Look 20ft away for 20 seconds", emoji: "👁️" },
-      { label: "3 slow deep breaths", emoji: "🌬️" },
-      { label: "Drink water", emoji: "💧" },
+      { label: t("focus.break5Act1"), emoji: "🤲" },
+      { label: t("focus.break5Act2"), emoji: "👁️" },
+      { label: t("focus.break5Act3"), emoji: "🌬️" },
+      { label: t("focus.break5Act4"), emoji: "💧" },
     ],
   };
 }
 
-function getNextFocusLabel(session: FocusSession) {
+function getNextFocusLabel(session: FocusSession, t: Translate) {
   const phases = getSessionPhases(session);
   const currentIndex = session.currentPhaseIndex ?? 0;
   const nextFocusIndex = phases.findIndex((item, index) => index > currentIndex && item.type === "focus");
-  if (nextFocusIndex === -1) return "Next: Complete";
+  if (nextFocusIndex === -1) return t("focus.nextComplete");
   const totalFocusBlocks = phases.filter((item) => item.type === "focus").length;
   const nextFocusPosition = phases.slice(0, nextFocusIndex + 1).filter((item) => item.type === "focus").length;
-  return `Next: Focus ${nextFocusPosition} of ${totalFocusBlocks}`;
+  return t("focus.nextFocus", { position: nextFocusPosition, total: totalFocusBlocks });
 }
 
 export function FocusSessionPanel({
@@ -157,11 +163,11 @@ export function FocusSessionPanel({
   const completedSeconds = getCompletedSeconds(session);
   const plannedMinutes = session.plannedDurationMinutes ?? 0;
   const sessionProgress = plannedMinutes > 0 ? Math.min(100, (completedSeconds / (plannedMinutes * 60)) * 100) : 0;
-  const modeLabel = FOCUS_PRESETS[session.preset ?? session.timerMode ?? "deep_work"].shortLabel;
-  const blockLabel = getPhaseRoundLabel(session);
+  const modeLabel = t(`focus.preset.${session.preset ?? session.timerMode ?? "deep_work"}.short` as MessageKey);
+  const blockLabel = getPhaseRoundLabel(session, t);
   const isBreak = phase.type === "break";
   const isPaused = session.status === "paused";
-  const breakGuidance = getBreakGuidance(session);
+  const breakGuidance = getBreakGuidance(session, t);
   const intention = parseIntention(mainAction || "");
   const distractionMatch = /^distractions:(\d+)/.exec(session.note ?? "");
   const distractionCount = distractionMatch ? Number(distractionMatch[1]) : 0;
@@ -234,7 +240,7 @@ export function FocusSessionPanel({
                 </span>
               ))}
             </div>
-            <p className="mt-3 text-xs font-semibold text-monk-muted">{getNextFocusLabel(session)}</p>
+            <p className="mt-3 text-xs font-semibold text-monk-muted">{getNextFocusLabel(session, t)}</p>
           </div>
         </div>
       ) : (
@@ -252,7 +258,7 @@ export function FocusSessionPanel({
               </p>
             )}
             <p className="mt-3 text-xs text-monk-muted">
-              {getSessionLeftLabel(session)} · {t("focus.distractionsNote")}
+              {getSessionLeftLabel(session, t)} · {t("focus.distractionsNote")}
             </p>
           </div>
           {!isBreak ? (
@@ -503,7 +509,7 @@ export function FocusSessionStarter({ compact = false }: { compact?: boolean }) 
             })}
           </div>
           <PrimaryButton className="min-h-12" onClick={beginSession}>
-            {t("focus.beginWith", { label: selected.shortLabel })}
+            {t("focus.beginWith", { label: t(`focus.preset.${selectedPreset}.short` as MessageKey) })}
           </PrimaryButton>
           <GhostButton className="mt-2 w-full min-h-11" onClick={() => setShowChecklist(false)}>
             {t("focus.back")}
@@ -531,7 +537,7 @@ export function FocusSessionStarter({ compact = false }: { compact?: boolean }) 
                   }`}
                   onClick={() => setSelectedPreset(preset)}
                 >
-                  {FOCUS_PRESETS[preset].shortLabel}
+                  {t(`focus.preset.${preset}.short` as MessageKey)}
                 </button>
               );
             })}
@@ -576,8 +582,8 @@ export function FocusSessionStarter({ compact = false }: { compact?: boolean }) 
           <div className="mb-4 rounded-2xl border border-monk-border bg-monk-soft p-4">
             <div className="flex items-start justify-between gap-3">
               <div>
-                <p className="text-sm font-semibold text-monk-text">{selected.title.replace(" Focus Session", "")}</p>
-                <p className="mt-1 text-xs leading-5 text-monk-muted">{selected.summary}</p>
+                <p className="text-sm font-semibold text-monk-text">{t(`focus.preset.${selectedPreset}.title` as MessageKey)}</p>
+                <p className="mt-1 text-xs leading-5 text-monk-muted">{t(`focus.preset.${selectedPreset}.summary` as MessageKey)}</p>
               </div>
               <span className="shrink-0 rounded-full bg-monk-bg px-2.5 py-1 text-[10px] font-bold tabular-nums text-monk-accent">
                 {totalMinutes}m
@@ -601,7 +607,7 @@ export function FocusSessionStarter({ compact = false }: { compact?: boolean }) 
 
           {!canStart ? <CalmAlert type="warning" title={t("focus.min5")} /> : null}
           <PrimaryButton className="min-h-12" disabled={!canStart} onClick={beginSession}>
-            {t("focus.beginWith", { label: selected.shortLabel })}
+            {t("focus.beginWith", { label: t(`focus.preset.${selectedPreset}.short` as MessageKey) })}
           </PrimaryButton>
           <GhostButton className="mt-2 w-full min-h-11" disabled={!canStart} onClick={() => setShowChecklist(true)}>
             {t("focus.prepareFirst")}

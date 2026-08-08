@@ -24,6 +24,7 @@ export function LearningScreen() {
   const navigate = useNavigate();
   const store = useMonkStore();
   const todayPlan = selectTodayPlan(store);
+  const t = useT();
 
   useEffect(() => { window.scrollTo(0, 0); }, []);
 
@@ -44,13 +45,13 @@ export function LearningScreen() {
   const parentOptions = store.learningSessions.filter((s) => !s.parentId && s.id !== "" && s.seasonId === store.activeSeason?.id);
 
   const learningSessionTypes = [
-    { value: "book", label: "Book" },
-    { value: "course", label: "Course" },
-    { value: "podcast", label: "Podcast" },
-    { value: "long_video", label: "Long Video" },
-    { value: "article", label: "Article" },
-    { value: "mentor", label: "Mentor" },
-    { value: "other", label: "Other" }
+    { value: "book", label: t("learning.sourceTypes.book") },
+    { value: "course", label: t("learning.sourceTypes.course") },
+    { value: "podcast", label: t("learning.sourceTypes.podcast") },
+    { value: "long_video", label: t("learning.sourceTypes.long_video") },
+    { value: "article", label: t("learning.sourceTypes.article") },
+    { value: "mentor", label: t("learning.sourceTypes.mentor") },
+    { value: "other", label: t("learning.sourceTypes.other") }
   ] as const;
 
   const timePresets = [10, 15, 25, 30, 45, 60];
@@ -61,12 +62,12 @@ export function LearningScreen() {
   return (
     <>
       <PageHeader
-        title="Add learning session"
-        subtitle="Track one thing you learned that supports your current focus."
+        title={t("learning.title")}
+        subtitle={t("learning.subtitle")}
       />
       <div className="space-y-5">
         <Card>
-          <p className="mb-3 font-semibold text-sm">Source Type</p>
+          <p className="mb-3 font-semibold text-sm">{t("learning.sourceType")}</p>
           <div className="flex flex-wrap gap-2">
             {learningSessionTypes.map((item) => (
               <ChoiceChip
@@ -81,29 +82,29 @@ export function LearningScreen() {
 
         <div className="space-y-2">
           <label className="text-xs font-bold uppercase tracking-wider text-monk-muted" htmlFor="source-title">
-            Source Title
+            {t("learning.sourceTitle")}
           </label>
           <TextInput
             id="source-title"
-            placeholder="Atomic Habits, Coursera course, Ali Abdaal podcast…"
+            placeholder={t("learning.sourceTitlePlaceholder")}
             value={title}
             onChange={(event) => setTitle(event.target.value)}
           />
         </div>
 
         <Card>
-          <p className="mb-3 font-semibold text-sm">Learning Time</p>
+          <p className="mb-3 font-semibold text-sm">{t("learning.time")}</p>
           <div className="flex flex-wrap gap-2 mb-3">
             {timePresets.map((preset) => (
               <ChoiceChip
                 key={preset}
-                label={`${preset} min`}
+                label={t("learning.minutesUnit", { n: preset })}
                 selected={timeMode === preset}
                 onClick={() => setTimeMode(preset)}
               />
             ))}
             <ChoiceChip
-              label="Custom"
+              label={t("learning.custom")}
               selected={timeMode === "custom"}
               onClick={() => setTimeMode("custom")}
             />
@@ -111,7 +112,7 @@ export function LearningScreen() {
           {timeMode === "custom" && (
             <TextInput
               inputMode="numeric"
-              placeholder="How many minutes did you learn?"
+              placeholder={t("learning.customMinutesPlaceholder")}
               value={customMinutes}
               onChange={(event) => setCustomMinutes(event.target.value)}
             />
@@ -120,11 +121,11 @@ export function LearningScreen() {
 
         <div className="space-y-2">
           <label className="text-xs font-bold uppercase tracking-wider text-monk-muted block" htmlFor="key-insight">
-            What did you learn? *
+            {t("learning.learnedLabel")}
           </label>
           <Textarea
             id="key-insight"
-            placeholder="Write the key lesson in your own words."
+            placeholder={t("learning.learnedPlaceholder")}
             value={keyInsight}
             onChange={(event) => setKeyInsight(event.target.value)}
           />
@@ -132,28 +133,28 @@ export function LearningScreen() {
 
         <div className="space-y-2">
           <label className="text-xs font-bold uppercase tracking-wider text-monk-muted block" htmlFor="action-takeaway">
-            How can this help your goal?
+            {t("learning.actionLabel")}
           </label>
           <Textarea
             id="action-takeaway"
-            placeholder="Turn this lesson into a small action or reminder."
+            placeholder={t("learning.actionPlaceholder")}
             value={actionTakeaway}
             onChange={(event) => setActionTakeaway(event.target.value)}
           />
         </div>
 
         <div className="space-y-2">
-          <label className="text-xs font-bold uppercase tracking-wider text-monk-muted" htmlFor="chapter">Chapter / Module</label>
+          <label className="text-xs font-bold uppercase tracking-wider text-monk-muted" htmlFor="chapter">{t("learning.chapter")}</label>
           <TextInput
             id="chapter"
-            placeholder="e.g. Module 2, Chapter 3"
+            placeholder={t("learning.chapterPlaceholder")}
             value={chapter}
             onChange={(e) => setChapter(e.target.value)}
           />
         </div>
 
         <div className="space-y-2">
-          <label className="text-xs font-bold uppercase tracking-wider text-monk-muted" htmlFor="source-url">Source URL</label>
+          <label className="text-xs font-bold uppercase tracking-wider text-monk-muted" htmlFor="source-url">{t("learning.sourceUrl")}</label>
           <TextInput
             id="source-url"
             placeholder="https://..."
@@ -164,10 +165,10 @@ export function LearningScreen() {
 
         {parentOptions.length > 0 && (
           <Card>
-            <p className="mb-2 font-semibold text-sm">Parent Module</p>
-            <p className="text-xs text-monk-muted mb-3">Attach this note to an existing module for hierarchy.</p>
+            <p className="mb-2 font-semibold text-sm">{t("learning.parentModule")}</p>
+            <p className="text-xs text-monk-muted mb-3">{t("learning.parentModuleDesc")}</p>
             <div className="flex flex-wrap gap-2">
-              <ChoiceChip label="None (top-level)" selected={!parentId} onClick={() => setParentId("")} />
+              <ChoiceChip label={t("learning.noneTopLevel")} selected={!parentId} onClick={() => setParentId("")} />
               {parentOptions.map((s) => (
                 <ChoiceChip
                   key={s.id}
@@ -181,8 +182,8 @@ export function LearningScreen() {
         )}
 
         <Card>
-          <p className="mb-2 font-semibold text-sm">Link to Other Notes</p>
-          <p className="text-xs text-monk-muted mb-3">Connect related ideas across your learning.</p>
+          <p className="mb-2 font-semibold text-sm">{t("learning.linkNotes")}</p>
+          <p className="text-xs text-monk-muted mb-3">{t("learning.linkNotesDesc")}</p>
           <div className="flex flex-wrap gap-2 max-h-32 overflow-y-auto">
             {store.learningSessions
               .filter((s) => !linkIds.includes(s.id))
@@ -213,10 +214,10 @@ export function LearningScreen() {
         </Card>
 
         <div className="space-y-2">
-          <label className="text-xs font-bold uppercase tracking-wider text-monk-muted" htmlFor="long-content">Notes</label>
+          <label className="text-xs font-bold uppercase tracking-wider text-monk-muted" htmlFor="long-content">{t("learning.notesLabel")}</label>
           <Textarea
             id="long-content"
-            placeholder="Write your full notes here..."
+            placeholder={t("learning.notesPlaceholder")}
             value={content}
             onChange={(e) => setContent(e.target.value)}
             className="min-h-[200px]"
@@ -224,17 +225,17 @@ export function LearningScreen() {
         </div>
 
         <Card>
-          <p className="mb-3 font-semibold text-sm">Related Goal (Optional)</p>
+          <p className="mb-3 font-semibold text-sm">{t("learning.relatedGoal")}</p>
           <div className="flex flex-wrap gap-2">
-            <ChoiceChip label="None" selected={!goalId} onClick={() => setGoalId("")} />
+            <ChoiceChip label={t("learning.none")} selected={!goalId} onClick={() => setGoalId("")} />
             {activeGoals.map((g) => (
               <ChoiceChip key={g.id} label={g.title} selected={goalId === g.id} onClick={() => setGoalId(g.id)} />
             ))}
           </div>
         </Card>
 
-        {!keyInsight.trim() ? <CalmAlert type="warning" title="What did you learn? is required." /> : null}
-        {actualMinutes <= 0 ? <CalmAlert type="warning" title="Enter a valid learning duration." /> : null}
+        {!keyInsight.trim() ? <CalmAlert type="warning" title={t("learning.requiredError")} /> : null}
+        {actualMinutes <= 0 ? <CalmAlert type="warning" title={t("learning.durationError")} /> : null}
 
         <PrimaryButton
           disabled={!isValid}
@@ -266,7 +267,7 @@ export function LearningScreen() {
             navigate(routes.today);
           }}
         >
-          Save learning session
+          {t("learning.save")}
         </PrimaryButton>
       </div>
     </>

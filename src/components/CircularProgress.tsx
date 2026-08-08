@@ -1,3 +1,5 @@
+import { useT } from "../i18n";
+
 interface CircularProgressProps {
   progress: number; // 0-100
   size?: number;
@@ -17,6 +19,7 @@ export function CircularProgress({
   label,
   children
 }: CircularProgressProps) {
+  const t = useT();
   const clamped = Math.min(100, Math.max(0, progress));
   const radius = (size - strokeWidth) / 2;
   const circumference = radius * 2 * Math.PI;
@@ -29,7 +32,7 @@ export function CircularProgress({
       aria-valuemin={0}
       aria-valuemax={100}
       aria-valuenow={Math.round(clamped)}
-      aria-label={label ?? `Progress ${Math.round(clamped)}%`}
+      aria-label={label ?? t("ui.progressPercent", { n: Math.round(clamped) })}
     >
       <svg
         width={size}

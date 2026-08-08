@@ -106,7 +106,7 @@ export function RelapseScreen() {
                 className="rounded-full border border-monk-border bg-monk-soft px-2.5 py-1 text-[11px] text-monk-text-soft transition hover:border-monk-accent hover:text-monk-accent"
                 onClick={() =>
                   setRecoveryAction((prev) =>
-                    prev.includes(item) ? prev : prev ? `${prev}\nHarder: ${item}` : `Make harder: ${item}`
+                    prev.includes(item) ? prev : prev ? `${prev}\n${t("relapse.harder", { item })}` : t("relapse.makeHarder", { item })
                   )
                 }
               >
@@ -119,7 +119,7 @@ export function RelapseScreen() {
       <div className="mt-5 space-y-4">
         <Textarea placeholder={t("relapse.whatHappened")} value={note} onChange={(event) => setNote(event.target.value)} />
         <Textarea
-          placeholder="For what? What was I trying to get by pulling away?"
+          placeholder={t("relapse.reflectionPlaceholder")}
           value={reflection}
           onChange={(event) => setReflection(event.target.value)}
         />
@@ -137,7 +137,7 @@ export function RelapseScreen() {
           {t("relapse.save")}
         </PrimaryButton>
         <SecondaryButton className="w-full" onClick={() => navigate(`${routes.journal}?reason=${trigger}`)}>
-          Reflect on this in journal
+          {t("relapse.reflectInJournal")}
         </SecondaryButton>
       </div>
     </>

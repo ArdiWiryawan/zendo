@@ -215,7 +215,7 @@ export default function JournalNotebook({ onEditingChange, initialEntryId }: { o
             type="button"
             aria-label={t("notebook.clearSearch")}
             onClick={() => setSearchQuery("")}
-            className="absolute right-2 top-1/2 grid h-8 w-8 -translate-y-1/2 place-items-center text-monk-text-soft hover:text-monk-text"
+            className="absolute right-2 top-1/2 grid min-h-10 min-w-10 -translate-y-1/2 place-items-center text-monk-text-soft hover:text-monk-text"
           >
             <X size={14} />
           </button>

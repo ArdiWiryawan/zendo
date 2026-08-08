@@ -1,6 +1,7 @@
 import { useRef, useState, useEffect, useCallback } from "react";
 import { PrimaryButton, GhostButton } from "./ui";
 import { Undo, Trash2 } from "lucide-react";
+import { useT } from "../i18n";
 
 interface Stroke {
   points: { x: number; y: number }[];
@@ -12,6 +13,7 @@ interface DrawingCanvasProps {
 }
 
 export function DrawingCanvas({ onDrawComplete, initialData }: DrawingCanvasProps) {
+  const t = useT();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [strokes, setStrokes] = useState<Stroke[]>([]);
   const [currentStroke, setCurrentStroke] = useState<Stroke | null>(null);
@@ -123,14 +125,14 @@ export function DrawingCanvas({ onDrawComplete, initialData }: DrawingCanvasProp
       </div>
       <div className="flex gap-2">
         <GhostButton onClick={handleUndo} className="gap-1.5">
-          <Undo size={14} /> Undo
+          <Undo size={14} /> {t("drawing.undo")}
         </GhostButton>
         <GhostButton onClick={handleClear} className="gap-1.5">
-          <Trash2 size={14} /> Clear
+          <Trash2 size={14} /> {t("drawing.clear")}
         </GhostButton>
       </div>
       <PrimaryButton onClick={handleDone} className="w-full">
-        Save drawing
+        {t("drawing.save")}
       </PrimaryButton>
     </div>
   );

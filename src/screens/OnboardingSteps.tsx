@@ -75,6 +75,7 @@ export function ScreenIntro({ title, subtitle }: { title: string; subtitle: stri
 }
 
 export function ValuesStep({ onNext }: { onNext: () => void }) {
+  const t = useT();
   const { onboarding, updateOnboarding } = useMonkStore();
   const [protect, setProtect] = useState<string[]>(onboarding.valueTradeoffs.protect);
   const [sacrifice, setSacrifice] = useState<string[]>(onboarding.valueTradeoffs.sacrifice);
@@ -85,6 +86,13 @@ export function ValuesStep({ onNext }: { onNext: () => void }) {
   const handleNext = () => {
     updateOnboarding({
       valueTradeoffs: { protect, sacrifice, tradeoffExplanation: tradeoff }
+    });
+    onNext();
+  };
+
+  const handleSkip = () => {
+    updateOnboarding({
+      valueTradeoffs: { protect: [], sacrifice: [], tradeoffExplanation: "" }
     });
     onNext();
   };
@@ -163,12 +171,14 @@ export function ValuesStep({ onNext }: { onNext: () => void }) {
           />
         ) : null}
         <PrimaryButton disabled={!canContinue} onClick={handleNext}>Continue</PrimaryButton>
+        <GhostButton onClick={handleSkip} className="w-full">{t("onboarding.skip")}</GhostButton>
       </div>
     </>
   );
 }
 
 export function VisionStep({ onNext }: { onNext: () => void }) {
+  const t = useT();
   const { onboarding, updateOnboarding } = useMonkStore();
   const [vision, setVision] = useState(onboarding.legacyVision.proudChange);
   const [consequence, setConsequence] = useState(onboarding.legacyVision.consequenceOfInaction);
@@ -180,6 +190,14 @@ export function VisionStep({ onNext }: { onNext: () => void }) {
     updateOnboarding({
       legacyVision: { proudChange: vision, consequenceOfInaction: consequence },
       whyDiscovery: { selectedValues: onboarding.valueTradeoffs.protect, identityStatement: vision }
+    });
+    onNext();
+  };
+
+  const handleSkip = () => {
+    updateOnboarding({
+      legacyVision: { proudChange: "", consequenceOfInaction: "" },
+      whyDiscovery: { selectedValues: onboarding.valueTradeoffs.protect, identityStatement: "" }
     });
     onNext();
   };
@@ -226,12 +244,14 @@ export function VisionStep({ onNext }: { onNext: () => void }) {
       <div className="mt-auto space-y-3 pt-8">
         {!canContinue ? <CalmAlert type="warning" title="Complete both reflections to continue." /> : null}
         <PrimaryButton disabled={!canContinue} onClick={handleNext}>Continue</PrimaryButton>
+        <GhostButton onClick={handleSkip} className="w-full">{t("onboarding.skip")}</GhostButton>
       </div>
     </>
   );
 }
 
 export function RealityCheck({ onNext }: { onNext: () => void }) {
+  const t = useT();
   const { onboarding, updateOnboarding } = useMonkStore();
   const [hours, setHours] = useState(onboarding.timeAudit.freeHoursPerDay || 2);
   const [blocks, setBlocks] = useState<string[]>(onboarding.timeAudit.peakEnergyBlocks);
@@ -250,6 +270,14 @@ export function RealityCheck({ onNext }: { onNext: () => void }) {
     updateOnboarding({
       timeAudit: { freeHoursPerDay: Math.min(24, Math.max(1, hours || 1)), peakEnergyBlocks: blocks },
       energyMap: crash
+    });
+    onNext();
+  };
+
+  const handleSkip = () => {
+    updateOnboarding({
+      timeAudit: { freeHoursPerDay: 0, peakEnergyBlocks: [] },
+      energyMap: ""
     });
     onNext();
   };
@@ -319,6 +347,7 @@ export function RealityCheck({ onNext }: { onNext: () => void }) {
       <div className="mt-auto space-y-3 pt-8">
         {!canContinue ? <CalmAlert type="warning" title="Add free hours, peak energy, and crash pattern." /> : null}
         <PrimaryButton disabled={!canContinue} onClick={handleNext}>Continue</PrimaryButton>
+        <GhostButton onClick={handleSkip} className="w-full">{t("onboarding.skip")}</GhostButton>
       </div>
     </>
   );

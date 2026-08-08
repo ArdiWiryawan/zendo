@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { X, Trash2, ChevronLeft, ChevronRight } from "lucide-react";
 import { IMG_MARKER } from "../lib/imageStore";
+import { useT } from "../i18n";
 
 /** Signature for "user tapped an inline photo" — the id is an imageStore marker id. */
 export type PhotoOpenHandler = (id: string) => void;
@@ -62,6 +63,7 @@ export function InlinePhoto({
   alt?: string;
 }) {
   const url = useObjectUrl(id);
+  const t = useT();
   return (
     <span
       role="button"
@@ -77,7 +79,7 @@ export function InlinePhoto({
           onOpen(id);
         }
       }}
-      aria-label={alt ?? "photo"}
+      aria-label={alt ?? t("notebook.photo")}
       data-photo-id={id}
     >
       {url ? (
@@ -89,7 +91,7 @@ export function InlinePhoto({
         <button
           type="button"
           className="nb-photo-del"
-          aria-label="delete photo"
+          aria-label={t("notebook.removePhoto")}
           onClick={(e) => {
             e.stopPropagation();
             onDelete(id);
@@ -117,6 +119,7 @@ export function PhotoLightbox({
   onDelete?: (id: string) => void;
 }) {
   const id = ids[index];
+  const t = useT();
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -130,7 +133,7 @@ export function PhotoLightbox({
 
   return (
     <div className="nb-lightbox" onClick={onClose} role="dialog" aria-modal="true">
-      <button type="button" className="nb-lightbox-close" onClick={onClose} aria-label="Close">
+      <button type="button" className="nb-lightbox-close" onClick={onClose} aria-label={t("notebook.back")}>
         <X size={22} strokeWidth={2} />
       </button>
       {onDelete ? (
@@ -141,7 +144,7 @@ export function PhotoLightbox({
             e.stopPropagation();
             onDelete(id);
           }}
-          aria-label="delete photo"
+          aria-label={t("notebook.removePhoto")}
         >
           <Trash2 size={18} strokeWidth={2} />
         </button>
@@ -155,7 +158,7 @@ export function PhotoLightbox({
               e.stopPropagation();
               onNavigate((index - 1 + ids.length) % ids.length);
             }}
-            aria-label="Previous"
+            aria-label={t("notebook.prevPage")}
           >
             <ChevronLeft size={28} strokeWidth={2} />
           </button>
@@ -166,7 +169,7 @@ export function PhotoLightbox({
               e.stopPropagation();
               onNavigate((index + 1) % ids.length);
             }}
-            aria-label="Next"
+            aria-label={t("notebook.nextPage")}
           >
             <ChevronRight size={28} strokeWidth={2} />
           </button>
