@@ -31,7 +31,7 @@ Zendo's design is grounded in verified research — meta-analyses, RCTs, and sys
 
 ## Tech stack
 
-React 18 + TypeScript, Vite, Zustand, Tailwind CSS, PWA (offline-first via `vite-plugin-pwa`), Supabase for optional sync, Vercel for hosting. Music handled client-side; payments via Mayar for optional journal packs.
+React 18 + TypeScript, Vite, Zustand, Tailwind CSS, PWA (offline-first via `vite-plugin-pwa`), Supabase for optional sync, Vercel for hosting. Music handled client-side; payments via Bayar GG for optional journal packs.
 
 ```bash
 npm install       # install dependencies

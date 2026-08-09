@@ -605,7 +605,7 @@ export const id: Record<MessageKey, string> = {
   "packs.demoMode": "Mode demo — buka instan, tanpa pembayaran asli",
   "packs.processing": "Memproses…",
   "packs.notNow": "Nanti saja",
-  "packs.buy": "Bayar dengan Mayar",
+  "packs.buy": "Bayar dengan Bayar GG",
 
   "toast.saved": "Tersimpan.",
   "toast.energyLogged": "Energi dicatat.",

@@ -603,7 +603,7 @@ export const en = {
   "packs.demoMode": "Demo mode — instant unlock, no real payment",
   "packs.processing": "Processing…",
   "packs.notNow": "Not now",
-  "packs.buy": "Pay with Mayar",
+  "packs.buy": "Pay with Bayar GG",
 
   "toast.saved": "Saved.",
   "toast.energyLogged": "Energy noted.",

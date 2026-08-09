@@ -4,7 +4,7 @@
 //     user can only read/write their own row, so journal/goals/sessions are
 //     never shared or world-readable.
 //   * zendo_purchases — premium unlock is global by design; rows are readable
-//     by any signed-in user (never anonymous). Mayar's webhook has no buyer
+//     by any signed-in user (never anonymous). Bayar GG's webhook has no buyer
 //     identity, so per-user ownership would require checkout-session plumbing.
 //
 // When Supabase env vars are unset (or the user is signed out) the client
@@ -82,7 +82,7 @@ export async function setState(state: ZendoState): Promise<void> {
 }
 
 /**
- * Pack ids confirmed paid via the Mayar webhook. Readable by any signed-in
+ * Pack ids confirmed paid via the Bayar GG webhook. Readable by any signed-in
  * user (premium unlock is global by design); anonymous users get an empty set.
  */
 export async function getPurchases(): Promise<string[]> {

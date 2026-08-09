@@ -391,8 +391,8 @@ function PurchaseModal({ packId, onClose }: { packId: string; onClose: () => voi
   const [done, setDone] = useState(false);
   const [demo, setDemo] = useState(false);
 
-  // After Mayar redirects back (?purchased=<packId>), the webhook has persisted
-  // the purchase — mark it unlocked immediately and refresh from Supabase.
+  // After Bayar GG redirects back (?purchased=<packId>), the webhook has
+  // persisted the purchase — mark it unlocked immediately and refresh from Supabase.
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     if (params.get("purchased") === packId) {
@@ -410,7 +410,7 @@ function PurchaseModal({ packId, onClose }: { packId: string; onClose: () => voi
     setProcessing(true);
     setError("");
     try {
-      const resp = await fetch("/api/mayar-checkout", {
+      const resp = await fetch("/api/bayargg-checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ packId }),
@@ -426,16 +426,16 @@ function PurchaseModal({ packId, onClose }: { packId: string; onClose: () => voi
         return;
       }
       const json = await resp.json().catch(() => ({}));
-      if (!json?.link) {
+      if (!json?.url) {
         setError(t("packs.checkoutError"));
         setProcessing(false);
         return;
       }
       setDemo(Boolean(json.demo));
-      // Redirect to Mayar's hosted checkout (or straight back, in demo mode).
-      // On success Mayar sends the buyer back to the redirectUrl with
+      // Redirect to Bayar GG's hosted checkout (or straight back, in demo mode).
+      // On success Bayar GG sends the buyer back to the redirectUrl with
       // ?purchased=<packId>.
-      window.location.href = json.link;
+      window.location.href = json.url;
     } catch {
       setDemo(true);
       store.purchasePack(packId);

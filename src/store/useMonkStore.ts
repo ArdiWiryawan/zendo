@@ -1974,8 +1974,8 @@ export const useMonkStore = create<MonkStore>()(
   },
 
   syncPurchases: async () => {
-    // Pull packs confirmed paid via the Mayar webhook (Supabase) and merge them
-    // into the local unlock set. Safe to call on app start / after checkout.
+    // Pull packs confirmed paid via the Bayar GG webhook (Supabase) and merge
+    // them into the local unlock set. Safe to call on app start / after checkout.
     try {
       const { getPurchases } = await import("../lib/supabase");
       const paid = await getPurchases();

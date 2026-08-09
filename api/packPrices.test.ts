@@ -4,15 +4,15 @@ import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 
 // Drift guard for the duplicated premium-pack price maps. The server-side
-// maps (api/mayar-checkout.ts, api/mayar-webhook.ts) must stay in sync with
+// maps (api/bayargg-checkout.ts, api/bayargg-webhook.ts) must stay in sync with
 // the client source of truth (src/constants/defaultData.ts). This test reads
-// the raw sources (like mayar-webhook.security.test.ts) so it keeps working
+// the raw sources (like bayargg-webhook.security.test.ts) so it keeps working
 // even though api/ and src/ live in different tsconfig projects.
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const root = join(__dirname, "..");
 const src = readFileSync(join(root, "src/constants/defaultData.ts"), "utf8");
-const checkout = readFileSync(join(__dirname, "mayar-checkout.ts"), "utf8");
-const webhook = readFileSync(join(__dirname, "mayar-webhook.ts"), "utf8");
+const checkout = readFileSync(join(__dirname, "bayargg-checkout.ts"), "utf8");
+const webhook = readFileSync(join(__dirname, "bayargg-webhook.ts"), "utf8");
 
 // "packId: priceRp" from each premium pack in src/constants/defaultData.ts.
 // Splitting on the pack-id boundary (not a tempered dot, which `matchAll` can't

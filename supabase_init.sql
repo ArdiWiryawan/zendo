@@ -29,8 +29,8 @@ drop policy if exists "Allow authenticated CRUD" on zendo_state;
 -- clients and read back into users' state.
 delete from zendo_state where id = 'global';
 
--- ── Mayar payment purchases ──────────────────────────────────────────────────
--- One row per paid pack (Mayar webhook, server-side). The client treats the
+-- ── Bayar GG payment purchases ───────────────────────────────────────────────
+-- One row per paid pack (Bayar GG webhook, server-side). The client treats the
 -- union of all confirmed packs as a GLOBAL premium unlock — matching the
 -- current product model where one purchase unlocks premium everywhere. Rows
 -- are readable only by SIGNED-IN users (never anonymous), so payment history
@@ -45,9 +45,9 @@ create table if not exists zendo_purchases (
 alter table zendo_purchases enable row level security;
 
 -- Signed-in users may read confirmed purchases (used for premium unlock).
--- Anonymous visitors are denied. NOTE: unlock is intentionally global — Mayar's
--- webhook does not carry a buyer identity, so per-user ownership would require
--- plumbing the checkout session through Mayar (future work).
+-- Anonymous visitors are denied. NOTE: unlock is intentionally global — Bayar
+-- GG's webhook does not carry a buyer identity, so per-user ownership would
+-- require plumbing the checkout session through Bayar GG (future work).
 create policy "Allow authenticated read purchases"
   on zendo_purchases
   for select
