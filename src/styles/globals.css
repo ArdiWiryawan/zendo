@@ -533,6 +533,14 @@ h5.md-heading, h6.md-heading { font-size: 1rem; }
   pointer-events: none;
 }
 
+/* Stacked editor sheets: one auto-growing ruled page after another in a single
+   continuous scroll (no prev/next pagination). */
+.nb-sheet-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
 .nb-page-title {
   display: block;
   width: 100%;
@@ -625,6 +633,12 @@ h5.md-heading, h6.md-heading { font-size: 1rem; }
 /* Photo add buttons: sit below the folio, inside the notebook page sheet. */
 .nb-photos {
   padding: 4px 22px 20px 46px;
+}
+
+/* Photo cards inside a stacked sheet: indent past the spine/margin line so a
+   photo reads as content of that page, aligned with the text indent. */
+.nb-photo-card {
+  padding: 4px 22px 0 46px;
 }
 
 .nb-photos-head {
@@ -722,102 +736,6 @@ h5.md-heading, h6.md-heading { font-size: 1rem; }
 
 .nb-lightbox-del:active {
   transform: scale(0.92);
-}
-
-/* Page navigation row inside the sheet: prev/next, count, add/remove. */
-.nb-page-nav {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 0 22px 20px 46px;
-}
-
-.nb-page-btn {
-  display: inline-grid;
-  width: 40px;
-  height: 40px;
-  place-items: center;
-  border-radius: 999px;
-  border: 1px solid var(--notebook-card-line);
-  background: transparent;
-  color: var(--notebook-text-body);
-  cursor: pointer;
-  transition: border-color 0.18s ease, color 0.18s ease, background 0.18s ease;
-}
-
-.nb-page-btn:hover:not(:disabled) {
-  border-color: var(--nb-cat, var(--color-accent));
-  color: var(--nb-cat, var(--color-accent));
-  background: rgba(0, 0, 0, 0.04);
-}
-
-.nb-page-btn:active:not(:disabled) {
-  transform: scale(0.94);
-}
-
-.nb-page-btn:disabled {
-  opacity: 0.35;
-  cursor: default;
-}
-
-.nb-page-btn.danger:hover {
-  border-color: var(--color-danger);
-  color: var(--color-danger);
-}
-
-.nb-page-count {
-  font-family: 'Outfit', ui-sans-serif, system-ui, sans-serif;
-  font-size: 0.78rem;
-  font-weight: 600;
-  color: var(--notebook-text-body);
-  min-width: 44px;
-  text-align: center;
-}
-
-.nb-page-nav-sep {
-  flex: 1;
-}
-
-/* Preview mode: the saved page rendered inside the sheet (photos interleaved). */
-.nb-preview-page {
-  cursor: text;
-  overflow: hidden;
-  border-radius: 8px;
-}
-
-.nb-rendered-title {
-  padding: 26px 22px 16px 46px;
-  font-family: 'Outfit', ui-sans-serif, system-ui, sans-serif;
-  font-size: clamp(1.6rem, 4.5vw, 2.1rem);
-  font-weight: 650;
-  line-height: 1.25;
-  color: var(--notebook-text-title);
-  overflow-wrap: anywhere;
-}
-
-.nb-page-body-rendered {
-  min-height: 432px;
-  padding: 6px 22px 20px 46px;
-  font-family: 'Outfit', ui-sans-serif, system-ui, sans-serif;
-  font-size: 1rem;
-  line-height: 24px;
-  color: var(--notebook-text-body);
-  cursor: text;
-  background-image: repeating-linear-gradient(
-    to bottom,
-    transparent 0,
-    transparent 23px,
-    var(--notebook-card-line) 23px,
-    var(--notebook-card-line) 24px
-  );
-  background-position: 0 6px;
-}
-
-.nb-page-body-rendered .md-para,
-.nb-page-body-rendered .md-list,
-.nb-page-body-rendered .md-quote,
-.nb-page-body-rendered .md-table {
-  margin: 0;
 }
 
 /* Runs of ≥2 consecutive photos become a compact in-page grid (see groupPhotoRuns). */

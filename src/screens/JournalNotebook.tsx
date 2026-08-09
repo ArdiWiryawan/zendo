@@ -5,7 +5,7 @@ import { PrimaryButton, SecondaryButton, GhostButton, CalmDialog } from "../comp
 import { createId } from "../lib/ids";
 import { nowIso } from "../lib/date";
 import type { NotebookCategory, NotebookEntry } from "../types/app";
-import { Search, Plus, Pin, PinOff, Trash2, ArrowLeft, X, BookOpen, ImagePlus, Camera, ChevronLeft, ChevronRight, MoreVertical, Pencil } from "lucide-react";
+import { Search, Plus, Pin, PinOff, Trash2, ArrowLeft, X, BookOpen, ImagePlus, Camera, MoreVertical, Pencil } from "lucide-react";
 import { useT, useLanguage, type MessageKey } from "../i18n";
 import { autolistMarker, groupPhotoRuns, renderBodyMarkdown } from "../lib/notebookMarkdown";
 import { joinPages, removePhotoMarker } from "../lib/notebookPages";
@@ -579,30 +579,30 @@ export function NotebookEditor({
   const categories = store.notebookCategories;
   const entriesInCat = (catId: string) => store.notebookEntries.filter((e) => e.categoryId === catId).length;
   const titleRef = useRef<HTMLTextAreaElement>(null);
-  const bodyRef = useRef<HTMLTextAreaElement>(null);
+  const bodyRefs = useRef<Array<HTMLTextAreaElement | null>>([]);
   const sheetRef = useRef<HTMLDivElement>(null);
   const galleryInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const [title, setTitle] = useState(entry?.title ?? "");
   const [pages, setPages] = useState<string[]>(entry?.pages && entry.pages.length > 0 ? entry.pages : [entry?.body ?? ""]);
-  const [pageIndex, setPageIndex] = useState(0);
+  // Index of the focused body textarea — photo-insert target and auto-page
+  // anchor. Clamped whenever pages shrink (trailing-page collapse).
+  const [activePage, setActivePage] = useState(0);
   const [catId, setCatId] = useState(entry?.categoryId ?? categories[0]?.id ?? "cat_lainnya");
 
-  // Current page text (textarea + autolist + photo insert target).
-  const body = pages[pageIndex] ?? "";
   // Flat join of ALL pages: single surface for GC, lightbox ordering and the
   // saved `body` field — search/list/GC keep working unchanged.
   const allBody = joinPages(pages);
 
-  const setPageText = (v: string) =>
-    setPages((prev) => prev.map((p, i) => (i === pageIndex ? v : p)));
+  const setPageText = (i: number, v: string) =>
+    setPages((prev) => prev.map((p, idx) => (idx === i ? v : p)));
+  const setBodyRef = (i: number) => (el: HTMLTextAreaElement | null) => {
+    bodyRefs.current[i] = el;
+  };
   const [isPinned, setIsPinned] = useState(entry?.isPinned ?? false);
   const [images, setImages] = useState<string[]>(entry?.images ?? []);
   const [photoError, setPhotoError] = useState("");
   const [lightbox, setLightbox] = useState<{ ids: string[]; index: number } | null>(null);
-  // View-first for saved notes: the sheet opens as the rendered page with photos
-  // interleaved; tap the body to edit. New notes start in edit mode.
-  const [previewing, setPreviewing] = useState(Boolean(entry));
   const [showNewCat, setShowNewCat] = useState(false);
   const [newCatName, setNewCatName] = useState("");
   const [dirty, setDirty] = useState(false);
@@ -619,52 +619,11 @@ export function NotebookEditor({
     if (!entry) titleRef.current?.focus();
     requestAnimationFrame(() => {
       queueResize(titleRef.current);
-      queueResize(bodyRef.current);
+      for (const el of bodyRefs.current) queueResize(el);
     });
-  }, [entry, pageIndex]);
+  }, [entry, pages.length]);
 
   const markDirty = () => setDirty(true);
-
-  // When the user clicks/taps outside the sheet (bottom bar, a button, the page
-  // background), show the rendered page so photos appear interleaved on the
-  // paper. Tap the page itself → back to editing.
-  const suppressPreviewRef = useRef(false);
-  useEffect(() => {
-    const onDown = (e: MouseEvent | TouchEvent) => {
-      if (suppressPreviewRef.current) {
-        suppressPreviewRef.current = false;
-        return;
-      }
-      const t = e.target as Node;
-      if (sheetRef.current && !sheetRef.current.contains(t) && allBody.trim()) {
-        setPreviewing(true);
-      }
-    };
-    document.addEventListener("mousedown", onDown);
-    document.addEventListener("touchstart", onDown);
-    return () => {
-      document.removeEventListener("mousedown", onDown);
-      document.removeEventListener("touchstart", onDown);
-    };
-  }, [allBody]);
-
-  const enterEdit = useCallback(() => {
-    suppressPreviewRef.current = true;
-    setPreviewing(false);
-    // Clear the one-shot suppression shortly after (the mousedown that enters
-    // edit must not also flip us back to preview).
-    window.setTimeout(() => {
-      suppressPreviewRef.current = false;
-    }, 400);
-    requestAnimationFrame(() => {
-      // Textareas just mounted (preview→edit); without this the title/body
-      // keep their 1-line default height and wrapped lines spill out of the
-      // sheet over the folio/photo rows.
-      queueResize(titleRef.current);
-      queueResize(bodyRef.current);
-      bodyRef.current?.focus();
-    });
-  }, []);
 
   const resolveTitle = useCallback(() => {
     const trimmed = title.trim();
@@ -716,31 +675,18 @@ export function NotebookEditor({
     []
   );
 
-  const totalPages = pages.length;
-  const goPrevPage = () => setPageIndex((i) => Math.max(0, i - 1));
-  const goNextPage = () => setPageIndex((i) => Math.min(totalPages - 1, i + 1));
-  const addPage = () => {
-    setPages((prev) => [...prev, ""]);
-    setPageIndex(totalPages);
-    setPreviewing(false);
+  // Append a fresh page and move focus into it (rAF so the textarea is mounted
+  // and its height has settled before resize/focus).
+  const appendPage = (prev: string[]) => {
+    const next = [...prev, ""];
+    setActivePage(next.length - 1);
     markDirty();
     requestAnimationFrame(() => {
-      queueResize(titleRef.current);
-      queueResize(bodyRef.current);
-      bodyRef.current?.focus();
+      const el = bodyRefs.current[next.length - 1];
+      queueResize(el);
+      el?.focus();
     });
-  };
-  const [confirmRemovePage, setConfirmRemovePage] = useState(false);
-  const confirmRemoveCurrent = () => setConfirmRemovePage(true);
-  const doRemovePage = () => {
-    setConfirmRemovePage(false);
-    setPages((prev) => {
-      if (prev.length <= 1) return prev;
-      const next = prev.filter((_, i) => i !== pageIndex);
-      setPageIndex((cur) => Math.min(cur, next.length - 1));
-      return next;
-    });
-    markDirty();
+    return next;
   };
 
   const handleAddImages = async (files: FileList | null) => {
@@ -770,11 +716,11 @@ export function NotebookEditor({
     }
 
     // Capture the insertion target synchronously: the compress/put loop below is
-    // async, and re-reading pageIndex/selectionStart afterwards would target a
-    // page the user has navigated to meanwhile (or clobber keystrokes typed
+    // async, and re-reading activePage/selectionStart afterwards would target a
+    // page the user has switched to meanwhile (or clobber keystrokes typed
     // during the upload).
-    const targetPage = pageIndex;
-    const insertPos = bodyRef.current?.selectionStart;
+    const targetPage = activePage;
+    const insertPos = bodyRefs.current[activePage]?.selectionStart;
 
     const next: string[] = [];
     try {
@@ -800,7 +746,8 @@ export function NotebookEditor({
         setImages((prev) => [...prev, ...next]);
         markDirty();
         requestAnimationFrame(() => {
-          if (bodyRef.current) resizeTextarea(bodyRef.current);
+          const el = bodyRefs.current[targetPage];
+          if (el) resizeTextarea(el);
         });
       }
     } catch (err) {
@@ -840,21 +787,32 @@ export function NotebookEditor({
   );
 
   // Enter-autolist + Backspace-unlist: native-feel list continuation in the
-  // textarea. Only setBody + markDirty; save flow untouched.
-  const handleBodyKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+  // textarea, keyed per page. Only setPageText + markDirty; save flow untouched.
+  // Plain Enter on a FULL last page (non-list line) appends a new page instead of
+  // inserting an invisible wrapped line the reader can't see.
+  const handleBodyKeyDown = (i: number) => (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     const el = e.currentTarget;
+    const pg = pages[i];
     const { selectionStart: s, selectionEnd: en } = el;
     if (s !== en) return; // selection -> default
-    const before = body.slice(0, s);
+    const before = pg.slice(0, s);
     const lineStart = before.lastIndexOf("\n") + 1;
-    const line = body.slice(lineStart, s);
+    const line = pg.slice(lineStart, s);
 
     if (e.key === "Enter" && !e.shiftKey && !e.metaKey && !e.ctrlKey) {
       const marker = autolistMarker(line);
-      if (marker === null) return; // plain line -> default
+      if (marker === null) {
+        // Plain line: auto-add only when the page is physically full AND it is
+        // the last page (never split mid-note) AND not composing (IME).
+        if (i === pages.length - 1 && el.scrollHeight > el.clientHeight && !e.nativeEvent.isComposing) {
+          e.preventDefault();
+          setPages((prev) => appendPage(prev));
+        }
+        return; // otherwise default Enter
+      }
       e.preventDefault();
-      const next = `${body.slice(0, s)}\n${marker}${body.slice(en)}`;
-      setPageText(next);
+      const next = `${pg.slice(0, s)}\n${marker}${pg.slice(en)}`;
+      setPageText(i, next);
       markDirty();
       requestAnimationFrame(() => {
         resizeTextarea(el);
@@ -865,7 +823,7 @@ export function NotebookEditor({
       if (s !== lineStart + line.length) return; // not at line end
       if (!/^(\s*)([-*]|(?:\d+[.)])|(?:\[[ xX]\]))\s*$/.test(line)) return;
       e.preventDefault();
-      setPageText(body.slice(0, lineStart) + body.slice(s));
+      setPageText(i, pg.slice(0, lineStart) + pg.slice(s));
       markDirty();
       requestAnimationFrame(() => {
         resizeTextarea(el);
@@ -1120,96 +1078,83 @@ export function NotebookEditor({
         className="nb-open-page nb-open-enter"
         style={{ "--nb-cat": activeCatHex } as React.CSSProperties}
       >
-        {previewing ? (
-          <div className="nb-preview-page" onClick={enterEdit}>
-            <div className="nb-rendered-title">{title || resolveTitle()}</div>
-            <div className="nb-page-body-rendered">
-              {groupPhotoRuns(renderBodyMarkdown(allBody, openPhotoInBody, false, handleDeletePhoto))}
-            </div>
-          </div>
-        ) : (
-          <>
+        <textarea
+          ref={titleRef}
+          rows={1}
+          aria-label={t("notebook.titlePlaceholder")}
+          placeholder={t("notebook.titlePlaceholder")}
+          value={title}
+          onChange={(e) => {
+            setTitle(e.target.value);
+            markDirty();
+            queueResize(e.currentTarget);
+          }}
+          className="nb-page-title"
+        />
+        {pages.map((pg, i) => (
+          <div key={i} className="nb-sheet-stack">
             <textarea
-              ref={titleRef}
-              rows={1}
-              aria-label={t("notebook.titlePlaceholder")}
-              placeholder={t("notebook.titlePlaceholder")}
-              value={title}
-              onChange={(e) => {
-                setTitle(e.target.value);
-                markDirty();
-                queueResize(e.currentTarget);
-              }}
-              className="nb-page-title"
-            />
-            <textarea
-              ref={bodyRef}
+              ref={setBodyRef(i)}
               aria-label={t("notebook.bodyPlaceholder")}
               placeholder={t("notebook.bodyPlaceholder")}
-              value={body}
-              onKeyDown={handleBodyKeyDown}
+              value={pg}
+              onKeyDown={handleBodyKeyDown(i)}
+              onFocus={() => setActivePage(i)}
               onChange={(e) => {
-                setPageText(e.target.value);
+                const el = e.currentTarget;
+                const v = e.target.value;
+                setPageText(i, v);
                 markDirty();
-                queueResize(e.currentTarget);
+                // Trailing empty page collapses back into the previous one so a
+                // blank sheet never lingers at the end of the stack.
+                if (v.trim() === "" && i === pages.length - 1 && pages.length > 1) {
+                  setPages((prev) => prev.slice(0, -1));
+                  setActivePage((cur) => Math.min(cur, Math.max(0, pages.length - 2)));
+                  return;
+                }
+                // Full-page detection runs BEFORE auto-grow resize: at this point
+                // the box is still at its previous height, so scrollHeight (real
+                // content height) vs clientHeight (previous box height) tells us
+                // the content has overflowed the page's visible area. After
+                // resizeTextarea sets height = scrollHeight the two are equal and
+                // "full" can't be detected. An empty sheet reports 1-line content
+                // (< 432px min-height), so it never appends.
+                queueResize(el);
+                if (i === pages.length - 1 && el.scrollHeight > el.clientHeight) {
+                  setPages((prev) => appendPage(prev));
+                }
               }}
               className="nb-page-body"
             />
-          </>
-        )}
-        <div className="nb-folio">
-          <span>{t("notebook.words", { n: words })}</span>
-          <span>·</span>
-          <span>
-            {new Date().toLocaleDateString(dateLocale, {
-              day: "numeric",
-              month: "short",
-              year: "numeric"
-            })}
-          </span>
-        </div>
-        {photoIdsInBody(allBody).length > 0 ? (
-          <div className="nb-photos-head">
-            <span>{t("notebook.photoLabel")}</span>
-            <span className="nb-photos-count">{photoIdsInBody(allBody).length}</span>
+            {groupPhotoRuns(renderBodyMarkdown(pg, openPhotoInBody, false, handleDeletePhoto))}
+            <div className="nb-folio">
+              <span>
+                {i + 1} / {pages.length}
+              </span>
+              <span>·</span>
+              <span>{t("notebook.words", { n: words })}</span>
+              <span>·</span>
+              <span>
+                {new Date().toLocaleDateString(dateLocale, {
+                  day: "numeric",
+                  month: "short",
+                  year: "numeric"
+                })}
+              </span>
+            </div>
           </div>
-        ) : (
-          <div className="nb-photos-head">
-            <span>{t("notebook.photoEmpty")}</span>
-          </div>
-        )}
+        ))}
         <div className="nb-photos">
-        <div className="nb-photos-actions">
-          <button type="button" className="nb-photo-btn" onClick={() => galleryInputRef.current?.click()}>
-            <ImagePlus size={15} strokeWidth={1.8} />
-            {t("notebook.addFromGallery")}
-          </button>
-          <button type="button" className="nb-photo-btn" onClick={() => cameraInputRef.current?.click()}>
-            <Camera size={15} strokeWidth={1.8} />
-            {t("notebook.takePhoto")}
-          </button>
-        </div>
-        </div>
-        {/* Page navigation: prev/next, count, add/remove page. */}
-        <div className="nb-page-nav">
-          <button type="button" className="nb-page-btn" onClick={goPrevPage} disabled={pageIndex === 0} aria-label={t("notebook.prevPage")}>
-            <ChevronLeft size={16} strokeWidth={2} />
-          </button>
-          <span className="nb-page-count">
-            {pageIndex + 1} / {totalPages}
-          </span>
-          <button type="button" className="nb-page-btn" onClick={goNextPage} disabled={pageIndex >= totalPages - 1} aria-label={t("notebook.nextPage")}>
-            <ChevronRight size={16} strokeWidth={2} />
-          </button>
-          <span className="nb-page-nav-sep" aria-hidden />
-          {totalPages > 1 ? (
-            <button type="button" className="nb-page-btn danger" onClick={confirmRemoveCurrent} aria-label={t("notebook.removePage")}>
-              <Trash2 size={15} strokeWidth={2} />
+          <div className="nb-photos-actions">
+            <button type="button" className="nb-photo-btn" onClick={() => galleryInputRef.current?.click()}>
+              <ImagePlus size={15} strokeWidth={1.8} />
+              {t("notebook.addFromGallery")}
             </button>
-          ) : null}
-          <button type="button" className="nb-page-btn" onClick={addPage} aria-label={t("notebook.addPage")}>
-            <Plus size={16} strokeWidth={2} />
-          </button>
+            <button type="button" className="nb-photo-btn" onClick={() => cameraInputRef.current?.click()}>
+              <Camera size={15} strokeWidth={1.8} />
+              {t("notebook.takePhoto")}
+            </button>
+          </div>
         </div>
       </div>
 
@@ -1337,16 +1282,6 @@ export function NotebookEditor({
           onDelete={handleDeletePhoto}
         />
       ) : null}
-      <CalmDialog
-        open={confirmRemovePage}
-        title={t("notebook.removePage")}
-        description={t("notebook.removePageConfirm")}
-        confirmLabel={t("dialog.delete")}
-        cancelLabel={t("dialog.cancel")}
-        danger
-        onCancel={() => setConfirmRemovePage(false)}
-        onConfirm={doRemovePage}
-      />
     </div>
   );
 }
