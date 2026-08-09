@@ -20,6 +20,7 @@ import {
 } from "../components/ui";
 import JournalNotebook, { NotebookEditor } from "./JournalNotebook";
 import JournalPacks from "./JournalPacks";
+import { groupPhotoRuns, renderBodyMarkdown } from "../lib/notebookMarkdown";
 import type { AppLanguage, TimelineStatus } from "../types/app";
 
 export function CalendarCell({
@@ -95,6 +96,8 @@ function Section({ title, children }: { title: string; children: React.ReactNode
     </div>
   );
 }
+
+const renderer = (s: string) => groupPhotoRuns(renderBodyMarkdown(s, undefined, true));
 
 export function JournalLibraryScreen() {
   const store = useMonkStore();
@@ -183,24 +186,24 @@ export function JournalLibraryScreen() {
                           <span className="text-xs text-monk-muted">{new Date(l.createdAt).toLocaleDateString(dateLocale, { day: "numeric", month: "short", year: "numeric" })}</span>
                         </div>
                         {l.sourceTitle && <p className="text-sm font-semibold text-monk-text mt-1">{l.sourceTitle}</p>}
-                        {l.lesson && <p className="text-xs text-monk-muted mt-1 line-clamp-3">{l.lesson}</p>}
-                        {l.actionIdea && <p className="text-xs text-monk-text-soft mt-1 italic line-clamp-2">→ {l.actionIdea}</p>}
+                        {l.lesson && <div className="text-xs text-monk-muted mt-1 line-clamp-3">{renderer(l.lesson)}</div>}
+                        {l.actionIdea && <div className="text-xs text-monk-text-soft mt-1 italic line-clamp-2">→ {renderer(l.actionIdea)}</div>}
                         {goal && <p className="text-xs text-monk-success mt-1">🎯 {goal.title}</p>}
                         <p className="text-xs text-monk-text-soft mt-1">{t("library.minutesUnit", { n: Math.round(l.actualDurationSeconds / 60) })}</p>
                       </button>
                       {open && (l.content || l.lesson || l.actionIdea) && (
                         <div className="space-y-3 border-t border-monk-border/40 p-4">
-                          {l.content && <p className="text-xs leading-6 text-monk-text whitespace-pre-wrap">{l.content}</p>}
+                          {l.content && <div className="text-xs leading-6 text-monk-text">{renderer(l.content)}</div>}
                           {l.lesson && (
                             <div>
                               <span className="block text-xs font-bold uppercase tracking-wider text-monk-muted">{t("library.lesson")}</span>
-                              <p className="mt-0.5 text-xs leading-relaxed text-monk-text">{l.lesson}</p>
+                              <div className="mt-0.5 text-xs leading-relaxed text-monk-text">{renderer(l.lesson)}</div>
                             </div>
                           )}
                           {l.actionIdea && (
                             <div>
                               <span className="block text-xs font-bold uppercase tracking-wider text-monk-accent">{t("library.action")}</span>
-                              <p className="mt-0.5 text-xs leading-relaxed text-monk-text-soft">{l.actionIdea}</p>
+                              <div className="mt-0.5 text-xs leading-relaxed text-monk-text-soft">{renderer(l.actionIdea)}</div>
                             </div>
                           )}
                         </div>
@@ -584,19 +587,19 @@ export function LibraryScreen() {
                     {l.lesson && (
                       <div className="mt-3 bg-monk-soft/50 rounded-xl p-3 border border-monk-border/30">
                         <span className="text-xs font-bold text-monk-muted uppercase tracking-wider block">{t("library.lesson")}</span>
-                        <p className="text-xs leading-relaxed text-monk-text mt-0.5">"{l.lesson}"</p>
+                        <div className="text-xs leading-relaxed text-monk-text mt-0.5">{renderer(l.lesson)}</div>
                       </div>
                     )}
                     {l.content && (
                       <div className="mt-3 bg-monk-bg/60 rounded-xl p-3 border border-monk-border/30">
                         <span className="text-xs font-bold text-monk-muted uppercase tracking-wider block">{t("library.notes")}</span>
-                        <p className="text-xs leading-6 text-monk-text whitespace-pre-wrap mt-0.5">{l.content}</p>
+                        <div className="text-xs leading-6 text-monk-text mt-0.5">{renderer(l.content)}</div>
                       </div>
                     )}
                     {l.actionIdea && (
                       <div className="mt-3 bg-monk-accent-soft/30 rounded-xl p-3 border border-monk-accent/15">
                         <span className="text-xs font-bold text-monk-accent uppercase tracking-wider block">{t("library.action")}</span>
-                        <p className="text-xs leading-relaxed text-monk-text-soft mt-0.5">{l.actionIdea}</p>
+                        <div className="text-xs leading-relaxed text-monk-text-soft mt-0.5">{renderer(l.actionIdea)}</div>
                       </div>
                     )}
                     {linked.length > 0 && (

@@ -25,11 +25,80 @@ export function autolistMarker(line: string): string | null {
 
 type ListKind = "ul" | "ol" | "task";
 
-const HEADING = /^#{1,6}\s+(.*)$/;
+const HEADING = /^(#{1,6})\s+(.*)$/;
 const TASK = /^\[([ xX])\]\s+(.*)$/;
 const BULLET = /^[-*]\s+(.*)$/;
 const ORDERED = /^(\d+)[.)]\s+(.*)$/;
 const IMG = /^{{img:([0-9A-Za-z_-]+)}}$/;
+const FENCE_OPEN = /^```(\S*)\s*$/;
+const FENCE_CLOSE = /^```\s*$/;
+const HR = /^\s*((?:\*\s*){3,}|(?:-\s*){3,}|(?:_\s*){3,})$/;
+const BLOCKQUOTE = /^>\s?(.*)$/;
+const TABLE_ROW = /^\s*\|?[^|\n]+\|/;
+const TABLE_SEP = /^\s*\|?\s*:?-+:?\s*(\|\s*:?-+:?\s*)*\|?\s*$/;
+
+/** Inline markdown: **strong**, *em*, ~~del~~, `code`, [label](url). */
+const INLINE =
+  /(\*\*([^*]+?)\*\*)|(\*([^\s*](?:[^*]*[^\s*])?)\*)|(~~([^~]+?)~~)|(`([^`]+?)`)|(\[([^\]\n]+?)\]\(([^)\s]+)\))/g;
+
+/** Only http/https/mailto survive; everything else (incl. javascript:) renders as text. */
+function sanitizeHref(url: string): string | null {
+  const scheme = /^([a-zA-Z][a-zA-Z0-9+.-]*):/.exec(url);
+  if (!scheme) return null;
+  const proto = scheme[1].toLowerCase();
+  return proto === "http" || proto === "https" || proto === "mailto" ? url : null;
+}
+
+/** Scan one text run into inline React nodes. matchAll clones the /g regex, so lastIndex is never an issue. */
+function inlineMd(text: string, key: string): ReactNode[] {
+  const nodes: ReactNode[] = [];
+  let last = 0;
+  let i = 0;
+  for (const m of text.matchAll(INLINE)) {
+    const idx = m.index ?? 0;
+    if (idx > last) nodes.push(text.slice(last, idx));
+    const k = `${key}-${i++}`;
+    if (m[2] !== undefined) {
+      nodes.push(<strong key={k}>{inlineMd(m[2], k)}</strong>);
+    } else if (m[4] !== undefined) {
+      nodes.push(<em key={k}>{inlineMd(m[4], k)}</em>);
+    } else if (m[6] !== undefined) {
+      nodes.push(<del key={k}>{inlineMd(m[6], k)}</del>);
+    } else if (m[8] !== undefined) {
+      nodes.push(
+        <code key={k} className="md-code-inline">
+          {m[8]}
+        </code>
+      );
+    } else if (m[10] !== undefined) {
+      const href = sanitizeHref(m[11]);
+      nodes.push(
+        href ? (
+          <a key={k} href={href} target="_blank" rel="noreferrer noopener">
+            {inlineMd(m[10], k)}
+          </a>
+        ) : (
+          <span key={k}>{inlineMd(m[10], k)}</span>
+        )
+      );
+    }
+    last = idx + m[0].length;
+  }
+  if (last < text.length) nodes.push(text.slice(last));
+  return nodes;
+}
+
+/** Split a pipe-table row into trimmed cells (no escaping, documented subset). */
+function splitCells(line: string): string[] {
+  return line
+    .trim()
+    .replace(/^\|/, "")
+    .replace(/\|$/, "")
+    .split("|")
+    .map((c) => c.trim());
+}
+
+const HEADING_TAGS = { 1: "h1", 2: "h2", 3: "h3", 4: "h4", 5: "h5", 6: "h6" } as const;
 
 /** Render a notebook as a React node group. Consecutive same-kind lines group into one list. */
 export function renderBodyMarkdown(
@@ -42,16 +111,33 @@ export function renderBodyMarkdown(
   if (!body) return out;
 
   let open: { type: ListKind; items: Array<{ text: string; checked?: boolean }> } | null = null;
+  let bq: string[] | null = null;
   let num = 1;
 
+  const closeBq = () => {
+    if (!bq) return;
+    const key = out.length;
+    out.push(
+      <blockquote key={key} className="md-quote">
+        {bq.map((line, i) => (
+          <p key={i} className="md-para">
+            {inlineMd(line || " ", `bq-${i}`)}
+          </p>
+        ))}
+      </blockquote>
+    );
+    bq = null;
+  };
+
   const close = () => {
+    closeBq();
     if (!open) return;
     const key = out.length;
     if (open.type === "ol") {
       out.push(
         <ol key={key} className="md-list">
           {open.items.map((i, k) => (
-            <li key={k}>{i.text}</li>
+            <li key={k}>{inlineMd(i.text, `li-${k}`)}</li>
           ))}
         </ol>
       );
@@ -61,7 +147,7 @@ export function renderBodyMarkdown(
           {open.items.map((i, k) => (
             <li key={k}>
               <span className={`md-task-box${i.checked ? " checked" : ""}`} aria-hidden />
-              {i.text}
+              {inlineMd(i.text, `li-${k}`)}
             </li>
           ))}
         </ul>
@@ -70,7 +156,7 @@ export function renderBodyMarkdown(
       out.push(
         <ul key={key} className="md-list">
           {open.items.map((i, k) => (
-            <li key={k}>{i.text}</li>
+            <li key={k}>{inlineMd(i.text, `li-${k}`)}</li>
           ))}
         </ul>
       );
@@ -78,13 +164,30 @@ export function renderBodyMarkdown(
     open = null;
   };
 
-  for (const raw of body.split("\n")) {
+  const lines = body.split("\n");
+  for (let idx = 0; idx < lines.length; idx++) {
+    const raw = lines[idx];
     const t = raw.trim();
+
+    // Fence — raw lines, no trim/inline/photo/heading processing until close or EOF.
+    const fo = FENCE_OPEN.exec(t);
+    if (fo) {
+      close();
+      const code: string[] = [];
+      idx++;
+      while (idx < lines.length && !FENCE_CLOSE.exec(lines[idx].trim())) {
+        code.push(lines[idx]);
+        idx++;
+      }
+      out.push(
+        <pre key={out.length} className="md-code">
+          <code>{code.join("\n")}</code>
+        </pre>
+      );
+      continue;
+    }
+
     const im = IMG.exec(t);
-    const h = HEADING.exec(t);
-    const tk = TASK.exec(t);
-    const b = BULLET.exec(t);
-    const o = ORDERED.exec(t);
     if (im) {
       close();
       // In list/preview mode (omitPhotos) the marker line collapses entirely so a
@@ -101,14 +204,88 @@ export function renderBodyMarkdown(
       }
       continue;
     }
+
+    // HR before BULLET so *** / * * * don't fall to list/paragraph.
+    const hr = HR.exec(t);
+    if (hr) {
+      close();
+      out.push(<hr key={out.length} className="md-hr" />);
+      continue;
+    }
+
+    // Table lookahead: current line is a pipe row AND next line is a separator.
+    const tr = TABLE_ROW.exec(t);
+    if (tr && idx + 1 < lines.length && TABLE_SEP.exec(lines[idx + 1].trim())) {
+      close();
+      const headerCells = splitCells(t);
+      const alignCells = splitCells(lines[idx + 1].trim());
+      const rows: string[][] = [];
+      idx += 2;
+      while (idx < lines.length && lines[idx].trim() !== "") {
+        rows.push(splitCells(lines[idx]));
+        idx++;
+      }
+      const align = (i: number): React.CSSProperties["textAlign"] => {
+        const c = alignCells[i] ?? "";
+        if (c.startsWith(":") && c.endsWith(":")) return "center";
+        if (c.endsWith(":")) return "right";
+        return "left";
+      };
+      out.push(
+        <table key={out.length} className="md-table">
+          <thead>
+            <tr>
+              {headerCells.map((c, i) => (
+                <th key={i} style={{ textAlign: align(i) }}>
+                  {inlineMd(c, `th-${i}`)}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((r, ri) => (
+              <tr key={ri}>
+                {r.map((c, ci) => (
+                  <td key={ci} style={{ textAlign: align(ci) }}>
+                    {inlineMd(c, `td-${ri}-${ci}`)}
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      );
+      continue;
+    }
+
+    // Blockquote — consecutive quote lines group into one blockquote.
+    const bqLine = BLOCKQUOTE.exec(t);
+    if (bqLine) {
+      if (!bq) {
+        close();
+        bq = [];
+      }
+      bq.push(bqLine[1]);
+      continue;
+    }
+    if (bq) closeBq();
+
+    const h = HEADING.exec(t);
     if (h) {
       close();
+      const Tag = HEADING_TAGS[Math.min(h[1].length, 6) as 1 | 2 | 3 | 4 | 5 | 6];
       out.push(
-        <h3 key={out.length} className="md-heading font-handwriting">
-          {h[1]}
-        </h3>
+        <Tag key={out.length} className="md-heading font-handwriting">
+          {inlineMd(h[2], `h-${out.length}`)}
+        </Tag>
       );
-    } else if (tk) {
+      continue;
+    }
+
+    const tk = TASK.exec(t);
+    const b = BULLET.exec(t);
+    const o = ORDERED.exec(t);
+    if (tk) {
       if (open?.type !== "task") {
         close();
         open = { type: "task", items: [] };
@@ -132,7 +309,7 @@ export function renderBodyMarkdown(
       close();
       out.push(
         <p key={out.length} className="md-para">
-          {raw || " "}
+          {inlineMd(raw || " ", `p-${out.length}`)}
         </p>
       );
     }

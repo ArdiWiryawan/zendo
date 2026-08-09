@@ -108,6 +108,90 @@ describe("renderBodyMarkdown", () => {
     expect(out).toContain("first");
     expect(out).toContain("second");
   });
+  it("renders inline strong/em/del/code in one paragraph", () => {
+    const out = html("**b** *i* ~~s~~ `c`");
+    expect(out).toContain("<strong>");
+    expect(out).toContain("<em>");
+    expect(out).toContain("<del>");
+    expect(out).toContain('<code class="md-code-inline">');
+    expect(out).toContain(">c<");
+  });
+  it("keeps inline code raw (no markdown inside backticks)", () => {
+    const out = html("`**not bold**`");
+    expect(out).not.toContain("<strong>");
+    expect(out).toContain('<code class="md-code-inline">**not bold**</code>');
+  });
+  it("renders safe links and neutralizes dangerous schemes", () => {
+    const safe = html("[x](https://a.b)");
+    expect(safe).toContain('<a href="https://a.b" target="_blank" rel="noreferrer noopener">');
+    const bad = html("[x](javascript:alert(1))");
+    expect(bad).not.toContain("<a");
+    expect(bad).toContain(">x<");
+  });
+  it("groups consecutive blockquote lines and splits on blank lines", () => {
+    const one = html("> a\n> b");
+    expect(one.match(/<blockquote/g)?.length).toBe(1);
+    expect(one.match(/<p/g)?.length).toBe(2);
+    const split = html("> a\n\nplain");
+    expect(split.match(/<blockquote/g)?.length).toBe(1);
+    expect(split).toContain("<p");
+  });
+  it("renders fenced code raw, suppressing photos and headings inside", () => {
+    const out = html("```js\na\n{{img:x}}\n# h\n```");
+    expect(out).toContain('<pre class="md-code">');
+    expect(out).toContain("{{img:x}}");
+    expect(out).toContain("# h");
+    expect(out).not.toContain("nb-inline-photo");
+    expect(out).not.toContain("<h");
+  });
+  it("consumes an unclosed fence to EOF", () => {
+    const out = html("```\n{{img:x}}\n**b**");
+    expect(out).toContain('<pre class="md-code">');
+    expect(out).toContain("**b**");
+    expect(out).not.toContain("<strong>");
+    expect(out).not.toContain("nb-inline-photo");
+  });
+  it("renders hr for ---, ***, and * * *", () => {
+    expect(html("---")).toContain("md-hr");
+    expect(html("***")).toContain("md-hr");
+    expect(html("* * *")).toContain("md-hr");
+    expect(html("* * *").match(/md-hr/g)?.length).toBe(1);
+  });
+  it("renders a pipe table with header, separator, and body", () => {
+    const out = html("| a | b |\n|---|---|\n| 1 | 2 |");
+    expect(out).toContain('<table class="md-table">');
+    expect(out).toContain("<thead>");
+    expect(out).toContain("<tbody>");
+    expect(out.match(/<th /g)?.length).toBe(2);
+    expect(out.match(/<td /g)?.length).toBe(2);
+  });
+  it("renders heading depth from # to ######", () => {
+    expect(html("# H")).toContain("<h1");
+    expect(html("## H")).toContain("<h2");
+    expect(html("### H")).toContain('<h3 class="md-heading font-handwriting">');
+    expect(html("###### H")).toContain("<h6");
+  });
+  it("renders inline markdown inside list items and headings", () => {
+    const li = html("- **bold**");
+    expect(li).toContain("<ul");
+    expect(li).toContain("<strong>");
+    const h = html("### **head**");
+    expect(h).toContain('<h3 class="md-heading font-handwriting">');
+    expect(h).toContain("<strong>");
+  });
+  it("keeps - * x literal inside a list item", () => {
+    const out = html("- * x");
+    expect(out).toContain("<ul");
+    expect(out).toContain("<li>");
+    expect(out).toContain("<li>* x</li>");
+    expect(out).not.toContain("<em>");
+  });
+  it("renders inline markdown inside table cells", () => {
+    const out = html("| **x** |\n|---|\n| y |");
+    expect(out).toContain("<th ");
+    expect(out).toContain("<strong>");
+    expect(out).toContain(">y</td>");
+  });
 });
 
 describe("groupPhotoRuns", () => {

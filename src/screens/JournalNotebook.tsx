@@ -673,7 +673,11 @@ export function NotebookEditor({
       .split("\n")
       .map((l) => l.trim())
       .find((l) => Boolean(l) && !l.startsWith("{{img:"));
-    if (firstLine) return firstLine.slice(0, 80);
+    if (firstLine) {
+      // Strip leading markdown markers so a note starting with #, - or > doesn't
+      // show raw syntax as its title.
+      return firstLine.replace(/^(#{1,6}\s+|>\s?|[-*]\s+|\[\s*[xX]?\]\s+)/, "").slice(0, 80);
+    }
     return t("notebook.untitled");
   }, [title, allBody, t]);
 
