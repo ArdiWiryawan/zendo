@@ -2,26 +2,39 @@ import { describe, expect, it } from "vitest";
 import { onboardingOrder, routes } from "./routes";
 
 describe("onboarding routes order", () => {
-  it("verifies goal selection comes after season and vision", () => {
-    const narrowIndex = onboardingOrder.indexOf(routes.onboardingNarrow);
-    const seasonIndex = onboardingOrder.indexOf(routes.onboardingSeason);
-    const visionIndex = onboardingOrder.indexOf(routes.onboardingVision);
-
-    expect(narrowIndex).toBeGreaterThan(-1);
-    expect(seasonIndex).toBeGreaterThan(-1);
-    expect(visionIndex).toBeGreaterThan(-1);
-
-    expect(seasonIndex).toBeLessThan(narrowIndex);
-    expect(visionIndex).toBeLessThan(narrowIndex);
+  it("has exactly the 6-step reduced flow in order", () => {
+    expect(onboardingOrder).toEqual([
+      routes.onboardingWelcome,
+      routes.onboardingHabits,
+      routes.onboardingGoals,
+      routes.onboardingKeystone,
+      routes.onboardingSeason,
+      routes.onboardingPreview
+    ]);
+    expect(onboardingOrder.length).toBe(6);
   });
 
-  it("places obstacle-mitigation between keystone and week-setup", () => {
+  it("goals (merged narrow) precedes keystone so selections drive the season", () => {
+    const goalsIndex = onboardingOrder.indexOf(routes.onboardingGoals);
     const keystoneIndex = onboardingOrder.indexOf(routes.onboardingKeystone);
-    const obstacleIndex = onboardingOrder.indexOf(routes.onboardingObstacleMitigation);
-    const weekIndex = onboardingOrder.indexOf(routes.onboardingWeekSetup);
+    expect(goalsIndex).toBeGreaterThan(-1);
+    expect(keystoneIndex).toBeGreaterThan(goalsIndex);
+  });
 
-    expect(obstacleIndex).toBeGreaterThan(-1);
-    expect(keystoneIndex).toBeLessThan(obstacleIndex);
-    expect(obstacleIndex).toBeLessThan(weekIndex);
+  it("removed legacy steps are no longer in the flow", () => {
+    const removed = [
+      routes.onboardingValues,
+      routes.onboardingVision,
+      routes.onboardingReality,
+      routes.onboardingObstacles,
+      routes.onboardingRemove,
+      routes.onboardingGreyMode,
+      routes.onboardingNarrow,
+      routes.onboardingObstacleMitigation,
+      routes.onboardingWeekSetup
+    ];
+    removed.forEach((route) => {
+      expect(onboardingOrder).not.toContain(route);
+    });
   });
 });

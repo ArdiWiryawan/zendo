@@ -8,7 +8,6 @@ import { useCalmToast } from "../components/ui";
 import { routes } from "../constants/routes";
 import { CORE_VALUES } from "../constants/whyValues";
 import { habitOptions, defaultWeeklyTargets, frictionActionsForHabit, createDefaultOnboarding } from "../constants/defaultData";
-import { onboardingOrder } from "../constants/routes";
 import { getTodayDateString, addDaysToDate, getDayNumber, getSeasonProgress, getDaysLeft, getDaysPassed, getSeasonDayLabel, formatHumanDate } from "../lib/date";
 import { createId } from "../lib/ids";
 import { formatIntention, parseIntention } from "../lib/implementationIntention";
@@ -653,14 +652,20 @@ export function GreyMode({ onNext }: { onNext: () => void }) {
 }
 
 export function GoalBrainDump({ onNext }: { onNext: () => void }) {
-  const { onboarding, addGoalDraft, removeGoalDraft, updateGoalDraft } = useMonkStore();
+  const { onboarding, addGoalDraft, removeGoalDraft, updateGoalDraft, toggleFocusGoal } = useMonkStore();
   const filledCount = onboarding.goalDrafts.filter((g) => g.title.trim()).length;
-  const result = validateGoalBrainDump(onboarding.goalDrafts);
+  const dumpResult = validateGoalBrainDump(onboarding.goalDrafts);
+  const draftGoals = onboarding.goalDrafts.filter((goal) => goal.title.trim());
+  const selectedCount = onboarding.selectedFocusGoalIds.length;
+  const narrowResult = validateNarrowGoals(selectedCount);
+  const showNarrow = dumpResult.valid && draftGoals.length > 0;
+  // Continue requires ≥3 valid drafts and ≥1 selected goal
+  const canContinue = dumpResult.valid && narrowResult.valid;
   return (
     <>
-      <ScreenIntro title="What feels important in this season?" subtitle="Write 3–10 possible goals first. Don't filter yet — we'll narrow them next." />
+      <ScreenIntro title="What feels important in this season?" subtitle="Write 3–10 possible goals first, then keep the 1–3 that deserve this season's energy." />
       <div className="mb-3 flex items-center justify-between">
-        <p className="text-xs text-monk-muted">Brain dump first. Selection comes later.</p>
+        <p className="text-xs text-monk-muted">Brain dump first. Selection comes next.</p>
         <span className="rounded-full bg-monk-soft px-2.5 py-1 text-xs font-bold text-monk-muted">
           {filledCount}/10 · min 3
         </span>
@@ -703,9 +708,45 @@ export function GoalBrainDump({ onNext }: { onNext: () => void }) {
           <span className="inline-flex items-center gap-2"><Plus size={16} /> Add goal</span>
         </GhostButton>
       ) : null}
+
+      {showNarrow ? (
+        <div className="mt-8">
+          <ScreenIntro
+            title="What deserves your energy this season?"
+            subtitle="Pick 1–3 goals to keep. Unselected goals stay saved for later seasons."
+          />
+          <p className="mb-4 text-xs font-bold uppercase tracking-wider text-monk-muted">
+            Keep this season · {selectedCount}/3 selected
+          </p>
+          <div className="space-y-3">
+            <AnimatePresence>
+              {draftGoals.map((goal) => {
+                const isSelected = onboarding.selectedFocusGoalIds.includes(goal.id);
+                return (
+                  <motion.div
+                    key={goal.id}
+                    layout
+                    initial={{ opacity: 0, y: -10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, x: -20 }}
+                    transition={{ duration: 0.2 }}
+                  >
+                    <ChoiceCard
+                      title={goal.title}
+                      selected={isSelected}
+                      onClick={() => toggleFocusGoal(goal.id)}
+                    />
+                  </motion.div>
+                );
+              })}
+            </AnimatePresence>
+          </div>
+        </div>
+      ) : null}
       <div className="mt-auto space-y-3 pt-8">
-        {!result.valid ? <CalmAlert type="warning" title={result.message!} /> : null}
-        <PrimaryButton disabled={!result.valid} onClick={onNext}>Continue</PrimaryButton>
+        {dumpResult.valid && !narrowResult.valid ? <CalmAlert type="warning" title={narrowResult.message!} /> : null}
+        {!dumpResult.valid ? <CalmAlert type="warning" title={dumpResult.message!} /> : null}
+        <PrimaryButton disabled={!canContinue} onClick={onNext}>Continue</PrimaryButton>
       </div>
     </>
   );
@@ -788,52 +829,6 @@ export function SeasonSetup({ onNext }: { onNext: () => void }) {
           endLabel={formatHumanDate(onboarding.seasonEndDate)}
           durationLabel={`${onboarding.seasonDurationDays} days of focused progress`}
         />
-      </div>
-      <div className="mt-auto space-y-3 pt-8">
-        {!result.valid ? <CalmAlert type="warning" title={result.message!} /> : null}
-        <PrimaryButton disabled={!result.valid} onClick={onNext}>Continue</PrimaryButton>
-      </div>
-    </>
-  );
-}
-
-export function NarrowGoals({ onNext }: { onNext: () => void }) {
-  const { onboarding, toggleFocusGoal } = useMonkStore();
-  const goals = onboarding.goalDrafts.filter((goal) => goal.title.trim());
-  const selectedCount = onboarding.selectedFocusGoalIds.length;
-  const result = validateNarrowGoals(selectedCount);
-
-  return (
-    <>
-      <ScreenIntro
-        title="What deserves your energy this season?"
-        subtitle="Pick 1–3 goals to keep. Unselected goals stay saved for later seasons."
-      />
-      <p className="mb-4 text-xs font-bold uppercase tracking-wider text-monk-muted">
-        Keep this season · {selectedCount}/3 selected
-      </p>
-      <div className="space-y-3">
-        <AnimatePresence>
-          {goals.map((goal) => {
-            const isSelected = onboarding.selectedFocusGoalIds.includes(goal.id);
-            return (
-              <motion.div
-                key={goal.id}
-                layout
-                initial={{ opacity: 0, y: -10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, x: -20 }}
-                transition={{ duration: 0.2 }}
-              >
-                <ChoiceCard
-                  title={goal.title}
-                  selected={isSelected}
-                  onClick={() => toggleFocusGoal(goal.id)}
-                />
-              </motion.div>
-            );
-          })}
-        </AnimatePresence>
       </div>
       <div className="mt-auto space-y-3 pt-8">
         {!result.valid ? <CalmAlert type="warning" title={result.message!} /> : null}

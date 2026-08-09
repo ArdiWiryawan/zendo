@@ -35,18 +35,9 @@ export const routes = {
 
 export const onboardingOrder = [
   routes.onboardingWelcome,
-  routes.onboardingValues,
-  routes.onboardingReality,
-  routes.onboardingObstacles,
   routes.onboardingHabits,
-  routes.onboardingRemove,
-  routes.onboardingGreyMode,
   routes.onboardingGoals,
-  routes.onboardingSeason,
-  routes.onboardingVision,
-  routes.onboardingNarrow,
   routes.onboardingKeystone,
-  routes.onboardingObstacleMitigation,
-  routes.onboardingWeekSetup,
+  routes.onboardingSeason,
   routes.onboardingPreview
 ] as const;

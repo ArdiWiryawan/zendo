@@ -26,7 +26,7 @@ const PacksPageLazy = lazy(() => import("../screens/LibraryScreen").then(m => ({
 const ArchiveScreenLazy = lazy(() => import("../screens/ArchiveScreen").then(m => ({ default: m.ArchiveScreen })));
 import { TodayScreen } from "../screens/TodayScreen";
 import { WelcomeScreen } from "../screens/WelcomeScreen";
-import { ValuesStep, VisionStep, RealityCheck, PastObstacles, HabitAudit, RemoveDistractions, GreyMode, GoalBrainDump, SeasonSetup, NarrowGoals, KeystoneSetup, ObstacleStep, WeekSetup, TodayPreviewStep } from "../screens/OnboardingSteps";
+import { HabitAudit, GoalBrainDump, SeasonSetup, KeystoneSetup, TodayPreviewStep } from "../screens/OnboardingSteps";
 
 export default function App() {
   const hydrate = useMonkStore((state) => state.hydrate);
@@ -246,6 +246,15 @@ function OnboardingScreen({ path }: { path: string }) {
     navigate(prev);
   } : undefined;
 
+  // Unknown /onboarding/* paths (e.g. removed steps) resolve to step 1
+  const isKnownStep = (onboardingOrder as readonly string[]).includes(path);
+  if (!isKnownStep) {
+    return (
+      <OnboardingShell>
+        <WelcomeScreen onNext={goNext} />
+      </OnboardingShell>
+    );
+  }
   if (path === routes.onboardingWelcome) {
     return (
       <OnboardingShell>
@@ -256,29 +265,19 @@ function OnboardingScreen({ path }: { path: string }) {
 
   // phase labels mirror onboardingOrder phases only; do not drive order/navigation
   const phaseForStep = (stepPath: string): string | undefined => {
-    if (stepPath === routes.onboardingValues || stepPath === routes.onboardingReality || stepPath === routes.onboardingObstacles) return "Reflect";
-    if (stepPath === routes.onboardingHabits || stepPath === routes.onboardingRemove || stepPath === routes.onboardingGreyMode) return "Clear";
+    if (stepPath === routes.onboardingHabits) return "Clear";
     if (stepPath === routes.onboardingGoals || stepPath === routes.onboardingSeason) return "Plan";
-    if (stepPath === routes.onboardingVision || stepPath === routes.onboardingNarrow || stepPath === routes.onboardingKeystone || stepPath === routes.onboardingObstacleMitigation || stepPath === routes.onboardingWeekSetup) return "Focus";
+    if (stepPath === routes.onboardingKeystone) return "Focus";
     if (stepPath === routes.onboardingPreview) return "Review";
     return undefined;
   };
 
   return (
     <OnboardingShell currentStep={currentStep} totalSteps={totalSteps} phaseLabel={phaseForStep(path)} onBack={goBack}>
-      {path === routes.onboardingValues ? <ValuesStep onNext={goNext} /> : null}
-      {path === routes.onboardingVision ? <VisionStep onNext={goNext} /> : null}
-      {path === routes.onboardingReality ? <RealityCheck onNext={goNext} /> : null}
-      {path === routes.onboardingObstacles ? <PastObstacles onNext={goNext} /> : null}
       {path === routes.onboardingHabits ? <HabitAudit onNext={goNext} /> : null}
-      {path === routes.onboardingRemove ? <RemoveDistractions onNext={goNext} /> : null}
-      {path === routes.onboardingGreyMode ? <GreyMode onNext={goNext} /> : null}
       {path === routes.onboardingGoals ? <GoalBrainDump onNext={goNext} /> : null}
-      {path === routes.onboardingSeason ? <SeasonSetup onNext={goNext} /> : null}
-      {path === routes.onboardingNarrow ? <NarrowGoals onNext={goNext} /> : null}
       {path === routes.onboardingKeystone ? <KeystoneSetup onNext={goNext} /> : null}
-      {path === routes.onboardingObstacleMitigation ? <ObstacleStep onNext={goNext} /> : null}
-      {path === routes.onboardingWeekSetup ? <WeekSetup onNext={goNext} /> : null}
+      {path === routes.onboardingSeason ? <SeasonSetup onNext={goNext} /> : null}
       {path === routes.onboardingPreview ? <TodayPreviewStep /> : null}
     </OnboardingShell>
   );
