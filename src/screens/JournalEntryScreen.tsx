@@ -114,7 +114,20 @@ export function JournalEntryScreen() {
   const hasDraft =
     (currentTab === "morning" && !!answers.morningPages?.trim()) ||
     (currentTab === "reflection" && !!answers.whatMovedToday?.trim());
-  const blocker = useBlocker(() => hasDraft && !saved);
+  // Guard fires only for a genuinely unsaved change: answers differ from what is
+  // persisted in the store entry. Relying on a boolean `saved` flag broke because
+  // store.saveJournalEntry bumps entry.updatedAt, which re-derives `initial` and
+  // resets `saved=false`, so the guard re-armed even right after saving.
+  const savedEntryAnswers = targetEntry?.answers ?? {};
+  const unsaved =
+    hasDraft &&
+    (answers.morningPages !== savedEntryAnswers.morningPages ||
+      answers.whatMovedToday !== savedEntryAnswers.whatMovedToday ||
+      answers.whatDistractedMe !== savedEntryAnswers.whatDistractedMe ||
+      answers.whatDidILearn !== savedEntryAnswers.whatDidILearn ||
+      answers.whatShouldBeEasierTomorrow !== savedEntryAnswers.whatShouldBeEasierTomorrow ||
+      answers.whatShouldBeHarderTomorrow !== savedEntryAnswers.whatShouldBeHarderTomorrow);
+  const blocker = useBlocker(() => unsaved);
 
   useEffect(() => {
     // Shortcut nav is deliberate: draft is autosaved to localStorage, so
