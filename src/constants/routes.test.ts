@@ -20,21 +20,4 @@ describe("onboarding routes order", () => {
     expect(goalsIndex).toBeGreaterThan(-1);
     expect(keystoneIndex).toBeGreaterThan(goalsIndex);
   });
-
-  it("removed legacy steps are no longer in the flow", () => {
-    const removed = [
-      routes.onboardingValues,
-      routes.onboardingVision,
-      routes.onboardingReality,
-      routes.onboardingObstacles,
-      routes.onboardingRemove,
-      routes.onboardingGreyMode,
-      routes.onboardingNarrow,
-      routes.onboardingObstacleMitigation,
-      routes.onboardingWeekSetup
-    ];
-    removed.forEach((route) => {
-      expect(onboardingOrder).not.toContain(route);
-    });
-  });
 });

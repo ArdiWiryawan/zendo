@@ -10,8 +10,8 @@ Sources: `src/main.tsx` (`initSync`), `src/lib/supabase.ts`, `src/lib/syncStatus
 | Local primary | `localStorage` key `monk_mode_pwa_state_v1` | Full `MonkMVPState` blob |
 | Local side keys | `focusSessions`, `learningSessions`, `timelineEvents` | Arrays; re-merged on `loadState` / written on `saveState` |
 | Local draft | `monk_journal_draft_v1` | Not part of remote blob |
-| Remote | Supabase table `zendo_state`, row `id = 'global'`, column `state_json` | Single JSON blob; `setState` also stamps DB `updated_at` (server column only — not in client state) |
-| Auth | Not scoped | Sync is **not per-user**. All clients share `id=global`. Not multi-tenant safe. |
+| Remote | Supabase table `zendo_state`, row `id = auth.uid()` (per user), column `state_json` | One row per user; `setState` upserts the user's own row. |
+| Auth | Scoped per user | RLS enforces owner-only access (`auth.uid() = id`). Not shared, not world-readable. |
 
 App boots from local (`loadState` → store). Remote is secondary overlay + push target.
 
@@ -59,8 +59,8 @@ Product decision — implement next; not current code:
 4. **Offline**  
    Keep last local blob as source. On reconnect: if local newer → push; else pull and replace. No silent remote-over-local when local timestamp wins.
 
-5. **Multi-user (future, not sprint 1)**  
-   Row per user id (or auth uid), not `global`.
+5. **Multi-user (implemented)**  
+   Per-user rows (`id = auth.uid()`), RLS owner-scoped. Signed-in users sync only their own state.
 
 ## 5. Status labels (UI)
 
@@ -88,4 +88,4 @@ Product decision — implement next; not current code:
 - Whole-blob LWW by max timestamp; no nested/array field merge.
 - Offline: retain local blob; reconnect push-if-local-newer else pull.
 - Push full blob only; no partial remote patches.
-- Multi-tenant (`id` per user) deferred; `global` remains until then (known risk).
+- Multi-tenant (`id = auth.uid()`) implemented; `global` row removed (migrated).

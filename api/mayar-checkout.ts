@@ -6,10 +6,11 @@
 //      MAYAR_API_URL (optional; defaults to production https://api.mayar.id)
 //      MAYAR_REDIRECT_URL (optional; where the buyer lands after payment)
 //
-// DEMO / SANDBOX MODE: when MAYAR_API_KEY is unset, this returns a fake checkout
-// URL that redirects straight back to `/packs?purchased=<packId>` — the client
-// treats it as a successful payment and unlocks the pack. Lets you try the whole
-// flow (button → redirect → unlock) with zero configuration.
+// DEMO / SANDBOX MODE: only entered when MAYAR_DEMO_MODE=true. Returns a fake
+// checkout URL that redirects straight back to `/packs?purchased=<packId>` —
+// the client treats it as a successful payment and unlocks the pack. Demo mode
+// is an explicit opt-in; a missing MAYAR_API_KEY alone FAILS CLOSED (HTTP 500)
+// so a misconfigured production deploy can never silently make packs free.
 
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 
@@ -37,14 +38,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const origin = req.headers.origin ?? "https://zendo.example";
   const returnUrl = process.env.MAYAR_REDIRECT_URL ?? `${origin}/packs?purchased=${packId}`;
 
-  // ── DEMO MODE (no API key) ────────────────────────────────────────────────
+  // ── DEMO MODE (explicit opt-in only) ───────────────────────────────────────
   const apiKey = process.env.MAYAR_API_KEY;
   if (!apiKey) {
-    return res.json({
-      link: returnUrl, // "checkout" that instantly succeeds
-      id: `demo_${packId}`,
-      demo: true,
-    });
+    if (process.env.MAYAR_DEMO_MODE === "true") {
+      return res.json({
+        link: returnUrl, // "checkout" that instantly succeeds
+        id: `demo_${packId}`,
+        demo: true,
+      });
+    }
+    // Fail closed: production misconfiguration must not silently give packs away.
+    console.error("Mayar checkout: MAYAR_API_KEY is not set (and MAYAR_DEMO_MODE is not true); failing closed");
+    return res.status(500).json({ error: "Server misconfigured" });
   }
 
   const apiUrl = process.env.MAYAR_API_URL ?? "https://api.mayar.id";
