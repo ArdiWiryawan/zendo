@@ -66,6 +66,9 @@ export function JournalEntryScreen() {
   const [confirmLeave, setConfirmLeave] = useState(false);
   const draftSkipRef = useRef(true);
   const draftTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Shortcut buttons (Notebook/Packs) below the save button deliberately leave
+  // the page; draft is already autosaved to localStorage, so skip the guard.
+  const leaveRef = useRef(false);
   const toast = useCalmToast();
 
   useEffect(() => { window.scrollTo(0, 0); }, []);
@@ -114,8 +117,20 @@ export function JournalEntryScreen() {
   const blocker = useBlocker(() => hasDraft && !saved);
 
   useEffect(() => {
-    if (blocker.state === "blocked") setConfirmLeave(true);
-  }, [blocker.state]);
+    // Shortcut nav is deliberate: draft is autosaved to localStorage, so
+    // bypass the unsaved-draft guard instead of showing the dialog. The effect
+    // runs only when blocker STATE changes (not every render), so leaveRef set
+    // right before navigate() is still pending when the blocker flips to
+    // "blocked" — proceed() then applies to that same blocked transition.
+    if (blocker.state === "blocked") {
+      if (leaveRef.current) {
+        leaveRef.current = false;
+        blocker.proceed?.();
+        return;
+      }
+      setConfirmLeave(true);
+    }
+  }, [blocker.state, blocker.proceed]);
 
   useEffect(() => {
     setCurrentTab(defaultTab);
@@ -384,7 +399,7 @@ export function JournalEntryScreen() {
       <div className="grid grid-cols-2 gap-3 pt-6 pb-8">
         <button
           type="button"
-          onClick={() => navigate(routes.notebook)}
+          onClick={() => { leaveRef.current = true; navigate(routes.notebook); }}
           className="rounded-monk border border-monk-border bg-monk-surface p-4 text-left transition hover:border-monk-accent"
         >
           <div className="w-6 h-6 rounded-full bg-monk-accent-soft flex items-center justify-center mb-2">
@@ -395,7 +410,7 @@ export function JournalEntryScreen() {
         </button>
         <button
           type="button"
-          onClick={() => navigate(routes.packs)}
+          onClick={() => { leaveRef.current = true; navigate(routes.packs); }}
           className="rounded-monk border border-monk-border bg-monk-surface p-4 text-left transition hover:border-monk-accent"
         >
           <div className="w-6 h-6 rounded-full bg-monk-success-soft flex items-center justify-center mb-2">
