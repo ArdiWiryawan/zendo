@@ -145,3 +145,7 @@ android.keystore
 .playwright-mcp/
 dev-dist/
 
+# Graph artifacts + local screenshots
+graphify-out/
+today-screen.png
+
