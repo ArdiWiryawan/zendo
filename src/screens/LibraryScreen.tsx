@@ -484,12 +484,7 @@ export function LibraryScreen() {
                         </p>
                       </div>
                       <span className="rounded-full border border-monk-border bg-monk-soft px-2 py-1 text-xs font-bold uppercase tracking-wider text-monk-muted">
-                        {DAILY_STATUS_LABELS[resolveDailyActivityStatus({
-                          focusSessions: getDailyActivity(store, j.date).focusSessions,
-                          learningSessions: getDailyActivity(store, j.date).learningSessions.length > 0
-                            ? getDailyActivity(store, j.date).learningSessions
-                            : getDailyActivity(store, j.date).legacyLearningEntries.map((entry) => ({ id: entry.id }))
-                        })]}
+                        {DAILY_STATUS_LABELS[resolveDailyActivityStatus(getDailyActivity(store, j.date))]}
                       </span>
                     </div>
                   </div>

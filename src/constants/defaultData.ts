@@ -23,14 +23,6 @@ export const habitOptions: Array<{ category: BadHabitCategory; label: string; ic
   { category: "other", label: "Other", icon: MoreHorizontal }
 ];
 
-export const learningTypes = [
-  { value: "book", label: "Book" },
-  { value: "course", label: "Course" },
-  { value: "podcast", label: "Podcast" },
-  { value: "long_video", label: "Long Video" },
-  { value: "other", label: "Other" }
-] as const;
-
 export function createDefaultSettings(): AppSettings {
   const timestamp = nowIso();
   return {
@@ -111,7 +103,6 @@ export function createInitialState(): MonkMVPState {
     weeklyPlans: [],
     dayPlans: [],
     focusSessions: [],
-    learningEntries: [],
     journalEntries: [],
     relapseLogs: [],
     timelineDays: [],

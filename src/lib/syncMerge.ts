@@ -56,7 +56,6 @@ const ARRAY_KEYS: (keyof MonkMVPState)[] = [
   "dayPlans",
   "focusSessions",
   "learningSessions",
-  "learningEntries",
   "journalEntries",
   "relapseLogs",
   "timelineDays",

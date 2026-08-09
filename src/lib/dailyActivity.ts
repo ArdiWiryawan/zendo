@@ -23,8 +23,7 @@ export function getDailyActivity(store: MonkMVPState, date: string) {
   const learningSessions = store.learningSessions.filter(
     (session) => (session.endedAt ?? session.startedAt).slice(0, 10) === date && session.status === "completed" && (!seasonId || session.seasonId === seasonId)
   );
-  const legacyLearningEntries = store.learningEntries.filter((entry) => dayPlanIds.includes(entry.dayPlanId));
-  return { focusSessions, learningSessions, legacyLearningEntries };
+  return { focusSessions, learningSessions };
 }
 
 export function getDailyStatusForDate(store: MonkMVPState, date: string): TimelineStatus {
@@ -41,22 +40,12 @@ export function getDailyStatusForDate(store: MonkMVPState, date: string): Timeli
 
 export function getCoreDailyStatusForDate(store: MonkMVPState, date: string) {
   const activity = getDailyActivity(store, date);
-  return resolveDailyActivityStatus({
-    focusSessions: activity.focusSessions,
-    learningSessions: activity.learningSessions.length > 0
-      ? activity.learningSessions
-      : activity.legacyLearningEntries.map((entry) => ({ id: entry.id }))
-  });
+  return resolveDailyActivityStatus(activity);
 }
 
 export function getDailyHelperForDate(store: MonkMVPState, date: string) {
   const activity = getDailyActivity(store, date);
-  return getDailyStatusHelper({
-    focusSessions: activity.focusSessions,
-    learningSessions: activity.learningSessions.length > 0
-      ? activity.learningSessions
-      : activity.legacyLearningEntries.map((entry) => ({ id: entry.id }))
-  });
+  return getDailyStatusHelper(activity);
 }
 
 export function getFocusSummaryForDate(store: MonkMVPState, date: string) {
@@ -74,8 +63,6 @@ export function getLearningSummaryForDate(store: MonkMVPState, date: string) {
     const sourceType = session.sourceType.replace("_", " ");
     return `${minutes} min · ${sourceType} · ${session.sourceTitle || "External Source"}`;
   }
-  const entry = activity.legacyLearningEntries[0];
-  if (entry) return `${entry.durationMinutes ?? 0} min · ${entry.title}`;
   return "Not done yet";
 }
 

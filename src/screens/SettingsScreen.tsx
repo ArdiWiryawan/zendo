@@ -140,7 +140,7 @@ export default function SettingsScreen() {
     // Scope each log to this season — otherwise old-season entries leak into
     // the "Season Log" export.
     const journal = store.journalEntries.filter(j => j.seasonId === season.id);
-    const learning = store.learningEntries.filter(l => l.seasonId === season.id);
+    const learning = store.learningSessions.filter(l => l.seasonId === season.id);
     const relapses = store.relapseLogs.filter(r => r.seasonId === season.id);
     const lines = [
       `# Season Log: ${season.name}`,
@@ -159,7 +159,7 @@ export default function SettingsScreen() {
       }),
       "",
       "## Learning Log",
-      ...learning.map(l => `- **${l.createdAt.slice(0,10)}** (${l.type}): ${l.title} - Insight: ${l.keyInsight || "-"}`),
+      ...learning.map(l => `- **${(l.endedAt ?? l.startedAt).slice(0,10)}** (${l.sourceType}): ${l.sourceTitle || l.lesson?.slice(0, 60) || "-"} - Insight: ${l.lesson || "-"}`),
       "",
       "## Relapse & Drift Logs",
       ...relapses.map(r => `- **${r.createdAt.slice(0,10)}** (Trigger: ${r.trigger}): ${r.note} - Recovery: ${r.recoveryAction || "-"}`)
@@ -309,7 +309,6 @@ export default function SettingsScreen() {
                       weeklyPlans: store.weeklyPlans,
                       focusSessions: store.focusSessions,
                       learningSessions: store.learningSessions,
-                      learningEntries: store.learningEntries,
                       relapseLogs: store.relapseLogs,
                       energyLogs: store.energyLogs,
                       timelineEvents: store.timelineEvents,

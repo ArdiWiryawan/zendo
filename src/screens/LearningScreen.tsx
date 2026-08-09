@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { Trash2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useMonkStore } from "../store/useMonkStore";
 import { useT } from "../i18n";
@@ -6,17 +7,15 @@ import { getTodayDateString, nowIso } from "../lib/date";
 import { routes } from "../constants/routes";
 import { createId } from "../lib/ids";
 import { selectActiveGoals, selectTodayPlan } from "../store/selectors";
-import { habitOptions, learningTypes } from "../constants/defaultData";
 import {
   Card,
   CalmAlert,
+  CalmDialog,
   ChoiceChip,
-  GhostButton,
   PageHeader,
   PrimaryButton,
   TextInput,
   Textarea,
-  useCalmToast,
 } from "../components/ui";
 import type { LearningSession, LearningSourceType } from "../types/app";
 
@@ -40,9 +39,14 @@ export function LearningScreen() {
   const [parentId, setParentId] = useState("");
   const [linkIds, setLinkIds] = useState<string[]>([]);
   const [content, setContent] = useState("");
+  const [confirmDelete, setConfirmDelete] = useState<LearningSession | null>(null);
 
   const activeGoals = selectActiveGoals(store);
-  const parentOptions = store.learningSessions.filter((s) => !s.parentId && s.id !== "" && s.seasonId === store.activeSeason?.id);
+  const parentOptions = store.learningSessions.filter((s) => !s.parentId && s.seasonId === store.activeSeason?.id);
+  const recentSessions = [...store.learningSessions]
+    .filter((s) => s.seasonId === store.activeSeason?.id)
+    .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+    .slice(0, 3);
 
   const learningSessionTypes = [
     { value: "book", label: t("learning.sourceTypes.book") },
@@ -237,6 +241,37 @@ export function LearningScreen() {
         {!keyInsight.trim() ? <CalmAlert type="warning" title={t("learning.requiredError")} /> : null}
         {actualMinutes <= 0 ? <CalmAlert type="warning" title={t("learning.durationError")} /> : null}
 
+        {recentSessions.length > 0 && (
+          <Card>
+            <p className="mb-2 font-semibold text-sm">{t("learning.recentSessions")}</p>
+            <div className="space-y-1.5">
+              {recentSessions.map((s) => (
+                <div key={s.id} className="flex items-center gap-2 rounded-xl border border-monk-border/40 bg-monk-soft px-3 py-2">
+                  <button
+                    type="button"
+                    className="min-w-0 flex-1 text-left text-xs text-monk-text"
+                    onClick={() => setConfirmDelete(s)}
+                  >
+                    <span className="block truncate font-semibold">{s.sourceTitle || s.lesson?.slice(0, 40) || t("learning.untitled")}</span>
+                    <span className="block text-monk-muted">
+                      {Math.round(s.actualDurationSeconds / 60)} min
+                      {s.relatedGoalId && store.goals.find((g) => g.id === s.relatedGoalId) ? ` · ${store.goals.find((g) => g.id === s.relatedGoalId)!.title}` : ""}
+                    </span>
+                  </button>
+                  <button
+                    type="button"
+                    aria-label={t("learning.deleteAria")}
+                    onClick={() => setConfirmDelete(s)}
+                    className="grid min-h-9 min-w-9 shrink-0 place-items-center rounded-full text-monk-muted transition duration-150 active:scale-95 hover:bg-monk-danger-soft hover:text-monk-danger"
+                  >
+                    <Trash2 size={15} />
+                  </button>
+                </div>
+              ))}
+            </div>
+          </Card>
+        )}
+
         <PrimaryButton
           disabled={!isValid}
           onClick={() => {
@@ -270,6 +305,20 @@ export function LearningScreen() {
           {t("learning.save")}
         </PrimaryButton>
       </div>
+
+      <CalmDialog
+        open={confirmDelete !== null}
+        title={t("learning.deleteTitle")}
+        description={t("learning.deleteConfirm", { title: confirmDelete?.sourceTitle || confirmDelete?.lesson?.slice(0, 30) || "" })}
+        confirmLabel={t("dialog.delete")}
+        cancelLabel={t("dialog.cancel")}
+        danger
+        onCancel={() => setConfirmDelete(null)}
+        onConfirm={() => {
+          if (confirmDelete) store.removeLearningSession(confirmDelete.id);
+          setConfirmDelete(null);
+        }}
+      />
     </>
   );
 }

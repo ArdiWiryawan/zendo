@@ -48,6 +48,11 @@ export const id: Record<MessageKey, string> = {
   "dialog.confirm": "Lanjut",
   "dialog.delete": "Hapus",
   "dialog.discard": "Tinggalkan tanpa menyimpan",
+  "learning.deleteTitle": "Hapus sesi belajar?",
+  "learning.deleteConfirm": "Ini menghapus \"{title}\" beserta catatan di timeline. Tidak bisa dibatalkan.",
+  "learning.deleteAria": "Hapus sesi belajar",
+  "learning.recentSessions": "Sesi terbaru",
+  "learning.untitled": "Tanpa judul",
 
   "journal.title": "Jurnal",
   "journal.subtitleMorning": "Mulai hari dengan kepala yang lebih jernih.",

@@ -7,7 +7,6 @@ export type GoalStatus = "active" | "paused" | "completed" | "released";
 export type DayType = "goal" | "rest";
 export type DayStatus = "planned" | "active" | "completed" | "skipped" | "missed" | "partial" | "relapse" | "rest";
 export type EnergyLevel = "low" | "medium" | "high";
-export type LearningType = "book" | "course" | "podcast" | "long_video" | "other";
 export type TimelineStatus =
   | "not_started"
   | "completed"
@@ -140,13 +139,6 @@ export type WeeklyPlan = {
   updatedAt: ISODateString;
 };
 
-export type LearningPlan = {
-  type: LearningType;
-  title?: string;
-  targetMinutes?: number;
-  targetPages?: number;
-};
-
 export type DayPlan = {
   id: string;
   seasonId: string;
@@ -156,7 +148,6 @@ export type DayPlan = {
   goalId?: string;
   mainAction?: string;
   highlight?: string;
-  learningPlan?: LearningPlan;
   energyLevel?: EnergyLevel;
   status: DayStatus;
   createdAt: ISODateString;
@@ -310,22 +301,6 @@ export type FocusSessionTimelineDetails = {
   totalBreakBlocks: number;
   status: "completed" | "ended_early" | "paused";
   phases: FocusSessionPhase[];
-};
-
-export type LearningEntry = {
-  id: string;
-  seasonId: string;
-  weeklyPlanId: string;
-  dayPlanId: string;
-  goalId?: string;
-  type: LearningType;
-  title: string;
-  durationMinutes?: number;
-  pagesRead?: number;
-  keyInsight?: string;
-  actionTakeaway?: string;
-  createdAt: ISODateString;
-  updatedAt: ISODateString;
 };
 
 export type JournalAnswers = {
@@ -489,7 +464,6 @@ export type MonkMVPState = {
   weeklyPlans: WeeklyPlan[];
   dayPlans: DayPlan[];
   focusSessions: FocusSession[];
-  learningEntries: LearningEntry[];
   journalEntries: JournalEntry[];
   relapseLogs: RelapseLog[];
   timelineDays: TimelineDay[];

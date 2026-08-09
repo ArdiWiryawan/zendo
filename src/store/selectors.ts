@@ -65,12 +65,6 @@ export function selectJournalEntryForToday(state: MonkMVPState, today = getToday
   return state.journalEntries.find((entry) => entry.seasonId === season.id && entry.date === today);
 }
 
-export function selectLearningEntriesForToday(state: MonkMVPState, today = getTodayDateString()) {
-  const plan = selectTodayPlan(state, today);
-  if (!plan) return [];
-  return state.learningEntries.filter((entry) => entry.dayPlanId === plan.id);
-}
-
 export function selectFocusSessionsForToday(state: MonkMVPState, today = getTodayDateString()) {
   const plan = selectTodayPlan(state, today);
   if (!plan) return [];
@@ -92,7 +86,9 @@ export function selectTodayFocusSessions(state: MonkMVPState, today = getTodayDa
 export function selectTodayLearningSessions(state: MonkMVPState, today = getTodayDateString()): LearningSession[] {
   const seasonId = state.activeSeason?.id;
   if (!seasonId) return [];
-  return state.learningSessions.filter((s) => s.seasonId === seasonId && s.startedAt.slice(0, 10) === today);
+  return state.learningSessions.filter(
+    (s) => s.seasonId === seasonId && s.startedAt.slice(0, 10) === today && s.status === "completed"
+  );
 }
 
 export function selectTotalFocusSecondsForDate(state: MonkMVPState, date: string): number {

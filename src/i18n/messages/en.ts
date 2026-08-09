@@ -46,6 +46,11 @@ export const en = {
   "dialog.confirm": "Continue",
   "dialog.delete": "Delete",
   "dialog.discard": "Leave without saving",
+  "learning.deleteTitle": "Delete learning session?",
+  "learning.deleteConfirm": "This removes \"{title}\" and its timeline entry. This cannot be undone.",
+  "learning.deleteAria": "Delete learning session",
+  "learning.recentSessions": "Recent sessions",
+  "learning.untitled": "Untitled",
 
   "journal.title": "Journal",
   "journal.subtitleMorning": "Clear your head before the day starts.",

@@ -51,8 +51,6 @@ import type {
   GoalAllocation,
   JournalAnswers,
   JournalPackAnswer,
-  LearningEntry,
-  LearningType,
   LearningSession,
   LearningSourceType,
   NotebookCategory,
@@ -83,15 +81,6 @@ type PickTodayInput = {
   mainAction?: string;
   highlight?: string;
   status?: "active" | "completed" | "planned" | "missed";
-};
-
-type LearningInput = {
-  type: LearningType;
-  title: string;
-  durationMinutes?: number;
-  keyInsight?: string;
-  actionTakeaway?: string;
-  goalId?: string;
 };
 
 type RelapseInput = {
@@ -139,8 +128,8 @@ type MonkActions = {
   completeFocusSession: (sessionId: string, completeMainAction?: boolean) => void;
   abandonFocusSession: (sessionId: string) => void;
   bumpFocusDistraction: (sessionId: string) => void;
-  saveLearningEntry: (input: LearningInput) => void;
   saveLearningSession: (session: LearningSession) => void;
+  removeLearningSession: (id: string) => void;
   addTimelineEvent: (event: TimelineEvent) => void;
   saveJournalEntry: (answers: JournalAnswers, opts?: { date?: string; tab?: "morning" | "reflection" }) => void;
   saveRelapseLog: (input: RelapseInput) => void;
@@ -192,7 +181,6 @@ function snapshot(state: MonkStore | MonkMVPState): MonkMVPState {
     weeklyPlans: state.weeklyPlans,
     dayPlans: state.dayPlans,
     focusSessions: state.focusSessions,
-    learningEntries: state.learningEntries,
     journalEntries: state.journalEntries,
     relapseLogs: state.relapseLogs,
     timelineDays: state.timelineDays,
@@ -251,10 +239,6 @@ function getLearningSessionsForDay(state: MonkMVPState, dayPlan: DayPlan) {
   });
 }
 
-function getLegacyLearningEntriesForDay(state: MonkMVPState, dayPlan: DayPlan) {
-  return state.learningEntries.filter((entry) => entry.dayPlanId === dayPlan.id);
-}
-
 function deriveTimelineStatus(state: MonkMVPState, dayPlan: DayPlan): TimelineStatus {
   const relapses = state.relapseLogs.filter((log) => log.dayPlanId === dayPlan.id);
   if (relapses.length > 0) return "relapse";
@@ -263,11 +247,7 @@ function deriveTimelineStatus(state: MonkMVPState, dayPlan: DayPlan): TimelineSt
     (session) => resolveFocusSessionStatus(session) === "completed" || session.status === "ended_early"
   );
   const learningSessions = getLearningSessionsForDay(state, dayPlan);
-  const legacyLearningEntries = getLegacyLearningEntriesForDay(state, dayPlan);
-  const status = resolveDailyActivityStatus({
-    focusSessions,
-    learningSessions: learningSessions.length > 0 ? learningSessions : legacyLearningEntries.map((entry) => ({ id: entry.id }))
-  });
+  const status = resolveDailyActivityStatus({ focusSessions, learningSessions });
   if (status !== "not_started") return status;
   if (dayPlan.status === "completed" || dayPlan.status === "planned") return "partial";
   if (dayPlan.status === "missed") return "missed";
@@ -278,10 +258,8 @@ function updatedTimelineDays(state: MonkMVPState, dayPlan: DayPlan): TimelineDay
   const timestamp = nowIso();
   const focusMinutes = getFocusSessionsForDay(state, dayPlan)
     .reduce((sum, session) => sum + (session.focusDurationMinutes ?? session.durationMinutes), 0);
-  const learningMinutes = getLegacyLearningEntriesForDay(state, dayPlan)
-    .reduce((sum, entry) => sum + (entry.durationMinutes ?? 0), 0) +
-    getLearningSessionsForDay(state, dayPlan)
-      .reduce((sum, session) => sum + Math.round(session.actualDurationSeconds / 60), 0);
+  const learningMinutes = getLearningSessionsForDay(state, dayPlan)
+    .reduce((sum, session) => sum + Math.round(session.actualDurationSeconds / 60), 0);
   const journalCompleted = state.journalEntries.some(
     (entry) =>
       entry.dayPlanId === dayPlan.id ||
@@ -992,13 +970,11 @@ export const useMonkStore = create<MonkStore>()(
       (session) =>
         !(session.seasonId === existing.seasonId && (session.endedAt ?? session.startedAt).slice(0, 10) === dateString)
     );
-    const learningEntries = state.learningEntries.filter((entry) => entry.dayPlanId !== existing.id);
     let next: MonkMVPState = {
       ...snapshot(state),
       dayPlans,
       focusSessions,
-      learningSessions,
-      learningEntries
+      learningSessions
     };
     next = { ...next, weeklyPlans: updateAllocationCounts(next, existing.weeklyPlanId) };
     // Scope by season — the same calendar date may exist in a previous season's
@@ -1456,30 +1432,28 @@ export const useMonkStore = create<MonkStore>()(
     });
   },
 
-  saveLearningEntry: (input) => {
+  removeLearningSession: (id) => {
     const state = get();
-    if (!state.activeSeason || !input.title.trim()) return;
-    const plan = findTodayPlan(state);
-    const timestamp = nowIso();
-    const entry: LearningEntry = {
-      id: createId("learning"),
-      seasonId: state.activeSeason.id,
-      weeklyPlanId: plan?.weeklyPlanId ?? "",
-      dayPlanId: plan?.id ?? "",
-      goalId: input.goalId !== undefined ? (input.goalId || undefined) : plan?.goalId,
-      type: input.type,
-      title: input.title.trim(),
-      durationMinutes: input.durationMinutes,
-      keyInsight: input.keyInsight,
-      actionTakeaway: input.actionTakeaway,
-      createdAt: timestamp,
-      updatedAt: timestamp
-    };
-    const base = { ...snapshot(state), learningEntries: [...state.learningEntries, entry] };
-    set({
-      learningEntries: base.learningEntries,
-      timelineDays: plan ? updatedTimelineDays(base, plan) : state.timelineDays
-    });
+    const target = state.learningSessions.find((s) => s.id === id);
+    if (!target) return;
+    const learningSessions = state.learningSessions.filter((s) => s.id !== id);
+    // Cascade: drop the session's timeline event (appended by saveLearningSession)
+    // so no orphan "Learned for X minutes" entry survives the delete.
+    const timelineEvents = state.timelineEvents.filter((ev) => ev.sourceId !== id);
+    const base: MonkMVPState = { ...snapshot(state), learningSessions, timelineEvents };
+    const plan = state.dayPlans.find(
+      (day) => day.seasonId === target.seasonId && day.date === (target.endedAt ?? target.startedAt).slice(0, 10)
+    );
+    set(
+      plan
+        ? {
+            ...base,
+            learningSessions,
+            timelineEvents,
+            timelineDays: updatedTimelineDays(base, plan)
+          }
+        : { ...base, learningSessions, timelineEvents }
+    );
   },
 
   saveJournalEntry: (answers, opts) => {
@@ -2001,7 +1975,6 @@ export const useMonkStore = create<MonkStore>()(
       weeklyPlans: data.weeklyPlans !== undefined ? data.weeklyPlans : state.weeklyPlans,
       dayPlans: data.dayPlans !== undefined ? data.dayPlans : state.dayPlans,
       focusSessions: data.focusSessions !== undefined ? data.focusSessions : state.focusSessions,
-      learningEntries: data.learningEntries !== undefined ? data.learningEntries : state.learningEntries,
       journalEntries: data.journalEntries !== undefined ? data.journalEntries : state.journalEntries,
       relapseLogs: data.relapseLogs !== undefined ? data.relapseLogs : state.relapseLogs,
       timelineDays: data.timelineDays !== undefined ? data.timelineDays : state.timelineDays,
@@ -2030,7 +2003,6 @@ export const useMonkStore = create<MonkStore>()(
         weeklyPlans: state.weeklyPlans,
         dayPlans: state.dayPlans,
         focusSessions: state.focusSessions,
-        learningEntries: state.learningEntries,
         journalEntries: state.journalEntries,
         relapseLogs: state.relapseLogs,
         timelineDays: state.timelineDays,
