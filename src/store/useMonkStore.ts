@@ -5,6 +5,7 @@ import {
   createDefaultOnboarding,
   createDefaultReminders,
   createInitialState,
+  DEFAULT_FALLBACK_NOTEBOOK_CATEGORY_ID,
   defaultWeeklyTargets,
   frictionActionsForHabit
 } from "../constants/defaultData";
@@ -190,6 +191,7 @@ function snapshot(state: MonkStore | MonkMVPState): MonkMVPState {
     timelineEvents: state.timelineEvents,
     notebookCategories: state.notebookCategories,
     notebookEntries: state.notebookEntries,
+    notebookDeletedAt: state.notebookDeletedAt ?? {},
     journalPacks: state.journalPacks,
     journalPackSessions: state.journalPackSessions,
     purchasedPackIds: state.purchasedPackIds,
@@ -198,6 +200,31 @@ function snapshot(state: MonkStore | MonkMVPState): MonkMVPState {
     releasedSeasonGoals: state.releasedSeasonGoals,
     pastSeasons: state.pastSeasons
   };
+}
+
+// ── Notebook tombstone helpers ──
+// A tombstone (entry id → deletion ISO time) makes a notebook delete survive
+// multi-device merge: any entry whose id is tombstoned is dropped on merge and
+// hidden at render, regardless of updatedAt recency — delete always wins over a
+// stale resurrect. Tombstones are pruned when older than 30 days so the map
+// cannot grow without bound; a resurrect older than a month is treated as a
+// genuinely new write.
+const TOMBSTONE_RETENTION_MS = 30 * 24 * 60 * 60 * 1000;
+
+function purgeTombstones(deletedAt: Record<string, string>): Record<string, string> {
+  const cutoff = Date.now() - TOMBSTONE_RETENTION_MS;
+  const out: Record<string, string> = {};
+  for (const [id, iso] of Object.entries(deletedAt ?? {})) {
+    const ts = new Date(iso).getTime();
+    if (!Number.isNaN(ts) && ts > cutoff) out[id] = iso;
+  }
+  return out;
+}
+
+function pruneTombstonedEntries(entries: NotebookEntry[], deletedAt: Record<string, string>): NotebookEntry[] {
+  const tombstoned = new Set(Object.keys(deletedAt));
+  if (tombstoned.size === 0) return entries;
+  return entries.filter((e) => !tombstoned.has(e.id));
 }
 
 // Idempotent — a season is archived into pastSeasons at most once (by id), so
@@ -516,6 +543,15 @@ export const useMonkStore = create<MonkStore>()(
         purchasedPackIds: stored.purchasedPackIds ?? [],
         weeklyReviews: stored.weeklyReviews ?? {},
         releasedSeasonGoals: stored.releasedSeasonGoals ?? [],
+        // Tombstone purge: drop tombstones older than 30 days along with any
+        // surviving entry they shadow (a resurrect older than a month is treated
+        // as a genuinely new write). Unioned with remote on merge — tombstones
+        // are never lost by a stale pull, only by this time-based expiry.
+        notebookDeletedAt: purgeTombstones(stored.notebookDeletedAt ?? {}),
+        notebookEntries: pruneTombstonedEntries(
+          stored.notebookEntries ?? [],
+          purgeTombstones(stored.notebookDeletedAt ?? {})
+        ),
         focusSessions,
         timelineDays,
         timelineEvents,
@@ -1846,14 +1882,25 @@ export const useMonkStore = create<MonkStore>()(
 
   deleteNotebookCategory: (id) => {
     const state = get();
-    const removed = state.notebookEntries.filter((e) => e.categoryId === id);
+    // Safe delete: never destroy entries — reassign them to the default "Lainnya"
+    // category so no note (or its blobs) is lost. Blob cleanup is therefore a
+    // no-op here (nothing is deleted); reassignment also guarantees the
+    // categoryId always resolves to a real category. The last remaining
+    // category is undeletable — deleting it would leave dangling categoryIds.
+    if (state.notebookCategories.length <= 1) return;
+    // Prefer the default fallback, but never the category being deleted
+    // (deleting "Lainnya" itself must still land its entries on a live category).
+    const fallback =
+      state.notebookCategories.find((c) => c.id !== id && c.id === DEFAULT_FALLBACK_NOTEBOOK_CATEGORY_ID) ??
+      state.notebookCategories.find((c) => c.id !== id);
+    if (!fallback) return;
+    const timestamp = nowIso();
     set({
       notebookCategories: state.notebookCategories.filter((c) => c.id !== id),
-      notebookEntries: state.notebookEntries.filter((e) => e.categoryId !== id)
+      notebookEntries: state.notebookEntries.map((e) =>
+        e.categoryId === id ? { ...e, categoryId: fallback.id, updatedAt: timestamp } : e
+      )
     });
-    for (const e of removed) {
-      for (const imgId of e.images ?? []) void deleteImage(imgId);
-    }
   },
 
   saveNotebookEntry: (entry) => {
@@ -1871,7 +1918,10 @@ export const useMonkStore = create<MonkStore>()(
     const state = get();
     const entry = state.notebookEntries.find((e) => e.id === id);
     set({
-      notebookEntries: state.notebookEntries.filter((e) => e.id !== id)
+      notebookEntries: state.notebookEntries.filter((e) => e.id !== id),
+      // Tombstone the id so the delete survives merge on every device — a
+      // delete always wins over a stale resurrect, regardless of updatedAt.
+      notebookDeletedAt: { ...(state.notebookDeletedAt ?? {}), [id]: nowIso() }
     });
     // Cascade: remove this entry's blobs from IndexedDB (fire-and-forget).
     if (entry) for (const imgId of entry.images ?? []) void deleteImage(imgId);
@@ -1982,6 +2032,7 @@ export const useMonkStore = create<MonkStore>()(
       timelineEvents: data.timelineEvents !== undefined ? data.timelineEvents : state.timelineEvents,
       notebookCategories: data.notebookCategories !== undefined ? data.notebookCategories : state.notebookCategories,
       notebookEntries: data.notebookEntries !== undefined ? data.notebookEntries : state.notebookEntries,
+      notebookDeletedAt: data.notebookDeletedAt !== undefined ? data.notebookDeletedAt : state.notebookDeletedAt,
       journalPacks: data.journalPacks !== undefined ? data.journalPacks : state.journalPacks,
       journalPackSessions: data.journalPackSessions !== undefined ? data.journalPackSessions : state.journalPackSessions,
       purchasedPackIds: data.purchasedPackIds !== undefined ? data.purchasedPackIds : state.purchasedPackIds,
@@ -2012,6 +2063,7 @@ export const useMonkStore = create<MonkStore>()(
         timelineEvents: state.timelineEvents,
         notebookCategories: state.notebookCategories,
         notebookEntries: state.notebookEntries,
+        notebookDeletedAt: state.notebookDeletedAt ?? {},
         journalPacks: state.journalPacks,
         journalPackSessions: state.journalPackSessions,
         purchasedPackIds: state.purchasedPackIds,

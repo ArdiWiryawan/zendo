@@ -112,6 +112,7 @@ export function createInitialState(): MonkMVPState {
     timelineEvents: [],
     notebookCategories: DEFAULT_NOTEBOOK_CATEGORIES,
     notebookEntries: [],
+    notebookDeletedAt: {},
     journalPacks: BUILT_IN_JOURNAL_PACKS,
     journalPackSessions: [],
     purchasedPackIds: [],
@@ -207,6 +208,9 @@ export function frictionActionsForHabit(habit: BadHabitDraft): FrictionAction[] 
 import type { JournalPack, NotebookCategory } from "../types/app";
 
 // ── Notebook Default Categories ──
+
+/** Default fallback category id for notebook entries whose category is deleted. */
+export const DEFAULT_FALLBACK_NOTEBOOK_CATEGORY_ID = "cat_lainnya";
 
 export const DEFAULT_NOTEBOOK_CATEGORIES: NotebookCategory[] = [
   { id: "cat_pribadi", name: "Pribadi", icon: "User", isBuiltIn: true, sortOrder: 1 },

@@ -98,6 +98,22 @@ export function mergeRemoteState(local: MonkMVPState, remote: Partial<MonkMVPSta
     if (r !== undefined) out[key] = mergeScalar(l as never, r as never);
   }
 
+  // notebookDeletedAt is a monotonic tombstone map (id → deletion ISO): a
+  // delete on ANY device must survive merges on every other device, so union
+  // both sides (local tombstones always survive even when an older client sends
+  // no tombstone field). Tombs never "expire" here — only the hydrate path
+  // prunes >30d.
+  const lt = local.notebookDeletedAt ?? {};
+  const rt = remote.notebookDeletedAt;
+  if (rt && typeof rt === "object") out.notebookDeletedAt = { ...lt, ...rt };
+  else if (Object.keys(lt).length > 0) out.notebookDeletedAt = { ...lt };
+  // Delete always wins over a stale resurrect: drop any entry whose id is
+  // tombstoned (from either side), regardless of updatedAt recency.
+  const tombstoned = new Set(Object.keys(out.notebookDeletedAt ?? {}));
+  if (tombstoned.size > 0) {
+    out.notebookEntries = (out.notebookEntries ?? []).filter((e) => !tombstoned.has(e.id));
+  }
+
   // purchasedPackIds is a monotonic string set (no per-id updatedAt) — a
   // purchase on ANY device must never vanish, so union both sides.
   const lp = local.purchasedPackIds ?? [];

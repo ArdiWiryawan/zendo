@@ -183,6 +183,7 @@ describe("selectEnabledReminders", () => {
     timelineEvents: [],
     notebookCategories: [],
     notebookEntries: [],
+    notebookDeletedAt: {},
     journalPacks: [],
     journalPackSessions: [],
     purchasedPackIds: [],

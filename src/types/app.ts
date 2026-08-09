@@ -477,6 +477,11 @@ export type MonkMVPState = {
   // Notebook (Free Journal)
   notebookCategories: NotebookCategory[];
   notebookEntries: NotebookEntry[];
+  // Tombstones for deleted notebook entries (id → deletion time). A delete must
+  // survive multi-device merge even when another device re-uploads the entry.
+  // Delete always wins: any entry whose id appears here is dropped on merge and
+  // hidden at render, regardless of updatedAt recency. Pruned on hydrate.
+  notebookDeletedAt: Record<string, ISODateString>;
 
   // Journal Packs
   journalPacks: JournalPack[];

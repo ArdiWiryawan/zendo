@@ -24,11 +24,51 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
 );
 
 // Initialize Supabase sync after app renders (non-blocking)
+let lastPushState: ReturnType<typeof useMonkStore.getState> | null = null;
+
 async function initSync(): Promise<void> {
-  const onOnline = () => void isSyncActive().then((active) => setSyncStatus(active ? "synced" : "offline"));
+  const pushState = async () => {
+    const state = useMonkStore.getState();
+    lastPushState = state;
+    if (!navigator.onLine) {
+      setSyncStatus("offline");
+      return;
+    }
+    try {
+      if (!(await isSyncActive())) {
+        // No account (or Supabase not configured) — sync is local-only.
+        setSyncStatus("offline");
+        return;
+      }
+      setSyncStatus("syncing");
+      await setState(state);
+      setSyncStatus("synced");
+    } catch {
+      setSyncStatus(navigator.onLine ? "error" : "offline");
+    }
+  };
+
+  const onOnline = () => {
+    void isSyncActive().then((active) => {
+      setSyncStatus(active ? "synced" : "offline");
+      // Reconnect may have accumulated offline edits; push them now (the
+      // debounced subscriber also fires on the next store change, but if the
+      // offline edits were already saved locally no change fires on reconnect).
+      if (active && lastPushState) void pushState();
+    });
+  };
   const onOffline = () => setSyncStatus("offline");
   window.addEventListener("online", onOnline);
   window.addEventListener("offline", onOffline);
+
+  // Register the debounced push BEFORE the initial pull so offline edits are
+  // never stranded: even if the pull below fails (offline boot), any later
+  // store change pushes to the cloud as soon as sync is possible.
+  let timer: ReturnType<typeof setTimeout> | null = null;
+  useMonkStore.subscribe((next) => {
+    if (timer) clearTimeout(timer);
+    timer = setTimeout(() => void pushState(), 800);
+  });
 
   if (!navigator.onLine) {
     setSyncStatus("offline");
@@ -37,8 +77,6 @@ async function initSync(): Promise<void> {
 
   try {
     if (!(await isSyncActive())) {
-      // No account (or Supabase not configured) — sync is local-only. Do not
-      // claim "synced".
       setSyncStatus("offline");
       return;
     }
@@ -57,27 +95,6 @@ async function initSync(): Promise<void> {
       // clobber newer local goals/sessions/journal (the old spread did).
       useMonkStore.setState((state) => mergeRemoteState(state, remote));
     }
-
-    let timer: ReturnType<typeof setTimeout> | null = null;
-    useMonkStore.subscribe((next) => {
-      if (timer) clearTimeout(timer);
-      timer = setTimeout(() => {
-        if (!navigator.onLine) {
-          setSyncStatus("offline");
-          return;
-        }
-        void isSyncActive().then((active) => {
-          if (!active) {
-            setSyncStatus("offline");
-            return;
-          }
-          setSyncStatus("syncing");
-          void setState(next)
-            .then(() => setSyncStatus("synced"))
-            .catch(() => setSyncStatus(navigator.onLine ? "error" : "offline"));
-        });
-      }, 800);
-    });
     if (await isSyncActive()) setSyncStatus("synced");
   } catch (err) {
     console.warn("[supabase] offline mode", err);

@@ -571,6 +571,11 @@ export const en = {
   "notebook.addPage": "Add page",
   "notebook.removePage": "Remove page",
   "notebook.removePageConfirm": "Remove this page? Its text and photos are deleted.",
+  "notebook.categoryMenu": "Options for {name}",
+  "notebook.renameCategory": "Rename",
+  "notebook.deleteCategoryTitle": "Delete category",
+  "notebook.deleteCategory": "Delete ({n})",
+  "notebook.deleteCategoryConfirm": "Delete “{name}”? {n} notes will move to Lainnya.",
 
   "packs.title": "Packs",
   "packs.subtitle": "Themed questions for deeper reflection",

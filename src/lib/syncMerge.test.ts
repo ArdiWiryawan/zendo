@@ -60,4 +60,62 @@ describe("mergeRemoteState", () => {
     const merged = mergeRemoteState(local, remote);
     expect(merged.goals).toHaveLength(1); // Local survived!
   });
+
+  it("drops a tombstoned notebook entry regardless of updatedAt recency", () => {
+    const local = mkState();
+    local.notebookEntries = [
+      { id: "nb1", title: "Local", body: "", categoryId: "cat_lainnya", tags: [], isPinned: false, createdAt: "2026-08-01T00:00:00.000Z", updatedAt: "2026-08-05T00:00:00.000Z" },
+    ];
+    const remote: Partial<MonkMVPState> = {
+      notebookDeletedAt: { nb1: "2026-08-02T00:00:00.000Z" }, // older than the entry update
+    };
+
+    const merged = mergeRemoteState(local, remote);
+    expect(merged.notebookDeletedAt).toEqual({ nb1: "2026-08-02T00:00:00.000Z" });
+    expect(merged.notebookEntries.map((e) => e.id)).not.toContain("nb1");
+  });
+
+  it("unions tombstones from both sides so a delete never resurrects", () => {
+    const local = mkState();
+    local.notebookDeletedAt = { nb1: "2026-08-02T00:00:00.000Z" };
+    const remote: Partial<MonkMVPState> = {
+      notebookDeletedAt: { nb2: "2026-08-03T00:00:00.000Z" },
+      notebookEntries: [
+        { id: "nb1", title: "Resurrected", body: "", categoryId: "cat_lainnya", tags: [], isPinned: false, createdAt: "2026-08-01T00:00:00.000Z", updatedAt: "2026-08-06T00:00:00.000Z" },
+      ],
+    };
+
+    const merged = mergeRemoteState(local, remote);
+    expect(merged.notebookDeletedAt).toEqual({
+      nb1: "2026-08-02T00:00:00.000Z",
+      nb2: "2026-08-03T00:00:00.000Z",
+    });
+    expect(merged.notebookEntries).toHaveLength(0);
+  });
+
+  it("keeps a non-tombstoned notebook entry", () => {
+    const local = mkState();
+    local.notebookEntries = [
+      { id: "nb1", title: "Keep", body: "", categoryId: "cat_lainnya", tags: [], isPinned: false, createdAt: "2026-08-01T00:00:00.000Z", updatedAt: "2026-08-01T00:00:00.000Z" },
+    ];
+    const remote: Partial<MonkMVPState> = { notebookDeletedAt: { nb2: "2026-08-02T00:00:00.000Z" } };
+
+    const merged = mergeRemoteState(local, remote);
+    expect(merged.notebookEntries.map((e) => e.id)).toEqual(["nb1"]);
+  });
+
+  it("local tombstones survive a remote from an older client with no tombstone field", () => {
+    const local = mkState();
+    local.notebookDeletedAt = { nb1: "2026-08-02T00:00:00.000Z" };
+    // Older client re-uploads the deleted entry and knows nothing of tombstones.
+    const remote: Partial<MonkMVPState> = {
+      notebookEntries: [
+        { id: "nb1", title: "Resurrected", body: "", categoryId: "cat_lainnya", tags: [], isPinned: false, createdAt: "2026-08-01T00:00:00.000Z", updatedAt: "2026-08-06T00:00:00.000Z" },
+      ],
+    };
+
+    const merged = mergeRemoteState(local, remote);
+    expect(merged.notebookDeletedAt.nb1).toBe("2026-08-02T00:00:00.000Z");
+    expect(merged.notebookEntries).toHaveLength(0);
+  });
 });

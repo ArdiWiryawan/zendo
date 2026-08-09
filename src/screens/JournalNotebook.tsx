@@ -1,11 +1,11 @@
 import { useState, useMemo, useRef, useEffect, useCallback } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams, useBlocker } from "react-router-dom";
 import { useMonkStore } from "../store/useMonkStore";
 import { PrimaryButton, SecondaryButton, GhostButton, CalmDialog } from "../components/ui";
 import { createId } from "../lib/ids";
 import { nowIso } from "../lib/date";
-import type { NotebookEntry } from "../types/app";
-import { Search, Plus, Pin, PinOff, Trash2, ArrowLeft, X, BookOpen, ImagePlus, Camera, ChevronLeft, ChevronRight } from "lucide-react";
+import type { NotebookCategory, NotebookEntry } from "../types/app";
+import { Search, Plus, Pin, PinOff, Trash2, ArrowLeft, X, BookOpen, ImagePlus, Camera, ChevronLeft, ChevronRight, MoreVertical, Pencil } from "lucide-react";
 import { useT, useLanguage, type MessageKey } from "../i18n";
 import { autolistMarker, groupPhotoRuns, renderBodyMarkdown } from "../lib/notebookMarkdown";
 import { joinPages, removePhotoMarker } from "../lib/notebookPages";
@@ -23,6 +23,95 @@ const CATEGORY_HEX: Record<string, string> = {
   cat_kreatif: "#c48b6b",
   cat_lainnya: "#a0a0a0"
 };
+
+// Same palette used to color category chips; the kebab menu for a category
+// lives in a fixed-position panel, so it must sit above the binder sheet
+// stacking contexts (nb-sheet has its own z-index).
+const KEBAB_Z = 45;
+
+// Unmount the kebab menu on outside pointerdown, Escape and scroll — while
+// staying mounted while the menu is open so its own clicks don't close it.
+function useKebabDismiss(open: boolean, onClose: () => void) {
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!open) return;
+    const onDown = (e: MouseEvent | TouchEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) onClose();
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    document.addEventListener("mousedown", onDown);
+    document.addEventListener("touchstart", onDown);
+    document.addEventListener("keydown", onKey);
+    window.addEventListener("scroll", onClose, true);
+    return () => {
+      document.removeEventListener("mousedown", onDown);
+      document.removeEventListener("touchstart", onDown);
+      document.removeEventListener("keydown", onKey);
+      window.removeEventListener("scroll", onClose, true);
+    };
+  }, [open, onClose]);
+  return ref;
+}
+
+// Kebab menu on a category chip: Rename + Delete. Positioned by its trigger
+// button's offset within the component (fixed coordinates are computed in the
+// parent). Reuses CalmDialog patterns for the confirm; rename edits inline.
+function CategoryMenu({
+  trigger,
+  cat,
+  count,
+  open,
+  canDelete,
+  onClose,
+  onRename,
+  onDelete
+}: {
+  trigger: HTMLElement | null;
+  cat: NotebookCategory;
+  count: number;
+  open: boolean;
+  canDelete: boolean;
+  onClose: () => void;
+  onRename: (name: string) => void;
+  onDelete: () => void;
+}) {
+  const t = useT();
+  const ref = useKebabDismiss(open, onClose);
+  if (!open) return null;
+  const rect = trigger?.getBoundingClientRect();
+  const left = rect ? Math.min(Math.max(rect.left, 12), window.innerWidth - 172) : 12;
+  const top = rect ? rect.bottom + 6 : 60;
+  return (
+    <div
+      ref={ref}
+      role="menu"
+      className="fixed min-w-[160px] rounded-monk-lg border border-monk-border bg-monk-surface p-1 shadow-calm"
+      style={{ left, top, zIndex: KEBAB_Z }}
+    >
+      <button
+        type="button"
+        role="menuitem"
+        onClick={() => onRename(cat.name)}
+        className="flex w-full min-h-10 items-center gap-2 rounded-monk px-3 text-sm text-monk-text transition hover:bg-monk-soft"
+      >
+        <Pencil size={14} strokeWidth={1.5} />
+        {t("notebook.renameCategory")}
+      </button>
+      <button
+        type="button"
+        role="menuitem"
+        disabled={!canDelete}
+        onClick={onDelete}
+        className="flex w-full min-h-10 items-center gap-2 rounded-monk px-3 text-sm text-monk-danger transition hover:bg-monk-danger-soft disabled:cursor-not-allowed disabled:opacity-40"
+      >
+        <Trash2 size={14} strokeWidth={1.5} />
+        {t("notebook.deleteCategory", { n: count })}
+      </button>
+    </div>
+  );
+}
 
 // Zendo-palette fallback pool for user-created categories. Each id maps to a
 // stable color via a small string hash, so the same category keeps its color
@@ -92,9 +181,12 @@ export default function JournalNotebook({ onEditingChange, initialEntryId }: { o
   const [editEntry, setEditEntry] = useState<NotebookEntry | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [filterCat, setFilterCat] = useState<string | null>(null);
-  const [confirmKind, setConfirmKind] = useState<null | "delete-list">(null);
+  const [confirmKind, setConfirmKind] = useState<null | "delete-list" | "delete-cat">(null);
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
   const [pendingDeleteTitle, setPendingDeleteTitle] = useState("");
+  const [catMenu, setCatMenu] = useState<{ id: string; anchor: HTMLElement | null } | null>(null);
+  const [renameCat, setRenameCat] = useState<{ id: string; name: string } | null>(null);
+  const [pendingDeleteCat, setPendingDeleteCat] = useState<{ id: string; name: string } | null>(null);
   const [searchParams, setSearchParams] = useSearchParams();
 
   // Deep-link from Library: ?open=<entryId> opens that note's editor directly.
@@ -238,24 +330,62 @@ export default function JournalNotebook({ onEditingChange, initialEntryId }: { o
           const hex = catHex(cat.id);
           const isActive = filterCat === cat.id;
           const count = entries.filter((e) => e.categoryId === cat.id).length;
+          const menuOpen = catMenu?.id === cat.id;
           return (
-            <button
-              key={cat.id}
-              type="button"
-              onClick={() => setFilterCat(isActive ? null : cat.id)}
-              className="flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold transition duration-200 active:scale-[0.97]"
-              style={{
-                borderColor: isActive ? hex : "var(--color-border)",
-                color: isActive ? hex : "var(--color-text-muted)",
-                backgroundColor: isActive ? `${hex}18` : "var(--color-surface)"
-              }}
-            >
-              <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: hex }} />
-              {cat.name}
-              {count > 0 ? (
-                <span className="font-mono text-[10px] opacity-70">{count}</span>
-              ) : null}
-            </button>
+            <div key={cat.id} className="relative shrink-0">
+              <div
+                className="flex items-center rounded-full border py-1.5 pl-3 pr-1.5 text-xs font-semibold transition duration-200"
+                style={{
+                  borderColor: isActive ? hex : "var(--color-border)",
+                  backgroundColor: isActive ? `${hex}18` : "var(--color-surface)"
+                }}
+              >
+                <button
+                  type="button"
+                  aria-pressed={isActive}
+                  onClick={() => setFilterCat(isActive ? null : cat.id)}
+                  className="flex items-center gap-1.5 text-xs font-semibold active:scale-[0.97]"
+                  style={{
+                    color: isActive ? hex : "var(--color-text-muted)"
+                  }}
+                >
+                  <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: hex }} />
+                  {cat.name}
+                  {count > 0 ? (
+                    <span className="font-mono text-[10px] opacity-70">{count}</span>
+                  ) : null}
+                </button>
+                <button
+                  type="button"
+                  aria-label={t("notebook.categoryMenu", { name: cat.name })}
+                  aria-haspopup="menu"
+                  aria-expanded={menuOpen}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setCatMenu((cur) => (cur?.id === cat.id ? null : { id: cat.id, anchor: e.currentTarget }));
+                  }}
+                  className={`grid h-5 w-5 place-items-center rounded-full transition ${menuOpen ? "bg-monk-soft text-monk-text" : "text-monk-text-soft hover:bg-monk-soft/60 hover:text-monk-text"}`}
+                >
+                  <MoreVertical size={12} strokeWidth={2} />
+                </button>
+              </div>
+              <CategoryMenu
+                trigger={catMenu?.anchor ?? null}
+                cat={cat}
+                count={count}
+                open={menuOpen}
+                canDelete={categories.length > 1}
+                onClose={() => setCatMenu(null)}
+                onRename={(name) => {
+                  setCatMenu(null);
+                  setRenameCat({ id: cat.id, name });
+                }}
+                onDelete={() => {
+                  setCatMenu(null);
+                  setPendingDeleteCat({ id: cat.id, name: cat.name });
+                }}
+              />
+            </div>
           );
         })}
       </div>
@@ -387,6 +517,50 @@ export default function JournalNotebook({ onEditingChange, initialEntryId }: { o
           setPendingDeleteId(null);
         }}
       />
+      <CalmDialog
+        open={Boolean(renameCat)}
+        title={t("notebook.renameCategory")}
+        cancelLabel={t("dialog.cancel")}
+        confirmLabel={t("dialog.confirm")}
+        confirmDisabled={!(renameCat?.name.trim())}
+        onCancel={() => setRenameCat(null)}
+        onConfirm={() => {
+          if (renameCat?.name.trim()) store.renameNotebookCategory(renameCat.id, renameCat.name.trim());
+          setRenameCat(null);
+        }}
+      >
+        <input
+          type="text"
+          value={renameCat?.name ?? ""}
+          onChange={(e) => setRenameCat((cur) => (cur ? { ...cur, name: e.target.value } : cur))}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && renameCat?.name.trim()) {
+              store.renameNotebookCategory(renameCat.id, renameCat.name.trim());
+              setRenameCat(null);
+            }
+          }}
+          aria-label={t("notebook.newCategoryPlaceholder")}
+          placeholder={t("notebook.newCategoryPlaceholder")}
+          className="min-h-11 w-full rounded-monk border border-monk-border bg-monk-surface px-3 text-sm text-monk-text placeholder:text-monk-text-soft focus:border-monk-accent focus:outline-none"
+        />
+      </CalmDialog>
+      <CalmDialog
+        open={Boolean(pendingDeleteCat)}
+        title={t("notebook.deleteCategoryTitle")}
+        description={t("notebook.deleteCategoryConfirm", {
+          name: pendingDeleteCat?.name ?? "",
+          n: pendingDeleteCat ? entries.filter((e) => e.categoryId === pendingDeleteCat.id).length : 0
+        })}
+        confirmLabel={t("dialog.delete")}
+        cancelLabel={t("dialog.cancel")}
+        danger
+        onCancel={() => setPendingDeleteCat(null)}
+        onConfirm={() => {
+          if (pendingDeleteCat) store.deleteNotebookCategory(pendingDeleteCat.id);
+          if (filterCat === pendingDeleteCat?.id) setFilterCat(null);
+          setPendingDeleteCat(null);
+        }}
+      />
     </div>
   );
 }
@@ -403,6 +577,7 @@ export function NotebookEditor({
   const lang = useLanguage();
   const dateLocale = lang === "id" ? "id-ID" : "en-US";
   const categories = store.notebookCategories;
+  const entriesInCat = (catId: string) => store.notebookEntries.filter((e) => e.categoryId === catId).length;
   const titleRef = useRef<HTMLTextAreaElement>(null);
   const bodyRef = useRef<HTMLTextAreaElement>(null);
   const sheetRef = useRef<HTMLDivElement>(null);
@@ -432,7 +607,10 @@ export function NotebookEditor({
   const [newCatName, setNewCatName] = useState("");
   const [dirty, setDirty] = useState(false);
   const [savedFlash, setSavedFlash] = useState(false);
-  const [confirmKind, setConfirmKind] = useState<"leave" | "delete-editor" | null>(null);
+  const [confirmKind, setConfirmKind] = useState<"leave" | "delete-editor" | "delete-cat-editor" | null>(null);
+  const [catMenu, setCatMenu] = useState<{ id: string; anchor: HTMLElement | null } | null>(null);
+  const [renameCat, setRenameCat] = useState<{ id: string; name: string } | null>(null);
+  const [pendingDeleteCat, setPendingDeleteCat] = useState<{ id: string; name: string } | null>(null);
   const entryIdRef = useRef(entry?.id ?? createId("nb_entry"));
   const createdAtRef = useRef(entry?.createdAt ?? nowIso());
 
@@ -731,6 +909,36 @@ export function NotebookEditor({
     return () => window.removeEventListener("popstate", handler);
   }, []);
 
+  // Draft guard — typed text must never be silently lost:
+  //  * beforeunload (close tab/reload) shows the browser's native "leave site?"
+  //    prompt while dirty.
+  //  * route-level useBlocker intercepts in-app navigation (bottom nav, library
+  //    link) while dirty and routes it through the same save/discard dialog the
+  //    internal back button uses. Mirror of JournalEntryScreen's guard.
+  useEffect(() => {
+    if (!dirty) return;
+    const handler = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      // Chrome requires returnValue to be set to show the prompt.
+      e.returnValue = "";
+    };
+    window.addEventListener("beforeunload", handler);
+    return () => window.removeEventListener("beforeunload", handler);
+  }, [dirty]);
+  const leaveRef = useRef(false);
+  const blocker = useBlocker(() => dirty && canSave);
+  useEffect(() => {
+    if (blocker.state !== "blocked") return;
+    if (leaveRef.current) {
+      // Deliberate nav via <Link>/navigate with leaveRef set: treat as "discard"
+      // without a dialog (mirror of JournalEntryScreen's shortcut-nav behavior).
+      leaveRef.current = false;
+      blocker.proceed?.();
+      return;
+    }
+    setConfirmKind("leave");
+  }, [blocker.state, blocker.proceed]);
+
   return (
     <div className="space-y-0 pb-36 scroll-mb-36">
       <div className="nb-editor-cover">
@@ -764,25 +972,61 @@ export function NotebookEditor({
         {categories.map((cat) => {
           const hex = catHex(cat.id);
           const active = catId === cat.id;
+          const menuOpen = catMenu?.id === cat.id;
           return (
-            <button
-              key={cat.id}
-              type="button"
-              aria-pressed={active}
-              onClick={() => {
-                setCatId(cat.id);
-                markDirty();
-              }}
-              className="flex min-h-9 shrink-0 items-center gap-1.5 rounded-full border px-2.5 text-xs font-semibold transition duration-200 active:scale-[0.97]"
-              style={{
-                borderColor: active ? hex : "var(--color-border-strong)",
-                color: active ? hex : "var(--color-text-muted)",
-                backgroundColor: active ? `${hex}18` : "var(--color-surface)"
-              }}
-            >
-              <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: active ? hex : "var(--color-text-soft)" }} />
-              {cat.name}
-            </button>
+            <div key={cat.id} className="relative shrink-0">
+              <div
+                className="flex min-h-9 items-center rounded-full border py-1.5 pl-2.5 pr-1.5 text-xs font-semibold transition duration-200"
+                style={{
+                  borderColor: active ? hex : "var(--color-border-strong)",
+                  backgroundColor: active ? `${hex}18` : "var(--color-surface)"
+                }}
+              >
+                <button
+                  type="button"
+                  aria-pressed={active}
+                  onClick={() => {
+                    setCatId(cat.id);
+                    markDirty();
+                  }}
+                  className="flex min-h-9 items-center gap-1.5 text-xs font-semibold active:scale-[0.97]"
+                  style={{ color: active ? hex : "var(--color-text-muted)" }}
+                >
+                  <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: active ? hex : "var(--color-text-soft)" }} />
+                  {cat.name}
+                </button>
+                <button
+                  type="button"
+                  aria-label={t("notebook.categoryMenu", { name: cat.name })}
+                  aria-haspopup="menu"
+                  aria-expanded={menuOpen}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setCatMenu((cur) => (cur?.id === cat.id ? null : { id: cat.id, anchor: e.currentTarget }));
+                  }}
+                  className={`grid h-5 w-5 place-items-center rounded-full transition ${menuOpen ? "bg-monk-soft text-monk-text" : "text-monk-text-soft hover:bg-monk-soft/60 hover:text-monk-text"}`}
+                >
+                  <MoreVertical size={12} strokeWidth={2} />
+                </button>
+              </div>
+              <CategoryMenu
+                trigger={catMenu?.anchor ?? null}
+                cat={cat}
+                count={entriesInCat(cat.id)}
+                open={menuOpen}
+                canDelete={categories.length > 1}
+                onClose={() => setCatMenu(null)}
+                onRename={(name) => {
+                  setCatMenu(null);
+                  setRenameCat({ id: cat.id, name });
+                }}
+                onDelete={() => {
+                  setCatMenu(null);
+                  setPendingDeleteCat({ id: cat.id, name: cat.name });
+                  setConfirmKind("delete-cat-editor");
+                }}
+              />
+            </div>
           );
         })}
         <button
@@ -992,11 +1236,19 @@ export function NotebookEditor({
         cancelLabel={t("dialog.cancel")}
         onCancel={() => {
           setConfirmKind(null);
-          onBack();
+          if (blocker.state === "blocked") blocker.proceed?.();
+          else onBack();
         }}
         onConfirm={() => {
           setConfirmKind(null);
-          handleSave(true);
+          if (blocker.state === "blocked") {
+            // Save (without navigating) first — unlike the journal, the notebook
+            // has no autosave, so "Save" on a blocked nav must persist the text.
+            handleSave(false);
+            blocker.proceed?.();
+          } else {
+            handleSave(true);
+          }
         }}
       />
       <CalmDialog
@@ -1013,6 +1265,63 @@ export function NotebookEditor({
           if (entry) store.deleteNotebookEntry(entry.id);
           setConfirmKind(null);
           onBack();
+        }}
+      />
+      <CalmDialog
+        open={Boolean(renameCat)}
+        title={t("notebook.renameCategory")}
+        cancelLabel={t("dialog.cancel")}
+        confirmLabel={t("dialog.confirm")}
+        confirmDisabled={!(renameCat?.name.trim())}
+        onCancel={() => setRenameCat(null)}
+        onConfirm={() => {
+          if (renameCat?.name.trim()) store.renameNotebookCategory(renameCat.id, renameCat.name.trim());
+          setRenameCat(null);
+        }}
+      >
+        <input
+          type="text"
+          value={renameCat?.name ?? ""}
+          onChange={(e) => setRenameCat((cur) => (cur ? { ...cur, name: e.target.value } : cur))}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && renameCat?.name.trim()) {
+              store.renameNotebookCategory(renameCat.id, renameCat.name.trim());
+              setRenameCat(null);
+            }
+          }}
+          aria-label={t("notebook.newCategoryPlaceholder")}
+          placeholder={t("notebook.newCategoryPlaceholder")}
+          className="min-h-11 w-full rounded-monk border border-monk-border bg-monk-surface px-3 text-sm text-monk-text placeholder:text-monk-text-soft focus:border-monk-accent focus:outline-none"
+        />
+      </CalmDialog>
+      <CalmDialog
+        open={confirmKind === "delete-cat-editor"}
+        title={t("notebook.deleteCategoryTitle")}
+        description={t("notebook.deleteCategoryConfirm", {
+          name: pendingDeleteCat?.name ?? "",
+          n: pendingDeleteCat ? entriesInCat(pendingDeleteCat.id) : 0
+        })}
+        confirmLabel={t("dialog.delete")}
+        cancelLabel={t("dialog.cancel")}
+        danger
+        onCancel={() => {
+          setConfirmKind(null);
+          setPendingDeleteCat(null);
+        }}
+        onConfirm={() => {
+          if (pendingDeleteCat) {
+            store.deleteNotebookCategory(pendingDeleteCat.id);
+            // The entry being edited must not keep a dangling categoryId: point
+            // the local selection at the fallback so the next save stays valid.
+            if (catId === pendingDeleteCat.id) {
+              const fallback =
+                store.notebookCategories.find((c) => c.id === "cat_lainnya") ??
+                store.notebookCategories.find((c) => c.id !== pendingDeleteCat.id);
+              if (fallback) setCatId(fallback.id);
+            }
+          }
+          setConfirmKind(null);
+          setPendingDeleteCat(null);
         }}
       />
       {lightbox ? (
