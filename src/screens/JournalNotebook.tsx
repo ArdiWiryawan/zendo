@@ -5,12 +5,18 @@ import { PrimaryButton, SecondaryButton, GhostButton, CalmDialog } from "../comp
 import { createId } from "../lib/ids";
 import { nowIso } from "../lib/date";
 import type { NotebookCategory, NotebookEntry } from "../types/app";
-import { Search, Plus, Pin, PinOff, Trash2, ArrowLeft, X, BookOpen, ImagePlus, Camera, MoreVertical, Pencil } from "lucide-react";
+import { Search, Plus, Pin, PinOff, Trash2, ArrowLeft, X, BookOpen, ImagePlus, Camera, MoreVertical, Pencil, Maximize2, Minimize2 } from "lucide-react";
 import { useT, useLanguage, type MessageKey } from "../i18n";
 import { autolistMarker, groupPhotoRuns, renderBodyMarkdown } from "../lib/notebookMarkdown";
 import { joinPages, removePhotoMarker } from "../lib/notebookPages";
-import { compressImage, putImage, deleteImage, matchImageMarkers } from "../lib/imageStore";
-import { PhotoLightbox, photoIdsInBody } from "../components/NotebookImages";
+import { IMG_MARKER, compressImage, putImage, deleteImage, matchImageMarkers } from "../lib/imageStore";
+import { PhotoLightbox, photoIdsInBody, useObjectUrl } from "../components/NotebookImages";
+import {
+  NOTEBOOK_DRAFT_KEY,
+  clearNotebookDraft,
+  readNotebookDraft,
+  writeNotebookDraft
+} from "../lib/storage";
 
 const CATEGORY_HEX: Record<string, string> = {
   cat_pribadi: "#e07c6b",
@@ -138,6 +144,26 @@ function wordCount(text: string) {
   return t ? t.split(/\s+/).length : 0;
 }
 
+/** First {{img:<id>}} marker id in a body, if any (for the list thumbnail). */
+function firstPhotoId(body: string): string | null {
+  for (const line of body.split("\n")) {
+    const m = line.trim().match(IMG_MARKER);
+    if (m) return m[1];
+  }
+  return null;
+}
+
+/** Small photo thumbnail in the list card — the note's visual anchor. */
+function CardThumb({ id }: { id: string }) {
+  const url = useObjectUrl(id);
+  if (!url) return null;
+  return (
+    <div className="nb-thumb shrink-0">
+      <img src={url} alt="" loading="lazy" draggable={false} />
+    </div>
+  );
+}
+
 // Auto-grow a single-line textarea (title/body) to its content. Page scrolls;
 // no nested textarea scroll region.
 function resizeTextarea(el: HTMLTextAreaElement) {
@@ -177,8 +203,9 @@ export default function JournalNotebook({ onEditingChange, initialEntryId }: { o
   const dateLocale = lang === "id" ? "id-ID" : "en-US";
   const entries = store.notebookEntries;
   const categories = store.notebookCategories;
-  const [view, setView] = useState<"list" | "edit">("list");
+  const [view, setView] = useState<"list" | "edit" | "read">("list");
   const [editEntry, setEditEntry] = useState<NotebookEntry | null>(null);
+  const [readEntry, setReadEntry] = useState<NotebookEntry | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [filterCat, setFilterCat] = useState<string | null>(null);
   const [confirmKind, setConfirmKind] = useState<null | "delete-list" | "delete-cat">(null);
@@ -220,6 +247,7 @@ export default function JournalNotebook({ onEditingChange, initialEntryId }: { o
   const goBackToList = useCallback(() => {
     setView("list");
     setEditEntry(null);
+    setReadEntry(null);
     onEditingChange?.(false);
   }, [onEditingChange]);
 
@@ -243,11 +271,27 @@ export default function JournalNotebook({ onEditingChange, initialEntryId }: { o
     onEditingChange?.(true);
   };
 
+  const openRead = (entry: NotebookEntry) => {
+    setReadEntry(entry);
+    setView("read");
+    onEditingChange?.(true);
+  };
+
   if (view === "edit") {
     return (
       <NotebookEditor
         entry={editEntry}
         onBack={goBackToList}
+      />
+    );
+  }
+
+  if (view === "read" && readEntry) {
+    return (
+      <NotebookReader
+        entry={readEntry}
+        onBack={goBackToList}
+        onEdit={() => openEdit(readEntry)}
       />
     );
   }
@@ -432,7 +476,7 @@ export default function JournalNotebook({ onEditingChange, initialEntryId }: { o
               >
                 <button
                   type="button"
-                  onClick={() => openEdit(entry)}
+                  onClick={() => openRead(entry)}
                   className="w-full text-left"
                 >
                   <div className="mb-2 flex items-start justify-between gap-3">
@@ -443,10 +487,16 @@ export default function JournalNotebook({ onEditingChange, initialEntryId }: { o
                       <Pin size={14} className="mt-1 shrink-0 text-monk-accent" strokeWidth={2} />
                     ) : null}
                   </div>
-                  <div className="notebook-card-body min-h-[1.5rem] line-clamp-2">
-                    {entry.body.trim()
-                      ? entry.body.replace(/\{\{img:[^}]+\}\}/g, "").trim().split("\n").find(l => l.trim()) ?? t("notebook.noBody")
-                      : t("notebook.noBody")}
+                  <div className="flex items-start gap-3">
+                    <div className="notebook-card-body min-h-[1.5rem] flex-1 line-clamp-2">
+                      {entry.body.trim()
+                        ? entry.body.replace(/\{\{img:[^}]+\}\}/g, "").trim().split("\n").find(l => l.trim()) ?? t("notebook.noBody")
+                        : t("notebook.noBody")}
+                    </div>
+                    {(() => {
+                      const pid = firstPhotoId(entry.body);
+                      return pid ? <CardThumb id={pid} /> : null;
+                    })()}
                   </div>
                   <div className="mt-3 flex flex-wrap items-center gap-1.5 text-[11px] text-monk-text-soft">
                     <span
@@ -462,6 +512,14 @@ export default function JournalNotebook({ onEditingChange, initialEntryId }: { o
                 </button>
 
                 <div className="mt-1 flex items-center justify-end gap-0.5 border-t border-monk-border/30 pt-1">
+                  <button
+                    type="button"
+                    aria-label={t("notebook.edit")}
+                    onClick={() => openEdit(entry)}
+                    className="grid min-h-10 min-w-10 place-items-center rounded-full text-monk-muted transition duration-150 active:scale-95 hover:bg-monk-soft hover:text-monk-accent"
+                  >
+                    <Pencil size={15} />
+                  </button>
                   <button
                     type="button"
                     aria-label={entry.isPinned ? t("notebook.unpin") : t("notebook.pin")}
@@ -565,6 +623,136 @@ export default function JournalNotebook({ onEditingChange, initialEntryId }: { o
   );
 }
 
+/** Read view: renders a saved note as a clean, typeset page (Bear/Day One
+ *  pattern — reading a journal entry is a different surface than writing it).
+ *  Photos are interactive (lightbox) but not deletable here. */
+function NotebookReader({
+  entry,
+  onBack,
+  onEdit
+}: {
+  entry: NotebookEntry;
+  onBack: () => void;
+  onEdit: () => void;
+}) {
+  const t = useT();
+  const lang = useLanguage();
+  const dateLocale = lang === "id" ? "id-ID" : "en-US";
+  const store = useMonkStore();
+  const [lightbox, setLightbox] = useState<{ ids: string[]; index: number } | null>(null);
+  const [deleteConfirm, setDeleteConfirm] = useState(false);
+  const body = entry.body ?? "";
+  const cat = store.notebookCategories.find((c) => c.id === entry.categoryId);
+  const hex = catHex(entry.categoryId);
+
+  const openPhoto = useCallback(
+    (id: string) => {
+      const ids = photoIdsInBody(body);
+      const i = ids.indexOf(id);
+      if (i >= 0) setLightbox({ ids, index: i });
+    },
+    [body]
+  );
+
+  return (
+    <div className="space-y-4 pb-24">
+      <div className="nb-editor-cover">
+        <button
+          type="button"
+          onClick={onBack}
+          className="flex min-h-10 items-center gap-1.5 text-xs font-medium text-monk-muted transition hover:text-monk-accent"
+        >
+          <ArrowLeft size={15} strokeWidth={1.5} />
+          {t("notebook.back")}
+        </button>
+        <div className="flex min-w-0 items-center gap-2">
+          <span className="min-w-0 flex-1 truncate text-sm font-semibold leading-snug text-monk-accent">
+            {entry.title || t("notebook.untitled")}
+          </span>
+          <span className="shrink-0 text-[10px] font-mono text-monk-text-soft opacity-70">
+            {new Date(entry.updatedAt).toLocaleDateString(dateLocale, {
+              day: "numeric",
+              month: "long",
+              year: "numeric"
+            })}
+          </span>
+        </div>
+        <button
+          type="button"
+          onClick={onEdit}
+          className="flex min-h-10 items-center gap-1.5 rounded-full bg-monk-accent px-3 text-xs font-bold text-monk-bg transition active:scale-95"
+        >
+          <Pencil size={13} strokeWidth={2} />
+          {t("notebook.edit")}
+        </button>
+      </div>
+
+      <div
+        className="nb-open-page nb-reader"
+        style={{ "--nb-cat": hex } as React.CSSProperties}
+      >
+        <h1 className="nb-reader-title">{entry.title || t("notebook.untitled")}</h1>
+        <div className="nb-reader-meta">
+          <span
+            className="inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide"
+            style={{ borderColor: `${hex}44`, color: hex }}
+          >
+            <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: hex }} />
+            {cat?.name ?? t("notebook.other")}
+          </span>
+          <span className="font-mono text-[11px] text-monk-text-soft">
+            {t("notebook.words", { n: wordCount(body) })}
+          </span>
+        </div>
+        {body.trim() ? (
+          <div className="nb-reader-body">
+            {groupPhotoRuns(renderBodyMarkdown(body, openPhoto, false))}
+          </div>
+        ) : (
+          <p className="nb-reader-body text-monk-muted italic">{t("notebook.noBody")}</p>
+        )}
+      </div>
+
+      <div className="fixed inset-x-0 bottom-0 z-40 border-t border-monk-border bg-monk-bg/95 px-6 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur-md">
+        <div className="mx-auto flex max-w-[430px] items-center justify-between gap-2">
+          <GhostButton
+            className="text-monk-danger"
+            onClick={() => setDeleteConfirm(true)}
+          >
+            {t("notebook.delete")}
+          </GhostButton>
+          <PrimaryButton className="!w-auto px-5" onClick={onEdit}>
+            {t("notebook.edit")}
+          </PrimaryButton>
+        </div>
+      </div>
+
+      <CalmDialog
+        open={deleteConfirm}
+        title={t("notebook.delete")}
+        description={t("notebook.deleteConfirm", { title: entry.title || t("notebook.thisNote") })}
+        confirmLabel={t("dialog.delete")}
+        cancelLabel={t("dialog.cancel")}
+        danger
+        onCancel={() => setDeleteConfirm(false)}
+        onConfirm={() => {
+          store.deleteNotebookEntry(entry.id);
+          setDeleteConfirm(false);
+          onBack();
+        }}
+      />
+      {lightbox ? (
+        <PhotoLightbox
+          ids={lightbox.ids}
+          index={lightbox.index}
+          onNavigate={(i) => setLightbox((s) => (s ? { ...s, index: i } : s))}
+          onClose={() => setLightbox(null)}
+        />
+      ) : null}
+    </div>
+  );
+}
+
 export function NotebookEditor({
   entry,
   onBack
@@ -583,8 +771,23 @@ export function NotebookEditor({
   const sheetRef = useRef<HTMLDivElement>(null);
   const galleryInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
-  const [title, setTitle] = useState(entry?.title ?? "");
-  const [pages, setPages] = useState<string[]>(entry?.pages && entry.pages.length > 0 ? entry.pages : [entry?.body ?? ""]);
+  // Autosaved draft: a note being edited is persisted to localStorage on every
+  // keystroke (debounced) so a tab close / crash / accidental nav never loses
+  // typed text — mirror of the journal's draft pattern. Restore only when the
+  // draft is newer than the saved entry (dirty editor beats stored note).
+  const entryIdRef = useRef(entry?.id ?? createId("nb_entry"));
+  const createdAtRef = useRef(entry?.createdAt ?? nowIso());
+  const draftKey = useMemo(() => `${NOTEBOOK_DRAFT_KEY}:${entryIdRef.current}`, []);
+  const draft = useMemo(() => readNotebookDraft(draftKey), [draftKey]);
+  const draftWins = Boolean(draft && (!entry || new Date(draft.createdAt ?? 0) > new Date(entry.updatedAt)));
+  const [title, setTitle] = useState(draftWins ? draft?.title ?? "" : entry?.title ?? "");
+  const [pages, setPages] = useState<string[]>(
+    draftWins
+      ? draft?.pages ?? []
+      : entry?.pages && entry.pages.length > 0
+        ? entry.pages
+        : [entry?.body ?? ""]
+  );
   // Index of the focused body textarea — photo-insert target and auto-page
   // anchor. Clamped whenever pages shrink (trailing-page collapse).
   const [activePage, setActivePage] = useState(0);
@@ -611,8 +814,8 @@ export function NotebookEditor({
   const [catMenu, setCatMenu] = useState<{ id: string; anchor: HTMLElement | null } | null>(null);
   const [renameCat, setRenameCat] = useState<{ id: string; name: string } | null>(null);
   const [pendingDeleteCat, setPendingDeleteCat] = useState<{ id: string; name: string } | null>(null);
-  const entryIdRef = useRef(entry?.id ?? createId("nb_entry"));
-  const createdAtRef = useRef(entry?.createdAt ?? nowIso());
+  const [draftSaved, setDraftSaved] = useState(false);
+  const [focusMode, setFocusMode] = useState(false);
 
   useEffect(() => {
     // Existing notes: do not steal focus/scroll. New note: focus title to write.
@@ -624,6 +827,34 @@ export function NotebookEditor({
   }, [entry, pages.length]);
 
   const markDirty = () => setDirty(true);
+
+  // Debounced autosave of the live editor state. Skips the first mount (nothing
+  // typed yet) and only persists while something is actually unsaved, so an
+  // untouched editor never writes a stale draft over a saved note.
+  const draftSkipRef = useRef(true);
+  const draftTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => {
+    if (draftSkipRef.current) {
+      draftSkipRef.current = false;
+      return;
+    }
+    if (!dirty) return;
+    if (draftTimerRef.current) clearTimeout(draftTimerRef.current);
+    draftTimerRef.current = setTimeout(() => {
+      writeNotebookDraft(draftKey, {
+        entryId: entryIdRef.current,
+        title,
+        pages,
+        categoryId: catId,
+        isPinned,
+        createdAt: createdAtRef.current
+      });
+      setDraftSaved(true);
+    }, 600);
+    return () => {
+      if (draftTimerRef.current) clearTimeout(draftTimerRef.current);
+    };
+  }, [title, pages, catId, isPinned, dirty, draftKey]);
 
   const resolveTitle = useCallback(() => {
     const trimmed = title.trim();
@@ -780,10 +1011,11 @@ export function NotebookEditor({
       }
       setDirty(false);
       setSavedFlash(true);
+      clearNotebookDraft(draftKey);
       window.setTimeout(() => setSavedFlash(false), 1200);
       if (andBack) onBack();
     },
-    [allBody, pages, catId, entry?.tags, isPinned, images, onBack, resolveTitle, store]
+    [allBody, pages, catId, entry?.tags, isPinned, images, onBack, resolveTitle, store, draftKey]
   );
 
   // Enter-autolist + Backspace-unlist: native-feel list continuation in the
@@ -920,6 +1152,8 @@ export function NotebookEditor({
           <span role="status" aria-live="polite">
             {savedFlash ? (
               <span className="text-monk-success animate-scale-in">{t("notebook.saved")}</span>
+            ) : draftSaved && dirty ? (
+              <span className="text-monk-text-soft">{t("notebook.draftSaved")}</span>
             ) : dirty ? (
               <span className="flex items-center gap-1 text-monk-warning">
                 <span className="h-1.5 w-1.5 rounded-full bg-monk-warning animate-pulse" />
@@ -928,8 +1162,19 @@ export function NotebookEditor({
             ) : null}
           </span>
         </div>
+        <button
+          type="button"
+          onClick={() => setFocusMode((v) => !v)}
+          aria-pressed={focusMode}
+          aria-label={focusMode ? t("notebook.exitFocus") : t("notebook.focusMode")}
+          className="flex min-h-10 items-center gap-1.5 rounded-full border border-monk-border px-2.5 text-xs font-semibold text-monk-muted transition hover:border-monk-accent hover:text-monk-accent"
+        >
+          {focusMode ? <Minimize2 size={14} strokeWidth={1.8} /> : <Maximize2 size={14} strokeWidth={1.8} />}
+          {focusMode ? t("notebook.exitFocus") : t("notebook.focusMode")}
+        </button>
       </div>
 
+      {focusMode ? null : (
       <div className="flex items-center gap-2 overflow-x-auto pb-6 pt-3 scrollbar-none">
         {categories.map((cat) => {
           const hex = catHex(cat.id);
@@ -1017,6 +1262,7 @@ export function NotebookEditor({
           {isPinned ? t("notebook.pinned") : t("notebook.pin")}
         </button>
       </div>
+      )}
 
       {showNewCat ? (
         <div id="nb-new-cat" className="mb-4 flex items-center gap-2">
@@ -1158,6 +1404,18 @@ export function NotebookEditor({
         </div>
       </div>
 
+      {focusMode ? (
+        <div className="fixed inset-x-0 bottom-0 z-40 flex justify-center pb-[max(1rem,env(safe-area-inset-bottom))]">
+          <button
+            type="button"
+            onClick={() => setFocusMode(false)}
+            className="flex min-h-10 items-center gap-1.5 rounded-full border border-monk-border bg-monk-bg/90 px-3 text-xs font-semibold text-monk-text-soft backdrop-blur-md transition hover:border-monk-accent hover:text-monk-accent"
+          >
+            <Minimize2 size={14} strokeWidth={1.8} />
+            {t("notebook.exitFocus")}
+          </button>
+        </div>
+      ) : (
       <div className="fixed inset-x-0 bottom-0 z-40 border-t border-monk-border bg-monk-bg/95 px-6 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur-md">
         <div className="mx-auto flex max-w-[430px] items-center justify-end gap-2">
             {entry ? (
@@ -1176,6 +1434,7 @@ export function NotebookEditor({
             </PrimaryButton>
           </div>
       </div>
+      )}
 
       <CalmDialog
         open={confirmKind === "leave"}
@@ -1212,6 +1471,7 @@ export function NotebookEditor({
         onCancel={() => setConfirmKind(null)}
         onConfirm={() => {
           if (entry) store.deleteNotebookEntry(entry.id);
+          clearNotebookDraft(draftKey);
           setConfirmKind(null);
           onBack();
         }}

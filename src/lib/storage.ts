@@ -32,6 +32,52 @@ export function writeJournalDraft(key: string, payload: JournalDraft): void {
   }
 }
 
+export const NOTEBOOK_DRAFT_KEY = "monk_notebook_draft_v1";
+
+/** Live editor state for a notebook entry, autosaved to localStorage so a
+ *  tab close / accidental nav / crash never loses typed text. Mirror of the
+ *  journal's draft pattern — the notebook has no per-save persistence until
+ *  the user hits Save/Done. */
+export type NotebookDraft = {
+  entryId: string;
+  title: string;
+  pages: string[];
+  categoryId: string;
+  isPinned: boolean;
+  createdAt?: string;
+};
+
+export function readNotebookDraft(key: string): NotebookDraft | null {
+  if (typeof localStorage === "undefined") return null;
+  try {
+    const raw = localStorage.getItem(key);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as NotebookDraft;
+    if (!parsed || typeof parsed !== "object" || typeof parsed.entryId !== "string") return null;
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
+export function writeNotebookDraft(key: string, payload: NotebookDraft): void {
+  if (typeof localStorage === "undefined") return;
+  try {
+    localStorage.setItem(key, JSON.stringify(payload));
+  } catch {
+    /* ignore */
+  }
+}
+
+export function clearNotebookDraft(key: string): void {
+  if (typeof localStorage === "undefined") return;
+  try {
+    localStorage.removeItem(key);
+  } catch {
+    /* ignore */
+  }
+}
+
 export function loadState(): MonkMVPState | null {
   if (typeof localStorage === "undefined") return null;
   const raw = localStorage.getItem(STORAGE_KEY);

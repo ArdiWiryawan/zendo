@@ -630,6 +630,67 @@ h5.md-heading, h6.md-heading { font-size: 1rem; }
   }
 }
 
+/* List card photo thumbnail — the note's visual anchor beside its preview. */
+.nb-thumb {
+  width: 56px;
+  height: 56px;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid var(--notebook-card-line);
+  background: var(--color-surface-soft);
+}
+.nb-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+/* Read view: a saved note typeset as a clean page (no textarea, no ruler).
+   Prose typography + margin line tinted by category, like a printed entry. */
+.nb-reader {
+  padding: 30px 24px 24px 46px;
+}
+
+.nb-reader-title {
+  margin: 0 0 10px;
+  font-family: 'Outfit', ui-sans-serif, system-ui, sans-serif;
+  font-size: clamp(1.5rem, 4.2vw, 2rem);
+  font-weight: 650;
+  line-height: 1.25;
+  color: var(--notebook-text-title);
+}
+
+.nb-reader-meta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding-bottom: 18px;
+  margin-bottom: 18px;
+  border-bottom: 1px dashed var(--notebook-card-line);
+}
+
+.nb-reader-body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.nb-reader-body p {
+  margin: 0;
+}
+
+/* Reader inherits the md-* markdown classes already defined for preview. */
+.nb-reader-body .md-para {
+  font-size: 1rem;
+  line-height: 1.75;
+}
+
+.nb-reader-body .md-heading {
+  color: var(--notebook-text-title);
+}
+
 /* Photo add buttons: sit below the folio, inside the notebook page sheet. */
 .nb-photos {
   padding: 4px 22px 20px 46px;
