@@ -9,7 +9,7 @@ import { AppShell, OnboardingShell, useCalmToast } from "../components/ui";
 import { onboardingOrder, routes } from "../constants/routes";
 import { useMonkStore } from "../store/useMonkStore";
 import { playZenBell } from "../lib/audio";
-import { getCurrentFocusPhase } from "../constants/focusPresets";
+import { planFocusTick } from "../lib/focusTicker.worker";
 
 // ponytail: TodayScreen + FocusScreen loaded eagerly (primary screens); others lazy-split
 const FocusScreen = lazy(() => import("../screens/FocusScreen"));
@@ -73,59 +73,103 @@ export default function App() {
     });
   }, [ready]);
 
+  // Module-level: one worker per app instance. Registering at module scope (not
+  // in an effect) makes it StrictMode-safe — no double mount can spawn two
+  // timers. The worker is immune to hidden-tab timer throttling, so the focus
+  // clock keeps advancing while the tab/PWA is backgrounded.
+  const tickerWorkerRef = useRef<Worker | null>(null);
+  const lastBellRef = useRef(0);
+
   useEffect(() => {
-    if (!activeSession || activeSession.status !== "running") return;
+    if (!ready) return;
 
     const notify = (title: string, body: string) => {
       if (Notification.permission === "granted") new Notification(title, { body, icon: "/apple-touch-icon.png", silent: true });
     };
 
-    const tick = () => {
-      // Re-read the session from the store: a tick fired by visibilitychange can
-      // overlap the interval callback, and if advanceFocusPhase already reset
-      // startTime/currentPhaseIndex, the stale closure would advance AGAIN
-      // (skipping the break) or complete twice. Fresh state makes the second
-      // tick a no-op (elapsed recomputed against the new phase startTime).
-      const fresh = useMonkStore.getState().focusSessions.find((s) => s.id === activeSession.id);
-      if (!fresh || fresh.status !== "running") return;
-      const phaseStartMs = new Date(fresh.startTime).getTime();
-      const freshPhase = getCurrentFocusPhase(fresh);
-      const freshTargetSeconds = freshPhase.plannedMinutes * 60;
-      const elapsed = Math.floor((Date.now() - phaseStartMs) / 1000);
-      if (elapsed >= freshTargetSeconds) {
-        const phases = fresh.phases ?? [];
-        const currentIndex = fresh.currentPhaseIndex ?? 0;
-        if (currentIndex < phases.length - 1) {
+    const runTick = () => {
+      // Re-read the session from the store: ticks from the worker can overlap
+      // ticks from visibilitychange/focus/pageshow, and if advanceFocusPhase
+      // already reset startTime/currentPhaseIndex, a stale closure would advance
+      // AGAIN (skipping the break) or complete twice. Fresh state makes the
+      // duplicate tick a no-op (elapsed recomputed against the new phase startTime).
+      // The active session id is also read fresh (not from the effect closure) so
+      // the worker's onmessage can never tick a stale session after a re-run.
+      const active = useMonkStore.getState().focusSessions.find((s) => ["running", "paused"].includes(s.status));
+      if (!active || active.status !== "running") return;
+      const fresh = active;
+      const { actions, bell } = planFocusTick(fresh, Date.now());
+      let transitioned = false;
+      for (const action of actions) {
+        // advanceFocusPhase/completeFocusSession are idempotent (status guard),
+        // and re-reading fresh state each iteration makes a multi-phase burst
+        // safe even though advanceFocusPhase resets startTime to now.
+        const current = useMonkStore.getState().focusSessions.find((s) => s.id === fresh.id);
+        if (!current || current.status !== "running") break;
+        if (action.type === "tick") {
+          tickFocusSession(fresh.id, action.elapsedSeconds);
+        } else if (action.type === "advance") {
           advanceFocusPhase(fresh.id);
-          playZenBell();
-          if ("vibrate" in navigator) navigator.vibrate([200, 100, 200]);
-          const nextPhase = phases[currentIndex + 1];
-          notify(
-            nextPhase?.type === "break" ? "Break time" : "Focus block",
-            nextPhase?.type === "break" ? "Step away and recharge." : "Back to deep work. You've got this."
-          );
+          transitioned = true;
         } else {
           completeFocusSession(fresh.id, true);
-          playZenBell();
-          if ("vibrate" in navigator) navigator.vibrate(300);
-          notify("Session complete", "You did the work. Rest well.");
+          transitioned = true;
         }
-      } else {
-        tickFocusSession(fresh.id, Math.max(0, elapsed));
+      }
+      // One bell/vibrate/notification for the phase the session settled into —
+      // even if several phases elapsed in one background burst, no wall of bells.
+      // Coalesce: worker tick + visibilitychange/focus/pageshow can both fire at
+      // the same boundary; ring at most once per second so the duplicate is a
+      // no-op. Only ring if the session actually transitioned this tick — a
+      // catch-up burst that ran out after the user paused shouldn't ring.
+      if (bell && transitioned) {
+        const now = Date.now();
+        if (now - lastBellRef.current > 1000) {
+          lastBellRef.current = now;
+          playZenBell();
+          if ("vibrate" in navigator) navigator.vibrate(bell.vibrate);
+          notify(bell.title, bell.body);
+        }
       }
     };
 
-    const timer = window.setInterval(tick, 1000);
+    // Set up the background worker once. Guard against double registration: an
+    // effect re-run (StrictMode dev remount, dep change) must not start a second
+    // interval inside the worker.
+    if (!tickerWorkerRef.current) {
+      const worker = new Worker(new URL("../lib/focusTicker.worker.ts", import.meta.url), { type: "module" });
+      worker.onmessage = () => runTick();
+      tickerWorkerRef.current = worker;
+    }
 
-    // Re-sync immediately when tab becomes visible again (interval may have been throttled)
-    const onVisibilityChange = () => { if (document.visibilityState === "visible") tick(); };
+    // Re-sync immediately when the tab becomes visible again, when the window
+    // regains focus, or on pageshow (bfcache / PWA relaunch). These fire even on
+    // iOS standalone / Safari, which may suspend the worker entirely.
+    const onVisibilityChange = () => { if (document.visibilityState === "visible") runTick(); };
+    const onFocus = () => runTick();
+    const onPageShow = () => runTick();
     document.addEventListener("visibilitychange", onVisibilityChange);
+    window.addEventListener("focus", onFocus);
+    window.addEventListener("pageshow", onPageShow);
+
+    // Cold PWA launch: reconcile immediately (e.g. a session left "running"
+    // yesterday should advance through all elapsed phases now, not wait for the
+    // next worker tick).
+    runTick();
 
     return () => {
-      window.clearInterval(timer);
       document.removeEventListener("visibilitychange", onVisibilityChange);
+      window.removeEventListener("focus", onFocus);
+      window.removeEventListener("pageshow", onPageShow);
     };
-  }, [activeSession?.id, activeSession?.status, activeSession?.startTime, activeSession?.currentPhaseIndex, activeSession?.phases, tickFocusSession, completeFocusSession, advanceFocusPhase]);
+  }, [ready, activeSession?.id, activeSession?.status, tickFocusSession, completeFocusSession, advanceFocusPhase]);
+
+  useEffect(() => {
+    return () => {
+      tickerWorkerRef.current?.terminate();
+      tickerWorkerRef.current = null;
+    };
+  }, []);
 
   if (!ready) {
     return (
