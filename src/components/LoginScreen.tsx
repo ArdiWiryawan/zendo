@@ -4,8 +4,6 @@ import { supabase as getSupabase } from "../lib/supabase";
 import { useT } from "../i18n";
 import { CalmAlert, GhostButton, PrimaryButton, TextInput } from "./ui";
 
-const sb = getSupabase();
-
 export default function LoginScreen() {
   const navigate = useNavigate();
   const t = useT();
@@ -20,11 +18,18 @@ export default function LoginScreen() {
     setLoading(true);
     setError(null);
     try {
-      const { error: authError } = (await sb?.auth.signInWithPassword({
+      const sb = getSupabase();
+      if (!sb) {
+        throw new Error(t("auth.unconfigured"));
+      }
+      const { data, error: authError } = await sb.auth.signInWithPassword({
         email: email.trim(),
         password
-      })) ?? { error: null };
+      });
       if (authError) throw authError;
+      if (!data.session) {
+        throw new Error(t("auth.login.failed"));
+      }
       navigate("/today", { replace: true });
     } catch (err: unknown) {
       const msg = (err as { message?: string })?.message || t("auth.login.failed");
@@ -38,7 +43,7 @@ export default function LoginScreen() {
     <div className="relative flex min-h-dvh flex-col items-center justify-center px-6 py-10">
       <div
         aria-hidden
-        className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top,theme(colors.monk-accent/5),transparent_55%)]"
+        className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top,var(--color-accent-soft),transparent_55%)]"
       />
       <div className="relative z-10 w-full max-w-sm space-y-6">
         <div className="space-y-2 text-center">

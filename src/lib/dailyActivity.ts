@@ -16,13 +16,37 @@ export function getDailyActivity(store: MonkMVPState, date: string) {
     .filter((plan) => plan.date === date && (!seasonId || plan.seasonId === seasonId))
     .map((plan) => plan.id);
   const focusSessions = store.focusSessions.filter((session) => {
-    const sessionDate = (session.endedAt ?? session.endTime ?? session.startedAt ?? session.startTime).slice(0, 10);
     const sameSeason = !seasonId || session.seasonId === seasonId;
-    return (dayPlanIds.includes(session.dayPlanId) || (sessionDate === date && sameSeason)) && ["completed", "ended_early"].includes(session.status);
+    if (!sameSeason) return false;
+    if (!["completed", "ended_early"].includes(session.status)) return false;
+
+    if (session.dayPlanId) {
+      const boundPlan = store.dayPlans.find((p) => p.id === session.dayPlanId);
+      if (boundPlan) return boundPlan.date === date;
+      return dayPlanIds.includes(session.dayPlanId);
+    }
+
+    const raw = session.startedAt || session.createdAt || session.startTime || session.endedAt || session.endTime;
+    if (!raw) return false;
+    const sessionDate = getTodayDateString(new Date(raw));
+    return sessionDate === date || raw.slice(0, 10) === date;
   });
-  const learningSessions = store.learningSessions.filter(
-    (session) => (session.endedAt ?? session.startedAt).slice(0, 10) === date && session.status === "completed" && (!seasonId || session.seasonId === seasonId)
-  );
+  const learningSessions = store.learningSessions.filter((session) => {
+    const sameSeason = !seasonId || session.seasonId === seasonId;
+    if (!sameSeason) return false;
+    if (session.status !== "completed") return false;
+
+    if (session.dayPlanId) {
+      const boundPlan = store.dayPlans.find((p) => p.id === session.dayPlanId);
+      if (boundPlan) return boundPlan.date === date;
+      return dayPlanIds.includes(session.dayPlanId);
+    }
+
+    const raw = session.startedAt || session.createdAt || session.endedAt;
+    if (!raw) return false;
+    const sessionDate = getTodayDateString(new Date(raw));
+    return sessionDate === date || raw.slice(0, 10) === date;
+  });
   return { focusSessions, learningSessions };
 }
 
@@ -184,11 +208,51 @@ export function dismissReflectionThread(date: string) {
   }
 }
 
-export function shouldOfferReentry(store: { dayPlans: MonkMVPState["dayPlans"]; activeSeason: MonkMVPState["activeSeason"] }, seasonStart: string, today: string): boolean {
+export function shouldOfferReentry(
+  store: {
+    dayPlans: MonkMVPState["dayPlans"];
+    activeSeason: MonkMVPState["activeSeason"];
+    focusSessions?: MonkMVPState["focusSessions"];
+    journalEntries?: MonkMVPState["journalEntries"];
+    timelineDays?: MonkMVPState["timelineDays"];
+  },
+  seasonStart: string,
+  today: string
+): boolean {
   const yesterday = addDaysToDate(today, -1);
   if (yesterday < seasonStart) return false;
-  const yStatus = getDailyStatusForDate(store as unknown as MonkMVPState, yesterday);
+  const fullStore = store as unknown as MonkMVPState;
   const yPlan = store.dayPlans.find((plan) => plan.date === yesterday);
+  const yDay = fullStore.timelineDays?.find((d) => d.date === yesterday);
+
+  // If yesterday was completed or rest, not slipped!
+  if (
+    yPlan?.status === "completed" ||
+    yDay?.status === "completed" ||
+    yDay?.status === "rest" ||
+    yPlan?.dayType === "rest"
+  ) {
+    return false;
+  }
+
+  // If yesterday had ANY focus session or journal reflection, the user worked! Not slipped!
+  const yesterdayActivity = getDailyActivity(fullStore, yesterday);
+  const hadFocus = (yesterdayActivity.focusSessions ?? []).length > 0;
+  const hadLearning = (yesterdayActivity.learningSessions ?? []).length > 0;
+  const hadJournal = (fullStore.journalEntries ?? []).some(
+    (j) =>
+      j.date === yesterday &&
+      (j.answers.whatMovedToday?.trim() ||
+        j.answers.whatDistractedMe?.trim() ||
+        j.answers.whatDidILearn?.trim() ||
+        j.answers.morningPages?.trim())
+  );
+
+  if (hadFocus || hadLearning || hadJournal) {
+    return false;
+  }
+
+  const yStatus = getDailyStatusForDate(fullStore, yesterday);
   const softMiss = yStatus === "not_started" && !!yPlan;
   return yStatus === "missed" || yStatus === "relapse" || softMiss;
 }

@@ -1,16 +1,19 @@
 import { useState, useMemo, useRef, useEffect, useCallback } from "react";
 import { useSearchParams, useBlocker } from "react-router-dom";
 import { useMonkStore } from "../store/useMonkStore";
-import { PrimaryButton, SecondaryButton, GhostButton, CalmDialog } from "../components/ui";
+import { PrimaryButton, SecondaryButton, GhostButton, CalmDialog, useCalmToast } from "../components/ui";
 import { createId } from "../lib/ids";
-import { nowIso } from "../lib/date";
-import type { NotebookCategory, NotebookEntry } from "../types/app";
-import { Search, Plus, Pin, PinOff, Trash2, ArrowLeft, X, BookOpen, ImagePlus, Camera, MoreVertical, Pencil, Maximize2, Minimize2 } from "lucide-react";
+import { nowIso, getTodayDateString, addDaysToDate } from "../lib/date";
+import type { NotebookCategory, NotebookEntry, ParaType } from "../types/app";
+import { Search, Plus, Pin, PinOff, Trash2, ArrowLeft, X, BookOpen, ImagePlus, Camera, MoreVertical, Pencil, Maximize2, Minimize2, ListTodo, List, ListOrdered, Heading, Bold, Italic, Quote, Crown, Sparkles, Copy, Link2, ArrowRight, Check } from "lucide-react";
 import { useT, useLanguage, type MessageKey } from "../i18n";
+import { hapticPress } from "../lib/haptics";
 import { autolistMarker, groupPhotoRuns, renderBodyMarkdown } from "../lib/notebookMarkdown";
-import { joinPages, removePhotoMarker } from "../lib/notebookPages";
+import { deletePageAtIndex, joinPages, removePhotoMarker, trimTrailingBlankPages } from "../lib/notebookPages";
 import { IMG_MARKER, compressImage, putImage, deleteImage, matchImageMarkers } from "../lib/imageStore";
-import { PhotoLightbox, photoIdsInBody, useObjectUrl } from "../components/NotebookImages";
+import { InlinePhoto, PhotoLightbox, photoIdsInBody, useObjectUrl } from "../components/NotebookImages";
+import { ZendoProModal } from "../components/ZendoProModal";
+import { findBacklinks, findRelatedNotes } from "../lib/notebookLinks";
 import {
   NOTEBOOK_DRAFT_KEY,
   clearNotebookDraft,
@@ -203,11 +206,13 @@ export default function JournalNotebook({ onEditingChange, initialEntryId }: { o
   const dateLocale = lang === "id" ? "id-ID" : "en-US";
   const entries = store.notebookEntries;
   const categories = store.notebookCategories;
+  const toast = useCalmToast();
   const [view, setView] = useState<"list" | "edit" | "read">("list");
   const [editEntry, setEditEntry] = useState<NotebookEntry | null>(null);
   const [readEntry, setReadEntry] = useState<NotebookEntry | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [filterCat, setFilterCat] = useState<string | null>(null);
+  const [filterPara, setFilterPara] = useState<ParaType | null>(null);
   const [confirmKind, setConfirmKind] = useState<null | "delete-list" | "delete-cat">(null);
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
   const [pendingDeleteTitle, setPendingDeleteTitle] = useState("");
@@ -230,11 +235,15 @@ export default function JournalNotebook({ onEditingChange, initialEntryId }: { o
 
   const sorted = useMemo(() => {
     let list = [...entries];
+    if (filterPara) list = list.filter((e) => e.paraType === filterPara);
     if (filterCat) list = list.filter((e) => e.categoryId === filterCat);
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
       list = list.filter(
-        (e) => e.title.toLowerCase().includes(q) || e.body.toLowerCase().includes(q)
+        (e) =>
+          e.title.toLowerCase().includes(q) ||
+          e.body.toLowerCase().includes(q) ||
+          Boolean(e.takeaway && e.takeaway.toLowerCase().includes(q))
       );
     }
     list.sort((a, b) => {
@@ -242,7 +251,7 @@ export default function JournalNotebook({ onEditingChange, initialEntryId }: { o
       return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
     });
     return list;
-  }, [entries, filterCat, searchQuery]);
+  }, [entries, filterPara, filterCat, searchQuery]);
 
   const goBackToList = useCallback(() => {
     setView("list");
@@ -277,21 +286,41 @@ export default function JournalNotebook({ onEditingChange, initialEntryId }: { o
     onEditingChange?.(true);
   };
 
+  const handleDuplicate = (entry: NotebookEntry, e?: React.MouseEvent) => {
+    e?.stopPropagation();
+    const duplicated = store.duplicateNotebookEntry(entry.id);
+    if (duplicated) {
+      toast.show(t("notebook.duplicateSuccess"));
+      hapticPress("light");
+    }
+  };
+
   if (view === "edit") {
     return (
       <NotebookEditor
         entry={editEntry}
+        initialCategoryId={filterCat ?? undefined}
         onBack={goBackToList}
       />
     );
   }
 
   if (view === "read" && readEntry) {
+    const liveEntry = store.notebookEntries.find((e) => e.id === readEntry.id) ?? readEntry;
     return (
-      <NotebookReader
-        entry={readEntry}
+      <NotebookEntryDetail
+        entry={liveEntry}
         onBack={goBackToList}
-        onEdit={() => openEdit(readEntry)}
+        onEdit={() => openEdit(liveEntry)}
+        onOpenNote={(target) => setReadEntry(target)}
+        onDuplicate={(entryToDup) => {
+          const duplicated = store.duplicateNotebookEntry(entryToDup.id);
+          if (duplicated) {
+            toast.show(t("notebook.duplicateSuccess"));
+            hapticPress("light");
+            setReadEntry(duplicated);
+          }
+        }}
       />
     );
   }
@@ -356,6 +385,35 @@ export default function JournalNotebook({ onEditingChange, initialEntryId }: { o
             <X size={14} />
           </button>
         ) : null}
+      </div>
+
+      {/* PARA Classification Filter Tabs */}
+      <div className="-mx-1 mb-2.5 flex items-center gap-1.5 overflow-x-auto px-1 pb-0.5 scrollbar-none">
+        {(
+          [
+            { id: null, label: t("notebook.paraAll") },
+            { id: "project", label: t("notebook.paraProjects") },
+            { id: "area", label: t("notebook.paraAreas") },
+            { id: "resource", label: t("notebook.paraResources") },
+            { id: "archive", label: t("notebook.paraArchives") },
+          ] as const
+        ).map((tab) => {
+          const active = filterPara === tab.id;
+          return (
+            <button
+              key={tab.id ?? "all"}
+              type="button"
+              onClick={() => setFilterPara(tab.id as ParaType | null)}
+              className={`shrink-0 rounded-full px-3 py-1 text-xs font-semibold transition duration-150 active:scale-95 ${
+                active
+                  ? "bg-monk-accent text-monk-bg shadow-xs"
+                  : "bg-monk-soft/70 text-monk-muted hover:bg-monk-soft hover:text-monk-text border border-monk-border/50"
+              }`}
+            >
+              {tab.label}
+            </button>
+          );
+        })}
       </div>
 
       <div className="-mx-1 flex gap-1.5 overflow-x-auto px-1 pb-2 scrollbar-none">
@@ -438,14 +496,14 @@ export default function JournalNotebook({ onEditingChange, initialEntryId }: { o
         <div className="notebook-empty rounded-monk border border-monk-border bg-monk-surface/60 px-6 py-12 text-center flex flex-col items-center justify-center">
           <BookOpen size={40} className="mb-3 text-monk-text-soft opacity-30" strokeWidth={1.5} />
           <p className="font-handwriting text-3xl text-monk-text-soft/70">
-            {searchQuery || filterCat ? t("notebook.empty.notFound") : t("notebook.empty.title")}
+            {searchQuery || filterCat || filterPara ? t("notebook.empty.notFound") : t("notebook.empty.title")}
           </p>
           <p className="mx-auto mt-2 max-w-[240px] text-sm leading-6 text-monk-muted">
-            {searchQuery || filterCat
+            {searchQuery || filterCat || filterPara
               ? t("notebook.empty.notFoundDesc")
               : t("notebook.empty.desc")}
           </p>
-          {!searchQuery && !filterCat ? (
+          {!searchQuery && !filterCat && !filterPara ? (
             <PrimaryButton className="mt-6" onClick={openNew}>
               {t("notebook.firstNote")}
             </PrimaryButton>
@@ -455,6 +513,7 @@ export default function JournalNotebook({ onEditingChange, initialEntryId }: { o
               onClick={() => {
                 setSearchQuery("");
                 setFilterCat(null);
+                setFilterPara(null);
               }}
             >
               {t("notebook.resetFilter")}
@@ -498,7 +557,20 @@ export default function JournalNotebook({ onEditingChange, initialEntryId }: { o
                       return pid ? <CardThumb id={pid} /> : null;
                     })()}
                   </div>
+                  {entry.takeaway ? (
+                    <p className="mt-1.5 text-xs italic font-serif text-monk-accent/90 line-clamp-1">
+                      💡 {entry.takeaway}
+                    </p>
+                  ) : null}
                   <div className="mt-3 flex flex-wrap items-center gap-1.5 text-[11px] text-monk-text-soft">
+                    {entry.paraType ? (
+                      <span className="inline-flex items-center gap-1 rounded-full bg-monk-soft px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-monk-muted border border-monk-border/50">
+                        {entry.paraType === "project" ? t("notebook.paraProjects") :
+                         entry.paraType === "area" ? t("notebook.paraAreas") :
+                         entry.paraType === "resource" ? t("notebook.paraResources") :
+                         t("notebook.paraArchives")}
+                      </span>
+                    ) : null}
                     <span
                       className="inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 font-semibold uppercase tracking-wide"
                       style={{ borderColor: `${hex}44`, color: hex }}
@@ -519,6 +591,14 @@ export default function JournalNotebook({ onEditingChange, initialEntryId }: { o
                     className="grid min-h-10 min-w-10 place-items-center rounded-full text-monk-muted transition duration-150 active:scale-95 hover:bg-monk-soft hover:text-monk-accent"
                   >
                     <Pencil size={15} />
+                  </button>
+                  <button
+                    type="button"
+                    aria-label={t("notebook.duplicate")}
+                    onClick={(e) => handleDuplicate(entry, e)}
+                    className="grid min-h-10 min-w-10 place-items-center rounded-full text-monk-muted transition duration-150 active:scale-95 hover:bg-monk-soft hover:text-monk-accent"
+                  >
+                    <Copy size={15} />
                   </button>
                   <button
                     type="button"
@@ -619,31 +699,41 @@ export default function JournalNotebook({ onEditingChange, initialEntryId }: { o
           setPendingDeleteCat(null);
         }}
       />
+      {toast.Toast()}
     </div>
   );
 }
 
-/** Read view: renders a saved note as a clean, typeset page (Bear/Day One
- *  pattern — reading a journal entry is a different surface than writing it).
- *  Photos are interactive (lightbox) but not deletable here. */
-function NotebookReader({
+export function NotebookEntryDetail({
   entry,
   onBack,
-  onEdit
+  onEdit,
+  onDuplicate,
+  onOpenNote
 }: {
   entry: NotebookEntry;
   onBack: () => void;
   onEdit: () => void;
+  onDuplicate?: (entry: NotebookEntry) => void;
+  onOpenNote?: (entry: NotebookEntry) => void;
 }) {
   const t = useT();
   const lang = useLanguage();
   const dateLocale = lang === "id" ? "id-ID" : "en-US";
   const store = useMonkStore();
+  const toast = useCalmToast();
   const [lightbox, setLightbox] = useState<{ ids: string[]; index: number } | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState(false);
-  const body = entry.body ?? "";
-  const cat = store.notebookCategories.find((c) => c.id === entry.categoryId);
-  const hex = catHex(entry.categoryId);
+  const liveEntry = store.notebookEntries.find((e) => e.id === entry.id) ?? entry;
+  const body = liveEntry.body ?? "";
+  const cat = store.notebookCategories.find((c) => c.id === liveEntry.categoryId);
+  const hex = catHex(liveEntry.categoryId);
+  const rawPages = liveEntry.pages && liveEntry.pages.length > 0 ? liveEntry.pages : [body];
+  const pages = trimTrailingBlankPages(rawPages);
+  const words = wordCount(body);
+
+  const backlinks = useMemo(() => findBacklinks(liveEntry, store.notebookEntries), [liveEntry, store.notebookEntries]);
+  const relatedNotes = useMemo(() => findRelatedNotes(liveEntry, store.notebookEntries), [liveEntry, store.notebookEntries]);
 
   const openPhoto = useCallback(
     (id: string) => {
@@ -654,8 +744,42 @@ function NotebookReader({
     [body]
   );
 
+  const handleToggleTask = useCallback(
+    (pageIdx: number, lineIndex: number) => {
+      const curPages = liveEntry.pages && liveEntry.pages.length > 0 ? [...liveEntry.pages] : [liveEntry.body ?? ""];
+      const targetPage = curPages[pageIdx];
+      if (!targetPage) return;
+      const lines = targetPage.split("\n");
+      const targetLine = lines[lineIndex];
+      if (targetLine === undefined) return;
+
+      let nextLine = targetLine;
+      if (/^(.*?)\[ \](.*)$/.test(targetLine)) {
+        nextLine = targetLine.replace(/\[ \]/, "[x]");
+        hapticPress("success");
+      } else if (/^(.*?)\[[xX]\](.*)$/.test(targetLine)) {
+        nextLine = targetLine.replace(/\[[xX]\]/, "[ ]");
+        hapticPress("light");
+      }
+
+      if (nextLine !== targetLine) {
+        lines[lineIndex] = nextLine;
+        curPages[pageIdx] = lines.join("\n");
+        const nextBody = joinPages(curPages);
+        store.saveNotebookEntry({
+          ...liveEntry,
+          body: nextBody,
+          pages: curPages,
+          updatedAt: nowIso()
+        });
+      }
+    },
+    [liveEntry, store]
+  );
+
   return (
-    <div className="space-y-4 pb-24">
+    <div className="space-y-0 pb-36 scroll-mb-36">
+      {/* Top Cover Bar matching Editor */}
       <div className="nb-editor-cover">
         <button
           type="button"
@@ -666,53 +790,171 @@ function NotebookReader({
           {t("notebook.back")}
         </button>
         <div className="flex min-w-0 items-center gap-2">
-          <span className="min-w-0 flex-1 truncate text-sm font-semibold leading-snug text-monk-accent">
-            {entry.title || t("notebook.untitled")}
-          </span>
-          <span className="shrink-0 text-[10px] font-mono text-monk-text-soft opacity-70">
-            {new Date(entry.updatedAt).toLocaleDateString(dateLocale, {
-              day: "numeric",
-              month: "long",
-              year: "numeric"
-            })}
-          </span>
-        </div>
-        <button
-          type="button"
-          onClick={onEdit}
-          className="flex min-h-10 items-center gap-1.5 rounded-full bg-monk-accent px-3 text-xs font-bold text-monk-bg transition active:scale-95"
-        >
-          <Pencil size={13} strokeWidth={2} />
-          {t("notebook.edit")}
-        </button>
-      </div>
-
-      <div
-        className="nb-open-page nb-reader"
-        style={{ "--nb-cat": hex } as React.CSSProperties}
-      >
-        <h1 className="nb-reader-title">{entry.title || t("notebook.untitled")}</h1>
-        <div className="nb-reader-meta">
+          {liveEntry.paraType ? (
+            <span className="inline-flex items-center gap-1 rounded-full bg-monk-soft px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-monk-muted border border-monk-border/50">
+              {liveEntry.paraType === "project" ? t("notebook.paraProjects") :
+               liveEntry.paraType === "area" ? t("notebook.paraAreas") :
+               liveEntry.paraType === "resource" ? t("notebook.paraResources") :
+               t("notebook.paraArchives")}
+            </span>
+          ) : null}
           <span
-            className="inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide"
-            style={{ borderColor: `${hex}44`, color: hex }}
+            className="inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide"
+            style={{ borderColor: `${hex}44`, color: hex, backgroundColor: `${hex}14` }}
           >
             <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: hex }} />
             {cat?.name ?? t("notebook.other")}
           </span>
-          <span className="font-mono text-[11px] text-monk-text-soft">
-            {t("notebook.words", { n: wordCount(body) })}
+          <span className="min-w-0 flex-1 truncate text-xs font-semibold text-monk-accent">
+            {liveEntry.title || t("notebook.untitled")}
           </span>
         </div>
-        {body.trim() ? (
-          <div className="nb-reader-body">
-            {groupPhotoRuns(renderBodyMarkdown(body, openPhoto, false))}
+        <div className="flex items-center gap-1.5">
+          {onDuplicate ? (
+            <button
+              type="button"
+              aria-label={t("notebook.duplicate")}
+              onClick={() => onDuplicate(liveEntry)}
+              className="grid min-h-10 min-w-10 place-items-center rounded-full text-monk-muted transition duration-150 active:scale-95 hover:bg-monk-soft hover:text-monk-accent"
+            >
+              <Copy size={14} />
+            </button>
+          ) : null}
+          <button
+            type="button"
+            onClick={onEdit}
+            className="flex min-h-10 items-center gap-1.5 rounded-full bg-monk-accent px-3.5 text-xs font-bold text-monk-bg shadow-sm transition active:scale-95 hover:bg-monk-accent-hover"
+          >
+            <Pencil size={13} strokeWidth={2} />
+            {t("notebook.edit")}
+          </button>
+        </div>
+      </div>
+
+      {/* Unified Paper Sheet Container */}
+      <div
+        className="nb-open-page nb-open-enter mt-4 select-text"
+        style={{ "--nb-cat": hex } as React.CSSProperties}
+      >
+        <h1 className="nb-page-title m-0 select-text">
+          {liveEntry.title || t("notebook.untitled")}
+        </h1>
+
+        {liveEntry.takeaway ? (
+          <div className="mx-4 mb-5 rounded-xl border border-monk-accent/30 bg-monk-accent-soft/20 p-3.5 shadow-xs">
+            <div className="flex flex-wrap items-center justify-between gap-2 mb-1.5">
+              <span className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-monk-accent">
+                <Sparkles size={13} />
+                {t("notebook.takeawayBadge")}
+              </span>
+              <button
+                type="button"
+                onClick={() => {
+                  const tomorrow = addDaysToDate(getTodayDateString(), 1);
+                  store.createOrUpdateDayPlan(tomorrow, {
+                    dayType: "goal",
+                    mainAction: liveEntry.takeaway
+                  });
+                  toast.show(t("notebook.tomorrowActionToast"));
+                  hapticPress("success");
+                }}
+                className="flex items-center gap-1 rounded-md bg-monk-accent px-2.5 py-1 text-[11px] font-semibold text-monk-bg transition hover:bg-monk-accent-hover active:scale-95 shadow-xs"
+              >
+                <span>{t("notebook.setAsTomorrowAction")}</span>
+              </button>
+            </div>
+            <p className="text-sm italic leading-relaxed text-monk-text font-serif">
+              "{liveEntry.takeaway}"
+            </p>
           </div>
-        ) : (
-          <p className="nb-reader-body text-monk-muted italic">{t("notebook.noBody")}</p>
+        ) : null}
+
+        {pages.map((pg, i) => (
+          <div key={i} className="nb-sheet-stack">
+            <div className="nb-page-body-reader select-text">
+              {pg.trim() ? (
+                groupPhotoRuns(
+                  renderBodyMarkdown(
+                    pg,
+                    openPhoto,
+                    false,
+                    undefined,
+                    (lineIndex) => handleToggleTask(i, lineIndex)
+                  )
+                )
+              ) : (
+                <p className="text-monk-muted italic">{t("notebook.noBody")}</p>
+              )}
+            </div>
+            <div className="nb-folio">
+              <span>
+                {i + 1} / {pages.length}
+              </span>
+              <span>·</span>
+              <span>{t("notebook.words", { n: words })}</span>
+              <span>·</span>
+              <span>
+                {new Date(liveEntry.updatedAt).toLocaleDateString(dateLocale, {
+                  day: "numeric",
+                  month: "short",
+                  year: "numeric"
+                })}
+              </span>
+            </div>
+          </div>
+        ))}
+
+        {/* Backlinks & Heuristic Related Notes */}
+        {(backlinks.length > 0 || relatedNotes.length > 0) && (
+          <div className="mt-8 border-t border-monk-border/50 pt-5 px-4 space-y-5">
+            {backlinks.length > 0 && (
+              <div>
+                <h4 className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-monk-text-soft mb-2.5">
+                  <Link2 size={13} className="text-monk-accent" />
+                  <span>{t("notebook.backlinksTitle")} ({backlinks.length})</span>
+                </h4>
+                <div className="flex flex-wrap gap-2">
+                  {backlinks.map((b) => (
+                    <button
+                      key={b.id}
+                      type="button"
+                      onClick={() => (onOpenNote ? onOpenNote(b) : onEdit())}
+                      className="flex items-center gap-1.5 rounded-lg border border-monk-border bg-monk-surface px-3 py-1.5 text-xs font-medium text-monk-text transition hover:border-monk-accent hover:text-monk-accent active:scale-95 shadow-xs"
+                    >
+                      <Link2 size={12} className="text-monk-muted" />
+                      <span>{b.title || t("notebook.untitled")}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {relatedNotes.length > 0 && (
+              <div>
+                <h4 className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-monk-text-soft mb-2.5">
+                  <Sparkles size={13} className="text-monk-accent" />
+                  <span>{t("notebook.relatedTitle")}</span>
+                </h4>
+                <div className="flex flex-wrap gap-2">
+                  {relatedNotes.map((r) => (
+                    <button
+                      key={r.note.id}
+                      type="button"
+                      onClick={() => (onOpenNote ? onOpenNote(r.note) : onEdit())}
+                      className="flex items-center gap-1.5 rounded-lg border border-monk-border/70 bg-monk-soft/50 px-3 py-1.5 text-xs font-medium text-monk-text-soft transition hover:border-monk-accent hover:text-monk-text active:scale-95"
+                    >
+                      <span>{r.note.title || t("notebook.untitled")}</span>
+                      <ArrowRight size={11} className="opacity-60" />
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
         )}
       </div>
 
+      {/* Bottom Floating Bar */}
       <div className="fixed inset-x-0 bottom-0 z-40 border-t border-monk-border bg-monk-bg/95 px-6 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur-md">
         <div className="mx-auto flex max-w-[430px] items-center justify-between gap-2">
           <GhostButton
@@ -721,9 +963,25 @@ function NotebookReader({
           >
             {t("notebook.delete")}
           </GhostButton>
-          <PrimaryButton className="!w-auto px-5" onClick={onEdit}>
-            {t("notebook.edit")}
-          </PrimaryButton>
+          <div className="flex items-center gap-2">
+            {onDuplicate ? (
+              <SecondaryButton
+                className="!w-auto px-3.5"
+                onClick={() => onDuplicate(liveEntry)}
+              >
+                <span className="flex items-center gap-1.5">
+                  <Copy size={13} strokeWidth={1.8} />
+                  {t("notebook.duplicate")}
+                </span>
+              </SecondaryButton>
+            ) : null}
+            <PrimaryButton className="!w-auto px-6" onClick={onEdit}>
+              <span className="flex items-center gap-2">
+                <Pencil size={14} strokeWidth={2} />
+                {t("notebook.edit")}
+              </span>
+            </PrimaryButton>
+          </div>
         </div>
       </div>
 
@@ -749,15 +1007,18 @@ function NotebookReader({
           onClose={() => setLightbox(null)}
         />
       ) : null}
+      {toast.Toast()}
     </div>
   );
 }
 
 export function NotebookEditor({
   entry,
+  initialCategoryId,
   onBack
 }: {
   entry: NotebookEntry | null;
+  initialCategoryId?: string;
   onBack: () => void;
 }) {
   const store = useMonkStore();
@@ -781,17 +1042,88 @@ export function NotebookEditor({
   const draft = useMemo(() => readNotebookDraft(draftKey), [draftKey]);
   const draftWins = Boolean(draft && (!entry || new Date(draft.createdAt ?? 0) > new Date(entry.updatedAt)));
   const [title, setTitle] = useState(draftWins ? draft?.title ?? "" : entry?.title ?? "");
-  const [pages, setPages] = useState<string[]>(
-    draftWins
+  const [paraType, setParaType] = useState<ParaType | undefined>(draftWins ? draft?.paraType : entry?.paraType);
+  const [takeaway, setTakeaway] = useState<string>(draftWins ? (draft?.takeaway ?? "") : (entry?.takeaway ?? ""));
+  const [pages, setPages] = useState<string[]>(() => {
+    const raw = draftWins
       ? draft?.pages ?? []
       : entry?.pages && entry.pages.length > 0
         ? entry.pages
-        : [entry?.body ?? ""]
-  );
+        : [entry?.body ?? ""];
+    return trimTrailingBlankPages(raw);
+  });
   // Index of the focused body textarea — photo-insert target and auto-page
   // anchor. Clamped whenever pages shrink (trailing-page collapse).
   const [activePage, setActivePage] = useState(0);
-  const [catId, setCatId] = useState(entry?.categoryId ?? categories[0]?.id ?? "cat_lainnya");
+
+  // Active wiki-link query detection for autocomplete
+  const linkMatch = useMemo(() => {
+    const activeText = pages[activePage] ?? "";
+    const el = bodyRefs.current[activePage];
+    const cursor = el?.selectionStart ?? activeText.length;
+    const beforeCursor = activeText.slice(0, cursor);
+    const m = beforeCursor.match(/(?:^|[^[])\[\[([^\]\n]*)$/);
+    if (!m) return null;
+    return {
+      query: m[1].toLowerCase(),
+      fullMatch: m[0],
+      matchStart: cursor - m[1].length - 2
+    };
+  }, [pages, activePage]);
+
+  const linkSuggestions = useMemo(() => {
+    if (!linkMatch) return [];
+    const q = linkMatch.query;
+    return store.notebookEntries
+      .filter((e) => e.id !== entryIdRef.current && (!q || e.title.toLowerCase().includes(q)))
+      .slice(0, 5);
+  }, [linkMatch, store.notebookEntries]);
+
+  const insertLinkSuggestion = (targetTitle: string) => {
+    const el = bodyRefs.current[activePage];
+    const activeText = pages[activePage] ?? "";
+    const cursor = el?.selectionStart ?? activeText.length;
+    const beforeCursor = activeText.slice(0, cursor);
+    const m = beforeCursor.match(/(?:^|[^[])\[\[([^\]\n]*)$/);
+    if (!m) return;
+    const matchPrefixIndex = cursor - m[1].length - 2;
+    const before = activeText.slice(0, matchPrefixIndex);
+    const after = activeText.slice(cursor);
+    const inserted = `[[${targetTitle}]] `;
+    const nextText = `${before}${inserted}${after}`;
+    setPageText(activePage, nextText);
+    markDirty();
+    requestAnimationFrame(() => {
+      if (el) {
+        resizeTextarea(el);
+        const newPos = before.length + inserted.length;
+        el.focus();
+        el.setSelectionRange(newPos, newPos);
+      }
+    });
+  };
+
+  const initialCat = useMemo(() => {
+    if (draftWins && draft?.categoryId && categories.some((c) => c.id === draft.categoryId)) {
+      return draft.categoryId;
+    }
+    if (entry?.categoryId && categories.some((c) => c.id === entry.categoryId)) {
+      return entry.categoryId;
+    }
+    if (initialCategoryId && categories.some((c) => c.id === initialCategoryId)) {
+      return initialCategoryId;
+    }
+    return categories[0]?.id ?? "cat_lainnya";
+  }, [categories, draft, draftWins, entry, initialCategoryId]);
+
+  const [catId, setCatId] = useState(initialCat);
+
+  useEffect(() => {
+    if (!categories.some((c) => c.id === catId) && categories.length > 0) {
+      setCatId(categories[0]?.id ?? "cat_lainnya");
+    }
+  }, [categories, catId]);
+  const [proModalOpen, setProModalOpen] = useState(false);
 
   // Flat join of ALL pages: single surface for GC, lightbox ordering and the
   // saved `body` field — search/list/GC keep working unchanged.
@@ -847,6 +1179,8 @@ export function NotebookEditor({
         pages,
         categoryId: catId,
         isPinned,
+        paraType,
+        takeaway,
         createdAt: createdAtRef.current
       });
       setDraftSaved(true);
@@ -854,7 +1188,7 @@ export function NotebookEditor({
     return () => {
       if (draftTimerRef.current) clearTimeout(draftTimerRef.current);
     };
-  }, [title, pages, catId, isPinned, dirty, draftKey]);
+  }, [title, pages, catId, isPinned, paraType, takeaway, dirty, draftKey]);
 
   const resolveTitle = useCallback(() => {
     const trimmed = title.trim();
@@ -920,12 +1254,41 @@ export function NotebookEditor({
     return next;
   };
 
+  // Delete a specific page: clean up images on that page, remove from list, and clamp active page.
+  const handleDeletePage = useCallback((pageIdx: number) => {
+    setPages((prev) => {
+      const targetPage = prev[pageIdx] ?? "";
+      const photoIds = photoIdsInBody(targetPage);
+      for (const imgId of photoIds) {
+        void deleteImage(imgId);
+      }
+      const next = deletePageAtIndex(prev, pageIdx);
+      setActivePage((cur) => Math.min(cur, Math.max(0, next.length - 1)));
+      return next;
+    });
+    markDirty();
+    hapticPress("light");
+  }, []);
+
+  const cleanAllBlankPages = useCallback(() => {
+    setPages((prev) => {
+      const filtered = prev.filter((p) => p.trim().length > 0 || photoIdsInBody(p).length > 0);
+      const next = filtered.length > 0 ? filtered : [""];
+      setActivePage((cur) => Math.min(cur, next.length - 1));
+      return next;
+    });
+    markDirty();
+    hapticPress("light");
+  }, []);
+
   const handleAddImages = async (files: FileList | null) => {
     if (!files || files.length === 0) return;
     setPhotoError("");
     const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif"];
     const MAX_BYTES = 10 * 1024 * 1024;
-    const MAX_COUNT = 20;
+    const FREE_MAX_COUNT = 3;
+    const PRO_MAX_COUNT = 30;
+    const MAX_COUNT = store.isPro ? PRO_MAX_COUNT : FREE_MAX_COUNT;
 
     const arr = Array.from(files);
     for (const f of arr) {
@@ -939,6 +1302,16 @@ export function NotebookEditor({
         resetInputs();
         return;
       }
+    }
+    if (!store.isPro && images.length + arr.length > FREE_MAX_COUNT) {
+      setPhotoError(
+        lang === "id"
+          ? "Akun gratis dibatasi 3 foto per catatan. Buka Zendo Pro untuk foto & mindmap tanpa batas."
+          : "Free tier is limited to 3 photos per note. Upgrade to Zendo Pro for unlimited photo attachments."
+      );
+      setProModalOpen(true);
+      resetInputs();
+      return;
     }
     if (images.length + arr.length > MAX_COUNT) {
       setPhotoError(t("notebook.photoInvalid"));
@@ -988,15 +1361,73 @@ export function NotebookEditor({
     resetInputs();
   };
 
+  const insertFormatting = (prefix: string, suffix: string = "") => {
+    hapticPress("light");
+    const targetPage = activePage;
+    const el = bodyRefs.current[targetPage];
+    const pg = pages[targetPage] ?? "";
+
+    if (!el) {
+      const needsNewline = pg.length > 0 && !pg.endsWith("\n");
+      const lead = needsNewline ? "\n" : "";
+      const nextBody = `${pg}${lead}${prefix}${suffix}`;
+      setPages((prev) => prev.map((p, idx) => (idx === targetPage ? nextBody : p)));
+      markDirty();
+      return;
+    }
+
+    const s = el.selectionStart;
+    const en = el.selectionEnd;
+    const selectedText = pg.slice(s, en);
+
+    let nextText: string;
+    let newCursorPos: number;
+
+    if (s !== en) {
+      nextText = `${pg.slice(0, s)}${prefix}${selectedText}${suffix}${pg.slice(en)}`;
+      newCursorPos = s + prefix.length + selectedText.length + suffix.length;
+    } else if (prefix.startsWith("- [ ]") || prefix.startsWith("- ") || prefix.startsWith("1. ") || prefix.startsWith("### ")) {
+      const before = pg.slice(0, s);
+      const lineStart = before.lastIndexOf("\n") + 1;
+      const currentLine = pg.slice(lineStart, s);
+      const afterCursor = pg.slice(s);
+
+      if (currentLine.trim() === "") {
+        nextText = `${pg.slice(0, lineStart)}${prefix}${afterCursor}`;
+        newCursorPos = lineStart + prefix.length;
+      } else {
+        const needsNewline = s > 0 && pg[s - 1] !== "\n";
+        const lead = needsNewline ? "\n" : "";
+        nextText = `${pg.slice(0, s)}${lead}${prefix}${afterCursor}`;
+        newCursorPos = s + lead.length + prefix.length;
+      }
+    } else {
+      nextText = `${pg.slice(0, s)}${prefix}${suffix}${pg.slice(s)}`;
+      newCursorPos = s + prefix.length;
+    }
+
+    setPageText(targetPage, nextText);
+    markDirty();
+    requestAnimationFrame(() => {
+      resizeTextarea(el);
+      el.focus();
+      el.setSelectionRange(newCursorPos, newCursorPos);
+    });
+  };
+
   const handleSave = useCallback(
     (andBack = true) => {
       const timestamp = nowIso();
+      const cleanPages = trimTrailingBlankPages(pages);
+      const cleanBody = joinPages(cleanPages);
       store.saveNotebookEntry({
         id: entryIdRef.current,
         title: resolveTitle(),
-        body: allBody,
-        pages,
+        body: cleanBody,
+        pages: cleanPages,
         categoryId: catId,
+        paraType,
+        takeaway: takeaway.trim() || undefined,
         tags: entry?.tags ?? [],
         isPinned,
         images,
@@ -1005,7 +1436,7 @@ export function NotebookEditor({
       });
       // GC orphaned blobs: ids we tracked but whose {{img:…}} marker line no longer
       // exists in the saved body (marker deleted while editing).
-      const referenced = matchImageMarkers(allBody);
+      const referenced = matchImageMarkers(cleanBody);
       for (const imgId of images) {
         if (!referenced.has(imgId)) void deleteImage(imgId);
       }
@@ -1015,7 +1446,7 @@ export function NotebookEditor({
       window.setTimeout(() => setSavedFlash(false), 1200);
       if (andBack) onBack();
     },
-    [allBody, pages, catId, entry?.tags, isPinned, images, onBack, resolveTitle, store, draftKey]
+    [pages, catId, paraType, takeaway, entry?.tags, isPinned, images, onBack, resolveTitle, store, draftKey]
   );
 
   // Enter-autolist + Backspace-unlist: native-feel list continuation in the
@@ -1053,7 +1484,7 @@ export function NotebookEditor({
       });
     } else if (e.key === "Backspace") {
       if (s !== lineStart + line.length) return; // not at line end
-      if (!/^(\s*)([-*]|(?:\d+[.)])|(?:\[[ xX]\]))\s*$/.test(line)) return;
+      if (!/^(\s*)(?:([-*])\s+)?(\[[ xX]\]|[-*]|(?:\d+[.)]))\s*$/.test(line)) return;
       e.preventDefault();
       setPageText(i, pg.slice(0, lineStart) + pg.slice(s));
       markDirty();
@@ -1175,93 +1606,133 @@ export function NotebookEditor({
       </div>
 
       {focusMode ? null : (
-      <div className="flex items-center gap-2 overflow-x-auto pb-6 pt-3 scrollbar-none">
-        {categories.map((cat) => {
-          const hex = catHex(cat.id);
-          const active = catId === cat.id;
-          const menuOpen = catMenu?.id === cat.id;
-          return (
-            <div key={cat.id} className="relative shrink-0">
-              <div
-                className="flex min-h-9 items-center rounded-full border py-1.5 pl-2.5 pr-1.5 text-xs font-semibold transition duration-200"
-                style={{
-                  borderColor: active ? hex : "var(--color-border-strong)",
-                  backgroundColor: active ? `${hex}18` : "var(--color-surface)"
-                }}
-              >
-                <button
-                  type="button"
-                  aria-pressed={active}
-                  onClick={() => {
-                    setCatId(cat.id);
-                    markDirty();
+        <>
+        <div className="flex items-center gap-1.5 overflow-x-auto pb-3 pt-2 scrollbar-none">
+          {categories.map((cat) => {
+            const hex = catHex(cat.id);
+            const active = catId === cat.id;
+            const menuOpen = catMenu?.id === cat.id;
+            return (
+              <div key={cat.id} className="relative shrink-0">
+                <div
+                  className="flex h-8 items-center rounded-full border pl-2.5 pr-1 text-xs font-medium transition-all"
+                  style={{
+                    borderColor: active ? `${hex}88` : "var(--color-border)",
+                    backgroundColor: active ? `${hex}18` : "var(--color-surface)",
+                    color: active ? hex : "var(--color-text-muted)"
                   }}
-                  className="flex min-h-9 items-center gap-1.5 text-xs font-semibold active:scale-[0.97]"
-                  style={{ color: active ? hex : "var(--color-text-muted)" }}
                 >
-                  <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: active ? hex : "var(--color-text-soft)" }} />
-                  {cat.name}
-                </button>
-                <button
-                  type="button"
-                  aria-label={t("notebook.categoryMenu", { name: cat.name })}
-                  aria-haspopup="menu"
-                  aria-expanded={menuOpen}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setCatMenu((cur) => (cur?.id === cat.id ? null : { id: cat.id, anchor: e.currentTarget }));
+                  <button
+                    type="button"
+                    aria-pressed={active}
+                    onClick={() => {
+                      setCatId(cat.id);
+                      markDirty();
+                    }}
+                    className="flex items-center gap-1.5 text-xs font-medium active:scale-[0.97]"
+                  >
+                    <span
+                      className="h-1.5 w-1.5 rounded-full shrink-0"
+                      style={{ backgroundColor: active ? hex : "var(--color-text-soft)" }}
+                    />
+                    <span className="whitespace-nowrap">{cat.name}</span>
+                  </button>
+                  <button
+                    type="button"
+                    aria-label={t("notebook.categoryMenu", { name: cat.name })}
+                    aria-haspopup="menu"
+                    aria-expanded={menuOpen}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setCatMenu((cur) => (cur?.id === cat.id ? null : { id: cat.id, anchor: e.currentTarget }));
+                    }}
+                    className={`ml-1 grid h-5 w-5 place-items-center rounded-full transition ${
+                      menuOpen ? "bg-monk-soft text-monk-text" : "text-monk-text-soft hover:bg-monk-soft/60 hover:text-monk-text"
+                    }`}
+                  >
+                    <MoreVertical size={12} strokeWidth={2} />
+                  </button>
+                </div>
+                <CategoryMenu
+                  trigger={catMenu?.anchor ?? null}
+                  cat={cat}
+                  count={entriesInCat(cat.id)}
+                  open={menuOpen}
+                  canDelete={categories.length > 1}
+                  onClose={() => setCatMenu(null)}
+                  onRename={(name) => {
+                    setCatMenu(null);
+                    setRenameCat({ id: cat.id, name });
                   }}
-                  className={`grid h-5 w-5 place-items-center rounded-full transition ${menuOpen ? "bg-monk-soft text-monk-text" : "text-monk-text-soft hover:bg-monk-soft/60 hover:text-monk-text"}`}
-                >
-                  <MoreVertical size={12} strokeWidth={2} />
-                </button>
+                  onDelete={() => {
+                    setCatMenu(null);
+                    setPendingDeleteCat({ id: cat.id, name: cat.name });
+                    setConfirmKind("delete-cat-editor");
+                  }}
+                />
               </div>
-              <CategoryMenu
-                trigger={catMenu?.anchor ?? null}
-                cat={cat}
-                count={entriesInCat(cat.id)}
-                open={menuOpen}
-                canDelete={categories.length > 1}
-                onClose={() => setCatMenu(null)}
-                onRename={(name) => {
-                  setCatMenu(null);
-                  setRenameCat({ id: cat.id, name });
+            );
+          })}
+          <button
+            type="button"
+            onClick={() => setShowNewCat((v) => !v)}
+            aria-expanded={showNewCat}
+            aria-controls="nb-new-cat"
+            className="flex h-8 shrink-0 items-center rounded-full border border-dashed border-monk-border px-2.5 text-xs font-medium text-monk-muted hover:border-monk-accent hover:text-monk-accent transition whitespace-nowrap"
+          >
+            {t("notebook.addCategory")}
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setIsPinned((v) => !v);
+              markDirty();
+            }}
+            aria-pressed={isPinned}
+            className={`ml-auto flex h-8 shrink-0 items-center gap-1.5 rounded-full border px-3 text-xs font-medium transition whitespace-nowrap ${
+              isPinned
+                ? "border-monk-accent/40 bg-monk-accent-soft text-monk-accent font-semibold"
+                : "border-monk-border text-monk-muted hover:border-monk-accent hover:text-monk-accent"
+            }`}
+          >
+            {isPinned ? <Pin size={12} className="shrink-0" /> : <PinOff size={12} className="shrink-0" />}
+            <span>{isPinned ? t("notebook.pinned") : t("notebook.pin")}</span>
+          </button>
+        </div>
+        <div className="flex items-center gap-1.5 overflow-x-auto pb-2 pt-0.5 scrollbar-none text-xs">
+          <span className="text-[10px] font-bold uppercase tracking-wider text-monk-muted shrink-0 mr-1">
+            {t("notebook.paraLabel")}:
+          </span>
+          {(
+            [
+              { id: undefined, label: t("notebook.paraAll") },
+              { id: "project", label: t("notebook.paraProjects") },
+              { id: "area", label: t("notebook.paraAreas") },
+              { id: "resource", label: t("notebook.paraResources") },
+              { id: "archive", label: t("notebook.paraArchives") },
+            ] as const
+          ).map((tab) => {
+            const active = paraType === tab.id;
+            return (
+              <button
+                key={tab.id ?? "none"}
+                type="button"
+                onClick={() => {
+                  setParaType(tab.id as ParaType | undefined);
+                  markDirty();
                 }}
-                onDelete={() => {
-                  setCatMenu(null);
-                  setPendingDeleteCat({ id: cat.id, name: cat.name });
-                  setConfirmKind("delete-cat-editor");
-                }}
-              />
-            </div>
-          );
-        })}
-        <button
-          type="button"
-          onClick={() => setShowNewCat((v) => !v)}
-          aria-expanded={showNewCat}
-          aria-controls="nb-new-cat"
-          className="flex min-h-9 shrink-0 items-center rounded-full border border-dashed border-monk-border px-2.5 text-xs font-semibold text-monk-muted hover:border-monk-accent hover:text-monk-accent"
-        >
-          {t("notebook.addCategory")}
-        </button>
-        <button
-          type="button"
-          onClick={() => {
-            setIsPinned((v) => !v);
-            markDirty();
-          }}
-          aria-pressed={isPinned}
-          className={`ml-auto flex min-h-9 shrink-0 items-center gap-1 rounded-full border px-2.5 text-xs font-semibold transition ${
-            isPinned
-              ? "border-monk-accent/40 bg-monk-accent-soft text-monk-accent"
-              : "border-monk-border text-monk-muted"
-          }`}
-        >
-          {isPinned ? <Pin size={12} /> : <PinOff size={12} />}
-          {isPinned ? t("notebook.pinned") : t("notebook.pin")}
-        </button>
-      </div>
+                className={`shrink-0 rounded-full px-2.5 py-0.5 text-[11px] font-semibold transition active:scale-95 ${
+                  active
+                    ? "bg-monk-accent text-monk-bg shadow-xs"
+                    : "bg-monk-soft/80 text-monk-muted hover:bg-monk-soft hover:text-monk-text border border-monk-border/40"
+                }`}
+              >
+                {tab.label}
+              </button>
+            );
+          })}
+        </div>
+      </>
       )}
 
       {showNewCat ? (
@@ -1319,6 +1790,129 @@ export function NotebookEditor({
         onChange={(e) => void handleAddImages(e.target.files)}
       />
 
+      {/* Sleek Zen Markdown Island Toolbar */}
+      <div className="mb-3 flex items-center gap-1 overflow-x-auto rounded-xl border border-monk-border/60 bg-monk-surface/90 p-1 backdrop-blur-md shadow-xs scrollbar-none">
+        {/* To-Do Checklist */}
+        <button
+          type="button"
+          onClick={() => insertFormatting("- [ ] ")}
+          title={t("notebook.todoTooltip")}
+          className="flex h-8 shrink-0 whitespace-nowrap items-center gap-1.5 rounded-lg px-2.5 text-xs font-semibold text-monk-accent bg-monk-accent/10 transition hover:bg-monk-accent/15 active:scale-95"
+        >
+          <ListTodo size={14} className="shrink-0 text-monk-accent" />
+          <span>To-Do</span>
+        </button>
+
+        {/* Bullet List */}
+        <button
+          type="button"
+          onClick={() => insertFormatting("- ")}
+          title={t("notebook.bulletTooltip")}
+          className="flex h-8 shrink-0 whitespace-nowrap items-center gap-1.5 rounded-lg px-2.5 text-xs font-medium text-monk-text-soft transition hover:bg-monk-soft/70 hover:text-monk-text active:scale-95"
+        >
+          <List size={14} className="shrink-0" />
+          <span>Poin</span>
+        </button>
+
+        {/* Numbered List */}
+        <button
+          type="button"
+          onClick={() => insertFormatting("1. ")}
+          title={t("notebook.numberTooltip")}
+          className="flex h-8 shrink-0 whitespace-nowrap items-center gap-1.5 rounded-lg px-2.5 text-xs font-medium text-monk-text-soft transition hover:bg-monk-soft/70 hover:text-monk-text active:scale-95"
+        >
+          <ListOrdered size={14} className="shrink-0" />
+          <span>Nomor</span>
+        </button>
+
+        {/* Heading */}
+        <button
+          type="button"
+          onClick={() => insertFormatting("### ")}
+          title={t("notebook.headingTooltip")}
+          className="flex h-8 shrink-0 whitespace-nowrap items-center gap-1.5 rounded-lg px-2.5 text-xs font-medium text-monk-text-soft transition hover:bg-monk-soft/70 hover:text-monk-text active:scale-95"
+        >
+          <Heading size={14} className="shrink-0" />
+          <span>Judul</span>
+        </button>
+
+        <div className="h-4 w-px bg-monk-border/50 shrink-0 mx-0.5" />
+
+        {/* Bold */}
+        <button
+          type="button"
+          onClick={() => insertFormatting("**", "**")}
+          title={t("notebook.boldTooltip")}
+          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-xs font-bold text-monk-text-soft transition hover:bg-monk-soft/70 hover:text-monk-text active:scale-95"
+        >
+          <Bold size={13} className="shrink-0" />
+        </button>
+
+        {/* Italic */}
+        <button
+          type="button"
+          onClick={() => insertFormatting("*", "*")}
+          title={t("notebook.italicTooltip")}
+          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-xs font-semibold text-monk-text-soft transition hover:bg-monk-soft/70 hover:text-monk-text active:scale-95"
+        >
+          <Italic size={13} className="shrink-0" />
+        </button>
+
+        {/* Quote */}
+        <button
+          type="button"
+          onClick={() => insertFormatting("> ")}
+          title={t("notebook.quoteTooltip")}
+          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-xs font-semibold text-monk-text-soft transition hover:bg-monk-soft/70 hover:text-monk-text active:scale-95"
+        >
+          <Quote size={13} className="shrink-0" />
+        </button>
+
+        {/* Wiki Link */}
+        <button
+          type="button"
+          onClick={() => insertFormatting("[[", "]]")}
+          title={t("notebook.suggestLink")}
+          className="flex h-8 shrink-0 whitespace-nowrap items-center gap-1.5 rounded-lg px-2 text-xs font-medium text-monk-text-soft transition hover:bg-monk-soft/70 hover:text-monk-text active:scale-95"
+        >
+          <Link2 size={13} className="shrink-0" />
+          <span>[[ ]]</span>
+        </button>
+
+        <div className="h-4 w-px bg-monk-border/50 shrink-0 mx-0.5" />
+
+        {/* Photo from Gallery */}
+        <button
+          type="button"
+          onClick={() => galleryInputRef.current?.click()}
+          title={t("notebook.addFromGallery")}
+          className="flex h-8 shrink-0 whitespace-nowrap items-center gap-1.5 rounded-lg px-2.5 text-xs font-medium text-monk-text-soft transition hover:bg-monk-soft/70 hover:text-monk-text active:scale-95"
+        >
+          <ImagePlus size={14} className="shrink-0" />
+          <span>{t("notebook.photoLabel")}</span>
+        </button>
+      </div>
+
+      {/* Wiki-link autocomplete suggestions */}
+      {linkSuggestions.length > 0 && (
+        <div className="mb-2.5 flex items-center gap-1.5 overflow-x-auto rounded-xl border border-monk-accent/40 bg-monk-surface/95 p-1.5 shadow-sm scrollbar-none animate-scale-in">
+          <span className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-monk-accent pl-1.5 shrink-0">
+            <Link2 size={12} />
+            <span>{t("notebook.suggestLink")}:</span>
+          </span>
+          {linkSuggestions.map((sug) => (
+            <button
+              key={sug.id}
+              type="button"
+              onClick={() => insertLinkSuggestion(sug.title || t("notebook.untitled"))}
+              className="shrink-0 rounded-lg bg-monk-accent/15 px-2.5 py-1 text-xs font-semibold text-monk-accent transition hover:bg-monk-accent hover:text-monk-bg active:scale-95"
+            >
+              {sug.title || t("notebook.untitled")}
+            </button>
+          ))}
+        </div>
+      )}
+
       <div
         ref={sheetRef}
         className="nb-open-page nb-open-enter"
@@ -1337,8 +1931,57 @@ export function NotebookEditor({
           }}
           className="nb-page-title"
         />
+
+        {/* Tier 3 Progressive Distillation: Executive Takeaway */}
+        <div className="mx-4 my-2.5 rounded-xl border border-monk-border/60 bg-monk-soft/30 p-2.5 transition focus-within:border-monk-accent/60">
+          <label className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-monk-accent mb-1">
+            <Sparkles size={12} />
+            <span>{t("notebook.takeawayLabel")}</span>
+          </label>
+          <textarea
+            rows={1}
+            value={takeaway}
+            onChange={(e) => {
+              setTakeaway(e.target.value);
+              markDirty();
+              queueResize(e.currentTarget);
+            }}
+            placeholder={t("notebook.takeawayPlaceholder")}
+            className="w-full resize-none bg-transparent text-xs italic font-serif leading-relaxed text-monk-text placeholder:text-monk-text-soft/60 focus:outline-none"
+          />
+        </div>
         {pages.map((pg, i) => (
           <div key={i} className="nb-sheet-stack">
+            {/* Sheet Folio Top Header */}
+            <div className="flex items-center justify-between px-3 py-1.5 border-b border-monk-border/40 bg-monk-soft/30 text-xs">
+              <div className="flex items-center gap-1.5 font-medium text-monk-muted">
+                <span
+                  className={`h-1.5 w-1.5 rounded-full transition-colors ${
+                    activePage === i ? "bg-monk-accent scale-110 shadow-xs" : "bg-monk-text-soft/40"
+                  }`}
+                />
+                <span className="font-semibold text-monk-text text-[11px]">
+                  {lang === "id" ? `Lembar #${i + 1}` : `Sheet #${i + 1}`}
+                </span>
+                <span className="text-monk-text-soft">·</span>
+                <span className="text-[10px] text-monk-muted">
+                  {t("notebook.words", { n: wordCount(pg) })}
+                </span>
+              </div>
+              {pages.length > 1 ? (
+                <button
+                  type="button"
+                  onClick={() => handleDeletePage(i)}
+                  aria-label={t("notebook.removePage")}
+                  title={t("notebook.removePage")}
+                  className="flex items-center gap-1 rounded-md px-2 py-0.5 text-[11px] font-semibold text-monk-danger/80 transition hover:bg-monk-danger/10 hover:text-monk-danger active:scale-95"
+                >
+                  <Trash2 size={11} strokeWidth={2} />
+                  <span>{lang === "id" ? "Hapus Lembar" : "Delete Sheet"}</span>
+                </button>
+              ) : null}
+            </div>
+
             <textarea
               ref={setBodyRef(i)}
               aria-label={t("notebook.bodyPlaceholder")}
@@ -1351,45 +1994,65 @@ export function NotebookEditor({
                 const v = e.target.value;
                 setPageText(i, v);
                 markDirty();
-                // Trailing empty page collapses back into the previous one so a
-                // blank sheet never lingers at the end of the stack.
-                if (v.trim() === "" && i === pages.length - 1 && pages.length > 1) {
-                  setPages((prev) => prev.slice(0, -1));
-                  setActivePage((cur) => Math.min(cur, Math.max(0, pages.length - 2)));
-                  return;
-                }
-                // Full-page detection runs BEFORE auto-grow resize: at this point
-                // the box is still at its previous height, so scrollHeight (real
-                // content height) vs clientHeight (previous box height) tells us
-                // the content has overflowed the page's visible area. After
-                // resizeTextarea sets height = scrollHeight the two are equal and
-                // "full" can't be detected. An empty sheet reports 1-line content
-                // (< 432px min-height), so it never appends.
                 queueResize(el);
-                if (i === pages.length - 1 && el.scrollHeight > el.clientHeight) {
-                  setPages((prev) => appendPage(prev));
-                }
               }}
               className="nb-page-body"
             />
-            {groupPhotoRuns(renderBodyMarkdown(pg, openPhotoInBody, false, handleDeletePhoto))}
-            <div className="nb-folio">
-              <span>
-                {i + 1} / {pages.length}
-              </span>
-              <span>·</span>
-              <span>{t("notebook.words", { n: words })}</span>
-              <span>·</span>
-              <span>
-                {new Date().toLocaleDateString(dateLocale, {
-                  day: "numeric",
-                  month: "short",
-                  year: "numeric"
-                })}
-              </span>
+            {photoIdsInBody(pg).length > 0 ? (
+              <div className="nb-photo-card pb-2">
+                <div
+                  className={`nb-photo-grid ${
+                    photoIdsInBody(pg).length >= 5
+                      ? "g3"
+                      : photoIdsInBody(pg).length >= 2
+                        ? "g2"
+                        : ""
+                  }`}
+                >
+                  {photoIdsInBody(pg).map((imgId) => (
+                    <InlinePhoto
+                      key={imgId}
+                      id={imgId}
+                      onOpen={openPhotoInBody}
+                      onDelete={handleDeletePhoto}
+                    />
+                  ))}
+                </div>
+              </div>
+            ) : null}
+            <div className="nb-folio flex items-center justify-between">
+              <div className="flex items-center gap-1.5 text-monk-muted text-[11px]">
+                <span>
+                  {i + 1} / {pages.length}
+                </span>
+                <span>·</span>
+                <span>{pg.length} {lang === "id" ? "karakter" : "chars"}</span>
+              </div>
+              {pages.some((p) => p.trim().length === 0) && pages.length > 1 && i === pages.length - 1 ? (
+                <button
+                  type="button"
+                  onClick={cleanAllBlankPages}
+                  className="flex items-center gap-1 text-[10px] font-semibold text-monk-accent hover:underline px-2 py-0.5 rounded-md hover:bg-monk-accent-soft transition"
+                >
+                  <Sparkles size={11} />
+                  <span>{lang === "id" ? "Bersihkan Lembar Kosong" : "Clean Empty Sheets"}</span>
+                </button>
+              ) : null}
             </div>
           </div>
         ))}
+
+        <div className="mt-2 mb-3">
+          <button
+            type="button"
+            onClick={() => setPages((prev) => appendPage(prev))}
+            className="flex w-full min-h-11 items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-monk-border/80 bg-monk-soft/30 py-2.5 text-xs font-bold text-monk-muted transition hover:border-monk-accent hover:bg-monk-accent-soft hover:text-monk-accent active:scale-[0.99]"
+          >
+            <Plus size={15} strokeWidth={2.2} />
+            <span>{t("notebook.addPage")}</span>
+          </button>
+        </div>
+
         <div className="nb-photos">
           <div className="nb-photos-actions">
             <button type="button" className="nb-photo-btn" onClick={() => galleryInputRef.current?.click()}>
@@ -1542,6 +2205,7 @@ export function NotebookEditor({
           onDelete={handleDeletePhoto}
         />
       ) : null}
+      <ZendoProModal isOpen={proModalOpen} onClose={() => setProModalOpen(false)} />
     </div>
   );
 }

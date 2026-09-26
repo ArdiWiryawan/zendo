@@ -22,13 +22,19 @@ describe("autolistMarker", () => {
   it("continues tasks", () => {
     expect(autolistMarker("[ ] x")).toBe("[ ] ");
     expect(autolistMarker("[x] x")).toBe("[ ] ");
+    expect(autolistMarker("- [ ] x")).toBe("- [ ] ");
+    expect(autolistMarker("- [x] x")).toBe("- [ ] ");
+    expect(autolistMarker("* [ ] x")).toBe("* [ ] ");
   });
   it("preserves indentation", () => {
     expect(autolistMarker("  - x")).toBe("  - ");
+    expect(autolistMarker("  - [ ] x")).toBe("  - [ ] ");
   });
   it("returns empty marker to end an empty item", () => {
     expect(autolistMarker("- ")).toBe("");
     expect(autolistMarker("1. ")).toBe("");
+    expect(autolistMarker("[ ] ")).toBe("");
+    expect(autolistMarker("- [ ] ")).toBe("");
   });
   it("returns null for plain lines and bare markers", () => {
     expect(autolistMarker("plain")).toBeNull();
@@ -57,6 +63,13 @@ describe("renderBodyMarkdown", () => {
     const out = html("[x] done\n[ ] todo");
     expect(out).toContain('class="md-task-box checked"');
     expect(out).toContain('class="md-task-box"');
+  });
+  it("renders dash task items checked/unchecked", () => {
+    const out = html("- [x] done\n- [ ] todo");
+    expect(out).toContain('class="md-task-box checked"');
+    expect(out).toContain('class="md-task-box"');
+    expect(out).toContain(">done</span>");
+    expect(out).toContain(">todo</span>");
   });
   it("renders headings in handwriting class", () => {
     const out = html("### Hi");

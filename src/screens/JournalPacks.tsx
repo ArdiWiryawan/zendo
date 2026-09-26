@@ -1,9 +1,12 @@
 import { useState, useMemo, useEffect } from "react";
 import { useMonkStore } from "../store/useMonkStore";
 import { Card, PrimaryButton, SecondaryButton, GhostButton, EmptyState } from "../components/ui";
-import { Lock, ChevronLeft, Check } from "lucide-react";
+import { Lock, ChevronLeft, Check, Crown, Sparkles } from "lucide-react";
 import type { JournalPack, JournalPackSession } from "../types/app";
 import { useT, useLanguage } from "../i18n";
+import { ZendoProModal } from "../components/ZendoProModal";
+import { addDaysToDate, getTodayDateString } from "../lib/date";
+import { hapticPress } from "../lib/haptics";
 
 export default function JournalPacks() {
   const store = useMonkStore();
@@ -11,6 +14,7 @@ export default function JournalPacks() {
   const sessions = store.journalPackSessions;
   const [activePackId, setActivePackId] = useState<string | null>(null);
   const [purchasePackId, setPurchasePackId] = useState<string | null>(null);
+  const [proModalOpen, setProModalOpen] = useState(false);
 
   const activePack = activePackId ? packs.find((p) => p.id === activePackId) : null;
 
@@ -22,8 +26,24 @@ export default function JournalPacks() {
 
   return (
     <>
-      <PackList packs={packs} sessions={sessions} onStart={setActivePackId} onPurchase={setPurchasePackId} />
-      {purchasePackId ? <PurchaseModal packId={purchasePackId} onClose={() => setPurchasePackId(null)} /> : null}
+      <PackList
+        packs={packs}
+        sessions={sessions}
+        onStart={setActivePackId}
+        onPurchase={setPurchasePackId}
+        onOpenPro={() => setProModalOpen(true)}
+      />
+      {purchasePackId ? (
+        <PurchaseModal
+          packId={purchasePackId}
+          onClose={() => setPurchasePackId(null)}
+          onOpenPro={() => {
+            setPurchasePackId(null);
+            setProModalOpen(true);
+          }}
+        />
+      ) : null}
+      <ZendoProModal isOpen={proModalOpen} onClose={() => setProModalOpen(false)} />
     </>
   );
 }
@@ -33,15 +53,19 @@ function PackList({
   sessions,
   onStart,
   onPurchase,
+  onOpenPro,
 }: {
   packs: JournalPack[];
   sessions: JournalPackSession[];
   onStart: (packId: string) => void;
   onPurchase: (packId: string) => void;
+  onOpenPro: () => void;
 }) {
   const store = useMonkStore();
   const t = useT();
+  const lang = useLanguage();
   const purchased = store.purchasedPackIds;
+  const isPro = store.isPro;
 
   const sorted = useMemo(() => {
     return packs
@@ -62,12 +86,12 @@ function PackList({
         const aProg = a.activeSession && (a.activeSession.progress ?? 0) < 100 ? 0 : 1;
         const bProg = b.activeSession && (b.activeSession.progress ?? 0) < 100 ? 0 : 1;
         if (aProg !== bProg) return aProg - bProg;
-        const aLock = a.pack.isPremium && !purchased.includes(a.pack.id) ? 1 : 0;
-        const bLock = b.pack.isPremium && !purchased.includes(b.pack.id) ? 1 : 0;
+        const aLock = a.pack.isPremium && !isPro && !purchased.includes(a.pack.id) ? 1 : 0;
+        const bLock = b.pack.isPremium && !isPro && !purchased.includes(b.pack.id) ? 1 : 0;
         if (aLock !== bLock) return aLock - bLock;
         return a.pack.title.localeCompare(b.pack.title);
       });
-  }, [packs, sessions, purchased]);
+  }, [packs, sessions, purchased, isPro]);
 
   if (!packs.length) {
     return (
@@ -83,6 +107,34 @@ function PackList({
 
   return (
     <div className="space-y-6">
+      {!isPro && (
+        <div className="rounded-2xl border border-monk-accent/40 bg-gradient-to-r from-monk-accent-soft/40 via-monk-surface to-monk-surface p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-sm">
+          <div className="flex items-center gap-3">
+            <div className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-monk-accent text-white shadow-sm">
+              <Crown size={18} />
+            </div>
+            <div>
+              <p className="text-xs font-bold text-monk-text">
+                {lang === "id" ? "Buka Semua 6+ Guided Reflection Packs" : "Unlock All 6+ Guided Reflection Packs"}
+              </p>
+              <p className="text-[11px] text-monk-muted">
+                {lang === "id"
+                  ? "Akses tak terbatas dengan Zendo Pro Lifetime (Mulai Rp 99.000 sekali bayar)"
+                  : "Unlimited access with Zendo Pro Lifetime (From Rp 99.000 once)"}
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={onOpenPro}
+            className="shrink-0 rounded-monk bg-monk-accent px-3.5 py-1.5 text-xs font-bold text-white shadow-sm transition active:scale-95 hover:opacity-90 flex items-center gap-1"
+          >
+            <Sparkles size={12} />
+            {lang === "id" ? "Buka Zendo Pro" : "Get Zendo Pro"}
+          </button>
+        </div>
+      )}
+
       {inProgress.length ? (
         <section className="space-y-3">
           <p className="text-[10px] font-bold uppercase tracking-widest text-monk-muted">{t("packs.continue")}</p>
@@ -90,7 +142,7 @@ function PackList({
             <PackCard
               key={item.pack.id}
               {...item}
-              purchased={purchased.includes(item.pack.id)}
+              purchased={isPro || purchased.includes(item.pack.id)}
               onStart={onStart}
               onPurchase={onPurchase}
             />
@@ -106,7 +158,7 @@ function PackList({
           <PackCard
             key={item.pack.id}
             {...item}
-            purchased={purchased.includes(item.pack.id)}
+            purchased={isPro || purchased.includes(item.pack.id)}
             onStart={onStart}
             onPurchase={onPurchase}
           />
@@ -191,11 +243,11 @@ function PackCard({
             ) : null}
           </div>
 
-          {hasSession ? (
+          {inProgress ? (
             <div className="mt-3">
-              <div className="mb-1 flex items-center justify-between text-[10px] text-monk-muted">
-                <span>{inProgress ? t("packs.inProgress") : t("packs.doneCount", { n: completedCount })}</span>
-                <span className="font-mono">{progress}%</span>
+              <div className="mb-1 flex items-center justify-between text-[11px] font-semibold text-monk-muted">
+                <span>{t("packs.inProgress")}</span>
+                <span>{progress}%</span>
               </div>
               <div className="h-1.5 overflow-hidden rounded-full bg-monk-soft">
                 <div
@@ -258,138 +310,169 @@ function PackSession({ pack, onBack }: { pack: JournalPack; onBack: () => void }
   });
   const [saved, setSaved] = useState(false);
   const [done, setDone] = useState(false);
+  const [bridgeCommitted, setBridgeCommitted] = useState(false);
 
-  if (!session) {
-    return (
-      <div className="py-12 text-center text-sm text-monk-muted">{t("packs.opening")}</div>
-    );
-  }
+  const currentQ = pack.questions[currentIndex];
+  const total = pack.questions.length;
+  const isLast = currentIndex === total - 1;
 
-  if (done || currentIndex >= pack.questions.length) {
-    return (
-      <Card className="p-8 text-center">
-        <div className="mx-auto mb-4 grid h-12 w-12 place-items-center rounded-full border border-monk-success/30 bg-monk-success-soft text-monk-success">
-          <Check size={22} strokeWidth={2.5} />
-        </div>
-        <p className="text-xl font-semibold text-monk-text">{t("packs.wellDone")}</p>
-        <p className="mt-2 text-sm text-monk-muted">
-          {t("packs.completedPack", { title: pack.title })}
-        </p>
-        <PrimaryButton className="mt-6" onClick={onBack}>
-          {t("packs.backToPacks")}
-        </PrimaryButton>
-      </Card>
-    );
-  }
-
-  const question = pack.questions[currentIndex];
-  const answeredCount = pack.questions.filter((q) =>
-    session.answers.some((a) => a.questionId === q.id && a.answer.trim())
-  ).length;
+  useEffect(() => {
+    if (!session) return;
+    const existing = session.answers.find((a) => a.questionId === currentQ?.id);
+    setInput(existing?.answer ?? "");
+    setSaved(false);
+  }, [currentIndex, currentQ?.id, session]);
 
   const handleSave = () => {
-    store.savePackAnswer(session.id, question.id, input.trim());
+    if (!session || !currentQ) return;
+    store.savePackAnswer(session.id, currentQ.id, input);
     setSaved(true);
-    setTimeout(() => setSaved(false), 1000);
   };
 
   const handleNext = () => {
-    store.savePackAnswer(session.id, question.id, input.trim());
-    if (currentIndex < pack.questions.length - 1) {
-      const nextIdx = currentIndex + 1;
-      setCurrentIndex(nextIdx);
-      const nextAnswer = session.answers.find((a) => a.questionId === pack.questions[nextIdx]?.id);
-      setInput(nextAnswer?.answer ?? "");
+    handleSave();
+    if (!isLast) {
+      setCurrentIndex((i) => i + 1);
     } else {
-      const isLast = currentIndex === pack.questions.length - 1;
-      if (isLast && session.completedAt) {
-        setDone(true);
-      } else {
-        store.completeJournalPack(session.id);
-        setDone(true);
-      }
+      if (session) store.completeJournalPack(session.id);
+      setDone(true);
     }
   };
 
+  const handlePrev = () => {
+    handleSave();
+    if (currentIndex > 0) setCurrentIndex((i) => i - 1);
+  };
+
+  if (done) {
+    const lastQ = pack.questions[pack.questions.length - 1];
+    const lastAnswer = session?.answers.find((a) => a.questionId === lastQ?.id)?.answer?.trim();
+
+    const handleBridgeAction = () => {
+      if (!lastAnswer) return;
+      const tomorrow = addDaysToDate(getTodayDateString(), 1);
+      store.createOrUpdateDayPlan(tomorrow, {
+        dayType: "goal",
+        mainAction: lastAnswer
+      });
+      setBridgeCommitted(true);
+      hapticPress("success");
+    };
+
+    return (
+      <div className="py-10 text-center max-w-md mx-auto">
+        <div className="mx-auto mb-4 grid h-16 w-16 place-items-center rounded-full border border-monk-success/30 bg-monk-success-soft text-2xl text-monk-success">
+          ✓
+        </div>
+        <h2 className="text-xl font-semibold text-monk-text">{t("packs.wellDone")}</h2>
+        <p className="mt-1 text-sm text-monk-muted">{t("packs.completedPack", { title: pack.title })}</p>
+
+        {lastAnswer ? (
+          <div className="mt-6 text-left rounded-2xl border border-monk-accent/30 bg-monk-surface p-4 shadow-sm">
+            <div className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-monk-accent">
+              <Sparkles size={14} />
+              <span>{t("packs.actionBridgeTitle")}</span>
+            </div>
+            <p className="mt-2 text-sm italic font-serif text-monk-text leading-relaxed">
+              "{lastAnswer}"
+            </p>
+            <div className="mt-3">
+              {bridgeCommitted ? (
+                <div className="flex items-center gap-2 text-xs font-semibold text-monk-success">
+                  <Check size={14} strokeWidth={2.5} />
+                  <span>{t("packs.actionBridgeSaved")}</span>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={handleBridgeAction}
+                  className="flex items-center gap-1.5 rounded-monk bg-monk-accent px-3 py-2 text-xs font-semibold text-white transition hover:bg-monk-accent-hover active:scale-95 shadow-sm"
+                >
+                  <Sparkles size={13} />
+                  <span>{t("packs.setAsTomorrowAction")}</span>
+                </button>
+              )}
+            </div>
+          </div>
+        ) : null}
+
+        <div className="mt-6 flex justify-center gap-3">
+          <PrimaryButton onClick={onBack}>{t("packs.backToPacks")}</PrimaryButton>
+        </div>
+      </div>
+    );
+  }
+
+  if (!currentQ) return null;
+
   return (
-    <div className="space-y-5">
+    <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <button
-          type="button"
-          onClick={onBack}
-          className="inline-flex items-center gap-1 text-xs font-semibold text-monk-muted transition hover:text-monk-accent"
-        >
-          <ChevronLeft size={14} /> {t("packs.back")}
-        </button>
-        <span className="text-[11px] font-mono text-monk-text-soft">
-          {currentIndex + 1}/{pack.questions.length}
+        <GhostButton onClick={onBack} className="!px-2">
+          <ChevronLeft size={16} className="mr-1 inline" /> {t("packs.back")}
+        </GhostButton>
+        <span className="text-xs font-semibold text-monk-muted">
+          {currentIndex + 1} / {total}
         </span>
       </div>
 
-      <div
-        className="flex gap-1.5"
-        aria-label={t("packs.progressAria", { done: answeredCount, total: pack.questions.length })}
-      >
-        {pack.questions.map((q, i) => {
-          const answered = session.answers.some((a) => a.questionId === q.id && a.answer.trim());
-          return (
-            <span
-              key={q.id}
-              className={`h-1.5 flex-1 rounded-full transition ${
-                i === currentIndex
-                  ? "bg-monk-accent"
-                  : answered
-                  ? "bg-monk-success/70"
-                  : "bg-monk-soft"
-              }`}
-            />
-          );
-        })}
+      <div>
+        <span className="text-[10px] font-bold uppercase tracking-wider text-monk-accent">
+          {pack.title}
+        </span>
+        <h2 className="mt-1 text-lg font-semibold leading-snug text-monk-text">
+          {currentQ.question}
+        </h2>
+        {currentQ.hint ? (
+          <p className="mt-1 text-xs text-monk-muted">{currentQ.hint}</p>
+        ) : null}
       </div>
 
-      <Card className="p-5">
-        <p className="text-[10px] font-bold uppercase tracking-widest text-monk-muted">{pack.title}</p>
-        <p className="mt-3 text-lg font-semibold leading-7 text-monk-text">{question.question}</p>
-        {question.hint ? (
-          <p className="mt-3 text-sm italic leading-5 text-monk-text-soft">— {question.hint}</p>
-        ) : null}
-      </Card>
-
-      <Card className="p-4">
+      <div className="space-y-2">
         <textarea
           value={input}
-          onChange={(e) => setInput(e.target.value)}
-          placeholder={t("packs.answerPlaceholder")}
-          className="min-h-[200px] w-full resize-none bg-transparent text-sm leading-7 text-monk-text outline-none placeholder:text-monk-muted"
-          style={{
-            backgroundImage:
-              "repeating-linear-gradient(transparent, transparent 27px, var(--color-monk-border, #2a251e) 27px, var(--color-monk-border, #2a251e) 28px)",
+          onChange={(e) => {
+            setInput(e.target.value);
+            setSaved(false);
           }}
+          placeholder={t("packs.answerPlaceholder")}
+          rows={6}
+          className="w-full resize-none rounded-monk border border-monk-border bg-monk-surface p-3 text-sm text-monk-text outline-none transition focus:border-monk-accent"
         />
-      </Card>
+        {saved ? (
+          <p className="text-right text-[11px] font-medium text-monk-muted">{t("packs.saved")}</p>
+        ) : null}
+      </div>
 
-      {saved ? <p className="text-center text-xs text-monk-success">{t("packs.saved")}</p> : null}
-
-      <div className="flex gap-3 pb-4">
-        <GhostButton className="flex-1" onClick={handleSave}>
-          {t("packs.save")}
-        </GhostButton>
-        <PrimaryButton className="flex-1" disabled={!input.trim()} onClick={handleNext}>
-          {currentIndex < pack.questions.length - 1 ? t("packs.next") : t("packs.complete")}
+      <div className="flex items-center justify-between pt-2">
+        <SecondaryButton onClick={handlePrev} disabled={currentIndex === 0}>
+          {t("packs.back")}
+        </SecondaryButton>
+        <PrimaryButton onClick={handleNext}>
+          {isLast ? t("packs.complete") : t("packs.next")}
         </PrimaryButton>
       </div>
     </div>
   );
 }
 
-function PurchaseModal({ packId, onClose }: { packId: string; onClose: () => void }) {
+function PurchaseModal({
+  packId,
+  onClose,
+  onOpenPro,
+}: {
+  packId: string;
+  onClose: () => void;
+  onOpenPro?: () => void;
+}) {
   const store = useMonkStore();
   const t = useT();
+  const lang = useLanguage();
   const pack = store.journalPacks.find((p) => p.id === packId);
   const [processing, setProcessing] = useState(false);
-  const [error, setError] = useState("");
-  const [done, setDone] = useState(false);
   const [demo, setDemo] = useState(false);
+  const [done, setDone] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   // After Bayar GG redirects back (?purchased=<packId>), the webhook has
   // persisted the purchase — mark it unlocked immediately and refresh from Supabase.
@@ -408,33 +491,20 @@ function PurchaseModal({ packId, onClose }: { packId: string; onClose: () => voi
 
   const handlePurchase = async () => {
     setProcessing(true);
-    setError("");
+    setError(null);
     try {
       const resp = await fetch("/api/bayargg-checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ packId }),
       });
-      const contentType = resp.headers.get("content-type") ?? "";
-      // `/api/*` isn't served by `vite dev` (returns the SPA fallback HTML).
-      // Treat a non-JSON reply as "no endpoint" → client-side demo unlock.
-      if (!resp.ok || !contentType.includes("application/json")) {
-        setDemo(true);
-        store.purchasePack(packId);
-        setDone(true);
-        setProcessing(false);
-        return;
-      }
       const json = await resp.json().catch(() => ({}));
-      if (!json?.url) {
+      if (!resp.ok || !json.url) {
         setError(t("packs.checkoutError"));
         setProcessing(false);
         return;
       }
       setDemo(Boolean(json.demo));
-      // Redirect to Bayar GG's hosted checkout (or straight back, in demo mode).
-      // On success Bayar GG sends the buyer back to the redirectUrl with
-      // ?purchased=<packId>.
       window.location.href = json.url;
     } catch {
       setDemo(true);
@@ -474,12 +544,25 @@ function PurchaseModal({ packId, onClose }: { packId: string; onClose: () => voi
               <p className="mt-1 text-sm text-monk-muted">{pack.title}</p>
             </div>
 
-            <div className="mb-5 space-y-1 rounded-monk border border-monk-border bg-monk-soft p-4 text-sm text-monk-text-soft">
+            <div className="mb-4 space-y-1 rounded-monk border border-monk-border bg-monk-soft p-4 text-sm text-monk-text-soft">
               <p>{t("packs.deepQuestions", { n: pack.questions.length })}</p>
               <p>{t("packs.reflectMinutes", { n: pack.estimatedMinutes })}</p>
               <p className="pt-1 font-semibold text-monk-accent">{t("packs.priceRp", { price: pack.priceRp ?? 29000 })}</p>
               {demo ? <p className="pt-1 text-xs font-semibold text-monk-accent">{t("packs.demoMode")}</p> : null}
             </div>
+
+            {onOpenPro && (
+              <button
+                type="button"
+                onClick={onOpenPro}
+                className="w-full mb-4 rounded-monk border border-monk-accent/40 bg-monk-accent-soft/40 p-2.5 text-center text-xs font-bold text-monk-accent hover:bg-monk-accent-soft transition flex items-center justify-center gap-1.5"
+              >
+                <Crown size={14} />
+                {lang === "id"
+                  ? "Atau Buka Semua Pack via Zendo Pro (Rp 99.000)"
+                  : "Or Unlock All Packs via Zendo Pro (Rp 99.000)"}
+              </button>
+            )}
 
             {processing ? (
               <div className="py-3 text-center text-sm text-monk-muted">{t("packs.processing")}</div>

@@ -1,6 +1,6 @@
 import { useEffect, useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { Check, Moon, Pencil } from "lucide-react";
+import { Check, Moon, Pencil, Flame, Sparkles } from "lucide-react";
 import { motion } from "framer-motion";
 import { useMonkStore } from "../store/useMonkStore";
 import { useT } from "../i18n";
@@ -21,6 +21,8 @@ import {
   SettingsLink,
   TextInput,
 } from "../components/ui";
+import { ZendoProModal } from "../components/ZendoProModal";
+import { WeeklyReviewModal } from "../components/WeeklyReviewModal";
 import type { EnergyLevel, TimelineStatus } from "../types/app";
 
 export function WeekScreen() {
@@ -32,6 +34,8 @@ export function WeekScreen() {
   const today = getTodayDateString();
   const todayPlan = selectTodayPlan(store);
   const [retroDate, setRetroDate] = useState<string | null>(null);
+  const [proModalOpen, setProModalOpen] = useState(false);
+  const [weeklyReviewModalOpen, setWeeklyReviewModalOpen] = useState(false);
 
   useEffect(() => {
     store.getOrCreateCurrentWeeklyPlan();
@@ -51,7 +55,11 @@ export function WeekScreen() {
     const missed = plans.filter((p) => p?.status === "missed" || p?.status === "relapse").length;
     const unhandled = plans.filter((p, i) => !p && weekDates[i] < today).length;
     const targetFocus = weeklyPlan.goalAllocations.reduce((s, a) => s + a.targetCount, 0) || 6;
-    const focusDone = weeklyPlan.goalAllocations.reduce((s, a) => s + a.completedCount, 0);
+    const focusDone = Math.max(
+      completed,
+      weeklyPlan.goalAllocations.reduce((s, a) => s + a.completedCount, 0),
+      weekDates.filter((date) => selectTotalFocusSecondsForDate(store, date) >= 15 * 60).length
+    );
     const energyCounts = weekDates.reduce((acc, date) => {
       const lvl = selectEnergyForDate(store, date);
       if (lvl) acc[lvl] = (acc[lvl] ?? 0) + 1;
@@ -59,7 +67,7 @@ export function WeekScreen() {
     }, {} as Record<EnergyLevel, number>);
     const energyTotal = Object.values(energyCounts).reduce((a, b) => a + b, 0);
     return { completed, partial, rest, missed, unhandled, targetFocus, focusDone, energyCounts, energyTotal };
-  }, [weeklyPlan, weekDates, store.dayPlans, store.energyLogs]);
+  }, [weeklyPlan, weekDates, store.dayPlans, store.focusSessions, store.energyLogs]);
 
   const remainingDays = weekDates.filter((d) => d >= today).length;
 
@@ -97,7 +105,7 @@ export function WeekScreen() {
             ? `${formatHumanDate(weeklyPlan.startDate)} – ${formatHumanDate(weeklyPlan.endDate)}`
             : t("week.defaultSubtitle")
         }
-        rightSlot={<SettingsLink />}
+        rightSlot={<SettingsLink onOpenPro={() => setProModalOpen(true)} />}
       />
       <div className="space-y-5">
         {!weeklyPlan || !stats ? (
@@ -219,6 +227,8 @@ export function WeekScreen() {
                         >
                           {isCompleted ? (
                             <Check size={14} strokeWidth={2.5} />
+                          ) : isPartial ? (
+                            <Flame size={13} strokeWidth={2} />
                           ) : isRest ? (
                             <Moon size={12} strokeWidth={1.75} />
                           ) : (
@@ -267,19 +277,28 @@ export function WeekScreen() {
                 })}
               </div>
 
-              <div className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-monk-text-soft/70">
-                <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-sm bg-monk-success/80" />{t("week.legendDone")}</span>
-                <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-sm bg-monk-accent/70" />{t("week.legendPartial")}</span>
-                <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-sm bg-monk-rest/60" />{t("week.legendRest")}</span>
+              <div className="mt-4 flex flex-wrap items-center gap-x-3.5 gap-y-1.5 text-[11px] text-monk-text-soft/80">
+                <span className="flex items-center gap-1.5 font-medium text-monk-success">
+                  <Check size={12} strokeWidth={2.5} />
+                  <span>{t("week.legendDone")}</span>
+                </span>
+                <span className="flex items-center gap-1.5 font-medium text-monk-accent">
+                  <Flame size={12} strokeWidth={2} />
+                  <span>{t("week.legendPartial")}</span>
+                </span>
+                <span className="flex items-center gap-1.5 font-medium text-monk-rest">
+                  <Moon size={12} strokeWidth={2} />
+                  <span>{t("week.legendRest")}</span>
+                </span>
                 <span className="flex items-center gap-1.5 text-monk-accent/80">
                   <Pencil size={10} strokeWidth={2.5} />
-                  {t("week.tapHint")}
+                  <span>{t("week.tapHint")}</span>
                 </span>
                 <span className="ml-auto flex items-center gap-1.5">
                   <span className="h-1.5 w-1.5 rounded-full bg-monk-success" />
                   <span className="h-1.5 w-1.5 rounded-full bg-monk-accent" />
                   <span className="h-1.5 w-1.5 rounded-full bg-monk-danger" />
-                  {t("week.legendEnergy")}
+                  <span>{t("week.legendEnergy")}</span>
                 </span>
               </div>
             </Card>
@@ -291,6 +310,7 @@ export function WeekScreen() {
               remainingDays={remainingDays}
               weekDates={weekDates}
               today={today}
+              onOpenFullReview={() => setWeeklyReviewModalOpen(true)}
             />
 
             {showWeekWrap ? (
@@ -439,6 +459,12 @@ export function WeekScreen() {
         )}
       </div>
       <RetroLogModal open={!!retroDate} date={retroDate} onClose={() => setRetroDate(null)} />
+      <WeeklyReviewModal
+        isOpen={weeklyReviewModalOpen}
+        onClose={() => setWeeklyReviewModalOpen(false)}
+        weeklyPlanId={weeklyPlan?.id}
+      />
+      <ZendoProModal isOpen={proModalOpen} onClose={() => setProModalOpen(false)} />
     </>
   );
 }
@@ -454,7 +480,8 @@ function WeekReviewCard({
   showWeekWrap,
   remainingDays,
   weekDates,
-  today
+  today,
+  onOpenFullReview
 }: {
   weeklyPlan: NonNullable<ReturnType<typeof selectCurrentWeeklyPlan>>;
   goals: ReturnType<typeof selectActiveGoals>;
@@ -462,6 +489,7 @@ function WeekReviewCard({
   remainingDays: number;
   weekDates: string[];
   today: string;
+  onOpenFullReview?: () => void;
 }) {
   const t = useT();
   const reviewWeek = useMonkStore((s) => s.reviewWeek);
@@ -499,18 +527,53 @@ function WeekReviewCard({
   if (savedReview) {
     return (
       <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}>
-        <Card className="p-5">
-          <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-monk-muted/80">{t("week.review.title")}</p>
+        <Card className="p-5 space-y-3">
+          <div className="flex items-center justify-between">
+            <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-monk-muted/80">{t("week.review.title")}</p>
+            <span className="rounded-full border border-monk-success/40 bg-monk-success-soft px-2.5 py-0.5 text-[10px] font-bold text-monk-success">
+              {t("week.reviewDoneBadge")}
+            </span>
+          </div>
+
           {savedReview.skipped ? (
-            <p className="mt-2 text-sm text-monk-muted">{t("week.review.skip")}</p>
+            <p className="text-sm text-monk-muted">{t("week.review.skip")}</p>
           ) : (
-            <p className="mt-2 text-sm text-monk-accent/90 font-medium">
+            <p className="text-sm text-monk-accent/90 font-medium">
               {t("week.review.summary", {
                 cont: savedReview.decisions ? Object.values(savedReview.decisions).filter((d) => d.action === "continue").length : 0,
                 adj: savedReview.decisions ? Object.values(savedReview.decisions).filter((d) => d.action === "adjust").length : 0,
                 rel: savedReview.decisions ? Object.values(savedReview.decisions).filter((d) => d.action === "release").length : 0
               })}
             </p>
+          )}
+
+          {savedReview.restActivity ? (
+            <div className="rounded-xl border border-monk-border/50 bg-monk-soft/30 p-3">
+              <p className="text-[11px] font-semibold text-monk-muted">{t("today.restRenewal.chosenRest")}</p>
+              <p className="mt-1 text-xs font-bold text-monk-text flex items-center gap-1.5">
+                <span>{savedReview.restActivity.icon || "🌿"}</span>
+                <span>{savedReview.restActivity.title}</span>
+              </p>
+            </div>
+          ) : null}
+
+          {savedReview.reflection?.wins ? (
+            <div className="rounded-xl border border-monk-border/50 bg-monk-soft/20 p-3 text-xs text-monk-muted line-clamp-2">
+              <span className="font-semibold text-monk-text">🎯 Wins: </span>
+              {savedReview.reflection.wins}
+            </div>
+          ) : null}
+
+          {onOpenFullReview && (
+            <div className="pt-1">
+              <SecondaryButton
+                onClick={onOpenFullReview}
+                className="text-xs py-2 w-full flex items-center justify-center gap-1.5"
+              >
+                <Sparkles size={13} />
+                <span>{t("today.restRenewal.ctaView")}</span>
+              </SecondaryButton>
+            </div>
           )}
         </Card>
       </motion.div>
@@ -520,8 +583,20 @@ function WeekReviewCard({
   return (
     <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}>
       <Card className="relative p-5 bg-monk-surface/30 border-monk-accent/20">
-        <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-monk-accent">{t("week.review.title")}</p>
-        <p className="mt-2 text-sm font-semibold text-monk-text">{t("week.review.decideTitle")}</p>
+        <div className="flex items-center justify-between mb-3">
+          <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-monk-accent">{t("week.review.title")}</p>
+          {onOpenFullReview && (
+            <button
+              type="button"
+              onClick={onOpenFullReview}
+              className="flex items-center gap-1.5 rounded-lg bg-monk-accent px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition active:scale-95 hover:bg-monk-accent-hover"
+            >
+              <Sparkles size={12} />
+              <span>{t("week.openReviewModal")}</span>
+            </button>
+          )}
+        </div>
+        <p className="text-sm font-semibold text-monk-text">{t("week.review.decideTitle")}</p>
         <p className="mt-1 text-xs text-monk-muted">{t("week.review.decideBody")}</p>
 
         <div className="mt-4 space-y-3">

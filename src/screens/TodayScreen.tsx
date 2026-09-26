@@ -1,7 +1,8 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import type { RelapseLog } from "../types/app";
 import { useNavigate } from "react-router-dom";
-import { Moon, BookOpen, Check, ChevronRight, MoreHorizontal, Sun } from "lucide-react";
+import { Moon, BookOpen, Check, ChevronRight, MoreHorizontal, Sun, Sparkles, Zap, ShieldAlert, Flame, Timer, Clock } from "lucide-react";
+import { hapticPress } from "../lib/haptics";
 import { useMonkStore } from "../store/useMonkStore";
 import { useT } from "../i18n";
 import { useCalmToast } from "../components/ui";
@@ -10,10 +11,10 @@ import { CORE_VALUES } from "../constants/whyValues";
 import { routes } from "../constants/routes";
 import { FOCUS_PRESETS } from "../constants/focusPresets";
 import { formatIntention, parseIntention } from "../lib/implementationIntention";
-import { playZenBell, unlockAudio } from "../lib/audio";
+import { playCompletionChime, playZenBell, unlockAudio } from "../lib/audio";
 import { loadLastFocus, saveLastFocus } from "../lib/storage";
 import { getCoachStep, dismissCoachStep } from "../lib/coach";
-import { isCloseDaySkipped, skipCloseDay, getDayPart, isReentryDismissed, dismissReentry, isReentryChipHidden, hideReentryChip, shouldOfferReentry, isReentryAnswered, markReentryAnswered, getRelapseForDate, isReflectionThreadDismissed, dismissReflectionThread, isNmt2Dismissed, dismissNmt2 } from "../lib/dailyActivity";
+import { isCloseDaySkipped, skipCloseDay, getDayPart, isReentryDismissed, dismissReentry, isReentryChipHidden, hideReentryChip, shouldOfferReentry, isReentryAnswered, markReentryAnswered, getRelapseForDate, isNmt2Dismissed, dismissNmt2 } from "../lib/dailyActivity";
 import { isRestSuggestionDismissed, dismissRestSuggestion, shouldSuggestRest } from "../lib/restSuggestion";
 import { shouldWarnMissTwice } from "../lib/focusStreak";
 import { selectTodayPlan, selectActiveGoals, selectCurrentWeeklyPlan, selectEnergyForDate, selectTodayLearningSessions, selectTotalFocusSecondsForDate } from "../store/selectors";
@@ -34,6 +35,11 @@ import { FocusSessionPanel, FocusSessionStarter } from "../screens/FocusSession"
 import { CoachHint, PlanTomorrow, WeeklyStatusIndicators } from "./OnboardingSteps";
 import { SeasonProgressCard, WhyEditor } from "../components/SeasonWidgets";
 import { EnergyCheck, WhyStrip } from "./TodayScreen.components";
+import { GoalBlueprintModal } from "../components/GoalBlueprintModal";
+import { WeeklyReviewModal } from "../components/WeeklyReviewModal";
+import { MorningPlanningModal } from "../components/MorningPlanningModal";
+import { DayTimeBlockVisualizer } from "../components/DayTimeBlockVisualizer";
+import { ZendoProModal } from "../components/ZendoProModal";
 import type { EnergyLevel } from "../types/app";
 
 function CloseDayCard({ onSkip }: { onSkip?: () => void }) {
@@ -341,58 +347,34 @@ function Nmt2Banner({
   );
 }
 
-function ReflectionThreadHint() {
-  const store = useMonkStore();
-  const t = useT();
-  const navigate = useNavigate();
-  const season = store.activeSeason;
-  const today = getTodayDateString();
-  const yesterday = addDaysToDate(today, -1);
-  const [dismissed, setDismissed] = useState(() => isReflectionThreadDismissed(today));
-  const todayPlan = selectTodayPlan(store);
-
-  if (!season || dismissed) return null;
-  const yesterdayEntry = store.journalEntries.find(
-    (entry) => entry.seasonId === season.id && entry.date === yesterday
-  );
-  const thread = yesterdayEntry?.answers.whatMovedToday?.trim();
-  if (!thread || yesterday < season.startDate) return null;
-  return (
-    <Card className="border-monk-border bg-monk-soft/40 p-4">
-      <p className="text-sm leading-5">{t("today.thread.title", { text: thread })}</p>
-      <div className="mt-2.5 flex flex-wrap gap-2">
-        <GhostButton
-          onClick={() => {
-            store.createOrUpdateDayPlan(today, {
-              dayType: todayPlan?.dayType ?? "goal",
-              goalId: todayPlan?.goalId,
-              mainAction: todayPlan?.mainAction?.trim() ? todayPlan.mainAction : thread
-            });
-            setDismissed(true);
-          }}
-        >
-          {t("today.thread.keep")}
-        </GhostButton>
-        <GhostButton
-          onClick={() => {
-            dismissReflectionThread(today);
-            setDismissed(true);
-          }}
-        >
-          {t("today.thread.dismiss")}
-        </GhostButton>
-      </div>
-    </Card>
-  );
-}
-
 export function TodayScreen() {
   const navigate = useNavigate();
   const store = useMonkStore();
   const t = useT();
   const toast = useCalmToast();
   const season = store.activeSeason!;
-  const today = getTodayDateString();
+  const [today, setToday] = useState(() => getTodayDateString());
+
+  useEffect(() => {
+    const checkMidnight = () => {
+      const fresh = getTodayDateString();
+      if (fresh !== today) {
+        setToday(fresh);
+      }
+    };
+    const timer = setInterval(checkMidnight, 30_000);
+    const onVisibility = () => {
+      if (document.visibilityState === "visible") checkMidnight();
+    };
+    document.addEventListener("visibilitychange", onVisibility);
+    window.addEventListener("focus", onVisibility);
+    return () => {
+      clearInterval(timer);
+      document.removeEventListener("visibilitychange", onVisibility);
+      window.removeEventListener("focus", onVisibility);
+    };
+  }, [today]);
+
   const todayPlan = selectTodayPlan(store);
   const activeGoals = selectActiveGoals(store);
   const weeklyPlan = selectCurrentWeeklyPlan(store);
@@ -415,8 +397,6 @@ export function TodayScreen() {
   const [editTime, setEditTime] = useState("");
   const [editWhen, setEditWhen] = useState("");
   const [editAction, setEditAction] = useState("");
-  const [editingHighlight, setEditingHighlight] = useState(false);
-  const [editHighlight, setEditHighlight] = useState("");
   const [closeDaySkipped, setCloseDaySkipped] = useState(() => isCloseDaySkipped(today));
   const [reentryDismissed, setReentryDismissed] = useState(() => isReentryDismissed(today));
   const [nmt2Dismissed, setNmt2Dismissed] = useState(() => isNmt2Dismissed(today));
@@ -432,11 +412,34 @@ export function TodayScreen() {
   }>(null);
   const [releaseOpen, setReleaseOpen] = useState(false);
   const [releaseNote, setReleaseNote] = useState("");
+  const [blueprintGoalId, setBlueprintGoalId] = useState<string | null>(null);
+  const [clarifyBannerDismissed, setClarifyBannerDismissed] = useState(false);
+  const [proModalOpen, setProModalOpen] = useState(false);
+  const [weeklyReviewModalOpen, setWeeklyReviewModalOpen] = useState(false);
+  const [planningModalOpen, setPlanningModalOpen] = useState(false);
+  const [sixDaysBannerDismissed, setSixDaysBannerDismissed] = useState(false);
+
+  const savedReview = weeklyPlan ? store.weeklyReviews?.[weeklyPlan.id] : undefined;
+
+  const sixDaysCompleted = useMemo(() => {
+    if (!weeklyPlan) return false;
+    const focusDone = weeklyPlan.goalAllocations.reduce((s, a) => s + a.completedCount, 0);
+    const targetFocus = weeklyPlan.goalAllocations.reduce((s, a) => s + a.targetCount, 0) || 6;
+    return focusDone >= targetFocus && targetFocus > 0;
+  }, [weeklyPlan]);
 
   useEffect(() => {
     store.getOrCreateCurrentWeeklyPlan();
-    store.getOrCreateCurrentWeeklyPlan();
   }, []);
+
+  useEffect(() => {
+    // Daily intentional planning prompt on first open of the day
+    const sessionKey = `zendo_planning_prompted_${today}`;
+    if (todayPlan && todayPlan.dayType !== "rest" && !todayPlan.planningCompleted && !sessionStorage.getItem(sessionKey)) {
+      sessionStorage.setItem(sessionKey, "true");
+      setPlanningModalOpen(true);
+    }
+  }, [todayPlan, today]);
 
   useEffect(() => {
     setCloseDaySkipped(isCloseDaySkipped(today));
@@ -449,6 +452,7 @@ export function TodayScreen() {
   }, [undoPlan]);
 
   const goal = todayPlan?.goalId ? store.goals.find((item) => item.id === todayPlan.goalId) : undefined;
+  const unclarifiedGoal = activeGoals.find((g) => !g.why || !g.obstacle);
   const daysLeft = getDaysLeft(season.endDate);
   const isRest = todayPlan?.dayType === "rest";
   const isDone = todayPlan?.status === "completed";
@@ -469,7 +473,9 @@ export function TodayScreen() {
     ? weeklyPlan.goalAllocations.find((a) => a.goalId === todayPlan.goalId)
     : undefined;
   const showMorningNudge =
-    dayPart === "morning" && !!todayPlan && !hasMorningPages && !dayClosed;
+    !isRest &&
+    !todayPlan?.mainAction &&
+    (dayPart === "morning" || dayPart === "afternoon");
   const preferCloseDay =
     !!todayPlan &&
     !dayClosed &&
@@ -481,6 +487,7 @@ export function TodayScreen() {
     | "held"
     | "close"
     | "rest"
+    | "planning"
     | "morning"
     | "intention"
     | "focus";
@@ -495,6 +502,8 @@ export function TodayScreen() {
     ? "close"
     : isRest
     ? "rest"
+    : !todayPlan.planningCompleted
+    ? "planning"
     : !hasIntention
     ? "intention"
     : showMorningNudge
@@ -523,7 +532,7 @@ export function TodayScreen() {
 
   const checklist = todayPlan
     ? [
-        { id: "highlight", label: t("today.check.highlight"), done: !!todayPlan?.highlight?.trim(), hide: isRest },
+        { id: "highlight", label: t("today.check.highlight"), done: !!(todayPlan?.highlight?.trim() || todayPlan?.mainAction?.trim()), hide: isRest },
         { id: "morning", label: t("today.check.morning"), done: hasMorningPages, hide: false },
         { id: "focus", label: isRest ? t("today.check.restHeld") : t("today.check.focusDone"), done: isDone, hide: false },
         { id: "learn", label: t("today.check.learn"), done: hasLearning, hide: isRest },
@@ -569,7 +578,7 @@ export function TodayScreen() {
       <PageHeader
         title={t("today.title")}
         subtitle={`${getSeasonDayLabel(season)} · ${t("today.daysLeft", { n: daysLeft })}`}
-        rightSlot={<SettingsLink />}
+        rightSlot={<SettingsLink onOpenPro={() => setProModalOpen(true)} />}
       />
       <div className="space-y-5">
         <WhyStrip compact={reentryVisible || nmt2Visible} />
@@ -618,11 +627,87 @@ export function TodayScreen() {
             onCta={coachCta}
           />
         ) : null}
+        {unclarifiedGoal && !clarifyBannerDismissed && !reentryVisible && !nmt2Visible && !coachStep ? (
+          <Card className="border-monk-accent/30 bg-monk-accent-soft/30 p-4 shadow-sm">
+            <div className="flex items-start gap-3">
+              <div className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-monk-accent/15 text-monk-accent">
+                <Sparkles size={18} />
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="flex flex-wrap items-center gap-2">
+                  <p className="text-sm font-bold text-monk-text">{t("blueprint.clarifyPromptTitle")}</p>
+                  <span className="rounded-md border border-monk-accent/30 bg-monk-surface/90 px-2 py-0.5 text-[10px] font-semibold text-monk-accent">
+                    {unclarifiedGoal.title}
+                  </span>
+                </div>
+                <p className="mt-1 text-xs text-monk-muted leading-relaxed">
+                  {t("blueprint.clarifyPromptDesc")}
+                </p>
+                <div className="mt-3 flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setBlueprintGoalId(unclarifiedGoal.id)}
+                    className="flex items-center gap-1.5 rounded-lg bg-monk-accent px-3.5 py-1.5 text-xs font-semibold text-white shadow-sm transition active:scale-95 hover:bg-monk-accent-hover"
+                  >
+                    <Sparkles size={13} />
+                    <span>{t("blueprint.clarifyPromptCta")}</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setClarifyBannerDismissed(true)}
+                    className="rounded-lg px-2.5 py-1.5 text-xs font-medium text-monk-muted transition hover:text-monk-text"
+                  >
+                    {t("today.reentry.dismiss")}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </Card>
+        ) : null}
+        {sixDaysCompleted && !savedReview && !sixDaysBannerDismissed && !isRest ? (
+          <Card className="border-monk-accent/30 bg-monk-accent-soft/30 p-4 shadow-sm">
+            <div className="flex items-start gap-3">
+              <div className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-monk-accent/15 text-monk-accent">
+                <Sparkles size={18} />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-bold text-monk-text">{t("today.sixDaysCompleted.title")}</p>
+                <p className="mt-1 text-xs text-monk-muted leading-relaxed">
+                  {t("today.sixDaysCompleted.body")}
+                </p>
+                <div className="mt-3 flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      store.createOrUpdateDayPlan(today, { dayType: "rest" });
+                      setWeeklyReviewModalOpen(true);
+                    }}
+                    className="flex items-center gap-1.5 rounded-lg bg-monk-accent px-3.5 py-1.5 text-xs font-semibold text-white shadow-sm transition active:scale-95 hover:bg-monk-accent-hover"
+                  >
+                    <Moon size={13} />
+                    <span>{t("today.sixDaysCompleted.cta")}</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setSixDaysBannerDismissed(true)}
+                    className="rounded-lg px-2.5 py-1.5 text-xs font-medium text-monk-muted transition hover:text-monk-text"
+                  >
+                    {t("today.reentry.dismiss")}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </Card>
+        ) : null}
         {!todayPlan ? (
           <>
             <div className="today-primary-anchor space-y-5">
               <SeasonProgressCard />
-              <FlowPickToday goals={activeGoals} />
+              <FlowPickToday
+                goals={activeGoals}
+                onOpenBlueprint={(id) => setBlueprintGoalId(id)}
+                onPickRest={() => setWeeklyReviewModalOpen(true)}
+              />
             </div>
             <WeeklyStatusIndicators />
           </>
@@ -631,93 +716,137 @@ export function TodayScreen() {
             <Card
               important
               id="today-primary"
-              className={`today-primary-anchor relative overflow-hidden p-5 ${
-                isDone ? "border-monk-success/30" : isRest ? "border-monk-rest/25" : ""
+              className={`today-primary-anchor relative overflow-hidden p-5 sm:p-6 transition-all duration-300 shadow-[inset_0_1px_0_rgba(212,163,89,0.12)] ${
+                isDone
+                  ? "border-monk-success/35 bg-gradient-to-b from-monk-success-soft/25 via-monk-surface to-monk-surface"
+                  : isRest
+                    ? "border-monk-rest/25 bg-monk-surface"
+                    : "border-monk-border/80 bg-gradient-to-b from-monk-surface via-monk-surface to-monk-raised/40"
               }`}
             >
               {!isDone && !isRest ? (
                 <div
-                  className="pointer-events-none absolute inset-0 bg-gradient-to-b from-monk-accent/8 to-transparent"
+                  className="pointer-events-none absolute inset-0 bg-gradient-to-b from-monk-accent/[0.07] to-transparent"
                   aria-hidden
                 />
               ) : null}
-              <div className="relative flex items-start justify-between gap-4">
+
+              {/* Top Navigation & Status */}
+              <div className="relative flex items-start justify-between gap-3">
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-2">
                     <p className="text-xs font-bold uppercase tracking-widest text-monk-muted">
                       {isRest ? t("today.restDay") : t("today.todaysFocus")}
                     </p>
-                    <span className={`rounded-full border px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider ${statusClass}`}>
-                      {statusLabel}
+                    <span className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider ${statusClass}`}>
+                      {isDone ? (
+                        <Check size={11} strokeWidth={2.5} />
+                      ) : activeSession ? (
+                        <Timer size={11} strokeWidth={2} />
+                      ) : isRest ? (
+                        <Moon size={11} strokeWidth={2} />
+                      ) : todayPlan?.status === "partial" ? (
+                        <Flame size={11} strokeWidth={2} />
+                      ) : null}
+                      <span>{statusLabel}</span>
                     </span>
                     {!isRest && goal ? (
-                      <button
-                        type="button"
-                        aria-label={t("release.triggerLabel")}
-                        className="grid min-h-10 min-w-10 place-items-center rounded-full text-monk-muted transition hover:bg-monk-soft hover:text-monk-text active:scale-90"
-                        onClick={() => {
-                          setReleaseNote("");
-                          setReleaseOpen(true);
-                        }}
-                      >
-                        <MoreHorizontal size={15} />
-                      </button>
+                      <div className="flex items-center gap-1">
+                        <button
+                          type="button"
+                          aria-label={t("blueprint.openButton")}
+                          title={t("blueprint.dialogTitle")}
+                          className="flex items-center gap-1.5 rounded-full border border-monk-border bg-monk-surface px-2.5 py-0.5 text-[11px] font-semibold text-monk-text-soft transition hover:border-monk-accent hover:text-monk-accent active:scale-95"
+                          onClick={() => {
+                            hapticPress("light");
+                            setBlueprintGoalId(goal.id);
+                          }}
+                        >
+                          <Sparkles size={12} className="text-monk-accent" />
+                          <span>{t("blueprint.openButton")}</span>
+                        </button>
+                        <button
+                          type="button"
+                          aria-label={t("release.triggerLabel")}
+                          className="grid min-h-7 min-w-7 place-items-center rounded-full text-monk-muted transition hover:bg-monk-soft hover:text-monk-text active:scale-90"
+                          onClick={() => {
+                            setReleaseNote("");
+                            setReleaseOpen(true);
+                          }}
+                        >
+                          <MoreHorizontal size={15} />
+                        </button>
+                      </div>
                     ) : null}
                   </div>
+
                   <span className="sr-only" aria-live="polite" id="today-status-live">
                     {t("today.statusLive", { status: statusLabel })}
                   </span>
-                  <h2 className="mt-2 text-3xl font-bold leading-9 tracking-tight">
+
+                  {/* Goal Title */}
+                  <h2 className="mt-2.5 text-2xl sm:text-3xl font-bold leading-tight tracking-tight text-monk-text">
                     {isRest ? t("today.quietRecovery") : goal?.title ?? t("today.oneTheme")}
                   </h2>
+
+                  {/* Identity Anchor (James Clear) */}
                   {!isRest && goal?.why ? (
-                    <p className="mt-1 text-sm leading-5 text-monk-accent/90 line-clamp-2">
-                      {t("today.because", { why: goal.why })}
+                    <p className="mt-1.5 text-xs sm:text-sm font-medium italic text-monk-accent/90 line-clamp-2">
+                      {t("today.identityBecoming", { why: goal.why })}
                     </p>
                   ) : null}
-                  {allocation ? (
-                    <p className="mt-1 text-xs text-monk-muted">
-                      {t("today.daysOnGoal", { done: allocation.completedCount, target: allocation.targetCount })}
-                    </p>
-                  ) : (
-                    <p className="mt-1 text-xs text-monk-muted">
-                      {isRest ? t("today.protectRecovery") : t("today.stayWithOne")}
-                    </p>
-                  )}
                 </div>
+
+                {/* Big Tactile Completion Button */}
                 <button
                   type="button"
                   aria-label={isDone ? t("today.markIncomplete") : t("today.markComplete")}
                   className={`flex min-h-12 min-w-12 shrink-0 items-center justify-center rounded-full border-2 transition active:scale-90 ${
                     isDone
-                      ? "border-monk-success bg-monk-success text-monk-bg shadow-[inset_0_1px_0_rgba(255,255,255,0.15),0_4px_12px_-4px_rgba(100,123,94,0.5)]"
-                      : "border-monk-border bg-monk-surface hover:border-monk-success text-monk-success shadow-sm"
+                      ? "border-monk-success bg-monk-success text-monk-bg shadow-[inset_0_1px_0_rgba(255,255,255,0.2),0_4px_16px_-4px_rgba(100,123,94,0.6)]"
+                      : "border-monk-border/90 bg-monk-surface hover:border-monk-accent hover:text-monk-accent text-monk-muted shadow-sm"
                   }`}
                   onClick={() => {
                     unlockAudio();
                     const willBeCompleted = !isDone;
                     if (willBeCompleted) {
-                      playZenBell();
+                      hapticPress("success");
+                      playCompletionChime();
                       if (todayPlan?.highlight?.trim()) toast.show(t("today.highlightDone"));
+                    } else {
+                      hapticPress("light");
                     }
                     store.toggleTodayCompletion();
                   }}
                 >
-                  {isDone ? <Check size={18} strokeWidth={2.5} /> : null}
+                  {isDone ? <Check size={20} strokeWidth={2.6} /> : null}
                 </button>
               </div>
 
-              {!isRest && !isDone ? <ReflectionThreadHint /> : null}
-              <div className="mt-5 rounded-xl border border-monk-border bg-monk-bg p-4">
-                <div className="flex items-center justify-between gap-2">
-                  <p className="text-xs font-medium uppercase tracking-[0.16em] text-monk-text-soft">
-                    {isRest ? t("today.restNote") : t("today.oneAction")}
-                  </p>
+              {/* Action Anchor Section */}
+              <div className="relative mt-5 rounded-2xl border border-monk-border/70 bg-monk-soft/50 p-4 transition shadow-xs">
+                <div className="flex items-center justify-between gap-2 mb-2">
+                  <div className="flex items-center gap-1.5">
+                    <Zap size={14} className="text-monk-accent shrink-0" />
+                    <p className="text-[11px] font-bold uppercase tracking-wider text-monk-muted">
+                      {isRest ? t("today.restNote") : t("today.actionHeading")}
+                    </p>
+                    {Boolean(
+                      goal?.obstacleMitigation &&
+                      todayPlan?.mainAction &&
+                      todayPlan.mainAction.trim() === goal.obstacleMitigation.trim()
+                    ) ? (
+                      <span className="rounded-full border border-monk-warning/40 bg-monk-warning/15 px-2 py-0.5 text-[10px] font-bold text-monk-warning">
+                        {t("today.planBActiveBadge")}
+                      </span>
+                    ) : null}
+                  </div>
                   {!editingAction && !isRest && !isDone ? (
                     <button
                       type="button"
-                      className="text-xs font-bold text-monk-accent hover:underline active:scale-95"
+                      className="text-xs font-semibold text-monk-accent hover:underline active:scale-95"
                       onClick={() => {
+                        hapticPress("light");
                         const initial = todayPlan.mainAction || goal?.keystoneAction || "";
                         const parsed = parseIntention(initial);
                         setEditTime(parsed.time || "");
@@ -732,9 +861,9 @@ export function TodayScreen() {
                 </div>
 
                 {editingAction ? (
-                  <div className="mt-2 space-y-2">
+                  <div className="mt-2 space-y-3 rounded-xl border border-monk-border bg-monk-surface p-3.5 shadow-sm">
                     <div>
-                      <label htmlFor="today-time-input" className="mb-2 block text-sm font-medium text-monk-muted">
+                      <label htmlFor="today-time-input" className="mb-1.5 block text-xs font-semibold text-monk-text-soft">
                         {t("today.time")}
                       </label>
                       <input
@@ -742,7 +871,7 @@ export function TodayScreen() {
                         id="today-time-input"
                         value={editTime}
                         onChange={(e) => setEditTime(e.target.value)}
-                        className="w-full rounded-xl border border-monk-border bg-monk-surface px-4 py-3 text-sm text-monk-text transition-colors focus:border-monk-accent focus:outline-none focus:ring-1 focus:ring-monk-accent/40"
+                        className="w-full rounded-xl border border-monk-border bg-monk-surface px-3 py-2 text-xs text-monk-text transition-colors focus:border-monk-accent focus:outline-none focus:ring-1 focus:ring-monk-accent/40"
                       />
                     </div>
                     <TextInput
@@ -751,7 +880,7 @@ export function TodayScreen() {
                       onChange={(e) => setEditWhen(e.target.value)}
                       placeholder={t("today.whenPlaceholder")}
                     />
-                    <p className="text-xs text-monk-muted">{t("today.whenHint")}</p>
+                    <p className="text-[11px] text-monk-muted">{t("today.whenHint")}</p>
                     <TextInput
                       label={t("today.iWill")}
                       value={editAction}
@@ -772,11 +901,13 @@ export function TodayScreen() {
                         onClick={() => {
                           const formatted = formatIntention(editWhen, editAction, editTime);
                           if (formatted.trim()) {
+                            hapticPress("medium");
                             store.createOrUpdateDayPlan(today, {
                               dayType: "goal",
                               goalId: todayPlan.goalId,
                               mainAction: formatted.trim()
                             });
+                            store.setTodayHighlight(editAction.trim() || formatted.trim());
                             setEditingAction(false);
                             toast.show(t("toast.intentionSaved"));
                           }
@@ -787,28 +918,39 @@ export function TodayScreen() {
                     </div>
                   </div>
                 ) : isRest ? (
-                  <p className="mt-1.5 text-sm font-semibold leading-5">
+                  <p className="text-sm font-semibold leading-relaxed text-monk-text">
                     {t("today.rechargeNote")}
                   </p>
                 ) : (() => {
                   const shown = parseIntention(todayPlan.mainAction || "");
                   if (shown.when && shown.action) {
                     return (
-                      <div className="mt-1.5 space-y-1">
+                      <div className="space-y-1">
+                        {shown.time ? (
+                          <span className="inline-block rounded-md border border-monk-border bg-monk-surface px-2 py-0.5 text-[11px] font-mono font-semibold text-monk-text-soft">
+                            ⏰ {shown.time}
+                          </span>
+                        ) : null}
                         <p className="text-xs text-monk-muted">{t("today.whenShown", { when: shown.when })}</p>
-                        <p className="text-sm font-semibold leading-5">{t("today.iWillShown", { action: shown.action })}</p>
+                        <p className="text-sm sm:text-base font-bold leading-relaxed text-monk-text">
+                          {shown.action}
+                        </p>
                       </div>
                     );
                   }
                   if (todayPlan.mainAction) {
                     return (
-                      <p className="mt-1.5 text-sm font-semibold leading-5">{todayPlan.mainAction}</p>
+                      <p className="text-sm sm:text-base font-bold leading-relaxed text-monk-text">
+                        {todayPlan.mainAction}
+                      </p>
                     );
                   }
                   if (goal?.keystoneAction) {
                     return (
-                      <div className="mt-1.5 space-y-2">
-                        <p className="text-sm font-semibold leading-5 text-monk-text-soft">{goal.keystoneAction}</p>
+                      <div className="space-y-2">
+                        <p className="text-sm sm:text-base font-bold leading-relaxed text-monk-text">
+                          {goal.keystoneAction}
+                        </p>
                         <button
                           type="button"
                           className="text-xs font-bold text-monk-accent hover:underline"
@@ -820,13 +962,13 @@ export function TodayScreen() {
                             setEditingAction(true);
                           }}
                         >
-                          {t("today.makeIntention")}
+                          + {t("today.makeIntention")}
                         </button>
                       </div>
                     );
                   }
                   return (
-                    <div className="mt-1.5 space-y-2">
+                    <div className="space-y-2">
                       <p className="text-sm text-monk-muted">{t("today.nameAction")}</p>
                       <button
                         type="button"
@@ -838,113 +980,93 @@ export function TodayScreen() {
                           setEditingAction(true);
                         }}
                       >
-                        {t("today.addIntention")}
+                        + {t("today.addIntention")}
                       </button>
                     </div>
                   );
                 })()}
+
+                {/* 2-Minute Plan B Fallback Switcher (WOOP) */}
+                {!isDone && !isRest && goal?.obstacleMitigation ? (() => {
+                  const isPlanBActive = Boolean(
+                    goal?.obstacleMitigation &&
+                    todayPlan?.mainAction &&
+                    todayPlan.mainAction.trim() === goal.obstacleMitigation.trim()
+                  );
+                  return (
+                    <div className="mt-3.5 flex items-center justify-between gap-2 rounded-xl border border-monk-warning/30 bg-monk-warning/10 px-3.5 py-2 text-xs transition">
+                      <span className="flex items-center gap-1.5 font-medium text-monk-text-soft">
+                        <ShieldAlert size={14} className="shrink-0 text-monk-warning" />
+                        <span>{isPlanBActive ? t("today.planBActiveBadge") : t("today.planBTrigger")}</span>
+                      </span>
+                      {isPlanBActive ? (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            hapticPress("light");
+                            store.createOrUpdateDayPlan(today, {
+                              dayType: "goal",
+                              goalId: todayPlan.goalId,
+                              mainAction: goal.keystoneAction || ""
+                            });
+                          }}
+                          className="font-semibold text-monk-accent hover:underline active:scale-95"
+                        >
+                          {t("today.planBSwitchBack")}
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            hapticPress("medium");
+                            store.createOrUpdateDayPlan(today, {
+                              dayType: "goal",
+                              goalId: todayPlan.goalId,
+                              mainAction: goal.obstacleMitigation || ""
+                            });
+                            toast.show(t("today.planBToast"));
+                          }}
+                          className="font-semibold text-monk-warning hover:underline active:scale-95"
+                        >
+                          {t("today.planBActivate")}
+                        </button>
+                      )}
+                    </div>
+                  );
+                })() : null}
               </div>
 
-              {!isRest ? (
-                <div className="mt-3 rounded-xl border border-monk-accent/15 bg-monk-accent-soft/30 p-3">
-                  {editingHighlight ? (
-                    <div className="space-y-2">
-                      <TextInput
-                        label={t("today.highlight")}
-                        value={editHighlight}
-                        onChange={(e) => setEditHighlight(e.target.value)}
-                        placeholder={t("today.highlightPlaceholder")}
-                        autoFocus
-                      />
-                      <div className="flex items-center justify-end gap-3">
-                        <button
-                          type="button"
-                          className="text-xs font-semibold text-monk-muted hover:underline"
-                          onClick={() => setEditingHighlight(false)}
-                        >
-                          {t("today.cancel")}
-                        </button>
-                        <button
-                          type="button"
-                          className="text-xs font-semibold text-monk-accent hover:underline"
-                          onClick={() => {
-                            if (editHighlight.trim()) {
-                              store.setTodayHighlight(editHighlight);
-                              toast.show(t("toast.saved"));
-                            } else {
-                              store.setTodayHighlight("");
-                            }
-                            setEditingHighlight(false);
-                          }}
-                        >
-                          {t("today.highlightSave")}
-                        </button>
-                      </div>
-                    </div>
-                  ) : todayPlan?.highlight?.trim() ? (
-                    <div className="flex items-start justify-between gap-2">
-                      <p className="text-sm font-semibold leading-5 text-monk-accent">
-                        <span aria-hidden className="mr-1.5">★</span>
-                        {todayPlan.highlight}
-                      </p>
-                      {!isDone ? (
-                        <button
-                          type="button"
-                          className="shrink-0 text-xs font-bold text-monk-accent hover:underline"
-                          onClick={() => {
-                            setEditHighlight(todayPlan.highlight || "");
-                            setEditingHighlight(true);
-                          }}
-                        >
-                          {t("today.edit")}
-                        </button>
-                      ) : null}
-                    </div>
+              {/* Bottom Meta & Progress Bar */}
+              <div className="mt-4 border-t border-monk-border/40 pt-3 flex flex-wrap items-center justify-between gap-2 text-xs text-monk-muted">
+                <div className="flex flex-wrap items-center gap-2">
+                  {allocation ? (
+                    <span className="font-medium text-monk-text-soft">
+                      {t("today.daysOnGoal", { done: allocation.completedCount, target: allocation.targetCount })}
+                    </span>
                   ) : (
-                    <div className="flex items-center justify-between gap-2">
-                      <p className="text-sm text-monk-muted">{t("today.highlightEmpty")}</p>
-                      {!isDone ? (
-                        <button
-                          type="button"
-                          className="shrink-0 text-xs font-bold text-monk-accent hover:underline"
-                          onClick={() => {
-                            setEditHighlight("");
-                            setEditingHighlight(true);
-                          }}
-                        >
-                          {t("today.edit")}
-                        </button>
-                      ) : null}
-                    </div>
+                    <span>{isRest ? t("today.protectRecovery") : t("today.stayWithOne")}</span>
                   )}
-                </div>
-              ) : null}
-
-              {(focusMinutes > 0 || hasLearning) ? (
-                <div className="mt-4 flex flex-wrap gap-3 text-xs text-monk-muted">
                   {focusMinutes > 0 ? (
-                    <span className="rounded-full border border-monk-border-strong bg-monk-soft px-2.5 py-1 font-mono">
+                    <span className="rounded-full border border-monk-border bg-monk-soft px-2 py-0.5 font-mono text-[11px]">
                       {t("today.focusMinutes", { n: focusMinutes })}
                     </span>
                   ) : null}
                   {hasLearning ? (
-                    <span className="rounded-full border border-monk-border-strong bg-monk-soft px-2.5 py-1 font-mono">
+                    <span className="rounded-full border border-monk-border bg-monk-soft px-2 py-0.5 font-mono text-[11px]">
                       {t("today.learnCount", { n: learningSessions.length })}
                     </span>
                   ) : null}
                 </div>
-              ) : null}
 
-              {isDone ? (
-                <p className="mt-4 flex items-center gap-1.5 text-xs font-semibold text-monk-success">
-                  <span className="inline-block h-1.5 w-1.5 rounded-full bg-monk-success" />
-                  {t("today.movedQuiet")}
-                </p>
-              ) : (
-                <div className="mt-4 flex justify-end">
+                {isDone ? (
+                  <p className="flex items-center gap-1.5 font-semibold text-monk-success">
+                    <span className="inline-block h-1.5 w-1.5 rounded-full bg-monk-success" />
+                    {t("today.movedQuiet")}
+                  </p>
+                ) : (
                   <button
                     type="button"
-                    className="text-[11px] font-semibold text-monk-text-soft hover:text-monk-accent hover:underline"
+                    className="text-[11px] font-semibold text-monk-muted transition hover:text-monk-accent hover:underline"
                     onClick={() => {
                       if (!todayPlan) return;
                       const restoreStatus =
@@ -963,8 +1085,8 @@ export function TodayScreen() {
                   >
                     {t("today.changeTheme")}
                   </button>
-                </div>
-              )}
+                )}
+              </div>
             </Card>
 
             {/* Primary zone — one CTA by day-part / state */}
@@ -1038,16 +1160,39 @@ export function TodayScreen() {
 
               {primaryKind === "rest" ? (
                 <>
-                  <Card className="border-monk-rest/25 bg-monk-rest-soft/30 p-5">
-                    <div className="flex items-start gap-3">
-                      <div className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-monk-surface text-monk-rest">
-                        <Moon size={18} strokeWidth={1.5} />
+                  <Card className="border-monk-rest/35 bg-gradient-to-b from-monk-rest-soft/40 to-monk-surface p-5">
+                    <div className="flex items-start gap-3.5">
+                      <div className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-monk-rest/15 text-monk-rest">
+                        <Moon size={20} strokeWidth={2} />
                       </div>
-                      <div>
-                        <p className="font-semibold">{t("today.restPathTitle")}</p>
-                        <p className="mt-1 text-sm leading-6 text-monk-muted">
-                          {t("today.restPathBody")}
+                      <div className="min-w-0 flex-1">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="rounded-md border border-monk-rest/40 bg-monk-rest-soft px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-monk-rest">
+                            {savedReview ? t("week.reviewDoneBadge") : t("today.restRenewal.title")}
+                          </span>
+                        </div>
+                        <p className="mt-2 text-base font-bold text-monk-text">
+                          {savedReview?.restActivity ? (
+                            <span className="flex items-center gap-1.5">
+                              <span>{savedReview.restActivity.icon || "🌿"}</span>
+                              <span>{savedReview.restActivity.title}</span>
+                            </span>
+                          ) : (
+                            t("today.restPathTitle")
+                          )}
                         </p>
+                        <p className="mt-1 text-xs text-monk-muted leading-relaxed">
+                          {savedReview ? t("week.softWin.held") : t("today.restRenewal.subtitle")}
+                        </p>
+                        <div className="mt-4 flex flex-wrap items-center gap-2">
+                          <PrimaryButton
+                            onClick={() => setWeeklyReviewModalOpen(true)}
+                            className="text-xs py-2 px-4 w-auto inline-flex items-center gap-1.5"
+                          >
+                            <Sparkles size={13} />
+                            <span>{savedReview ? t("today.restRenewal.ctaView") : t("today.restRenewal.cta")}</span>
+                          </PrimaryButton>
+                        </div>
                       </div>
                     </div>
                   </Card>
@@ -1055,6 +1200,38 @@ export function TodayScreen() {
                     <CloseDayCard onSkip={() => setCloseDaySkipped(true)} />
                   ) : null}
                 </>
+              ) : null}
+
+              {primaryKind === "planning" ? (
+                <Card className="border-amber-500/40 bg-gradient-to-b from-amber-500/10 via-monk-surface to-monk-surface p-5 shadow-xs">
+                  <div className="flex items-start gap-3.5">
+                    <div className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-amber-500/20 text-amber-500 dark:text-amber-400">
+                      <Clock size={20} strokeWidth={2} />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2">
+                        <span className="rounded-md border border-amber-500/40 bg-amber-500/15 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-amber-600 dark:text-amber-400">
+                          {t("planning.strictGatedTitle")}
+                        </span>
+                      </div>
+                      <p className="mt-2 text-base font-bold text-monk-text">
+                        {t("planning.modalTitle")}
+                      </p>
+                      <p className="mt-1 text-xs text-monk-muted leading-relaxed">
+                        {t("planning.strictGatedDesc")}
+                      </p>
+                      <div className="mt-4 flex flex-wrap items-center gap-2">
+                        <PrimaryButton
+                          onClick={() => setPlanningModalOpen(true)}
+                          className="text-xs py-2 px-4 inline-flex items-center gap-1.5 font-bold"
+                        >
+                          <Zap size={14} />
+                          <span>{t("planning.openPlanningBtn")}</span>
+                        </PrimaryButton>
+                      </div>
+                    </div>
+                  </div>
+                </Card>
               ) : null}
 
               {primaryKind === "morning" ? (
@@ -1289,6 +1466,13 @@ export function TodayScreen() {
               </div>
             ) : null}
             <SeasonProgressCard compact />
+            {!isRest ? (
+              <DayTimeBlockVisualizer
+                compact
+                date={today}
+                onOpenPlanning={() => setPlanningModalOpen(true)}
+              />
+            ) : null}
             <WeeklyStatusIndicators />
             <PlanTomorrow goals={activeGoals} />
           </>
@@ -1343,6 +1527,22 @@ export function TodayScreen() {
           onChange={(event) => setReleaseNote(event.target.value)}
         />
       </CalmDialog>
+      <GoalBlueprintModal
+        goalId={blueprintGoalId}
+        isOpen={!!blueprintGoalId}
+        onClose={() => setBlueprintGoalId(null)}
+      />
+      <WeeklyReviewModal
+        isOpen={weeklyReviewModalOpen}
+        onClose={() => setWeeklyReviewModalOpen(false)}
+        weeklyPlanId={weeklyPlan?.id}
+      />
+      <MorningPlanningModal
+        isOpen={planningModalOpen}
+        onClose={() => setPlanningModalOpen(false)}
+        date={today}
+      />
+      <ZendoProModal isOpen={proModalOpen} onClose={() => setProModalOpen(false)} />
       {toast.Toast()}
     </>
   );
@@ -1395,7 +1595,15 @@ export function DefenseChips({ compact = false }: { compact?: boolean }) {
 }
 
 
-function FlowPickToday({ goals }: { goals: ReturnType<typeof selectActiveGoals> }) {
+function FlowPickToday({
+  goals,
+  onOpenBlueprint,
+  onPickRest
+}: {
+  goals: ReturnType<typeof selectActiveGoals>;
+  onOpenBlueprint?: (goalId: string) => void;
+  onPickRest?: () => void;
+}) {
   const store = useMonkStore();
   const weeklyPlan = selectCurrentWeeklyPlan(store);
   const restUsed = store.dayPlans.some(
@@ -1467,9 +1675,23 @@ function FlowPickToday({ goals }: { goals: ReturnType<typeof selectActiveGoals> 
                     {goal?.keystoneAction?.trim() || (remaining === 1 ? t("today.daysLeftWeek", { n: remaining }) : t("today.daysLeftWeekPlural", { n: remaining }))}
                   </p>
                 </div>
-                <span className="shrink-0 font-mono text-xs text-monk-muted tabular-nums">
-                  {allocation.completedCount}/{allocation.targetCount}
-                </span>
+                <div className="flex shrink-0 items-center gap-2">
+                  <button
+                    type="button"
+                    title={t("blueprint.dialogTitle")}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onOpenBlueprint?.(allocation.goalId);
+                    }}
+                    className="flex items-center gap-1 rounded-md border border-monk-border bg-monk-soft px-2 py-1 text-[10px] font-semibold text-monk-muted transition hover:border-monk-accent hover:text-monk-accent active:scale-95"
+                  >
+                    <Sparkles size={11} className="text-monk-accent" />
+                    <span>{t("blueprint.openButton")}</span>
+                  </button>
+                  <span className="font-mono text-xs text-monk-muted tabular-nums">
+                    {allocation.completedCount}/{allocation.targetCount}
+                  </span>
+                </div>
               </div>
               <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-monk-soft">
                 <div
@@ -1483,7 +1705,10 @@ function FlowPickToday({ goals }: { goals: ReturnType<typeof selectActiveGoals> 
         {!restUsed ? (
           <button
             type="button"
-            onClick={() => store.createOrUpdateDayPlan(getTodayDateString(), { dayType: "rest" })}
+            onClick={() => {
+              store.createOrUpdateDayPlan(getTodayDateString(), { dayType: "rest" });
+              onPickRest?.();
+            }}
             className="flex w-full items-start gap-3 rounded-monk border border-monk-border bg-monk-soft/60 p-4 text-left transition hover:border-monk-rest/40 active:scale-[0.99]"
           >
             <div className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-monk-surface text-monk-rest">

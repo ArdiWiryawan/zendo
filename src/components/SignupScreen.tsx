@@ -4,8 +4,6 @@ import { supabase as getSupabase } from "../lib/supabase";
 import { useT } from "../i18n";
 import { CalmAlert, GhostButton, PrimaryButton, TextInput } from "./ui";
 
-const sb = getSupabase();
-
 export default function SignupScreen() {
   const navigate = useNavigate();
   const t = useT();
@@ -13,19 +11,32 @@ export default function SignupScreen() {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [info, setInfo] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (loading) return;
     setLoading(true);
     setError(null);
+    setInfo(null);
     try {
-      const { data, error: authError } = (await sb?.auth.signUp({
+      const sb = getSupabase();
+      if (!sb) {
+        throw new Error(t("auth.unconfigured"));
+      }
+      const { data, error: authError } = await sb.auth.signUp({
         email: email.trim(),
         password
-      })) ?? { data: null, error: null };
+      });
       if (authError) throw authError;
-      navigate(data?.session ? "/today" : "/login", { replace: true });
+
+      if (data?.session) {
+        navigate("/today", { replace: true });
+      } else if (data?.user) {
+        setInfo(t("auth.signup.confirmEmail"));
+      } else {
+        navigate("/login", { replace: true });
+      }
     } catch (err: unknown) {
       const msg = (err as { message?: string })?.message || t("auth.signup.failed");
       setError(msg);
@@ -38,7 +49,7 @@ export default function SignupScreen() {
     <div className="relative flex min-h-dvh flex-col items-center justify-center px-6 py-10">
       <div
         aria-hidden
-        className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top,theme(colors.monk-accent/5),transparent_55%)]"
+        className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top,var(--color-accent-soft),transparent_55%)]"
       />
       <div className="relative z-10 w-full max-w-sm space-y-6">
         <div className="space-y-2 text-center">
@@ -76,6 +87,7 @@ export default function SignupScreen() {
           />
 
           {error ? <CalmAlert type="danger" title={error} /> : null}
+          {info ? <CalmAlert type="info" title={info} /> : null}
 
           <PrimaryButton type="submit" disabled={loading || !email || password.length < 6}>
             {loading ? t("auth.signup.loading") : t("auth.signup.submit")}

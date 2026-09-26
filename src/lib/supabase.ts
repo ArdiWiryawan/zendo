@@ -17,8 +17,15 @@ let _supabase: SupabaseClient | null = null
 
 function getSupabase() {
   if (!_supabase) {
-    const url = import.meta.env.VITE_SUPABASE_URL || ""
-    const key = import.meta.env.VITE_SUPABASE_ANON_KEY || ""
+    const url =
+      import.meta.env.VITE_SUPABASE_URL ||
+      import.meta.env.NEXT_PUBLIC_SUPABASE_URL ||
+      ""
+    const key =
+      import.meta.env.VITE_SUPABASE_ANON_KEY ||
+      import.meta.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ||
+      import.meta.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
+      ""
     if (url && key) {
       _supabase = createClient(url, key)
     }
@@ -41,6 +48,15 @@ export async function isSyncActive(): Promise<boolean> {
   if (!client) return false
   const { data } = await client.auth.getSession()
   return Boolean(data.session?.user?.id)
+}
+
+export function subscribeAuthState(callback: (event: string, session: any) => void) {
+  const client = getSupabase()
+  if (!client) return { unsubscribe: () => {} }
+  const { data: { subscription } } = client.auth.onAuthStateChange((event, session) => {
+    callback(event, session)
+  })
+  return { unsubscribe: () => subscription.unsubscribe() }
 }
 
 /**

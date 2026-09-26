@@ -1,12 +1,13 @@
 import type { ButtonHTMLAttributes, InputHTMLAttributes, ReactNode, TextareaHTMLAttributes } from "react";
 import { useEffect, useId, useRef, useState } from "react";
 import { MotionConfig } from "framer-motion";
-import { ArrowLeft, ArrowRight, BookOpen, Calendar, Check, Download, FileJson, FileText, Flag, Grid3X3, Settings, Sun, Upload } from "lucide-react";
+import { ArrowLeft, ArrowRight, BookOpen, Calendar, Check, Download, FileJson, FileText, Flag, Grid3X3, Settings, Sun, Upload, Crown, Heart } from "lucide-react";
 import { hapticPress } from "../lib/haptics";
 import { NavLink, useLocation } from "react-router-dom";
 import { routes } from "../constants/routes";
 import { useT } from "../i18n";
 import { useSyncStatus } from "../lib/syncStatus";
+import { useMonkStore } from "../store/useMonkStore";
 
 export function ScreenContainer({
   children,
@@ -88,14 +89,14 @@ export function OnboardingShell({
 
   return (
     <MotionConfig reducedMotion="user">
-      <div ref={shellRef} className="min-h-dvh bg-monk-bg text-monk-text">
-        <ScreenContainer>
+      <div ref={shellRef} className="min-h-dvh bg-monk-bg text-monk-text flex flex-col">
+        <main className="mx-auto flex w-full max-w-[430px] flex-1 flex-col px-5 sm:px-6 pt-[calc(env(safe-area-inset-top)+14px)] pb-[calc(env(safe-area-inset-bottom)+18px)]">
           {currentStep && totalSteps ? (
-            <div className="mb-2 flex items-center gap-3">
+            <div className="mb-2 flex items-center gap-3 shrink-0">
               {onBack ? (
                 <button
                   onClick={onBack}
-                  className="-ml-2 grid min-h-12 min-w-12 shrink-0 place-items-center text-monk-muted transition-colors hover:text-monk-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-monk-accent focus-visible:ring-offset-2 focus-visible:ring-offset-monk-bg"
+                  className="-ml-2 grid min-h-10 min-w-10 shrink-0 place-items-center rounded-xl text-monk-muted transition-colors hover:text-monk-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-monk-accent focus-visible:ring-offset-2 focus-visible:ring-offset-monk-bg"
                   aria-label={tUI("ui.goBack")}
                 >
                   <ArrowLeft size={20} strokeWidth={2} />
@@ -106,8 +107,8 @@ export function OnboardingShell({
               </div>
             </div>
           ) : null}
-          <div className="flex min-h-[calc(100dvh-72px)] flex-col pb-[env(safe-area-inset-bottom)]">{children}</div>
-        </ScreenContainer>
+          <div className="flex flex-1 flex-col justify-between">{children}</div>
+        </main>
       </div>
     </MotionConfig>
   );
@@ -563,16 +564,30 @@ export function EmptyState({
   );
 }
 
-export function SettingsLink() {
+export function SettingsLink({ onOpenPro }: { onOpenPro?: () => void } = {}) {
   const t = useT();
+
   return (
-    <NavLink
-      to={routes.settings}
-      aria-label={t("nav.settings")}
-      className="grid h-12 w-12 place-items-center rounded-full border border-monk-border bg-monk-surface text-monk-muted transition duration-150 hover:border-monk-border-strong hover:text-monk-text active:scale-95"
-    >
-      <Settings size={20} strokeWidth={1.5} />
-    </NavLink>
+    <div className="flex items-center gap-2">
+      {onOpenPro && (
+        <button
+          type="button"
+          onClick={onOpenPro}
+          className="flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-bold transition active:scale-95 shadow-sm border border-amber-500/40 bg-amber-500/10 text-amber-600 dark:text-amber-400 hover:bg-amber-500/20"
+          aria-label="Dukung / Donasi Zendo"
+        >
+          <Heart size={13} className="text-amber-500 fill-amber-500/20" />
+          <span>Dukung</span>
+        </button>
+      )}
+      <NavLink
+        to={routes.settings}
+        aria-label={t("nav.settings")}
+        className="grid h-10 w-10 place-items-center rounded-full border border-monk-border bg-monk-surface text-monk-muted transition duration-150 hover:border-monk-border-strong hover:text-monk-text active:scale-95"
+      >
+        <Settings size={18} strokeWidth={1.5} />
+      </NavLink>
+    </div>
   );
 }
 

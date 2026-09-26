@@ -20,6 +20,7 @@ import {
 } from "../components/ui";
 import JournalNotebook, { NotebookEditor } from "./JournalNotebook";
 import JournalPacks from "./JournalPacks";
+import { ZendoProModal } from "../components/ZendoProModal";
 import { groupPhotoRuns, renderBodyMarkdown } from "../lib/notebookMarkdown";
 import type { AppLanguage, TimelineStatus } from "../types/app";
 
@@ -106,7 +107,9 @@ export function JournalLibraryScreen() {
   const lang = useLanguage();
   const dateLocale = lang === "id" ? "id-ID" : "en-US";
   const season = store.activeSeason;
-  const journalEntries = store.journalEntries.filter(e => e.seasonId === season?.id);
+  const journalEntries = season?.id
+    ? store.journalEntries.filter((e) => !e.seasonId || e.seasonId === season.id)
+    : store.journalEntries;
   const notebookEntries = store.notebookEntries;
   const packSessions = store.journalPackSessions.filter(s => s.completedAt);
   const categories = store.notebookCategories;
@@ -287,17 +290,31 @@ export function JournalLibraryScreen() {
                 const hasMorningPages = !!entry.answers.morningPages?.trim();
                 const hasReflection = !!entry.answers.whatMovedToday?.trim();
                 return (
-                  <button key={entry.id} className="w-full text-left p-4 bg-monk-surface hover:bg-monk-surface/40 transition border border-monk-border/40 rounded-xl hover:border-monk-accent relative"
-                    onClick={() => navigate(`/journal?tab=${hasReflection ? "reflection" : "morning"}&date=${entry.date}`)}>
+                  <button
+                    key={entry.id}
+                    className="w-full text-left p-4 bg-monk-surface hover:bg-monk-surface/40 transition border border-monk-border/40 rounded-xl hover:border-monk-accent relative space-y-2"
+                    onClick={() => navigate(`/journal?tab=${hasReflection ? "reflection" : "morning"}&date=${entry.date}`)}
+                  >
                     {(hasMorningPages || hasReflection) && <span className="absolute left-0 top-0 bottom-0 w-0.5 bg-monk-accent rounded-l-xl" />}
-                    <div className="flex items-center justify-between mb-1">
+                    <div className="flex items-center justify-between">
                       <span className="text-sm font-semibold text-monk-text">{formatHumanDate(entry.date)}</span>
                       <div className="flex gap-1.5">
                         {hasMorningPages ? <span className="text-xs font-bold uppercase tracking-wider text-monk-accent bg-monk-accent-soft px-2 py-0.5 rounded-full">{t("library.am")}</span> : null}
                         {hasReflection ? <span className="text-xs font-bold uppercase tracking-wider text-monk-success bg-monk-success-soft px-2 py-0.5 rounded-full">{t("library.pm")}</span> : null}
                       </div>
                     </div>
-                    {hasReflection ? <p className="text-xs text-monk-muted mt-1 line-clamp-2">{entry.answers.whatMovedToday}</p> : hasMorningPages ? <p className="text-xs text-monk-muted mt-1 line-clamp-2">{entry.answers.morningPages}</p> : null}
+                    {hasMorningPages && (
+                      <p className="text-xs text-monk-muted line-clamp-2">
+                        <span className="font-semibold text-monk-text-soft mr-1">[{t("journal.tabMorning")}]:</span>
+                        {entry.answers.morningPages}
+                      </p>
+                    )}
+                    {hasReflection && (
+                      <p className="text-xs text-monk-muted line-clamp-2">
+                        <span className="font-semibold text-monk-text-soft mr-1">[{t("journal.tabReflection")}]:</span>
+                        {entry.answers.whatMovedToday}
+                      </p>
+                    )}
                   </button>
                 );
               })
@@ -383,6 +400,7 @@ export function LibraryScreen() {
   const [subview, setSubview] = useState<"journal" | "learning" | "history" | null>(null);
   const [activeTab, setActiveTab] = useState<"focus" | "drifts">("focus");
   const [searchQuery, setSearchQuery] = useState("");
+  const [proModalOpen, setProModalOpen] = useState(false);
   const t = useT();
   const lang = useLanguage();
   const dateLocale = lang === "id" ? "id-ID" : "en-US";
@@ -404,25 +422,36 @@ export function LibraryScreen() {
       if (!["completed", "ended_early"].includes(s.status)) return false;
       const q = searchQuery.toLowerCase();
       const goal = store.goals.find((g) => g.id === s.goalId);
+      const startIso = s.startedAt || s.createdAt || s.startTime;
       return (
         (goal?.title || "").toLowerCase().includes(q) ||
         (s.note || "").toLowerCase().includes(q) ||
-        s.startTime.includes(q)
+        startIso.includes(q)
       );
-    }).sort((a, b) => b.startTime.localeCompare(a.startTime));
+    }).sort((a, b) => {
+      const aTime = a.startedAt || a.createdAt || a.startTime;
+      const bTime = b.startedAt || b.createdAt || b.startTime;
+      return bTime.localeCompare(aTime);
+    });
   }, [store.focusSessions, store.goals, searchQuery]);
 
   const filteredLearning = useMemo(() => {
     return store.learningSessions.filter((l) => {
       const q = searchQuery.toLowerCase();
       const goal = store.goals.find((g) => g.id === l.relatedGoalId);
+      const startIso = l.startedAt || l.createdAt;
       return (
         (l.sourceTitle || "").toLowerCase().includes(q) ||
         (l.lesson || "").toLowerCase().includes(q) ||
         (l.actionIdea || "").toLowerCase().includes(q) ||
-        (goal?.title || "").toLowerCase().includes(q)
+        (goal?.title || "").toLowerCase().includes(q) ||
+        startIso.includes(q)
       );
-    }).sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+    }).sort((a, b) => {
+      const aTime = a.startedAt || a.createdAt;
+      const bTime = b.startedAt || b.createdAt;
+      return bTime.localeCompare(aTime);
+    });
   }, [store.learningSessions, store.goals, searchQuery]);
 
   const filteredDrifts = useMemo(() => {
@@ -746,7 +775,11 @@ export function LibraryScreen() {
 
   return (
     <>
-      <PageHeader title={t("library.home.title")} subtitle={t("library.home.subtitle")} rightSlot={<SettingsLink />} />
+      <PageHeader
+        title={t("library.home.title")}
+        subtitle={t("library.home.subtitle")}
+        rightSlot={<SettingsLink onOpenPro={() => setProModalOpen(true)} />}
+      />
       <div className="space-y-3">
         <button
           type="button"
@@ -817,6 +850,7 @@ export function LibraryScreen() {
           </Card>
         </button>
       </div>
+      <ZendoProModal isOpen={proModalOpen} onClose={() => setProModalOpen(false)} />
     </>
   );
 }

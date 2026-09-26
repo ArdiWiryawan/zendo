@@ -26,9 +26,18 @@ export type UserProfile = {
 
 export type AppLanguage = "en" | "id";
 
+export type AppTheme =
+  | "dark"
+  | "sumi_ink"
+  | "system"
+  | "kyoto_moss"
+  | "wabi_sabi"
+  | "kurogane"
+  | "temple_gold";
+
 export type AppSettings = {
   id: string;
-  theme: "light" | "dark" | "system";
+  theme: AppTheme;
   language: AppLanguage;
   reducedMotion: boolean;
   notificationEnabled: boolean;
@@ -41,11 +50,17 @@ export type AppSettings = {
   updatedAt: ISODateString;
 };
 
-/** Motivation snapshot from onboarding — survives createSeasonFromOnboarding. */
+/** Motivation snapshot — 4-component flow: Why, Desired Outcome, Anti-Why, plus identity/values */
 export type SeasonWhy = {
   identity: string;
   consequenceOfInaction: string;
   protectValues: string[];
+  /** Intrinsic reason: "Why does this matter to you?" */
+  why?: string;
+  /** Desired outcome: "What gets better if you finish?" */
+  desiredOutcome?: string;
+  /** Anti-Why / cost of inaction: "If I keep stalling, what likely remains a problem?" */
+  antiWhy?: string;
 };
 
 export type Season = {
@@ -73,6 +88,10 @@ export type Goal = {
   keystoneAction: string;
   /** Why this goal matters — short personal reason. */
   why?: string;
+  /** Implementation intention context (When & Where: e.g. "Tomorrow 08:30 at work desk") */
+  whenWhere?: string;
+  /** Definition of done / clear completion criteria */
+  definitionOfDone?: string;
   /** Biggest inner obstacle expected for this goal. */
   obstacle?: string;
   /** Plan B — parsed from "When [obstacle], I will [plan B]". */
@@ -139,6 +158,23 @@ export type WeeklyPlan = {
   updatedAt: ISODateString;
 };
 
+export type TimeBlockCategory =
+  | "deep_work"
+  | "shallow"
+  | "learning"
+  | "rest"
+  | "personal";
+
+export type TimeBlock = {
+  id: string;
+  startTime: string; // "HH:mm" e.g. "08:00"
+  endTime: string;   // "HH:mm" e.g. "10:00"
+  title: string;
+  category: TimeBlockCategory;
+  goalId?: string;
+  completed?: boolean;
+};
+
 export type DayPlan = {
   id: string;
   seasonId: string;
@@ -150,6 +186,8 @@ export type DayPlan = {
   highlight?: string;
   energyLevel?: EnergyLevel;
   status: DayStatus;
+  planningCompleted?: boolean;
+  timeBlocks?: TimeBlock[];
   createdAt: ISODateString;
   updatedAt: ISODateString;
 };
@@ -220,6 +258,7 @@ export type LearningSourceType =
 export type LearningSession = {
   id: string;
   seasonId?: string;
+  dayPlanId?: string;
   relatedGoalId?: string | null;
 
   sourceType: LearningSourceType;
@@ -448,9 +487,27 @@ export type WeeklyReviewDecision = {
   mainAction?: string;
 };
 
+export type WeeklyReflectionAnswers = {
+  wins?: string;
+  challenges?: string;
+  lesson?: string;
+  organise?: string;
+  priorities?: string;
+};
+
+export type RestActivityItem = {
+  id: string;
+  title: string;
+  category?: "physical" | "creative" | "social" | "solitude" | "custom";
+  icon?: string;
+  notes?: string;
+};
+
 export type WeeklyReview = {
   date: string;
   decisions: Record<string, WeeklyReviewDecision>;
+  reflection?: WeeklyReflectionAnswers;
+  restActivity?: RestActivityItem;
   skipped?: boolean;
 };
 
@@ -482,6 +539,7 @@ export type MonkMVPState = {
   // Delete always wins: any entry whose id appears here is dropped on merge and
   // hidden at render, regardless of updatedAt recency. Pruned on hydrate.
   notebookDeletedAt: Record<string, ISODateString>;
+  notebookCategoryDeletedAt?: Record<string, ISODateString>;
 
   // Journal Packs
   journalPacks: JournalPack[];
@@ -494,11 +552,19 @@ export type MonkMVPState = {
   // Weekly re-decide review
   weeklyReviews: Record<string, WeeklyReview>;
 
+  // Pro Membership
+  isPro?: boolean;
+  proTier?: "lifetime" | "season" | null;
+  proExpiresAt?: ISODateString | null;
+  proPurchasedAt?: ISODateString | null;
+
   // Released (mid-season) goals — ritual archive, never destructive to history
   releasedSeasonGoals: ReleasedSeasonGoal[];
 };
 
-// ── Notebook (Free Journal) ──
+// ── Notebook (Free Journal / Second Brain) ──
+
+export type ParaType = "project" | "area" | "resource" | "archive";
 
 export type NotebookCategory = {
   id: string;
@@ -515,6 +581,14 @@ export type NotebookEntry = {
   categoryId: string;
   tags: string[];
   isPinned: boolean;
+  /** PARA Classification (Tiago Forte BASB) */
+  paraType?: ParaType;
+  /** Optional link to an active Season Goal */
+  goalId?: string;
+  /** References / bi-directional linked notes */
+  linkedNoteIds?: string[];
+  /** Progressive Summarization (Tier 3 Executive Takeaway) */
+  takeaway?: string;
   // imageIds referencing blobs in IndexedDB "zendo_images" (lib/imageStore).
   // Local-only by design — never synced. Optional: older persisted entries lack it.
   images?: string[];

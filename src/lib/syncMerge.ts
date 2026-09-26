@@ -1,4 +1,4 @@
-import type { MonkMVPState } from "../types/app";
+import type { MonkMVPState, NotificationReminder } from "../types/app";
 
 /**
  * Merge two states last-write-wins by updatedAt.
@@ -98,6 +98,17 @@ export function mergeRemoteState(local: MonkMVPState, remote: Partial<MonkMVPSta
     if (r !== undefined) out[key] = mergeScalar(l as never, r as never);
   }
 
+  if (Array.isArray(out.notificationReminders)) {
+    const map = new Map<string, NotificationReminder>();
+    out.notificationReminders.forEach((rem) => {
+      const existing = map.get(rem.type);
+      if (!existing || (rem.updatedAt && (!existing.updatedAt || rem.updatedAt > existing.updatedAt))) {
+        map.set(rem.type, { ...rem, id: `rem_${rem.type}` });
+      }
+    });
+    out.notificationReminders = Array.from(map.values());
+  }
+
   // notebookDeletedAt is a monotonic tombstone map (id → deletion ISO): a
   // delete on ANY device must survive merges on every other device, so union
   // both sides (local tombstones always survive even when an older client sends
@@ -112,6 +123,16 @@ export function mergeRemoteState(local: MonkMVPState, remote: Partial<MonkMVPSta
   const tombstoned = new Set(Object.keys(out.notebookDeletedAt ?? {}));
   if (tombstoned.size > 0) {
     out.notebookEntries = (out.notebookEntries ?? []).filter((e) => !tombstoned.has(e.id));
+  }
+
+  // notebookCategoryDeletedAt is a monotonic tombstone map for deleted categories:
+  const lct = local.notebookCategoryDeletedAt ?? {};
+  const rct = remote.notebookCategoryDeletedAt;
+  if (rct && typeof rct === "object") out.notebookCategoryDeletedAt = { ...lct, ...rct };
+  else if (Object.keys(lct).length > 0) out.notebookCategoryDeletedAt = { ...lct };
+  const catTombstoned = new Set(Object.keys(out.notebookCategoryDeletedAt ?? {}));
+  if (catTombstoned.size > 0) {
+    out.notebookCategories = (out.notebookCategories ?? []).filter((c) => !catTombstoned.has(c.id));
   }
 
   // purchasedPackIds is a monotonic string set (no per-id updatedAt) — a

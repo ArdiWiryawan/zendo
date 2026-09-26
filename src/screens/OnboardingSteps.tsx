@@ -47,11 +47,16 @@ export function ScreenIntro({ title, subtitle }: { title: string; subtitle: stri
           transition: { duration: 0.5, delay, ease: [0.16, 1, 0.3, 1] as const }
         };
   return (
-    <div className="mb-6 mt-4">
-      <motion.h1 id="step-heading" tabIndex={-1} className="text-2xl font-semibold leading-9 tracking-tight" {...rise(0)}>
+    <div className="mb-4 sm:mb-6 mt-1 sm:mt-2">
+      <motion.h1
+        id="step-heading"
+        tabIndex={-1}
+        className="text-xl sm:text-2xl font-semibold leading-tight tracking-tight outline-none focus:outline-none ring-0 focus:ring-0 border-none"
+        {...rise(0)}
+      >
         {title}
       </motion.h1>
-      <motion.p className="mt-2.5 text-[15px] leading-6 text-monk-muted" {...rise(0.06)}>
+      <motion.p className="mt-1.5 sm:mt-2 text-sm sm:text-[15px] leading-relaxed text-monk-muted" {...rise(0.06)}>
         {subtitle}
       </motion.p>
     </div>
@@ -94,7 +99,7 @@ export function HabitAudit({ onNext }: { onNext: () => void }) {
           onChange={(event) => useMonkStore.getState().setCustomHabitName(event.target.value)}
         />
       ) : null}
-      <div className="mt-auto space-y-3 pt-8">
+      <div className="mt-auto shrink-0 space-y-3 pt-5 sm:pt-8 pb-1">
         {!canContinue ? (
           <CalmAlert
             type="warning"
@@ -103,6 +108,102 @@ export function HabitAudit({ onNext }: { onNext: () => void }) {
         ) : null}
         <PrimaryButton disabled={!canContinue} onClick={onNext}>
           {isEmpty ? "Skip for now" : "Continue"}
+        </PrimaryButton>
+      </div>
+    </>
+  );
+}
+
+export function FrictionSetup({ onNext }: { onNext: () => void }) {
+  const { onboarding, toggleFrictionAction } = useMonkStore();
+  const selectedHabits = onboarding.selectedHabits;
+  const frictionMap = onboarding.frictionActions;
+
+  const allActions = selectedHabits.flatMap((habit) => frictionMap[habit.id] ?? []);
+  const checkedCount = allActions.filter((a) => a.completed).length;
+
+  if (selectedHabits.length === 0) {
+    return (
+      <>
+        <ScreenIntro
+          title="Make distractions harder to reach"
+          subtitle="You didn't select specific habits, but designing your environment protects focus for every season."
+        />
+        <Card className="my-auto space-y-3 p-5">
+          <div className="flex items-center gap-3 text-monk-accent">
+            <ShieldCheck size={24} />
+            <p className="font-semibold text-monk-text">General Focus Guardrails</p>
+          </div>
+          <p className="text-sm leading-relaxed text-monk-muted">
+            • Keep your phone in another room during deep focus sessions.<br />
+            • Put reading or workspace essentials within arm's reach.<br />
+            • Turn off non-urgent app notifications before starting.
+          </p>
+        </Card>
+        <div className="mt-auto shrink-0 space-y-3 pt-5 sm:pt-8 pb-1">
+          <PrimaryButton onClick={onNext}>Continue</PrimaryButton>
+        </div>
+      </>
+    );
+  }
+
+  return (
+    <>
+      <ScreenIntro
+        title="Make distractions harder to reach"
+        subtitle="You do not need willpower. Add friction to your environment so habits cannot start on autopilot."
+      />
+      <div className="mb-3 flex items-center justify-between">
+        <p className="text-xs text-monk-muted">Choose your practical defenses</p>
+        <span className="rounded-full bg-monk-soft px-2.5 py-1 text-xs font-bold text-monk-muted">
+          {checkedCount > 0 ? `${checkedCount} active` : "Recommended"}
+        </span>
+      </div>
+
+      <div className="space-y-4">
+        {selectedHabits.map((habit) => {
+          const actions = frictionMap[habit.id] ?? [];
+          return (
+            <div key={habit.id} className="space-y-2 rounded-2xl border border-monk-border bg-monk-surface/60 p-3.5">
+              <div className="flex items-center gap-2">
+                <span className="h-2 w-2 rounded-full bg-monk-accent" />
+                <p className="text-sm font-semibold text-monk-text">{habit.customName || habit.name}</p>
+              </div>
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                {actions.map((action) => (
+                  <button
+                    key={action.id}
+                    type="button"
+                    onClick={() => toggleFrictionAction(habit.id, action.id)}
+                    className={`flex items-center gap-3 rounded-xl border p-2.5 text-left text-xs transition-all ${
+                      action.completed
+                        ? "border-monk-accent/40 bg-monk-accent/10 font-semibold text-monk-text shadow-sm"
+                        : "border-monk-border/70 bg-monk-surface/90 text-monk-muted hover:border-monk-border hover:text-monk-text"
+                    }`}
+                  >
+                    <div
+                      className={`grid h-5 w-5 shrink-0 place-items-center rounded-md border text-white transition-colors ${
+                        action.completed ? "border-monk-accent bg-monk-accent" : "border-monk-border bg-monk-soft"
+                      }`}
+                    >
+                      {action.completed ? <Check size={12} strokeWidth={3} /> : null}
+                    </div>
+                    <span className="leading-snug">{action.label}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      <p className="mt-3 text-center text-xs text-monk-text-soft">
+        You do not need perfection. Just make the habit harder.
+      </p>
+
+      <div className="mt-auto shrink-0 space-y-3 pt-5 sm:pt-8 pb-1">
+        <PrimaryButton onClick={onNext}>
+          {checkedCount === 0 ? "Skip for now" : "Continue"}
         </PrimaryButton>
       </div>
     </>
@@ -201,7 +302,7 @@ export function GoalBrainDump({ onNext }: { onNext: () => void }) {
           </div>
         </div>
       ) : null}
-      <div className="mt-auto space-y-3 pt-8">
+      <div className="mt-auto shrink-0 space-y-3 pt-5 sm:pt-8 pb-1">
         {dumpResult.valid && !narrowResult.valid ? <CalmAlert type="warning" title={narrowResult.message!} /> : null}
         {!dumpResult.valid ? <CalmAlert type="warning" title={dumpResult.message!} /> : null}
         <PrimaryButton disabled={!canContinue} onClick={onNext}>Continue</PrimaryButton>
@@ -288,7 +389,7 @@ export function SeasonSetup({ onNext }: { onNext: () => void }) {
           durationLabel={`${onboarding.seasonDurationDays} days of focused progress`}
         />
       </div>
-      <div className="mt-auto space-y-3 pt-8">
+      <div className="mt-auto shrink-0 space-y-3 pt-5 sm:pt-8 pb-1">
         {!result.valid ? <CalmAlert type="warning" title={result.message!} /> : null}
         <PrimaryButton disabled={!result.valid} onClick={onNext}>Continue</PrimaryButton>
       </div>
@@ -404,7 +505,7 @@ export function KeystoneSetup({ onNext }: { onNext: () => void }) {
           );
         })}
       </div>
-      <div className="mt-auto space-y-3 pt-8">
+      <div className="mt-auto shrink-0 space-y-3 pt-5 sm:pt-8 pb-1">
         {!result.valid ? <CalmAlert type="warning" title={result.message!} /> : null}
         <PrimaryButton disabled={!result.valid} onClick={onNext}>Continue</PrimaryButton>
       </div>
@@ -438,7 +539,7 @@ export function TodayPreviewStep() {
           </div>
         ))}
       </Card>
-      <div className="mt-auto space-y-3 pt-8">
+      <div className="mt-auto shrink-0 space-y-3 pt-5 sm:pt-8 pb-1">
         <PrimaryButton
           onClick={() => {
             createSeasonFromOnboarding();

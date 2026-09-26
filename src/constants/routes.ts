@@ -6,6 +6,7 @@ export const routes = {
   onboardingKeystone: "/onboarding/keystone",
   onboardingPreview: "/onboarding/preview",
   onboardingHabits: "/onboarding/habits",
+  onboardingFriction: "/onboarding/friction",
   today: "/today",
   week: "/week",
   timeline: "/timeline",
@@ -27,6 +28,7 @@ export const routes = {
 export const onboardingOrder = [
   routes.onboardingWelcome,
   routes.onboardingHabits,
+  routes.onboardingFriction,
   routes.onboardingGoals,
   routes.onboardingKeystone,
   routes.onboardingSeason,

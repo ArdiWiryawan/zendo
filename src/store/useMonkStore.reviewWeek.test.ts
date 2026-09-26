@@ -91,4 +91,35 @@ describe("weekly re-decide review", () => {
 
     expect(released).toEqual([goalId]);
   });
+
+  it("persists reflection answers and selected rest activity", () => {
+    const { goalId, weekId } = makeSeasonWithGoal();
+
+    const reflection = {
+      wins: "Completed 5 focus blocks and slept 8 hours",
+      challenges: "Late night doomscrolling on Tuesday",
+      lesson: "Environment design: keep phone outside bedroom",
+      organise: "Review calendar and block Thursday morning",
+      priorities: "1. Launch MVP 2. Silent walk 3. Call friend"
+    };
+
+    const restActivity = {
+      id: "silent_walk",
+      title: "Silent Nature Walk",
+      category: "physical" as const,
+      icon: "🚶"
+    };
+
+    useMonkStore.getState().reviewWeek(
+      weekId,
+      { [goalId]: { action: "continue" } },
+      { reflection, restActivity }
+    );
+
+    const review = useMonkStore.getState().weeklyReviews[weekId];
+    expect(review?.reflection).toEqual(reflection);
+    expect(review?.restActivity).toEqual(restActivity);
+    expect(review?.decisions[goalId].action).toBe("continue");
+  });
 });
+

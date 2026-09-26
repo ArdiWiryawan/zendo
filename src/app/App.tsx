@@ -8,7 +8,7 @@ import { initReminderScheduler } from "../lib/reminderScheduler";
 import { AppShell, OnboardingShell, useCalmToast } from "../components/ui";
 import { onboardingOrder, routes } from "../constants/routes";
 import { useMonkStore } from "../store/useMonkStore";
-import { playZenBell } from "../lib/audio";
+import { playBreakChime, playFocusChime, playZenBell } from "../lib/audio";
 import { planFocusTick } from "../lib/focusTicker.worker";
 
 // ponytail: TodayScreen + FocusScreen loaded eagerly (primary screens); others lazy-split
@@ -26,7 +26,7 @@ const PacksPageLazy = lazy(() => import("../screens/LibraryScreen").then(m => ({
 const ArchiveScreenLazy = lazy(() => import("../screens/ArchiveScreen").then(m => ({ default: m.ArchiveScreen })));
 import { TodayScreen } from "../screens/TodayScreen";
 import { WelcomeScreen } from "../screens/WelcomeScreen";
-import { HabitAudit, GoalBrainDump, SeasonSetup, KeystoneSetup, TodayPreviewStep } from "../screens/OnboardingSteps";
+import { HabitAudit, FrictionSetup, GoalBrainDump, SeasonSetup, KeystoneSetup, TodayPreviewStep } from "../screens/OnboardingSteps";
 
 export default function App() {
   const hydrate = useMonkStore((state) => state.hydrate);
@@ -43,12 +43,64 @@ export default function App() {
     return focusSessions.find((session) => ["running", "paused"].includes(session.status));
   }, [focusSessions]);
 
+  const appTheme = useMonkStore((state) => state.appSettings.theme);
+  const unlockPro = useMonkStore((state) => state.unlockPro);
+  const purchasePack = useMonkStore((state) => state.purchasePack);
+  const lang = useMonkStore((state) => state.appSettings.language);
+
   useEffect(() => {
     hydrate();
     recordOpen();
     syncPurchases();
     setReady(true);
   }, [hydrate, recordOpen, syncPurchases]);
+
+  // Apply Zen aesthetic theme to document root
+  useEffect(() => {
+    if (appTheme && appTheme !== ("light" as string)) {
+      document.documentElement.setAttribute("data-theme", appTheme);
+    } else {
+      document.documentElement.setAttribute("data-theme", "dark");
+    }
+  }, [appTheme]);
+
+  // Global payment / checkout return listener
+  useEffect(() => {
+    if (!ready) return;
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const proUnlocked = params.get("pro_unlocked");
+      const purchased = params.get("purchased");
+
+      if (proUnlocked) {
+        unlockPro(proUnlocked === "pro_season" ? "season" : "lifetime");
+        playZenBell();
+        reminderToastRef.current.show(
+          lang === "id"
+            ? "✦ Selamat! Zendo Pro berhasil diaktifkan."
+            : "✦ Congratulations! Zendo Pro successfully unlocked."
+        );
+        params.delete("pro_unlocked");
+        const nextQuery = params.toString();
+        const nextUrl = window.location.pathname + (nextQuery ? `?${nextQuery}` : "") + window.location.hash;
+        window.history.replaceState({}, document.title, nextUrl);
+      } else if (purchased) {
+        purchasePack(purchased);
+        playZenBell();
+        reminderToastRef.current.show(
+          lang === "id"
+            ? "✦ Paket Refleksi berhasil dibuka!"
+            : "✦ Reflection Pack unlocked!"
+        );
+        params.delete("purchased");
+        const nextQuery = params.toString();
+        const nextUrl = window.location.pathname + (nextQuery ? `?${nextQuery}` : "") + window.location.hash;
+        window.history.replaceState({}, document.title, nextUrl);
+      }
+    } catch {
+      /* ignore */
+    }
+  }, [ready, unlockPro, purchasePack, lang]);
 
   useEffect(() => {
     if (!ready) return;
@@ -64,7 +116,12 @@ export default function App() {
     return initReminderScheduler({
       osNotify: (title, body) => {
         try {
-          new Notification(title, { body, icon: "/apple-touch-icon.png", silent: true });
+          const isHidden = typeof document !== "undefined" && document.visibilityState === "hidden";
+          new Notification(title, {
+            body,
+            icon: "/apple-touch-icon.png",
+            silent: !isHidden,
+          });
         } catch {
           /* permission revoked between check and fire — in-app toast still shown */
         }
@@ -84,7 +141,20 @@ export default function App() {
     if (!ready) return;
 
     const notify = (title: string, body: string) => {
-      if (Notification.permission === "granted") new Notification(title, { body, icon: "/apple-touch-icon.png", silent: true });
+      if (typeof Notification === "undefined" || Notification.permission !== "granted") return;
+      const isHidden = typeof document !== "undefined" && document.visibilityState === "hidden";
+      try {
+        new Notification(title, {
+          body,
+          icon: "/apple-touch-icon.png",
+          // When hidden/backgrounded on desktop, silent MUST be false so OS plays audio chime!
+          // When visible in tab, in-app Web Audio plays Zen bell, so silent is true to prevent double audio.
+          silent: !isHidden,
+          requireInteraction: isHidden,
+        });
+      } catch {
+        /* ignore */
+      }
     };
 
     const runTick = () => {
@@ -126,7 +196,13 @@ export default function App() {
         const now = Date.now();
         if (now - lastBellRef.current > 1000) {
           lastBellRef.current = now;
-          playZenBell();
+          if (bell.title === "Break time") {
+            playBreakChime();
+          } else if (bell.title === "Focus block") {
+            playFocusChime();
+          } else {
+            playZenBell();
+          }
           if ("vibrate" in navigator) navigator.vibrate(bell.vibrate);
           notify(bell.title, bell.body);
         }
@@ -276,40 +352,48 @@ function ProtectedMain({ children, allowEnded = false, showNav = true }: { child
 function OnboardingScreen({ path }: { path: string }) {
   const navigate = useNavigate();
   const store = useMonkStore();
-  const stepIndex = Math.max(0, onboardingOrder.findIndex((item) => item === path));
+
+  const questionSteps = [
+    routes.onboardingHabits,
+    routes.onboardingFriction,
+    routes.onboardingGoals,
+    routes.onboardingKeystone,
+    routes.onboardingSeason,
+    routes.onboardingPreview
+  ] as const;
+
+  const isWelcome = path === routes.onboardingWelcome || !(onboardingOrder as readonly string[]).includes(path);
+
+  if (isWelcome) {
+    const goNext = () => {
+      store.setOnboardingStep(routes.onboardingHabits);
+      navigate(routes.onboardingHabits);
+    };
+    return (
+      <OnboardingShell>
+        <WelcomeScreen onNext={goNext} />
+      </OnboardingShell>
+    );
+  }
+
+  const stepIndex = Math.max(0, questionSteps.findIndex((item) => item === path));
   const currentStep = stepIndex + 1;
-  const totalSteps = onboardingOrder.length;
-  const next = onboardingOrder[Math.min(stepIndex + 1, onboardingOrder.length - 1)];
-  const prev = stepIndex > 0 ? onboardingOrder[stepIndex - 1] : null;
+  const totalSteps = questionSteps.length;
+  const next = stepIndex < questionSteps.length - 1 ? questionSteps[stepIndex + 1] : routes.onboardingPreview;
+  const prev = stepIndex > 0 ? questionSteps[stepIndex - 1] : routes.onboardingWelcome;
+
   const goNext = () => {
     store.setOnboardingStep(next);
     navigate(next);
   };
-  const goBack = prev ? () => {
+  const goBack = () => {
     store.setOnboardingStep(prev);
     navigate(prev);
-  } : undefined;
-
-  // Unknown /onboarding/* paths (e.g. removed steps) resolve to step 1
-  const isKnownStep = (onboardingOrder as readonly string[]).includes(path);
-  if (!isKnownStep) {
-    return (
-      <OnboardingShell>
-        <WelcomeScreen onNext={goNext} />
-      </OnboardingShell>
-    );
-  }
-  if (path === routes.onboardingWelcome) {
-    return (
-      <OnboardingShell>
-        <WelcomeScreen onNext={goNext} />
-      </OnboardingShell>
-    );
-  }
+  };
 
   // phase labels mirror onboardingOrder phases only; do not drive order/navigation
   const phaseForStep = (stepPath: string): string | undefined => {
-    if (stepPath === routes.onboardingHabits) return "Clear";
+    if (stepPath === routes.onboardingHabits || stepPath === routes.onboardingFriction) return "Clear";
     if (stepPath === routes.onboardingGoals || stepPath === routes.onboardingSeason) return "Plan";
     if (stepPath === routes.onboardingKeystone) return "Focus";
     if (stepPath === routes.onboardingPreview) return "Review";
@@ -319,6 +403,7 @@ function OnboardingScreen({ path }: { path: string }) {
   return (
     <OnboardingShell currentStep={currentStep} totalSteps={totalSteps} phaseLabel={phaseForStep(path)} onBack={goBack}>
       {path === routes.onboardingHabits ? <HabitAudit onNext={goNext} /> : null}
+      {path === routes.onboardingFriction ? <FrictionSetup onNext={goNext} /> : null}
       {path === routes.onboardingGoals ? <GoalBrainDump onNext={goNext} /> : null}
       {path === routes.onboardingKeystone ? <KeystoneSetup onNext={goNext} /> : null}
       {path === routes.onboardingSeason ? <SeasonSetup onNext={goNext} /> : null}

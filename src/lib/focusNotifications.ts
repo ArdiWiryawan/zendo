@@ -97,8 +97,8 @@ export async function syncFocusNotifications(session: FocusSession | undefined):
       tag: NOTIFICATION_TAG,
       body: item.body,
       icon: "/apple-touch-icon.png",
-      silent: true,
-      requireInteraction: false,
+      silent: false,
+      requireInteraction: true,
       showTrigger: new NotificationTrigger(String(item.triggerTime)),
       data: { triggerTime: item.triggerTime }
     });

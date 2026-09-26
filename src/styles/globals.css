@@ -32,6 +32,156 @@
   --notebook-text-title: #e5e2da;
   --notebook-text-body: #c8c2b4;
 }
+
+[data-theme="sumi_ink"] {
+  --color-bg: #0D1117;
+  --color-bg-deep: #070A0E;
+  --color-surface: #151B23;
+  --color-surface-soft: #1D242E;
+  --color-surface-raised: #262F3C;
+  --color-text: #E6EDF3;
+  --color-text-muted: #8D96A0;
+  --color-text-soft: #7D8590;
+  --color-border: #212830;
+  --color-border-strong: #30363D;
+  --color-accent: #7D9BB2;
+  --color-accent-soft: #121E2A;
+  --color-success: #568F68;
+  --color-success-soft: #112217;
+  --color-warning: #B39B58;
+  --color-warning-soft: #211E13;
+  --color-danger: #B56B62;
+  --color-danger-soft: #241413;
+  --color-rest: #627A8C;
+  --color-rest-soft: #141D24;
+  --notebook-bg: #10141A;
+  --notebook-line: #1C232D;
+  --notebook-card-bg: #151B23;
+  --notebook-card-line: #222B36;
+  --notebook-text: #D0D7DE;
+  --notebook-text-title: #E6EDF3;
+  --notebook-text-body: #AFB8C1;
+}
+
+[data-theme="kyoto_moss"] {
+  --color-bg: #090D0A;
+  --color-bg-deep: #050806;
+  --color-surface: #111713;
+  --color-surface-soft: #18221B;
+  --color-surface-raised: #202D24;
+  --color-text: #E0E8E2;
+  --color-text-muted: #85998B;
+  --color-text-soft: #708577;
+  --color-border: #1B261F;
+  --color-border-strong: #28392E;
+  --color-accent: #6E9B7B;
+  --color-accent-soft: #121F17;
+  --color-success: #6E9B7B;
+  --color-success-soft: #132418;
+  --color-warning: #B39B58;
+  --color-warning-soft: #211E13;
+  --color-danger: #B56B62;
+  --color-danger-soft: #241413;
+  --color-rest: #587080;
+  --color-rest-soft: #131A1F;
+  --notebook-bg: #101712;
+  --notebook-line: #1C271F;
+  --notebook-card-bg: #151F18;
+  --notebook-card-line: #223026;
+  --notebook-text: #CEDBD1;
+  --notebook-text-title: #E0E8E2;
+  --notebook-text-body: #BCCFC2;
+}
+
+[data-theme="wabi_sabi"] {
+  --color-bg: #14110E;
+  --color-bg-deep: #0D0A08;
+  --color-surface: #1C1814;
+  --color-surface-soft: #241F1A;
+  --color-surface-raised: #302A24;
+  --color-text: #E8E0D5;
+  --color-text-muted: #9C8E7E;
+  --color-text-soft: #877A6C;
+  --color-border: #2B231B;
+  --color-border-strong: #3D3227;
+  --color-accent: #C29B68;
+  --color-accent-soft: #261D13;
+  --color-success: #788A6E;
+  --color-success-soft: #1C2219;
+  --color-warning: #C29B68;
+  --color-warning-soft: #261D13;
+  --color-danger: #B86B60;
+  --color-danger-soft: #261513;
+  --color-rest: #68737D;
+  --color-rest-soft: #181B1E;
+  --notebook-bg: #1A1511;
+  --notebook-line: #29211A;
+  --notebook-card-bg: #211B15;
+  --notebook-card-line: #332A21;
+  --notebook-text: #D6CABA;
+  --notebook-text-title: #E8E0D5;
+  --notebook-text-body: #C4B5A1;
+}
+
+[data-theme="kurogane"] {
+  --color-bg: #000000;
+  --color-bg-deep: #000000;
+  --color-surface: #0A0A0A;
+  --color-surface-soft: #121212;
+  --color-surface-raised: #1A1A1A;
+  --color-text: #F0F0F0;
+  --color-text-muted: #888888;
+  --color-text-soft: #707070;
+  --color-border: #181818;
+  --color-border-strong: #262626;
+  --color-accent: #B0B0B0;
+  --color-accent-soft: #181818;
+  --color-success: #6E886E;
+  --color-success-soft: #141B14;
+  --color-warning: #A89060;
+  --color-warning-soft: #1F1B12;
+  --color-danger: #A86058;
+  --color-danger-soft: #1F1210;
+  --color-rest: #55606E;
+  --color-rest-soft: #12151A;
+  --notebook-bg: #080808;
+  --notebook-line: #161616;
+  --notebook-card-bg: #0F0F0F;
+  --notebook-card-line: #202020;
+  --notebook-text: #D0D0D0;
+  --notebook-text-title: #F0F0F0;
+  --notebook-text-body: #B8B8B8;
+}
+
+[data-theme="temple_gold"] {
+  --color-bg: #0C0A06;
+  --color-bg-deep: #060503;
+  --color-surface: #17130B;
+  --color-surface-soft: #211B0F;
+  --color-surface-raised: #2D2515;
+  --color-text: #F0EAD6;
+  --color-text-muted: #A39678;
+  --color-text-soft: #8A7E62;
+  --color-border: #292112;
+  --color-border-strong: #3D311A;
+  --color-accent: #D4AF37;
+  --color-accent-soft: #2B230A;
+  --color-success: #788A58;
+  --color-success-soft: #1C2114;
+  --color-warning: #D4AF37;
+  --color-warning-soft: #2B230A;
+  --color-danger: #B85848;
+  --color-danger-soft: #26120E;
+  --color-rest: #626D78;
+  --color-rest-soft: #16191D;
+  --notebook-bg: #140F08;
+  --notebook-line: #261D0F;
+  --notebook-card-bg: #1B150B;
+  --notebook-card-line: #302413;
+  --notebook-text: #DFCFA8;
+  --notebook-text-title: #F0EAD6;
+  --notebook-text-body: #CEBA8E;
+}
 html {
   min-height: -webkit-fill-available;
   overflow-x: hidden;
@@ -273,10 +423,40 @@ button {
 /* Markdown-lite rendered notebook body — aligned to 24px rule lines */
 .md-list { margin: 0; padding-left: 1.25em; line-height: 24px; }
 .md-list li::marker { color: var(--color-accent); }
+.md-task-list { list-style: none; padding-left: 0; }
+.md-task-item { min-height: 24px; line-height: 24px; }
+.md-task-box {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 15px;
+  height: 15px;
+  margin-top: 4px;
+  margin-right: 0.45em;
+  border: 1.5px solid var(--color-accent);
+  border-radius: 3.5px;
+  background: var(--color-surface);
+  transition: all 0.15s ease;
+  cursor: pointer;
+  flex-shrink: 0;
+  padding: 0;
+}
+.md-task-box:hover {
+  border-color: var(--color-accent);
+  transform: scale(1.06);
+}
+.md-task-box.checked {
+  background: var(--color-accent);
+  border-color: var(--color-accent);
+}
+.md-task-text { transition: all 0.15s ease; }
+.md-task-done .md-task-text {
+  text-decoration: line-through;
+  opacity: 0.55;
+  color: var(--color-text-muted);
+}
 .md-para { margin: 0; line-height: 24px; }
 .md-heading { font-family: 'Caveat', cursive; font-size: 1.25rem; color: var(--notebook-text-title); margin: 0; line-height: 24px; }
-.md-task-box { display: inline-block; width: 0.85em; height: 0.85em; margin-right: 0.5em; vertical-align: -0.1em; border: 1.5px solid var(--color-accent); border-radius: 2px; }
-.md-task-box.checked { background: var(--color-accent); }
 
 .md-quote { margin: 0; padding: 2px 0 2px 0.9em; border-left: 3px solid var(--color-accent); color: var(--notebook-text-body); line-height: 24px; }
 .md-quote .md-para { margin: 0; }
@@ -603,6 +783,33 @@ h5.md-heading, h6.md-heading { font-size: 1rem; }
   opacity: 0.6;
 }
 
+/* Reading view: identical ruled paper formatting as the editor, with interactive markdown prose */
+.nb-page-body-reader {
+  display: block;
+  width: 100%;
+  min-height: 432px;
+  padding: 6px 22px 20px 46px;
+  font-family: 'Outfit', ui-sans-serif, system-ui, sans-serif;
+  font-size: 1rem;
+  line-height: 24px;
+  color: var(--notebook-text-body);
+  background-color: transparent;
+  background-image: repeating-linear-gradient(
+    to bottom,
+    transparent 0,
+    transparent 23px,
+    var(--notebook-card-line) 23px,
+    var(--notebook-card-line) 24px
+  );
+  background-position: 0 6px;
+}
+
+.nb-page-body-reader p,
+.nb-page-body-reader ul,
+.nb-page-body-reader ol {
+  line-height: 24px;
+}
+
 /* Folio: word count + date at the page corner */
 .nb-folio {
   display: flex;
@@ -621,7 +828,8 @@ h5.md-heading, h6.md-heading { font-size: 1rem; }
     padding: 22px 18px 14px 46px;
   }
 
-  .nb-page-body {
+  .nb-page-body,
+  .nb-page-body-reader {
     padding-right: 18px;
   }
 

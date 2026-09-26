@@ -72,14 +72,14 @@ export function planFocusTick(session: FocusSession, now: number): FocusTickPlan
 
 // Browser dedicated workers are NOT subject to hidden-tab timer throttling, so
 // this 1s tick keeps the focus clock advancing while the tab/PWA is in the
-// background. No logic beyond the timer — App.tsx decides what each tick does.
-// Guard: `importScripts` exists ONLY on a WorkerGlobalScope, never on `window`
-// or in node (vitest). This module is also imported by the app bundle (for
-// planFocusTick), so without this guard the interval would auto-start on the
-// MAIN thread and postMessage to a window "message" listener nobody attaches —
-// which is exactly the frozen-timer bug this worker is meant to fix.
-// `importScripts` is defined only on a WorkerGlobalScope, never on `window`.
-if (typeof self !== "undefined" && typeof (self as unknown as { importScripts?: unknown }).importScripts === "function") {
+// background.
+const isDedicatedWorker =
+  typeof window === "undefined" &&
+  typeof document === "undefined" &&
+  typeof self !== "undefined" &&
+  typeof (self as any).postMessage === "function";
+
+if (isDedicatedWorker) {
   setInterval(() => {
     (self as unknown as { postMessage: (message: unknown) => void }).postMessage({
       type: "tick",

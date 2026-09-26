@@ -80,31 +80,85 @@ export function selectFocusSessionsForToday(state: MonkMVPState, today = getToda
 export function selectTodayFocusSessions(state: MonkMVPState, today = getTodayDateString()): FocusSession[] {
   const seasonId = state.activeSeason?.id;
   if (!seasonId) return [];
-  return state.focusSessions.filter((s) => s.seasonId === seasonId && (s.startTime.slice(0, 10) === today || s.startedAt?.slice(0, 10) === today));
+  return state.focusSessions.filter((s) => {
+    if (s.seasonId && s.seasonId !== seasonId) return false;
+    if (!["completed", "ended_early"].includes(s.status) && (s.focusDurationMinutes ?? 0) <= 0) return false;
+
+    if (s.dayPlanId) {
+      const boundPlan = state.dayPlans.find((p) => p.id === s.dayPlanId);
+      if (boundPlan) return boundPlan.date === today;
+    }
+
+    const raw = s.startedAt || s.createdAt || s.startTime;
+    if (!raw) return false;
+    const sessionDate = getTodayDateString(new Date(raw));
+    return sessionDate === today || raw.slice(0, 10) === today;
+  });
 }
 
 export function selectTodayLearningSessions(state: MonkMVPState, today = getTodayDateString()): LearningSession[] {
   const seasonId = state.activeSeason?.id;
   if (!seasonId) return [];
-  return state.learningSessions.filter(
-    (s) => s.seasonId === seasonId && s.startedAt.slice(0, 10) === today && s.status === "completed"
-  );
+  return state.learningSessions.filter((s) => {
+    if (s.seasonId && s.seasonId !== seasonId) return false;
+    if (s.status !== "completed") return false;
+
+    if (s.dayPlanId) {
+      const boundPlan = state.dayPlans.find((p) => p.id === s.dayPlanId);
+      if (boundPlan) return boundPlan.date === today;
+    }
+
+    const raw = s.startedAt || s.createdAt;
+    if (!raw) return false;
+    const sessionDate = getTodayDateString(new Date(raw));
+    return sessionDate === today || raw.slice(0, 10) === today;
+  });
 }
 
 export function selectTotalFocusSecondsForDate(state: MonkMVPState, date: string): number {
   const seasonId = state.activeSeason?.id;
   if (!seasonId) return 0;
   return state.focusSessions
-    .filter((s) => s.seasonId === seasonId && (s.startTime.slice(0, 10) === date || s.startedAt?.slice(0, 10) === date) && ["completed", "ended_early"].includes(s.status))
-    .reduce((sum, s) => sum + ((s.focusDurationMinutes ?? s.durationMinutes) * 60), 0);
+    .filter((s) => {
+      if (s.seasonId && s.seasonId !== seasonId) return false;
+      const isValidStatus = ["completed", "ended_early"].includes(s.status) || (s.focusDurationMinutes ?? 0) > 0;
+      if (!isValidStatus) return false;
+
+      if (s.dayPlanId) {
+        const boundPlan = state.dayPlans.find((p) => p.id === s.dayPlanId);
+        if (boundPlan) return boundPlan.date === date;
+      }
+
+      const raw = s.startedAt || s.createdAt || s.startTime;
+      if (!raw) return false;
+      const sessionDate = getTodayDateString(new Date(raw));
+      return sessionDate === date || raw.slice(0, 10) === date;
+    })
+    .reduce((sum, s) => {
+      const mins = s.focusDurationMinutes ?? s.completedDurationMinutes ?? s.durationMinutes ?? 0;
+      return sum + (mins * 60);
+    }, 0);
 }
 
 export function selectTotalLearningSecondsForDate(state: MonkMVPState, date: string): number {
   const seasonId = state.activeSeason?.id;
   if (!seasonId) return 0;
   return state.learningSessions
-    .filter((s) => s.seasonId === seasonId && s.startedAt.slice(0, 10) === date && s.status === "completed")
-    .reduce((sum, s) => sum + s.actualDurationSeconds, 0);
+    .filter((s) => {
+      if (s.seasonId && s.seasonId !== seasonId) return false;
+      if (s.status !== "completed") return false;
+
+      if (s.dayPlanId) {
+        const boundPlan = state.dayPlans.find((p) => p.id === s.dayPlanId);
+        if (boundPlan) return boundPlan.date === date;
+      }
+
+      const raw = s.startedAt || s.createdAt;
+      if (!raw) return false;
+      const sessionDate = getTodayDateString(new Date(raw));
+      return sessionDate === date || raw.slice(0, 10) === date;
+    })
+    .reduce((sum, s) => sum + (s.actualDurationSeconds || 0), 0);
 }
 
 export function selectFocusSessionsByGoal(state: MonkMVPState, goalId: string): FocusSession[] {
@@ -116,8 +170,13 @@ export function selectLearningSessionsByGoal(state: MonkMVPState, goalId: string
 }
 
 export function selectSeasonFocusSummary(state: MonkMVPState, seasonId: string) {
-  const sessions = state.focusSessions.filter((s) => s.seasonId === seasonId && ["completed", "ended_early"].includes(s.status));
-  const totalSeconds = sessions.reduce((sum, s) => sum + ((s.focusDurationMinutes ?? s.durationMinutes) * 60), 0);
+  const sessions = state.focusSessions.filter(
+    (s) => (s.seasonId === seasonId || !s.seasonId) && (["completed", "ended_early"].includes(s.status) || (s.focusDurationMinutes ?? 0) > 0)
+  );
+  const totalSeconds = sessions.reduce((sum, s) => {
+    const mins = s.focusDurationMinutes ?? s.completedDurationMinutes ?? s.durationMinutes ?? 0;
+    return sum + (mins * 60);
+  }, 0);
   return {
     count: sessions.length,
     totalSeconds,

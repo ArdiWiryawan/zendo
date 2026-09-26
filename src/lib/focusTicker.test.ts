@@ -60,8 +60,37 @@ describe("planFocusTick", () => {
     expect(plan.bell).toBeUndefined();
   });
 
-  it("already-completed session returns no actions", () => {
-    const plan = planFocusTick(session({ status: "completed" }), T0 + 60 * 1000);
-    expect(plan.actions).toEqual([]);
+  it("pomodoro preset advances 25m work to 5m break", () => {
+    const pomo = session({
+      preset: "pomodoro",
+      durationMinutes: 25,
+      phases: [
+        { type: "focus", label: "Pomodoro 1", plannedMinutes: 25, completedMinutes: 0, status: "running" },
+        { type: "break", label: "Short Break 1", plannedMinutes: 5, completedMinutes: 0, status: "pending" },
+        { type: "focus", label: "Pomodoro 2", plannedMinutes: 25, completedMinutes: 0, status: "pending" },
+        { type: "break", label: "Short Break 2", plannedMinutes: 5, completedMinutes: 0, status: "pending" }
+      ]
+    });
+    const plan = planFocusTick(pomo, T0 + 25 * 60 * 1000);
+    expect(plan.actions).toEqual([{ type: "advance" }]);
+    expect(plan.bell?.title).toBe("Break time");
+  });
+
+  it("pomodoro preset advances 5m break back to 25m focus", () => {
+    const pomoInBreak = session({
+      preset: "pomodoro",
+      currentPhaseIndex: 1,
+      timerState: "break",
+      phases: [
+        { type: "focus", label: "Pomodoro 1", plannedMinutes: 25, completedMinutes: 25, status: "completed" },
+        { type: "break", label: "Short Break 1", plannedMinutes: 5, completedMinutes: 0, status: "running" },
+        { type: "focus", label: "Pomodoro 2", plannedMinutes: 25, completedMinutes: 0, status: "pending" },
+        { type: "break", label: "Short Break 2", plannedMinutes: 5, completedMinutes: 0, status: "pending" }
+      ]
+    });
+    const plan = planFocusTick(pomoInBreak, T0 + 5 * 60 * 1000);
+    expect(plan.actions).toEqual([{ type: "advance" }]);
+    expect(plan.bell?.title).toBe("Focus block");
   });
 });
+

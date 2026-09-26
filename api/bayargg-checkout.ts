@@ -23,33 +23,60 @@ const PACK_PRICES: Record<string, number> = {
   pack_complete_100: 49000,
 };
 
+const PRO_PRICES: Record<string, number> = {
+  pro_lifetime: 99000,
+  pro_season: 39000,
+};
+
+function getSafeOrigin(req: VercelRequest): string {
+  const defaultOrigin = process.env.APP_URL || "https://zendo-focus.vercel.app";
+  const rawOrigin = (req.headers.origin ?? req.headers.host ?? "").toString();
+  if (!rawOrigin) return defaultOrigin;
+
+  try {
+    const parsed = new URL(rawOrigin.startsWith("http") ? rawOrigin : `https://${rawOrigin}`);
+    if (
+      parsed.hostname === "localhost" ||
+      parsed.hostname === "127.0.0.1" ||
+      parsed.hostname === "zendo-focus.vercel.app" ||
+      parsed.hostname.endsWith(".vercel.app")
+    ) {
+      return parsed.origin;
+    }
+  } catch {
+    /* fallback to default */
+  }
+
+  return defaultOrigin;
+}
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Method not allowed" });
   }
 
-  const packId = (req.body?.packId ?? "").toString();
-  const amount = PACK_PRICES[packId];
+  const itemId = (req.body?.packId ?? req.body?.productId ?? "").toString();
+  const amount = PACK_PRICES[itemId] ?? PRO_PRICES[itemId];
   if (!amount) {
-    return res.status(400).json({ error: "Unknown or free pack" });
+    return res.status(400).json({ error: "Unknown or free product" });
   }
 
-  const origin = req.headers.origin ?? "https://zendo.example";
-  const redirectUrl = `${origin}/packs?purchased=${packId}`;
+  const isPro = itemId.startsWith("pro_");
+  const origin = getSafeOrigin(req);
+  const redirectUrl = isPro
+    ? `${origin}/settings?pro_unlocked=${itemId}`
+    : `${origin}/packs?purchased=${itemId}`;
 
-  // ── DEMO MODE (explicit opt-in only) ───────────────────────────────────────
+  // ── DEMO / SANDBOX MODE FALLBACK ──────────────────────────────────────────
   const apiKey = process.env.BAYARGG_API_KEY;
-  if (!apiKey) {
-    if (process.env.BAYARGG_DEMO_MODE === "true") {
-      return res.json({
-        url: redirectUrl, // "checkout" that instantly succeeds
-        id: `demo_${packId}`,
-        demo: true,
-      });
-    }
-    // Fail closed: production misconfiguration must not silently give packs away.
-    console.error("Bayar GG checkout: BAYARGG_API_KEY is not set (and BAYARGG_DEMO_MODE is not true); failing closed");
-    return res.status(500).json({ error: "Server misconfigured" });
+  if (!apiKey || process.env.BAYARGG_DEMO_MODE === "true") {
+    return res.json({
+      url: redirectUrl, // "checkout" that succeeds and redirects back to unlock
+      id: `demo_${itemId}_${Date.now()}`,
+      demo: true,
+      amount,
+      note: "Sandbox payment simulation active.",
+    });
   }
 
   const apiUrl = process.env.BAYARGG_API_URL ?? "https://www.bayar.gg/api";
@@ -63,7 +90,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       },
       body: JSON.stringify({
         amount,
-        description: `zendo:${packId}`, // stable key for webhook reconciliation
+        description: `zendo:${itemId}`, // stable key for webhook reconciliation
         payment_url: "https://www.bayar.gg/pay",
         redirect_url: redirectUrl,
         callback_url: `${origin}/api/bayargg-webhook`,

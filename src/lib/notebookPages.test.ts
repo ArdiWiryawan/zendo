@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { joinPages, removePhotoMarker } from "./notebookPages";
+import { deletePageAtIndex, joinPages, removePhotoMarker, trimTrailingBlankPages } from "./notebookPages";
 
 describe("joinPages", () => {
   it("joins pages with newlines", () => {
@@ -42,3 +42,31 @@ describe("removePhotoMarker", () => {
     expect(joinPages(afterDrop.map((p) => removePhotoMarker(p, "abc")))).toBe("after");
   });
 });
+
+describe("trimTrailingBlankPages", () => {
+  it("trims trailing blank pages from 8-page note with 3 empty sheets", () => {
+    const pages = ["Page 1", "Page 2", "Page 3", "Page 4", "Page 5", "", "  ", "\n\n"];
+    expect(trimTrailingBlankPages(pages)).toEqual(["Page 1", "Page 2", "Page 3", "Page 4", "Page 5"]);
+  });
+
+  it("leaves notes without trailing blanks untouched", () => {
+    expect(trimTrailingBlankPages(["p1", "p2"])).toEqual(["p1", "p2"]);
+  });
+
+  it("returns single blank page for completely empty arrays", () => {
+    expect(trimTrailingBlankPages([])).toEqual([""]);
+    expect(trimTrailingBlankPages(["", "   "])).toEqual([""]);
+  });
+});
+
+describe("deletePageAtIndex", () => {
+  it("deletes page at specific index and shifts later pages", () => {
+    const pages = ["Page 1", "Page 2 to delete", "Page 3"];
+    expect(deletePageAtIndex(pages, 1)).toEqual(["Page 1", "Page 3"]);
+  });
+
+  it("deleting last remaining page returns single blank page", () => {
+    expect(deletePageAtIndex(["Only page"], 0)).toEqual([""]);
+  });
+});
+

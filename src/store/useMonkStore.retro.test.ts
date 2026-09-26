@@ -27,12 +27,12 @@ function runCompleteFocusSession(planId: string) {
   state.completeFocusSession(session.id);
 }
 
-describe("retro focus goal resolves partial", () => {
+describe("day completion and retro resolution", () => {
   beforeEach(() => {
     useMonkStore.setState(baseState(), false);
   });
 
-  it("day plan completed with no focus/learning sessions resolves partial", () => {
+  it("day plan completed resolves completed status", () => {
     const state = useMonkStore.getState();
     state.setSeasonDuration(30);
     state.createSeasonFromOnboarding();
@@ -41,18 +41,16 @@ describe("retro focus goal resolves partial", () => {
       goalId: undefined,
       mainAction: "Focus block"
     });
-    // Re-read state: mutations create new state objects via set()
     const plan = useMonkStore.getState().dayPlans.find((p) => p.date === today)!;
     expect(plan).toBeDefined();
     useMonkStore.getState().toggleTodayCompletion(); // planned/active -> completed
 
     const timelineDay = useMonkStore.getState().timelineDays.find((d) => d.date === today);
-    expect(timelineDay?.status).toBe("partial");
-    // getDailyStatusForDate recomputes core status from raw sessions (focus/learning), not stored timelineDay
+    expect(timelineDay?.status).toBe("completed");
     expect(getCoreDailyStatusForDate(useMonkStore.getState(), today)).toBe("not_started");
   });
 
-  it("real day with focus session resolves partial (focus alone never completes)", () => {
+  it("real day with focus session and completion resolves completed", () => {
     const state = useMonkStore.getState();
     state.setSeasonDuration(30);
     state.createSeasonFromOnboarding();
@@ -67,8 +65,7 @@ describe("retro focus goal resolves partial", () => {
     useMonkStore.getState().toggleTodayCompletion(); // active -> completed
 
     const timelineDay = useMonkStore.getState().timelineDays.find((d) => d.date === today);
-    expect(timelineDay?.status).toBe("partial");
-    expect(getDailyStatusForDate(useMonkStore.getState(), today)).toBe("partial");
+    expect(timelineDay?.status).toBe("completed");
   });
 
   it("rest day completed resolves rest", () => {
@@ -126,4 +123,31 @@ describe("retro focus goal resolves partial", () => {
     // Today stays open — answering a diagnostic is not a relapse.
     expect(getDailyStatusForDate(useMonkStore.getState(), today)).not.toBe("relapse");
   });
+
+  it("saveJournalEntry merges morningPages and reflection on same date", () => {
+    const state = useMonkStore.getState();
+    state.setSeasonDuration(30);
+    state.createSeasonFromOnboarding();
+
+    // 1. User writes Morning Pages in the morning
+    state.saveJournalEntry({ morningPages: "My morning thoughts" }, { date: today, tab: "morning" });
+    let entry = useMonkStore.getState().journalEntries.find((e) => e.date === today);
+    expect(entry?.answers.morningPages).toBe("My morning thoughts");
+    expect(entry?.answers.whatMovedToday).toBeUndefined();
+
+    // 2. User writes Evening Reflection later that evening
+    state.saveJournalEntry({ whatMovedToday: "Finished 1 YouTube script" }, { date: today, tab: "reflection" });
+    entry = useMonkStore.getState().journalEntries.find((e) => e.date === today);
+    expect(entry?.answers.morningPages).toBe("My morning thoughts");
+    expect(entry?.answers.whatMovedToday).toBe("Finished 1 YouTube script");
+  });
+
+  it("saveJournalEntry persists entry even when activeSeason is null", () => {
+    useMonkStore.setState({ activeSeason: undefined }, false);
+    useMonkStore.getState().saveJournalEntry({ morningPages: "Standalone morning note" }, { date: today });
+    const entry = useMonkStore.getState().journalEntries.find((e) => e.date === today);
+    expect(entry).toBeDefined();
+    expect(entry?.answers.morningPages).toBe("Standalone morning note");
+  });
 });
+

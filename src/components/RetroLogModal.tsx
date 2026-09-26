@@ -4,6 +4,7 @@ import { selectActiveGoals } from "../store/selectors";
 import { useMonkStore } from "../store/useMonkStore";
 import { formatHumanDate } from "../lib/date";
 import { CalmDialog, useCalmToast } from "./ui";
+import { Check, Flame, Moon } from "lucide-react";
 
 export function RetroLogModal({
   open,
@@ -19,7 +20,7 @@ export function RetroLogModal({
   const toast = useCalmToast();
   const activeGoals = selectActiveGoals(store);
   const [retroGoalId, setRetroGoalId] = useState<string>("");
-  const [retroDayType, setRetroDayType] = useState<"goal" | "rest">("goal");
+  const [retroStatus, setRetroStatus] = useState<"completed" | "partial" | "rest">("completed");
 
   useEffect(() => {
     if (activeGoals.length > 0 && !retroGoalId) {
@@ -27,7 +28,7 @@ export function RetroLogModal({
     }
   }, [activeGoals, retroGoalId]);
 
-  const noGoals = retroDayType === "goal" && activeGoals.length === 0;
+  const noGoals = retroStatus !== "rest" && activeGoals.length === 0;
 
   return (
     <>
@@ -42,9 +43,9 @@ export function RetroLogModal({
       onConfirm={() => {
         if (!date) return;
         store.createOrUpdateDayPlan(date, {
-          dayType: retroDayType,
-          goalId: retroDayType === "goal" ? retroGoalId : undefined,
-          status: "completed"
+          dayType: retroStatus === "rest" ? "rest" : "goal",
+          goalId: retroStatus !== "rest" ? retroGoalId : undefined,
+          status: retroStatus === "rest" ? "completed" : retroStatus
         });
         toast.show(t("timeline.retro.saved"));
         onClose();
@@ -54,32 +55,46 @@ export function RetroLogModal({
         {date ? t("timeline.retro.heading", { date: formatHumanDate(date) }) : ""}
       </h3>
       <p className="text-xs text-monk-muted">{t("timeline.retro.window")}</p>
-      <div className="flex gap-2.5">
+      <div className="grid grid-cols-3 gap-2">
         <button
           type="button"
-          className={`flex-1 min-h-10 rounded-xl border text-xs font-semibold transition active:scale-[0.98] ${
-            retroDayType === "goal"
-              ? "border-monk-accent ring-1 ring-monk-accent/30 bg-monk-accent-soft text-monk-accent"
+          className={`flex flex-col items-center justify-center gap-1.5 p-2.5 rounded-xl border text-xs font-semibold transition active:scale-[0.98] ${
+            retroStatus === "completed"
+              ? "border-monk-success ring-1 ring-monk-success/30 bg-monk-success-soft text-monk-success"
               : "border-monk-border bg-monk-soft text-monk-muted hover:border-monk-border-strong"
           }`}
-          onClick={() => setRetroDayType("goal")}
+          onClick={() => setRetroStatus("completed")}
         >
-          {t("timeline.retro.focusGoal")}
+          <Check size={16} strokeWidth={2.5} />
+          <span className="text-[11px] font-medium">{t("week.legendDone")}</span>
         </button>
         <button
           type="button"
-          className={`flex-1 min-h-10 rounded-xl border text-xs font-semibold transition active:scale-[0.98] ${
-            retroDayType === "rest"
+          className={`flex flex-col items-center justify-center gap-1.5 p-2.5 rounded-xl border text-xs font-semibold transition active:scale-[0.98] ${
+            retroStatus === "partial"
               ? "border-monk-accent ring-1 ring-monk-accent/30 bg-monk-accent-soft text-monk-accent"
               : "border-monk-border bg-monk-soft text-monk-muted hover:border-monk-border-strong"
           }`}
-          onClick={() => setRetroDayType("rest")}
+          onClick={() => setRetroStatus("partial")}
         >
-          {t("timeline.retro.restDay")}
+          <Flame size={16} strokeWidth={2} />
+          <span className="text-[11px] font-medium">{t("week.legendPartial")}</span>
+        </button>
+        <button
+          type="button"
+          className={`flex flex-col items-center justify-center gap-1.5 p-2.5 rounded-xl border text-xs font-semibold transition active:scale-[0.98] ${
+            retroStatus === "rest"
+              ? "border-monk-rest ring-1 ring-monk-rest/30 bg-monk-rest-soft text-monk-rest"
+              : "border-monk-border bg-monk-soft text-monk-muted hover:border-monk-border-strong"
+          }`}
+          onClick={() => setRetroStatus("rest")}
+        >
+          <Moon size={16} strokeWidth={2} />
+          <span className="text-[11px] font-medium">{t("week.legendRest")}</span>
         </button>
       </div>
 
-      {retroDayType === "goal" ? (
+      {retroStatus !== "rest" ? (
         <div className="space-y-2">
           <label className="block text-xs font-bold text-monk-muted uppercase tracking-wider">{t("timeline.retro.chooseTheme")}</label>
           <div className="max-h-40 space-y-2 overflow-y-auto">

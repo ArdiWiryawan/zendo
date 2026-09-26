@@ -5,6 +5,7 @@ import { Card } from "../components/ui";
 import { WhyEditor } from "../components/SeasonWidgets";
 import { ChevronRight } from "lucide-react";
 import { CORE_VALUES } from "../constants/whyValues";
+import { useT } from "../i18n";
 import type { EnergyLevel } from "../types/app";
 
 export function EnergyCheck({ value, onChange, compact = false }: { value?: EnergyLevel; onChange: (value: EnergyLevel) => void; compact?: boolean }) {
@@ -101,16 +102,21 @@ export function EnergyCheck({ value, onChange, compact = false }: { value?: Ener
 
 export function WhyStrip({ compact = false }: { compact?: boolean }) {
   const store = useMonkStore();
+  const t = useT();
   const why = store.activeSeason?.why;
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState(false);
-  const hasWhy = !!(why?.identity || why?.consequenceOfInaction);
+  
+  const intrinsicWhy = why?.why || why?.identity;
+  const outcome = why?.desiredOutcome;
+  const antiWhy = why?.antiWhy || why?.consequenceOfInaction;
+  const hasWhy = !!(intrinsicWhy || outcome || antiWhy);
 
   if (editing) {
     return (
       <Card className="border-monk-accent/25 bg-monk-accent-soft/30 p-4">
         <p className="mb-3 text-[10px] font-bold uppercase tracking-widest text-monk-accent">
-          {hasWhy ? "Edit why" : "Add your why"}
+          {hasWhy ? t("why.editButton") : t("why.sectionTitle")}
         </p>
         <WhyEditor
           initial={why}
@@ -132,23 +138,36 @@ export function WhyStrip({ compact = false }: { compact?: boolean }) {
         onClick={() => setEditing(true)}
         className="w-full rounded-monk border border-dashed border-monk-accent/30 bg-monk-accent-soft/20 px-4 py-3 text-left transition active:scale-[0.99]"
       >
-        <p className="text-[10px] font-bold uppercase tracking-widest text-monk-accent">Why you started</p>
-        <p className="mt-1 text-sm text-monk-muted">Add your identity + what you lose if you stop.</p>
+        <p className="text-[10px] font-bold uppercase tracking-widest text-monk-accent">{t("why.sectionTitle")}</p>
+        <p className="mt-1 text-sm text-monk-muted">{t("why.emptyDesc")}</p>
       </button>
     );
   }
 
-  const line = why!.identity || why!.consequenceOfInaction;
+  const primaryLine = intrinsicWhy || outcome || antiWhy;
+
   if (compact) {
     return (
-      <p className="rounded-monk border border-monk-accent/20 bg-monk-accent-soft/40 px-4 py-2.5 text-xs leading-5 text-monk-muted">
-        {line}
-      </p>
+      <div className="rounded-monk border border-monk-accent/20 bg-monk-accent-soft/30 px-3.5 py-2 text-xs flex items-center justify-between gap-2">
+        <div className="flex items-center gap-1.5 min-w-0">
+          <span className="shrink-0 rounded bg-monk-accent/20 px-1.5 py-0.5 text-[9px] font-bold text-monk-accent">
+            {t("why.badgeWhy")}
+          </span>
+          <span className="truncate text-monk-muted">{primaryLine}</span>
+        </div>
+        <button
+          type="button"
+          onClick={() => setEditing(true)}
+          className="shrink-0 text-[10px] font-semibold text-monk-accent hover:underline"
+        >
+          {t("why.editButton")}
+        </button>
+      </div>
     );
   }
 
   return (
-    <div className="rounded-monk border border-monk-accent/20 bg-monk-accent-soft/40 px-4 py-3">
+    <div className="rounded-monk border border-monk-accent/20 bg-monk-accent-soft/30 px-4 py-3 space-y-2">
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
@@ -157,26 +176,66 @@ export function WhyStrip({ compact = false }: { compact?: boolean }) {
       >
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0 flex-1">
-            <p className="text-[10px] font-bold uppercase tracking-widest text-monk-accent">Why you started</p>
-            <p className={`mt-1 text-sm leading-5 text-monk-text ${open ? "" : "line-clamp-2"}`}>{line}</p>
-            {open && why!.consequenceOfInaction && why!.identity ? (
-              <p className="mt-2 text-xs leading-5 text-monk-muted">
-                If you stop: {why!.consequenceOfInaction}
+            <div className="flex items-center gap-2">
+              <span className="rounded-full bg-monk-accent/20 px-2 py-0.5 text-[9px] font-bold text-monk-accent">
+                {t("why.badgeWhy")}
+              </span>
+              <p className="text-[10px] font-bold uppercase tracking-widest text-monk-muted">{t("why.sectionTitle")}</p>
+            </div>
+            {intrinsicWhy ? (
+              <p className={`mt-1.5 text-sm font-semibold leading-snug text-monk-text ${open ? "" : "line-clamp-2"}`}>
+                {intrinsicWhy}
               </p>
             ) : null}
-            {open && why!.protectValues?.length ? (
-              <div className="mt-2 flex flex-wrap gap-1.5">
-                {why!.protectValues.map((id) => {
-                  const v = CORE_VALUES.find((c) => c.id === id);
-                  return (
-                    <span
-                      key={id}
-                      className="rounded-full border border-monk-border bg-monk-bg px-2 py-0.5 text-[10px] font-medium text-monk-muted"
-                    >
-                      {v?.label ?? id}
-                    </span>
-                  );
-                })}
+
+            {/* In closed state, subtle teasers for outcome & anti-why */}
+            {!open && (outcome || antiWhy) ? (
+              <div className="mt-1.5 flex flex-wrap items-center gap-2 text-[11px] text-monk-muted">
+                {outcome ? (
+                  <span className="truncate text-monk-accent">✦ {outcome}</span>
+                ) : null}
+                {antiWhy && !outcome ? (
+                  <span className="truncate text-amber-500/90">⚠ {antiWhy}</span>
+                ) : null}
+              </div>
+            ) : null}
+
+            {/* Expanded 4-component view */}
+            {open ? (
+              <div className="mt-3 space-y-2 text-xs">
+                {outcome ? (
+                  <div className="rounded-xl border border-monk-accent/30 bg-monk-bg/60 p-2.5">
+                    <p className="text-[9px] font-bold uppercase tracking-wider text-monk-accent">
+                      ✦ {t("why.badgeOutcome")}
+                    </p>
+                    <p className="mt-0.5 text-xs text-monk-text-soft leading-relaxed">{outcome}</p>
+                  </div>
+                ) : null}
+
+                {antiWhy ? (
+                  <div className="rounded-xl border border-amber-500/25 bg-amber-500/5 p-2.5">
+                    <p className="text-[9px] font-bold uppercase tracking-wider text-amber-500">
+                      ⚠ {t("why.badgeAntiWhy")}
+                    </p>
+                    <p className="mt-0.5 text-xs text-monk-text-soft leading-relaxed">{antiWhy}</p>
+                  </div>
+                ) : null}
+
+                {why?.protectValues?.length ? (
+                  <div className="flex flex-wrap gap-1.5 pt-1">
+                    {why.protectValues.map((id) => {
+                      const v = CORE_VALUES.find((c) => c.id === id);
+                      return (
+                        <span
+                          key={id}
+                          className="rounded-full border border-monk-border bg-monk-bg px-2 py-0.5 text-[10px] font-medium text-monk-muted"
+                        >
+                          {v?.label ?? id}
+                        </span>
+                      );
+                    })}
+                  </div>
+                ) : null}
               </div>
             ) : null}
           </div>
@@ -186,14 +245,17 @@ export function WhyStrip({ compact = false }: { compact?: boolean }) {
           />
         </div>
       </button>
+
       {open ? (
-        <button
-          type="button"
-          onClick={() => setEditing(true)}
-          className="mt-3 text-xs font-semibold text-monk-accent transition hover:opacity-80"
-        >
-          Edit why
-        </button>
+        <div className="flex justify-end pt-1">
+          <button
+            type="button"
+            onClick={() => setEditing(true)}
+            className="text-xs font-semibold text-monk-accent transition hover:opacity-80"
+          >
+            {t("why.editButton")}
+          </button>
+        </div>
       ) : null}
     </div>
   );

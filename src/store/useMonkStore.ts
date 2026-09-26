@@ -37,6 +37,7 @@ import { createId } from "../lib/ids";
 import { parseIntention } from "../lib/implementationIntention";
 import { loadState } from "../lib/storage";
 import { stopMusic } from "../lib/focusMusic";
+import { resolveLinkedNoteIds } from "../lib/notebookLinks";
 import { t } from "../i18n";
 import type {
   AppSettings,
@@ -45,6 +46,7 @@ import type {
   BadHabitDraft,
   DateOnlyString,
   DayPlan,
+  DayStatus,
   EnergyLevel,
   EnergyLog,
   FocusSession,
@@ -70,7 +72,11 @@ import type {
   TimelineStatus,
   WeeklyMode,
   WeeklyPlan,
-  WeeklyReviewDecision
+  WeeklyReviewDecision,
+  WeeklyReflectionAnswers,
+  RestActivityItem,
+  TimeBlock,
+  TimeBlockCategory
 } from "../types/app";
 
 type StoreSnapshot = MonkMVPState;
@@ -81,7 +87,9 @@ type PickTodayInput = {
   energyLevel?: EnergyLevel;
   mainAction?: string;
   highlight?: string;
-  status?: "active" | "completed" | "planned" | "missed";
+  status?: DayStatus;
+  planningCompleted?: boolean;
+  timeBlocks?: TimeBlock[];
 };
 
 type RelapseInput = {
@@ -115,6 +123,8 @@ type MonkActions = {
   createSeasonFromOnboarding: () => void;
   getOrCreateCurrentWeeklyPlan: () => WeeklyPlan | undefined;
   createOrUpdateDayPlan: (dateString: string, input: PickTodayInput) => void;
+  saveDayTimeBlocks: (dateString: string, timeBlocks: TimeBlock[], planningCompleted?: boolean) => void;
+  setDayPlanningCompleted: (dateString: string, completed: boolean) => void;
   clearDayPlan: (dateString: string) => void;
   toggleTodayCompletion: () => void;
   setTodayHighlight: (highlight: string) => void;
@@ -131,6 +141,8 @@ type MonkActions = {
   bumpFocusDistraction: (sessionId: string) => void;
   saveLearningSession: (session: LearningSession) => void;
   removeLearningSession: (id: string) => void;
+  removeFocusSession: (id: string) => void;
+  removeTimelineEvent: (id: string) => void;
   addTimelineEvent: (event: TimelineEvent) => void;
   saveJournalEntry: (answers: JournalAnswers, opts?: { date?: string; tab?: "morning" | "reflection" }) => void;
   saveRelapseLog: (input: RelapseInput) => void;
@@ -139,6 +151,19 @@ type MonkActions = {
   resumeSeason: () => void;
   updateSeasonWhy: (why: SeasonWhy) => void;
   updateGoalWhy: (goalId: string, why: string) => void;
+  updateGoalBlueprint: (
+    goalId: string,
+    blueprint: {
+      title?: string;
+      keystoneAction?: string;
+      weeklyTargetCount?: number;
+      why?: string;
+      whenWhere?: string;
+      definitionOfDone?: string;
+      obstacle?: string;
+      obstacleMitigation?: string;
+    }
+  ) => void;
   releaseGoalFromSeason: (goalId: string, note?: string) => void;
   updateSettings: (patch: Partial<AppSettings>) => void;
   updateReminder: (id: string, patch: Partial<NotificationReminder>) => void;
@@ -146,7 +171,15 @@ type MonkActions = {
   importState: (data: Partial<MonkMVPState>) => void;
 
   // Weekly re-decide review
-  reviewWeek: (weekId: string, decisions: Record<string, WeeklyReviewDecision>, opts?: { skipped?: boolean }) => void;
+  reviewWeek: (
+    weekId: string,
+    decisions: Record<string, WeeklyReviewDecision>,
+    opts?: {
+      skipped?: boolean;
+      reflection?: WeeklyReflectionAnswers;
+      restActivity?: RestActivityItem;
+    }
+  ) => void;
   skipWeekReview: (weekId: string) => void;
   updateGoalKeystoneAction: (goalId: string, action: string) => void;
 
@@ -156,6 +189,7 @@ type MonkActions = {
   deleteNotebookCategory: (id: string) => void;
   saveNotebookEntry: (entry: NotebookEntry) => void;
   deleteNotebookEntry: (id: string) => void;
+  duplicateNotebookEntry: (id: string) => NotebookEntry | undefined;
   togglePinNotebookEntry: (id: string) => void;
 
   // Energy tracking
@@ -166,6 +200,7 @@ type MonkActions = {
   savePackAnswer: (sessionId: string, questionId: string, answer: string) => void;
   completeJournalPack: (sessionId: string) => void;
   purchasePack: (packId: string) => void;
+  unlockPro: (tier?: "lifetime" | "season") => void;
   syncPurchases: () => Promise<void>;
 };
 
@@ -192,9 +227,14 @@ function snapshot(state: MonkStore | MonkMVPState): MonkMVPState {
     notebookCategories: state.notebookCategories,
     notebookEntries: state.notebookEntries,
     notebookDeletedAt: state.notebookDeletedAt ?? {},
+    notebookCategoryDeletedAt: state.notebookCategoryDeletedAt ?? {},
     journalPacks: state.journalPacks,
     journalPackSessions: state.journalPackSessions,
-    purchasedPackIds: state.purchasedPackIds,
+    purchasedPackIds: state.purchasedPackIds ?? [],
+    isPro: state.isPro ?? true,
+    proTier: state.proTier ?? "lifetime",
+    proExpiresAt: state.proExpiresAt ?? null,
+    proPurchasedAt: state.proPurchasedAt ?? null,
     energyLogs: state.energyLogs,
     weeklyReviews: state.weeklyReviews,
     releasedSeasonGoals: state.releasedSeasonGoals,
@@ -253,16 +293,24 @@ function findTodayPlan(state: MonkMVPState) {
 }
 
 function getFocusSessionsForDay(state: MonkMVPState, dayPlan: DayPlan) {
-  return state.focusSessions.filter(
-    (session) => session.dayPlanId === dayPlan.id && ["completed", "ended_early"].includes(session.status)
-  );
+  return state.focusSessions.filter((session) => {
+    if (session.dayPlanId === dayPlan.id) return ["completed", "ended_early"].includes(session.status);
+    const raw = session.startedAt || session.createdAt || session.startTime;
+    if (!raw) return false;
+    const sessionDate = getTodayDateString(new Date(raw));
+    const sameSeason = !session.seasonId || session.seasonId === dayPlan.seasonId;
+    return (sessionDate === dayPlan.date || raw.slice(0, 10) === dayPlan.date) && sameSeason && ["completed", "ended_early"].includes(session.status);
+  });
 }
 
 function getLearningSessionsForDay(state: MonkMVPState, dayPlan: DayPlan) {
   return state.learningSessions.filter((session) => {
-    const sessionDate = (session.endedAt ?? session.startedAt).slice(0, 10);
+    if (session.dayPlanId === dayPlan.id && session.status === "completed") return true;
+    const raw = session.startedAt || session.createdAt || session.endedAt;
+    if (!raw) return false;
+    const sessionDate = getTodayDateString(new Date(raw));
     const sameSeason = !session.seasonId || session.seasonId === dayPlan.seasonId;
-    return sessionDate === dayPlan.date && sameSeason && session.status === "completed";
+    return (sessionDate === dayPlan.date || raw.slice(0, 10) === dayPlan.date) && sameSeason && session.status === "completed";
   });
 }
 
@@ -270,13 +318,14 @@ function deriveTimelineStatus(state: MonkMVPState, dayPlan: DayPlan): TimelineSt
   const relapses = state.relapseLogs.filter((log) => log.dayPlanId === dayPlan.id);
   if (relapses.length > 0) return "relapse";
   if (dayPlan.dayType === "rest" && dayPlan.status === "completed") return "rest";
+  if (dayPlan.status === "completed") return "completed";
   const focusSessions = getFocusSessionsForDay(state, dayPlan).filter(
     (session) => resolveFocusSessionStatus(session) === "completed" || session.status === "ended_early"
   );
   const learningSessions = getLearningSessionsForDay(state, dayPlan);
   const status = resolveDailyActivityStatus({ focusSessions, learningSessions });
   if (status !== "not_started") return status;
-  if (dayPlan.status === "completed" || dayPlan.status === "planned") return "partial";
+  if (dayPlan.status === "planned") return "partial";
   if (dayPlan.status === "missed") return "missed";
   return "not_started";
 }
@@ -430,22 +479,43 @@ export const useMonkStore = create<MonkStore>()(
   hydrate: () => {
     const stored = loadState();
     if (stored) {
-      const focusSessions = (stored.focusSessions || []).map((session) => normalizeFocusSessionRecord(session));
-      let timelineEvents = normalizeFocusTimelineEvents(stored.timelineEvents || [], focusSessions);
-      if (timelineEvents.length === 0) {
-        if (stored.activeSeason) {
-          timelineEvents.push({
-            id: "legacy_season_started",
-            type: "season_started",
-            seasonId: stored.activeSeason.id,
-            sourceId: stored.activeSeason.id,
-            title: "Season Started",
-            description: `Committed to Zendo Season I for ${stored.activeSeason.durationDays} days.`,
-            occurredAt: stored.activeSeason.createdAt || stored.activeSeason.startDate + "T00:00:00.000Z",
-            createdAt: stored.activeSeason.createdAt || nowIso()
-          });
+      const todayDate = getTodayDateString();
+      const focusSessions = (stored.focusSessions || []).map((session) => {
+        const norm = normalizeFocusSessionRecord(session);
+        if (["running", "paused"].includes(norm.status)) {
+          const sessionDate = (norm.startedAt || norm.startTime || "").slice(0, 10);
+          const isPastDay = sessionDate && sessionDate !== todayDate;
+          const isStale = (Date.now() - new Date(norm.updatedAt || norm.startTime).getTime()) > 3 * 60 * 60 * 1000;
+          if (isPastDay || isStale) {
+            return {
+              ...norm,
+              status: "ended_early" as const,
+              endedAt: norm.updatedAt || norm.startTime,
+              endTime: norm.updatedAt || norm.startTime
+            };
+          }
         }
-        (stored.goals ?? []).forEach((g) => {
+        return norm;
+      });
+      // 1. Backfill and normalize Timeline Events
+      let timelineEvents = normalizeFocusTimelineEvents(stored.timelineEvents || [], focusSessions);
+      const existingSourceIds = new Set(timelineEvents.map((e) => e.sourceId).filter(Boolean));
+
+      if (stored.activeSeason && !timelineEvents.some((e) => e.type === "season_started")) {
+        timelineEvents.push({
+          id: "legacy_season_started",
+          type: "season_started",
+          seasonId: stored.activeSeason.id,
+          sourceId: stored.activeSeason.id,
+          title: "Season Started",
+          description: `Committed to Zendo Season I for ${stored.activeSeason.durationDays} days.`,
+          occurredAt: stored.activeSeason.createdAt || stored.activeSeason.startDate + "T00:00:00.000Z",
+          createdAt: stored.activeSeason.createdAt || nowIso()
+        });
+      }
+
+      (stored.goals ?? []).forEach((g) => {
+        if (!existingSourceIds.has(g.id)) {
           timelineEvents.push({
             id: `legacy_goal_${g.id}`,
             type: "goal_created",
@@ -457,8 +527,11 @@ export const useMonkStore = create<MonkStore>()(
             occurredAt: g.createdAt || nowIso(),
             createdAt: g.createdAt || nowIso()
           });
-        });
-        (stored.journalEntries ?? []).forEach((j) => {
+        }
+      });
+
+      (stored.journalEntries ?? []).forEach((j) => {
+        if (!existingSourceIds.has(j.id)) {
           timelineEvents.push({
             id: `legacy_journal_${j.id}`,
             type: "journal_entry",
@@ -469,33 +542,78 @@ export const useMonkStore = create<MonkStore>()(
             occurredAt: j.createdAt || j.date + "T23:59:59.000Z",
             createdAt: j.createdAt || nowIso()
           });
-        });
-        focusSessions.forEach((s) => {
-          if (resolveFocusSessionStatus(s) === "completed") {
+        }
+      });
+
+      focusSessions.forEach((s) => {
+        if (!existingSourceIds.has(s.id)) {
+          const completed = resolveFocusSessionStatus(s) === "completed";
+          const mins = s.focusDurationMinutes ?? s.completedDurationMinutes ?? s.durationMinutes ?? 0;
+          if (completed || s.status === "ended_early" || mins > 0) {
             const goal = (stored.goals ?? []).find((g) => g.id === s.goalId);
+            const preset = s.preset ?? s.timerMode ?? "deep_work";
             timelineEvents.push({
               id: `legacy_focus_${s.id}`,
               type: "focus_session",
               seasonId: s.seasonId,
               relatedGoalId: s.goalId || null,
               sourceId: s.id,
-              title: `${FOCUS_PRESETS[s.preset ?? s.timerMode ?? "deep_work"].shortLabel} completed`,
+              title: `${FOCUS_PRESETS[preset]?.shortLabel ?? "Focus"} ${completed ? "completed" : "session"}`,
               description: formatFocusSessionTimelineDescription(s, goal ? `Moved forward: ${goal.title}` : undefined),
-              occurredAt: s.endTime || s.startTime,
-              createdAt: s.createdAt || nowIso()
+              occurredAt: s.startedAt || s.createdAt || s.startTime || s.endedAt || s.endTime || nowIso(),
+              createdAt: s.createdAt || nowIso(),
+              focusSession: s as any
             });
           }
-        });
-      }
+        }
+      });
 
+      // 2. Ensure Day Plans exist and are marked completed for dates with focus work
+      let dayPlans = [...(stored.dayPlans || [])];
+      const activeSeasonId = stored.activeSeason?.id;
+
+      focusSessions.forEach((s) => {
+        const raw = s.startedAt || s.createdAt || s.startTime;
+        const sessionDate = raw ? getTodayDateString(new Date(raw)) : "";
+        if (!sessionDate) return;
+
+        let plan = dayPlans.find((p) => p.date === sessionDate && (p.seasonId === s.seasonId || !p.seasonId));
+        const mins = s.focusDurationMinutes ?? s.completedDurationMinutes ?? s.durationMinutes ?? 0;
+        const shouldBeCompleted = mins >= 15 || s.status === "completed";
+
+        if (!plan && activeSeasonId) {
+          plan = {
+            id: createId("day"),
+            seasonId: s.seasonId || activeSeasonId,
+            weeklyPlanId: s.weeklyPlanId || (stored.weeklyPlans?.[0]?.id ?? createId("week")),
+            goalId: s.goalId,
+            date: sessionDate,
+            dayType: "goal",
+            status: shouldBeCompleted ? "completed" : "active",
+            createdAt: s.createdAt || nowIso(),
+            updatedAt: nowIso()
+          };
+          dayPlans.push(plan);
+        } else if (plan && shouldBeCompleted && plan.status !== "completed") {
+          dayPlans = dayPlans.map((p) => (p.id === plan?.id ? { ...p, status: "completed" as const, updatedAt: nowIso() } : p));
+        }
+      });
+
+      // 3. Sync Weekly Plans allocation counts
+      const provisionalBase: MonkMVPState = { ...stored, focusSessions, dayPlans, timelineEvents };
+      const weeklyPlans = (stored.weeklyPlans || []).map((wp) => {
+        return updateAllocationCounts(provisionalBase, wp.id)[0] || wp;
+      });
+
+      // 4. Sync Timeline Days
       const timelineDays = (stored.timelineDays || []).map((day) => {
-        const dayPlan = stored.dayPlans.find(
+        const dayPlan = dayPlans.find(
           (plan) => plan.seasonId === day.seasonId && plan.date === day.date
         );
         if (!dayPlan) return day;
         return {
           ...day,
-          status: deriveTimelineStatus({ ...stored, focusSessions }, dayPlan)
+          status: deriveTimelineStatus(provisionalBase, dayPlan)
         };
       });
 
@@ -537,10 +655,13 @@ export const useMonkStore = create<MonkStore>()(
       set({
         ...fresh,
         ...stored,
+        dayPlans,
+        weeklyPlans,
         pastSeasons,
-        // Always use latest pack definitions (stale localStorage must not overwrite)
         journalPacks: fresh.journalPacks,
-        purchasedPackIds: stored.purchasedPackIds ?? [],
+        purchasedPackIds: Array.from(new Set([...(stored.purchasedPackIds ?? []), ...fresh.journalPacks.map((p) => p.id)])),
+        isPro: true,
+        proTier: stored.proTier ?? "lifetime",
         weeklyReviews: stored.weeklyReviews ?? {},
         releasedSeasonGoals: stored.releasedSeasonGoals ?? [],
         // Tombstone purge: drop tombstones older than 30 days along with any
@@ -564,11 +685,19 @@ export const useMonkStore = create<MonkStore>()(
           ...stored.onboarding
         },
         // Seed habit cues on first run / legacy states (empty array → defaults).
-        // Keeps id+type identity so updateReminder/sync merge never dupe a type.
-        notificationReminders:
-          Array.isArray(stored.notificationReminders) && stored.notificationReminders.length > 0
+        // Deduplicate by type and enforce deterministic IDs so duplicates never persist.
+        notificationReminders: (() => {
+          const raw = Array.isArray(stored.notificationReminders) && stored.notificationReminders.length > 0
             ? stored.notificationReminders
-            : createDefaultReminders()
+            : createDefaultReminders();
+          const map = new Map<string, NotificationReminder>();
+          raw.forEach((r) => {
+            if (r.type && !map.has(r.type)) {
+              map.set(r.type, { ...r, id: `rem_${r.type}` });
+            }
+          });
+          return Array.from(map.values());
+        })()
       });
     }
   },
@@ -979,6 +1108,8 @@ export const useMonkStore = create<MonkStore>()(
       highlight: input.highlight !== undefined ? input.highlight : existing?.highlight,
       energyLevel: input.energyLevel ?? existing?.energyLevel,
       status: input.status ?? (existing?.status ?? "active"),
+      planningCompleted: input.planningCompleted !== undefined ? input.planningCompleted : (existing?.planningCompleted ?? false),
+      timeBlocks: input.timeBlocks !== undefined ? input.timeBlocks : (existing?.timeBlocks ?? []),
       createdAt: existing?.createdAt ?? timestamp,
       updatedAt: timestamp
     };
@@ -993,6 +1124,49 @@ export const useMonkStore = create<MonkStore>()(
     set(next);
   },
 
+  saveDayTimeBlocks: (dateString, timeBlocks, planningCompleted = true) => {
+    const current = get();
+    let base = snapshot(current);
+    const season = base.activeSeason;
+    if (!season) return;
+    const existing = base.dayPlans.find((day) => day.seasonId === season.id && day.date === dateString);
+    if (!existing) {
+      get().createOrUpdateDayPlan(dateString, {
+        dayType: "goal",
+        timeBlocks,
+        planningCompleted
+      });
+      return;
+    }
+    const timestamp = nowIso();
+    const updatedPlan: DayPlan = {
+      ...existing,
+      timeBlocks,
+      planningCompleted: planningCompleted !== undefined ? planningCompleted : (existing.planningCompleted ?? false),
+      updatedAt: timestamp
+    };
+    set({
+      dayPlans: base.dayPlans.map((day) => (day.id === existing.id ? updatedPlan : day))
+    });
+  },
+
+  setDayPlanningCompleted: (dateString, completed) => {
+    const state = get();
+    const season = state.activeSeason;
+    if (!season) return;
+    const existing = state.dayPlans.find((day) => day.seasonId === season.id && day.date === dateString);
+    if (!existing) return;
+    const timestamp = nowIso();
+    const updatedPlan: DayPlan = {
+      ...existing,
+      planningCompleted: completed,
+      updatedAt: timestamp
+    };
+    set({
+      dayPlans: state.dayPlans.map((day) => (day.id === existing.id ? updatedPlan : day))
+    });
+  },
+
   clearDayPlan: (dateString) => {
     const state = get();
     const season = state.activeSeason;
@@ -1002,10 +1176,12 @@ export const useMonkStore = create<MonkStore>()(
 
     const dayPlans = state.dayPlans.filter((day) => day.id !== existing.id);
     const focusSessions = state.focusSessions.filter((session) => session.dayPlanId !== existing.id);
-    const learningSessions = state.learningSessions.filter(
-      (session) =>
-        !(session.seasonId === existing.seasonId && (session.endedAt ?? session.startedAt).slice(0, 10) === dateString)
-    );
+    const learningSessions = state.learningSessions.filter((session) => {
+      const raw = session.startedAt || session.createdAt || session.endedAt;
+      if (!raw) return true;
+      const sessionDate = getTodayDateString(new Date(raw));
+      return !(session.seasonId === existing.seasonId && (sessionDate === dateString || raw.slice(0, 10) === dateString));
+    });
     let next: MonkMVPState = {
       ...snapshot(state),
       dayPlans,
@@ -1096,8 +1272,26 @@ export const useMonkStore = create<MonkStore>()(
 
   startFocusSession: (preset = "deep_work", customMinutes = 50) => {
     const state = get();
-    const plan = findTodayPlan(state);
-    if (!plan || !state.activeSeason) return undefined;
+    if (!state.activeSeason) return undefined;
+    const today = getTodayDateString();
+    let plan = findTodayPlan(state);
+    let allDayPlans = state.dayPlans;
+
+    if (!plan) {
+      const weeklyPlan = state.weeklyPlans.find((w) => w.seasonId === state.activeSeason!.id) ?? state.getOrCreateCurrentWeeklyPlan();
+      plan = {
+        id: createId("day"),
+        seasonId: state.activeSeason.id,
+        weeklyPlanId: weeklyPlan?.id ?? createId("week"),
+        date: today,
+        dayType: "goal",
+        status: "active",
+        createdAt: nowIso(),
+        updatedAt: nowIso()
+      };
+      allDayPlans = [...state.dayPlans, plan];
+    }
+
     const timestamp = nowIso();
     const safeCustomMinutes = Math.max(5, Math.round(customMinutes || 50));
     const phases = createFocusPhases(preset, safeCustomMinutes);
@@ -1138,7 +1332,7 @@ export const useMonkStore = create<MonkStore>()(
     const dayPlan = { ...plan, status: "active" as const, updatedAt: timestamp };
     set({
       focusSessions: [...state.focusSessions, session],
-      dayPlans: state.dayPlans.map((day) => (day.id === dayPlan.id ? dayPlan : day))
+      dayPlans: allDayPlans.map((day) => (day.id === dayPlan.id ? dayPlan : day))
     });
     return session;
   },
@@ -1353,7 +1547,7 @@ export const useMonkStore = create<MonkStore>()(
       sourceId: sessionId,
       title: `${FOCUS_PRESETS[summary.preset].shortLabel} completed`,
       description: formatFocusSessionTimelineDescription(summary, goal ? `Moved forward: ${goal.title}` : undefined),
-      occurredAt: endTimestamp,
+      occurredAt: session.startedAt || session.createdAt || session.startTime || endTimestamp,
       createdAt: endTimestamp,
       focusSession: summary
     };
@@ -1442,16 +1636,38 @@ export const useMonkStore = create<MonkStore>()(
       sourceId: sessionId,
       title: `${FOCUS_PRESETS[summary.preset].shortLabel} ended early`,
       description: formatFocusSessionTimelineDescription(summary, "saved"),
-      occurredAt: endTimestamp,
+      occurredAt: session.startedAt || session.createdAt || session.startTime || endTimestamp,
       createdAt: endTimestamp,
       focusSession: summary
     };
 
     const plan = state.dayPlans.find((day) => day.id === session.dayPlanId);
-    const base: MonkMVPState = { ...snapshot(state), focusSessions };
-    set({
+    if (!plan) {
+      set({
+        focusSessions,
+        timelineEvents: [...state.timelineEvents, event]
+      });
+      return;
+    }
+    const provisionalBase: MonkMVPState = {
+      ...snapshot(state),
+      focusSessions
+    };
+    const timelineStatus = deriveTimelineStatus(provisionalBase, plan);
+    const dayPlan = {
+      ...plan,
+      status: (summary.focusDurationMinutes >= 15 || timelineStatus === "completed") ? ("completed" as const) : plan.status,
+      updatedAt: nowIso()
+    };
+    const base: MonkMVPState = {
+      ...snapshot(state),
       focusSessions,
-      timelineDays: plan ? updatedTimelineDays(base, plan) : state.timelineDays,
+      dayPlans: state.dayPlans.map((day) => (day.id === dayPlan.id ? dayPlan : day))
+    };
+    set({
+      ...base,
+      weeklyPlans: updateAllocationCounts(base, dayPlan.weeklyPlanId),
+      timelineDays: updatedTimelineDays(base, dayPlan),
       timelineEvents: [...state.timelineEvents, event]
     });
   },
@@ -1477,9 +1693,13 @@ export const useMonkStore = create<MonkStore>()(
     // so no orphan "Learned for X minutes" entry survives the delete.
     const timelineEvents = state.timelineEvents.filter((ev) => ev.sourceId !== id);
     const base: MonkMVPState = { ...snapshot(state), learningSessions, timelineEvents };
-    const plan = state.dayPlans.find(
-      (day) => day.seasonId === target.seasonId && day.date === (target.endedAt ?? target.startedAt).slice(0, 10)
-    );
+    const raw = target.startedAt || target.createdAt || target.endedAt;
+    const targetDate = raw ? getTodayDateString(new Date(raw)) : "";
+    const plan = raw
+      ? state.dayPlans.find(
+          (day) => day.seasonId === target.seasonId && (day.date === targetDate || day.date === raw.slice(0, 10))
+        )
+      : undefined;
     set(
       plan
         ? {
@@ -1492,26 +1712,67 @@ export const useMonkStore = create<MonkStore>()(
     );
   },
 
+  removeFocusSession: (sessionId) => {
+    const state = get();
+    const target = state.focusSessions.find((s) => s.id === sessionId);
+    if (!target) return;
+    const focusSessions = state.focusSessions.filter((s) => s.id !== sessionId);
+    const timelineEvents = state.timelineEvents.filter((ev) => ev.sourceId !== sessionId);
+    const base: MonkMVPState = { ...snapshot(state), focusSessions, timelineEvents };
+    const plan = state.dayPlans.find((day) => day.id === target.dayPlanId);
+    set(
+      plan
+        ? {
+            ...base,
+            focusSessions,
+            timelineEvents,
+            timelineDays: updatedTimelineDays(base, plan),
+            weeklyPlans: updateAllocationCounts(base, plan.weeklyPlanId)
+          }
+        : { ...base, focusSessions, timelineEvents }
+    );
+  },
+
+  removeTimelineEvent: (eventId) => {
+    const state = get();
+    const event = state.timelineEvents.find((ev) => ev.id === eventId);
+    if (!event) return;
+    if (event.type === "focus_session" && event.sourceId) {
+      get().removeFocusSession(event.sourceId);
+      return;
+    }
+    if (event.type === "learning_session" && event.sourceId) {
+      get().removeLearningSession(event.sourceId);
+      return;
+    }
+    const timelineEvents = state.timelineEvents.filter((ev) => ev.id !== eventId);
+    set({ timelineEvents });
+  },
+
   saveJournalEntry: (answers, opts) => {
     const state = get();
     const date = opts?.date ?? getTodayDateString();
+    const seasonId = state.activeSeason?.id ?? state.pastSeasons?.[0]?.id ?? "season_1";
     const plan =
       (date !== getTodayDateString()
-        ? state.dayPlans.find((p) => p.seasonId === state.activeSeason?.id && p.date === date)
+        ? state.dayPlans.find((p) => (p.seasonId === seasonId || !p.seasonId) && p.date === date)
         : findTodayPlan(state)) ??
-      state.dayPlans.find((p) => p.seasonId === state.activeSeason?.id && p.date === date);
-    if (!state.activeSeason) return;
+      state.dayPlans.find((p) => (p.seasonId === seasonId || !p.seasonId) && p.date === date);
     const timestamp = nowIso();
     const existing = state.journalEntries.find(
-      (entry) => entry.seasonId === state.activeSeason?.id && entry.date === date
+      (entry) => (entry.seasonId === seasonId || !entry.seasonId) && entry.date === date
     );
+    const mergedAnswers: JournalAnswers = {
+      ...(existing?.answers ?? {}),
+      ...answers
+    };
     const entry = {
       id: existing?.id ?? createId("journal"),
-      seasonId: state.activeSeason.id,
+      seasonId,
       weeklyPlanId: plan?.weeklyPlanId,
       dayPlanId: plan?.id,
       date,
-      answers,
+      answers: mergedAnswers,
       createdAt: existing?.createdAt ?? timestamp,
       updatedAt: timestamp
     };
@@ -1521,26 +1782,26 @@ export const useMonkStore = create<MonkStore>()(
 
     // Create journal entry timeline event
     const lang = state.appSettings.language ?? "id";
-    const hasReflection = !!answers.whatMovedToday?.trim();
-    const hasMorningPages = !!answers.morningPages?.trim();
+    const hasReflection = !!mergedAnswers.whatMovedToday?.trim();
+    const hasMorningPages = !!mergedAnswers.morningPages?.trim();
     let eventTitle = t(lang, "timeline.wroteReflection");
     let eventDesc = "";
 
     if (hasMorningPages && hasReflection) {
       eventTitle = t(lang, "timeline.wroteBoth");
-      eventDesc = `${t(lang, "timeline.morningPagesLabel")}:\n${answers.morningPages}\n\n${t(lang, "timeline.reflectionLabel")}:\n${answers.whatMovedToday}`;
+      eventDesc = `${t(lang, "timeline.morningPagesLabel")}:\n${mergedAnswers.morningPages}\n\n${t(lang, "timeline.reflectionLabel")}:\n${mergedAnswers.whatMovedToday}`;
     } else if (hasMorningPages) {
       eventTitle = t(lang, "timeline.wroteMorning");
-      eventDesc = answers.morningPages || "";
+      eventDesc = mergedAnswers.morningPages || "";
     } else if (hasReflection) {
       eventTitle = t(lang, "timeline.wroteReflection");
-      eventDesc = answers.whatMovedToday || "";
+      eventDesc = mergedAnswers.whatMovedToday || "";
     }
 
     const event: TimelineEvent = {
       id: createId("event"),
       type: "journal_entry",
-      seasonId: state.activeSeason?.id,
+      seasonId,
       sourceId: entry.id,
       title: eventTitle,
       description: eventDesc,
@@ -1556,8 +1817,7 @@ export const useMonkStore = create<MonkStore>()(
     } else {
       // Standalone entry (no day plan for that date): upsert a timeline row so
       // journalCompleted still reads true. No auto-created day plan.
-      const seasonId = state.activeSeason!.id;
-      const existingDay = state.timelineDays.find((day) => day.seasonId === seasonId && day.date === date);
+      const existingDay = state.timelineDays.find((day) => (day.seasonId === seasonId || !day.seasonId) && day.date === date);
       const nextDay: TimelineDay = {
         id: existingDay?.id ?? createId("timeline"),
         seasonId,
@@ -1671,10 +1931,16 @@ export const useMonkStore = create<MonkStore>()(
     const season = state.activeSeason;
     if (!season) return;
     const timestamp = nowIso();
+    const intrinsicWhy = (why.why ?? why.identity ?? "").trim();
+    const costOfInaction = (why.antiWhy ?? why.consequenceOfInaction ?? "").trim();
+    const outcome = (why.desiredOutcome ?? "").trim();
     const next: SeasonWhy = {
-      identity: why.identity.trim(),
-      consequenceOfInaction: why.consequenceOfInaction.trim(),
-      protectValues: why.protectValues.slice(0, 3)
+      identity: intrinsicWhy,
+      consequenceOfInaction: costOfInaction,
+      protectValues: (why.protectValues ?? []).slice(0, 3),
+      why: intrinsicWhy,
+      desiredOutcome: outcome,
+      antiWhy: costOfInaction,
     };
     set({
       activeSeason: { ...season, why: next, updatedAt: timestamp }
@@ -1706,6 +1972,46 @@ export const useMonkStore = create<MonkStore>()(
     });
   },
 
+  updateGoalBlueprint: (goalId, blueprint) => {
+    const state = get();
+    const existing = state.goals.find((g) => g.id === goalId);
+    if (!existing) return;
+    const updatedGoals = state.goals.map((g) => {
+      if (g.id !== goalId) return g;
+      return {
+        ...g,
+        title: blueprint.title !== undefined ? (blueprint.title.trim() || g.title) : g.title,
+        keystoneAction: blueprint.keystoneAction !== undefined ? (blueprint.keystoneAction.trim() || g.keystoneAction) : g.keystoneAction,
+        weeklyTargetCount: blueprint.weeklyTargetCount !== undefined ? Math.max(1, Math.min(7, blueprint.weeklyTargetCount)) : g.weeklyTargetCount,
+        why: blueprint.why !== undefined ? (blueprint.why.trim() || undefined) : g.why,
+        whenWhere: blueprint.whenWhere !== undefined ? (blueprint.whenWhere.trim() || undefined) : g.whenWhere,
+        definitionOfDone: blueprint.definitionOfDone !== undefined ? (blueprint.definitionOfDone.trim() || undefined) : g.definitionOfDone,
+        obstacle: blueprint.obstacle !== undefined ? (blueprint.obstacle.trim() || undefined) : g.obstacle,
+        obstacleMitigation: blueprint.obstacleMitigation !== undefined ? (blueprint.obstacleMitigation.trim() || undefined) : g.obstacleMitigation,
+        updatedAt: nowIso()
+      };
+    });
+
+    let weeklyPlans = state.weeklyPlans;
+    if (blueprint.weeklyTargetCount !== undefined) {
+      const currentPlan = state.weeklyPlans.find((p) => p.seasonId === existing.seasonId && p.status === "active");
+      if (currentPlan) {
+        weeklyPlans = state.weeklyPlans.map((p) => {
+          if (p.id !== currentPlan.id) return p;
+          return {
+            ...p,
+            goalAllocations: p.goalAllocations.map((a) =>
+              a.goalId === goalId ? { ...a, targetCount: blueprint.weeklyTargetCount! } : a
+            ),
+            updatedAt: nowIso()
+          };
+        });
+      }
+    }
+
+    set({ goals: updatedGoals, weeklyPlans });
+  },
+
   reviewWeek: (weekId, decisions, opts) => {
     const state = get();
     const season = state.activeSeason;
@@ -1716,6 +2022,8 @@ export const useMonkStore = create<MonkStore>()(
         [weekId]: {
           date: nowIso(),
           decisions,
+          reflection: opts?.reflection,
+          restActivity: opts?.restActivity,
           skipped: opts?.skipped
         }
       }
@@ -1780,9 +2088,10 @@ export const useMonkStore = create<MonkStore>()(
     const timestamp = nowIso();
     const goal = session.relatedGoalId ? state.goals.find((g) => g.id === session.relatedGoalId) : null;
     const durationMin = Math.round(session.actualDurationSeconds / 60);
-    const sessionDate = (session.endedAt ?? session.startedAt).slice(0, 10);
+    const raw = session.startedAt || session.createdAt || session.endedAt;
+    const sessionDate = raw ? getTodayDateString(new Date(raw)) : getTodayDateString();
     const plan = state.dayPlans.find(
-      (day) => day.seasonId === session.seasonId && day.date === sessionDate
+      (day) => day.seasonId === session.seasonId && (day.date === sessionDate || (raw ? day.date === raw.slice(0, 10) : false))
     );
     const learningSessions = [...state.learningSessions, session];
 
@@ -1794,7 +2103,7 @@ export const useMonkStore = create<MonkStore>()(
       sourceId: session.id,
       title: `Learned for ${durationMin} minutes`,
       description: `From ${session.sourceTitle || "External Source"}${goal ? ` · Connected to: ${goal.title}` : ""}${session.lesson ? ` · Key lesson: ${session.lesson}` : ""}`,
-      occurredAt: session.endedAt || timestamp,
+      occurredAt: session.startedAt || session.createdAt || session.endedAt || timestamp,
       createdAt: timestamp
     };
 
@@ -1899,7 +2208,8 @@ export const useMonkStore = create<MonkStore>()(
       notebookCategories: state.notebookCategories.filter((c) => c.id !== id),
       notebookEntries: state.notebookEntries.map((e) =>
         e.categoryId === id ? { ...e, categoryId: fallback.id, updatedAt: timestamp } : e
-      )
+      ),
+      notebookCategoryDeletedAt: { ...(state.notebookCategoryDeletedAt ?? {}), [id]: timestamp }
     });
   },
 
@@ -1907,11 +2217,41 @@ export const useMonkStore = create<MonkStore>()(
     const state = get();
     const existing = state.notebookEntries.find((e) => e.id === entry.id);
     const timestamp = nowIso();
+    const extractedIds = resolveLinkedNoteIds(entry.body || "", state.notebookEntries);
+    const mergedLinked = Array.from(new Set([...(entry.linkedNoteIds || []), ...extractedIds]));
+    const updated: NotebookEntry = {
+      ...entry,
+      linkedNoteIds: mergedLinked,
+      updatedAt: timestamp
+    };
     set({
       notebookEntries: existing
-        ? state.notebookEntries.map((e) => e.id === entry.id ? { ...entry, updatedAt: timestamp } : e)
-        : [...state.notebookEntries, { ...entry, createdAt: entry.createdAt || timestamp, updatedAt: timestamp }]
+        ? state.notebookEntries.map((e) => e.id === entry.id ? updated : e)
+        : [...state.notebookEntries, { ...updated, createdAt: entry.createdAt || timestamp }]
     });
+  },
+
+  duplicateNotebookEntry: (id) => {
+    const state = get();
+    const entry = state.notebookEntries.find((e) => e.id === id);
+    if (!entry) return undefined;
+    const timestamp = nowIso();
+    const copySuffix = " (Salinan)";
+    const newEntry: NotebookEntry = {
+      ...entry,
+      id: createId("nb_entry"),
+      title: entry.title ? `${entry.title}${copySuffix}` : "Salinan Catatan",
+      isPinned: false,
+      createdAt: timestamp,
+      updatedAt: timestamp,
+      pages: entry.pages && entry.pages.length > 0 ? [...entry.pages] : (entry.body ? [entry.body] : [""]),
+      images: entry.images ? [...entry.images] : [],
+      tags: entry.tags ? [...entry.tags] : []
+    };
+    set({
+      notebookEntries: [newEntry, ...state.notebookEntries]
+    });
+    return newEntry;
   },
 
   deleteNotebookEntry: (id) => {
@@ -1997,6 +2337,19 @@ export const useMonkStore = create<MonkStore>()(
     });
   },
 
+  unlockPro: (tier = "lifetime") => {
+    const timestamp = nowIso();
+    const expiresAt = tier === "season" ? addDaysToDate(getTodayDateString(), 30) : null;
+    const allPackIds = get().journalPacks.map((p) => p.id);
+    set((state) => ({
+      isPro: true,
+      proTier: tier,
+      proPurchasedAt: timestamp,
+      proExpiresAt: expiresAt,
+      purchasedPackIds: Array.from(new Set([...state.purchasedPackIds, ...allPackIds]))
+    }));
+  },
+
   syncPurchases: async () => {
     // Pull packs confirmed paid via the Bayar GG webhook (Supabase) and merge
     // them into the local unlock set. Safe to call on app start / after checkout.
@@ -2033,6 +2386,7 @@ export const useMonkStore = create<MonkStore>()(
       notebookCategories: data.notebookCategories !== undefined ? data.notebookCategories : state.notebookCategories,
       notebookEntries: data.notebookEntries !== undefined ? data.notebookEntries : state.notebookEntries,
       notebookDeletedAt: data.notebookDeletedAt !== undefined ? data.notebookDeletedAt : state.notebookDeletedAt,
+      notebookCategoryDeletedAt: data.notebookCategoryDeletedAt !== undefined ? data.notebookCategoryDeletedAt : state.notebookCategoryDeletedAt,
       journalPacks: data.journalPacks !== undefined ? data.journalPacks : state.journalPacks,
       journalPackSessions: data.journalPackSessions !== undefined ? data.journalPackSessions : state.journalPackSessions,
       purchasedPackIds: data.purchasedPackIds !== undefined ? data.purchasedPackIds : state.purchasedPackIds,
@@ -2064,6 +2418,7 @@ export const useMonkStore = create<MonkStore>()(
         notebookCategories: state.notebookCategories,
         notebookEntries: state.notebookEntries,
         notebookDeletedAt: state.notebookDeletedAt ?? {},
+        notebookCategoryDeletedAt: state.notebookCategoryDeletedAt ?? {},
         journalPacks: state.journalPacks,
         journalPackSessions: state.journalPackSessions,
         purchasedPackIds: state.purchasedPackIds,

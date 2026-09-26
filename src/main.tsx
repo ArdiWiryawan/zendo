@@ -4,7 +4,7 @@ import { createBrowserRouter, RouterProvider } from "react-router-dom";
 import App from "./app/App";
 import "./styles/globals.css";
 import { registerSW } from "virtual:pwa-register";
-import { getState, isSyncActive, setState } from "./lib/supabase";
+import { getState, isSyncActive, setState, subscribeAuthState } from "./lib/supabase";
 import { useMonkStore } from "./store/useMonkStore";
 import { setSyncStatus } from "./lib/syncStatus";
 import { mergeRemoteState } from "./lib/syncMerge";
@@ -48,6 +48,38 @@ async function initSync(): Promise<void> {
     }
   };
 
+  const pullRemote = async () => {
+    if (!navigator.onLine) {
+      setSyncStatus("offline");
+      return;
+    }
+    try {
+      if (!(await isSyncActive())) {
+        setSyncStatus("offline");
+        return;
+      }
+      setSyncStatus("syncing");
+      const remote = await Promise.race([
+        getState(),
+        new Promise<null>((_, rej) => setTimeout(() => rej(new Error("timeout")), 3000))
+      ]);
+
+      if (remote && Object.keys(remote).length > 0) {
+        // Safety net: snapshot current local state before applying remote, so a
+        // bad sync can never silently destroy newer local data without recovery.
+        const before = useMonkStore.getState();
+        localStorage.setItem("zendo_state_backup_v1", JSON.stringify(before));
+        // Merge last-write-wins by updatedAt — a stale/empty remote must not
+        // clobber newer local goals/sessions/journal (the old spread did).
+        useMonkStore.setState((state) => mergeRemoteState(state, remote));
+      }
+      if (await isSyncActive()) setSyncStatus("synced");
+    } catch (err) {
+      console.warn("[supabase] offline mode", err);
+      setSyncStatus("offline");
+    }
+  };
+
   const onOnline = () => {
     void isSyncActive().then((active) => {
       setSyncStatus(active ? "synced" : "offline");
@@ -70,36 +102,16 @@ async function initSync(): Promise<void> {
     timer = setTimeout(() => void pushState(), 800);
   });
 
-  if (!navigator.onLine) {
-    setSyncStatus("offline");
-    return;
-  }
-
-  try {
-    if (!(await isSyncActive())) {
+  // Listen to Auth state changes to pull cloud data on login / reset on logout
+  subscribeAuthState((_event, session) => {
+    if (session?.user) {
+      void pullRemote();
+    } else {
       setSyncStatus("offline");
-      return;
     }
-    setSyncStatus("syncing");
-    const remote = await Promise.race([
-      getState(),
-      new Promise<null>((_, rej) => setTimeout(() => rej(new Error("timeout")), 3000))
-    ]);
+  });
 
-    if (remote && Object.keys(remote).length > 0) {
-      // Safety net: snapshot current local state before applying remote, so a
-      // bad sync can never silently destroy newer local data without recovery.
-      const before = useMonkStore.getState();
-      localStorage.setItem("zendo_state_backup_v1", JSON.stringify(before));
-      // Merge last-write-wins by updatedAt — a stale/empty remote must not
-      // clobber newer local goals/sessions/journal (the old spread did).
-      useMonkStore.setState((state) => mergeRemoteState(state, remote));
-    }
-    if (await isSyncActive()) setSyncStatus("synced");
-  } catch (err) {
-    console.warn("[supabase] offline mode", err);
-    setSyncStatus("offline");
-  }
+  await pullRemote();
 }
 
 initSync();

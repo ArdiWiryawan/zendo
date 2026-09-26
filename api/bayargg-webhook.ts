@@ -37,6 +37,11 @@ const PACK_PRICES: Record<string, number> = {
   pack_complete_100: 49000,
 };
 
+const PRO_PRICES: Record<string, number> = {
+  pro_lifetime: 99000,
+  pro_season: 39000,
+};
+
 function safeEqual(a: string, b: string): boolean {
   const ab = Buffer.from(a, "utf8");
   const bb = Buffer.from(b, "utf8");
@@ -84,7 +89,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   // Reconcile the amount against the known server-side price. A forged or
   // tampered payment record must never be stored.
-  const expected = PACK_PRICES[packId];
+  const expected = PACK_PRICES[packId] ?? PRO_PRICES[packId];
   if (!expected) {
     return res.status(400).json({ error: `Unknown pack: ${packId}` });
   }

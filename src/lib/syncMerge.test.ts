@@ -118,4 +118,20 @@ describe("mergeRemoteState", () => {
     expect(merged.notebookDeletedAt.nb1).toBe("2026-08-02T00:00:00.000Z");
     expect(merged.notebookEntries).toHaveLength(0);
   });
+
+  it("drops deleted categories if tombstoned in notebookCategoryDeletedAt", () => {
+    const local = mkState();
+    local.notebookCategoryDeletedAt = { cat_spiritual: "2026-08-02T00:00:00.000Z" };
+    const remote: Partial<MonkMVPState> = {
+      notebookCategories: [
+        { id: "cat_spiritual", name: "Spiritual", icon: "Sun", isBuiltIn: true, sortOrder: 5 },
+        { id: "cat_karier", name: "Karier", icon: "Briefcase", isBuiltIn: true, sortOrder: 1 }
+      ],
+    };
+
+    const merged = mergeRemoteState(local, remote);
+    expect(merged.notebookCategoryDeletedAt?.cat_spiritual).toBe("2026-08-02T00:00:00.000Z");
+    expect(merged.notebookCategories.map((c) => c.id)).not.toContain("cat_spiritual");
+    expect(merged.notebookCategories.map((c) => c.id)).toContain("cat_karier");
+  });
 });

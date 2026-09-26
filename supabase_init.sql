@@ -12,18 +12,18 @@ create table if not exists zendo_state (
 
 alter table zendo_state enable row level security;
 
--- Owner-only access. id = auth.uid() means users can only touch their own row;
--- RLS `to authenticated` (not anon) additionally rejects unauthenticated calls.
+-- Drop existing policy if exists before recreating
+drop policy if exists "Allow owner CRUD" on zendo_state;
+drop policy if exists "Allow anon read/write" on zendo_state;
+drop policy if exists "Allow authenticated CRUD" on zendo_state;
+
+-- Owner-only access. id = auth.uid()::text matches text column with UUID auth id.
 create policy "Allow owner CRUD"
   on zendo_state
   for all
   to authenticated
-  using (auth.uid() = id)
-  with check (auth.uid() = id);
-
--- Remove the old world-readable/writable anon policy from existing installs.
-drop policy if exists "Allow anon read/write" on zendo_state;
-drop policy if exists "Allow authenticated CRUD" on zendo_state;
+  using (auth.uid()::text = id)
+  with check (auth.uid()::text = id);
 
 -- Delete the legacy shared 'global' row so it can never again be written by
 -- clients and read back into users' state.
@@ -48,11 +48,11 @@ alter table zendo_purchases enable row level security;
 -- Anonymous visitors are denied. NOTE: unlock is intentionally global — Bayar
 -- GG's webhook does not carry a buyer identity, so per-user ownership would
 -- require plumbing the checkout session through Bayar GG (future work).
+drop policy if exists "Allow authenticated read purchases" on zendo_purchases;
+drop policy if exists "Allow anon read purchases" on zendo_purchases;
+
 create policy "Allow authenticated read purchases"
   on zendo_purchases
   for select
   to authenticated
   using (true);
-
--- Remove the old anon-read-everything policy from existing installs.
-drop policy if exists "Allow anon read purchases" on zendo_purchases;

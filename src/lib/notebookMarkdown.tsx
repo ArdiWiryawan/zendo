@@ -7,26 +7,39 @@ import { InlinePhoto, type PhotoOpenHandler } from "../components/NotebookImages
  * markdown, so existing string bodies persist/search unchanged.
  */
 
-const AUTOLIST = /^(\s*)([-*]|(?:\d+[.)])|(?:\[[ xX]\]))(\s+)(.*)$/;
-const EMPTY_MARKER = /^(\s*)([-*]|(?:\d+[.)])|(?:\[[ xX]\]))\s*$/;
+const TASK_LINE = /^(\s*)(?:([-*])\s+)?(\[[ xX]\])(\s+)(.*)$/;
+const BULLET_LINE = /^(\s*)([-*])(\s+)(.*)$/;
+const ORDERED_LINE = /^(\s*)(\d+[.)])(\s+)(.*)$/;
 
 /** Marker to insert when Enter is pressed on a list line. Empty content ends the list. */
 export function autolistMarker(line: string): string | null {
-  const m = AUTOLIST.exec(line);
-  if (!m) return null;
-  if (!m[4]) return ""; // marker alone -> end list
-  const indent = m[1];
-  const tok = m[2];
-  if (tok === "-" || tok === "*") return `${indent}${tok} `;
-  if (tok[0] === "[") return `${indent}[ ] `;
-  const delim = tok.includes(")") ? ")" : ".";
-  return `${indent}${parseInt(tok, 10) + 1}${delim} `;
+  const tm = TASK_LINE.exec(line);
+  if (tm) {
+    if (!tm[5]) return ""; // marker alone -> end list
+    const indent = tm[1];
+    const bullet = tm[2];
+    return bullet ? `${indent}${bullet} [ ] ` : `${indent}[ ] `;
+  }
+  const bm = BULLET_LINE.exec(line);
+  if (bm) {
+    if (!bm[4]) return ""; // marker alone -> end list
+    return `${bm[1]}${bm[2]} `;
+  }
+  const om = ORDERED_LINE.exec(line);
+  if (om) {
+    if (!om[4]) return ""; // marker alone -> end list
+    const indent = om[1];
+    const tok = om[2];
+    const delim = tok.includes(")") ? ")" : ".";
+    return `${indent}${parseInt(tok, 10) + 1}${delim} `;
+  }
+  return null;
 }
 
 type ListKind = "ul" | "ol" | "task";
 
 const HEADING = /^(#{1,6})\s+(.*)$/;
-const TASK = /^\[([ xX])\]\s+(.*)$/;
+const TASK = /^(?:[-*]\s+)?\[([ xX])\](?:\s+(.*)|\s*$)/;
 const BULLET = /^[-*]\s+(.*)$/;
 const ORDERED = /^(\d+)[.)]\s+(.*)$/;
 const IMG = /^{{img:([0-9A-Za-z_-]+)}}$/;
@@ -105,12 +118,13 @@ export function renderBodyMarkdown(
   body: string,
   onOpenPhoto?: PhotoOpenHandler,
   omitPhotos = false,
-  onDeletePhoto?: (id: string) => void
+  onDeletePhoto?: (id: string) => void,
+  onToggleTask?: (lineIndex: number) => void
 ): ReactNode[] {
   const out: ReactNode[] = [];
   if (!body) return out;
 
-  let open: { type: ListKind; items: Array<{ text: string; checked?: boolean }> } | null = null;
+  let open: { type: ListKind; items: Array<{ text: string; checked?: boolean; lineIndex?: number }> } | null = null;
   let bq: string[] | null = null;
   let num = 1;
 
@@ -143,11 +157,47 @@ export function renderBodyMarkdown(
       );
     } else if (open.type === "task") {
       out.push(
-        <ul key={key} className="md-list">
+        <ul key={key} className="md-list md-task-list">
           {open.items.map((i, k) => (
-            <li key={k}>
-              <span className={`md-task-box${i.checked ? " checked" : ""}`} aria-hidden />
-              {inlineMd(i.text, `li-${k}`)}
+            <li
+              key={k}
+              className={`md-task-item flex items-start gap-2 my-0.5 ${i.checked ? "md-task-done" : ""}`}
+            >
+              <button
+                type="button"
+                role="checkbox"
+                aria-checked={i.checked}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onToggleTask?.(i.lineIndex ?? k);
+                }}
+                className={`md-task-box${i.checked ? " checked" : ""}`}
+                aria-label={i.checked ? "Mark as incomplete" : "Mark as complete"}
+              >
+                {i.checked ? (
+                  <svg
+                    className="w-2.5 h-2.5 text-white stroke-current"
+                    viewBox="0 0 16 16"
+                    fill="none"
+                    strokeWidth="3"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <polyline points="3.5 8.5 6.5 11.5 12.5 4.5" />
+                  </svg>
+                ) : null}
+              </button>
+              <span
+                onClick={(e) => {
+                  if (onToggleTask) {
+                    e.stopPropagation();
+                    onToggleTask(i.lineIndex ?? k);
+                  }
+                }}
+                className="md-task-text flex-1 cursor-pointer select-text"
+              >
+                {inlineMd(i.text || " ", `li-${k}`)}
+              </span>
             </li>
           ))}
         </ul>
@@ -283,14 +333,14 @@ export function renderBodyMarkdown(
     }
 
     const tk = TASK.exec(t);
-    const b = BULLET.exec(t);
-    const o = ORDERED.exec(t);
+    const b = tk ? null : BULLET.exec(t);
+    const o = tk || b ? null : ORDERED.exec(t);
     if (tk) {
       if (open?.type !== "task") {
         close();
         open = { type: "task", items: [] };
       }
-      open.items.push({ text: tk[2], checked: tk[1] !== " " });
+      open.items.push({ text: tk[2] || "", checked: tk[1] !== " ", lineIndex: idx });
     } else if (b) {
       if (open?.type !== "ul") {
         close();

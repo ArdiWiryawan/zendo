@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Check, Minus, Plus, Volume2, VolumeX } from "lucide-react";
+import { Check, Minus, Plus, Volume2, VolumeX, Wind } from "lucide-react";
 import {
   CalmAlert,
   Card,
@@ -12,13 +12,15 @@ import { isMusicOn, toggleMusic } from "../lib/focusMusic";
 import { loadLastFocus, saveLastFocus } from "../lib/storage";
 import { getTodayDateString } from "../lib/date";
 import { parseIntention } from "../lib/implementationIntention";
-import { unlockAudio } from "../lib/audio";
+import { playBreakChime, playFocusChime, playZenBell, unlockAudio } from "../lib/audio";
+import { hapticPress } from "../lib/haptics";
 import { CircularProgress } from "../components/CircularProgress";
 import { selectEnergyForDate } from "../store/selectors";
 import { useMonkStore } from "../store/useMonkStore";
 import type { FocusSession, FocusSessionPreset } from "../types/app";
 import { useT, type MessageKey } from "../i18n";
 import { FrictionWhy } from "../components/SeasonWidgets";
+import { FocusPrepModal } from "../components/FocusPrepModal";
 
 export function formatTimer(seconds: number) {
   const safeSeconds = Math.max(0, seconds);
@@ -266,7 +268,10 @@ export function FocusSessionPanel({
               <button
                 type="button"
                 className="rounded-full border border-monk-border bg-monk-bg px-3 py-1.5 text-xs font-semibold text-monk-muted transition hover:border-monk-accent hover:text-monk-accent active:scale-95"
-                onClick={() => store.bumpFocusDistraction(session.id)}
+                onClick={() => {
+                  hapticPress("light");
+                  store.bumpFocusDistraction(session.id);
+                }}
               >
                 {t("focus.distractionTap")}
                 {distractionCount > 0 ? (
@@ -435,6 +440,7 @@ export function FocusSessionStarter({ compact = false }: { compact?: boolean }) 
     return last?.customMinutes ?? 50;
   });
   const [showChecklist, setShowChecklist] = useState(false);
+  const [showFocusPrep, setShowFocusPrep] = useState(false);
   const [checked, setChecked] = useState<Set<string>>(new Set());
   const selected = FOCUS_PRESETS[selectedPreset];
   const phases = selected.buildPhases(customMinutes);
@@ -450,6 +456,8 @@ export function FocusSessionStarter({ compact = false }: { compact?: boolean }) 
 
   function beginSession() {
     unlockAudio();
+    playZenBell();
+    hapticPress("medium");
     if ("Notification" in window && Notification.permission === "default") {
       Notification.requestPermission();
     }
@@ -609,11 +617,28 @@ export function FocusSessionStarter({ compact = false }: { compact?: boolean }) 
           <PrimaryButton className="min-h-12" disabled={!canStart} onClick={beginSession}>
             {t("focus.beginWith", { label: t(`focus.preset.${selectedPreset}.short` as MessageKey) })}
           </PrimaryButton>
-          <GhostButton className="mt-2 w-full min-h-11" disabled={!canStart} onClick={() => setShowChecklist(true)}>
+          <SecondaryButton
+            className="mt-2 w-full min-h-11 flex items-center justify-center gap-2 border-monk-accent/35 bg-monk-accent-soft/20 text-monk-accent hover:bg-monk-accent-soft/40 transition active:scale-[0.99]"
+            disabled={!canStart}
+            onClick={() => setShowFocusPrep(true)}
+          >
+            <Wind size={15} />
+            <span>{t("focusPrep.startPrep")}</span>
+          </SecondaryButton>
+          <GhostButton className="mt-1.5 w-full min-h-10 text-xs text-monk-muted" disabled={!canStart} onClick={() => setShowChecklist(true)}>
             {t("focus.prepareFirst")}
           </GhostButton>
         </>
       )}
+      <FocusPrepModal
+        isOpen={showFocusPrep}
+        onClose={() => setShowFocusPrep(false)}
+        onStartFocus={() => {
+          setShowFocusPrep(false);
+          beginSession();
+        }}
+        taskTitle={store.dayPlans.find((d) => d.date === getTodayDateString())?.mainAction}
+      />
     </Card>
   );
 }

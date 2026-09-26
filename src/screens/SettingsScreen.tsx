@@ -1,4 +1,4 @@
-import { useEffect, useState, type JSX } from "react";
+import { useEffect, useMemo, useState, type JSX } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
@@ -7,22 +7,30 @@ import {
   GhostButton,
   PageHeader,
   Textarea,
+  useCalmToast,
 } from "../components/ui";
+import { playZenBell } from "../lib/audio";
 import {
   Bell,
   Calendar,
   Cloud,
+  Crown,
   Download,
   FileJson,
   FileText,
   Globe,
   HardDrive,
+  Heart,
   Moon,
   RotateCcw,
   ShieldAlert,
+  Sparkles,
   Trash2,
   Upload,
+  Palette,
+  Settings,
 } from "lucide-react";
+import { ZendoProModal } from "../components/ZendoProModal";
 import { routes } from "../constants/routes";
 import { getDaysPassed } from "../lib/date";
 import { exportStateAsJson } from "../lib/storage";
@@ -35,7 +43,7 @@ import {
   getJournalAnswerItems,
   getJournalQuestionLabels,
 } from "../i18n/prompts";
-import type { AppLanguage, MonkMVPState } from "../types/app";
+import type { AppLanguage, AppTheme, MonkMVPState } from "../types/app";
 
 function syncLabel(status: SyncStatus, tUI: (k: any) => string, localOnly: boolean) {
   if (localOnly) return tUI("sync.localOnly");
@@ -63,30 +71,86 @@ const sectionReveal = {
 export default function SettingsScreen() {
   const store = useMonkStore();
   const navigate = useNavigate();
+  const toast = useCalmToast();
   const [exported, setExported] = useState("");
   const [confirmKind, setConfirmKind] = useState<null | "import" | "wipe">(null);
   const [pendingImport, setPendingImport] = useState<Record<string, unknown> | null>(null);
   const [session, setSession] = useState<{ email?: string } | null>(null);
+  const [proModalOpen, setProModalOpen] = useState(false);
   const syncStatus = useSyncStatus();
   const tUI = useT();
+
+  const displayedReminders = useMemo(() => {
+    const map = new Map<string, typeof store.notificationReminders[0]>();
+    (store.notificationReminders || []).forEach((r) => {
+      if (r.type && !map.has(r.type)) {
+        map.set(r.type, r);
+      }
+    });
+    return Array.from(map.values());
+  }, [store.notificationReminders]);
+
+  const handleTestReminder = () => {
+    playZenBell();
+    toast.show(tUI("reminder.testFired") || "🔔 Pengingat Berfungsi: Waktunya kembali fokus!");
+    if ("Notification" in window && Notification.permission === "granted") {
+      try {
+        new Notification("Zendo Monk Focus", {
+          body: "Pengingat aktif — Waktunya kembali ke fokus utama hari ini.",
+          icon: "/icon-192.png"
+        });
+      } catch {
+        /* ignore */
+      }
+    }
+  };
   // No session (or Supabase not configured) — nothing to sync, don't claim "Synced".
   const localOnly = !session;
   const lang = (store.appSettings.language ?? "id") as AppLanguage;
   const labels = getJournalQuestionLabels(lang);
-  const sb = typeof getSupabase === "function" ? (getSupabase as () => any)() : null;
 
   useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const proUnlocked = params.get("pro_unlocked");
+    if (proUnlocked) {
+      store.unlockPro(proUnlocked === "pro_season" ? "season" : "lifetime");
+      playZenBell();
+      toast.show(lang === "id" ? "Selamat! Zendo Pro berhasil diaktifkan." : "Zendo Pro successfully unlocked!");
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
+    if (params.get("pro") === "open") {
+      setProModalOpen(true);
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
+  }, [lang]);
+
+  useEffect(() => {
+    const sb = getSupabase();
     if (!sb?.auth) return;
     sb.auth.getSession().then(({ data }: any) => {
       if (data?.session) setSession({ email: data.session.user?.email });
+      else setSession(null);
     });
-  }, [sb]);
+    const { data: { subscription } } = sb.auth.onAuthStateChange((_event: any, s: any) => {
+      if (s?.user) {
+        setSession({ email: s.user.email });
+      } else {
+        setSession(null);
+      }
+    });
+    return () => {
+      subscription?.unsubscribe();
+    };
+  }, []);
 
   const handleLogout = async () => {
+    const sb = getSupabase();
     if (!sb?.auth) return;
     await sb.auth.signOut();
     setSession(null);
   };
+
+
 
   const applyImport = (data: Record<string, unknown>) => {
     store.importState(data as Partial<MonkMVPState>);
@@ -159,7 +223,7 @@ export default function SettingsScreen() {
       }),
       "",
       "## Learning Log",
-      ...learning.map(l => `- **${(l.endedAt ?? l.startedAt).slice(0,10)}** (${l.sourceType}): ${l.sourceTitle || l.lesson?.slice(0, 60) || "-"} - Insight: ${l.lesson || "-"}`),
+      ...learning.map(l => `- **${(l.startedAt || l.createdAt || l.endedAt || "").slice(0,10)}** (${l.sourceType}): ${l.sourceTitle || l.lesson?.slice(0, 60) || "-"} - Insight: ${l.lesson || "-"}`),
       "",
       "## Relapse & Drift Logs",
       ...relapses.map(r => `- **${r.createdAt.slice(0,10)}** (Trigger: ${r.trigger}): ${r.note} - Recovery: ${r.recoveryAction || "-"}`)
@@ -181,10 +245,127 @@ export default function SettingsScreen() {
       <PageHeader title={tUI("settings.title")} subtitle={tUI("settings.subtitle")} />
       <div className="space-y-6 pb-8">
 
+        {/* Support & Donasi Zendo Card */}
+        <motion.div variants={sectionReveal} initial="hidden" whileInView="visible" viewport={{ once: true, amount: 0.2 }}>
+          <Card className="relative overflow-hidden border border-amber-500/25 bg-gradient-to-b from-monk-surface via-monk-surface to-monk-accent-soft/20 p-5 sm:p-6 shadow-calm space-y-4">
+            <div className="absolute -top-16 -right-16 w-36 h-36 rounded-full bg-amber-500/10 blur-3xl pointer-events-none" />
+
+            {/* Top Row: Icon + Title + Free Badge */}
+            <div className="flex items-start gap-3.5">
+              <div className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-gradient-to-br from-amber-500/20 to-amber-700/30 border border-amber-500/40 text-amber-400 shadow-xs">
+                <Heart size={20} className="fill-amber-400/20 text-amber-400" />
+              </div>
+              <div className="min-w-0 flex-1 space-y-1">
+                <div className="flex flex-wrap items-center gap-2">
+                  <h3 className="font-serif text-base sm:text-lg font-bold text-monk-text tracking-tight">
+                    {lang === "id" ? "Dukung Zendo" : "Support Zendo"}
+                  </h3>
+                  <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 border border-emerald-500/30 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-emerald-400 font-mono">
+                    <span>✓</span>
+                    <span>{lang === "id" ? "100% Gratis & Bebas Iklan" : "100% Free & Ad-Free"}</span>
+                  </span>
+                </div>
+                <p className="text-xs text-monk-muted leading-relaxed">
+                  {lang === "id"
+                    ? "Seluruh soundscape, tema zen, protokol refleksi, dan cloud sync terbuka gratis untuk Anda. Jika Zendo membantu fokus Anda, dukung kelanjutan pengembangannya melalui donasi QRIS seikhlasnya."
+                    : "All soundscapes, zen themes, reflection protocols, and cloud sync are completely free. If Zendo helps your focus, you can support ongoing development with a voluntary QRIS tip."}
+                </p>
+              </div>
+            </div>
+
+            {/* CTA Button: Prominent & Clean */}
+            <button
+              type="button"
+              onClick={() => setProModalOpen(true)}
+              className="w-full flex items-center justify-center gap-2 rounded-2xl bg-monk-accent px-4 py-3 text-xs sm:text-sm font-bold text-white shadow-md transition active:scale-[0.98] hover:opacity-95 hover:shadow-lg border border-amber-400/30"
+            >
+              <Sparkles size={15} className="text-amber-200" />
+              <span>{lang === "id" ? "☕ Donasi / Traktir Kopi via QRIS" : "☕ Tip / Donate via QRIS"}</span>
+            </button>
+
+            {/* 4 Unlocked Pillars Matrix: Sleek Zen Micro-Grid */}
+            <div className="grid grid-cols-2 gap-2 pt-1 border-t border-monk-border/40 text-xs">
+              <div className="flex items-center gap-2 p-2.5 rounded-xl bg-monk-soft/50 border border-monk-border/40">
+                <span className="grid h-4 w-4 shrink-0 place-items-center rounded-md bg-emerald-500/15 text-emerald-400 text-[9px] font-bold">✓</span>
+                <span className="text-[11px] font-semibold text-monk-text truncate">{lang === "id" ? "10 Zen Soundscapes" : "10 Zen Soundscapes"}</span>
+              </div>
+              <div className="flex items-center gap-2 p-2.5 rounded-xl bg-monk-soft/50 border border-monk-border/40">
+                <span className="grid h-4 w-4 shrink-0 place-items-center rounded-md bg-emerald-500/15 text-emerald-400 text-[9px] font-bold">✓</span>
+                <span className="text-[11px] font-semibold text-monk-text truncate">{lang === "id" ? "Semua 6+ Protokol" : "All 6+ Protocols"}</span>
+              </div>
+              <div className="flex items-center gap-2 p-2.5 rounded-xl bg-monk-soft/50 border border-monk-border/40">
+                <span className="grid h-4 w-4 shrink-0 place-items-center rounded-md bg-emerald-500/15 text-emerald-400 text-[9px] font-bold">✓</span>
+                <span className="text-[11px] font-semibold text-monk-text truncate">{lang === "id" ? "6 Palet Zen & Media" : "6 Zen Themes & Media"}</span>
+              </div>
+              <div className="flex items-center gap-2 p-2.5 rounded-xl bg-monk-soft/50 border border-monk-border/40">
+                <span className="grid h-4 w-4 shrink-0 place-items-center rounded-md bg-emerald-500/15 text-emerald-400 text-[9px] font-bold">✓</span>
+                <span className="text-[11px] font-semibold text-monk-text truncate">{lang === "id" ? "Cloud Sync Multi-Device" : "Multi-Device Sync"}</span>
+              </div>
+            </div>
+          </Card>
+        </motion.div>
+
         {/* Preferences */}
         <motion.div variants={sectionReveal} initial="hidden" whileInView="visible" viewport={{ once: true, amount: 0.2 }}>
           <SectionHeader icon={Globe} label={tUI("settings.prefs")} />
           <Card className="divide-y divide-monk-border/40 overflow-hidden p-0">
+            {/* Zen Theme Aesthetic Picker */}
+            <div className="p-3.5 sm:p-4">
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-2">
+                  <Palette size={16} className="text-monk-accent" />
+                  <p className="text-sm font-semibold text-monk-text">
+                    {lang === "id" ? "Palet Zen Aesthetic" : "Zen Aesthetic Themes"}
+                  </p>
+                </div>
+                <span className="text-[10px] text-emerald-400 font-semibold flex items-center gap-1">
+                  <span>✓</span>
+                  <span>{lang === "id" ? "Semua 6 Palet Terbuka" : "All 6 Palettes Unlocked"}</span>
+                </span>
+              </div>
+              <p className="text-xs text-monk-muted mb-3 leading-relaxed">
+                {lang === "id"
+                  ? "Pilih palet warna nuansa hening dan fokus monk mode yang menenangkan mata."
+                  : "Choose mindful color palettes engineered for deep calm and focus."}
+              </p>
+
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                {[
+                  { id: "dark", name: "Dark Monk", hex: "#080908", accent: "#A48B5E" },
+                  { id: "sumi_ink", name: "Sumi Slate", hex: "#0D1117", accent: "#7D9BB2" },
+                  { id: "kyoto_moss", name: "Kyoto Moss", hex: "#090D0A", accent: "#6E9B7B" },
+                  { id: "wabi_sabi", name: "Wabi-Sabi", hex: "#14110E", accent: "#C29B68" },
+                  { id: "kurogane", name: "Kurogane", hex: "#000000", accent: "#B0B0B0" },
+                  { id: "temple_gold", name: "Temple Gold", hex: "#0C0A06", accent: "#D4AF37" },
+                ].map((tItem) => {
+                  const active = (store.appSettings.theme || "dark") === tItem.id;
+                  return (
+                    <button
+                      key={tItem.id}
+                      type="button"
+                      onClick={() => store.updateSettings({ theme: tItem.id as AppTheme })}
+                      className={`flex items-center justify-between p-2.5 rounded-xl border text-left transition active:scale-95 ${
+                        active
+                          ? "border-monk-accent bg-monk-accent-soft text-monk-accent font-bold ring-1 ring-monk-accent/30 shadow-xs"
+                          : "border-monk-border/60 bg-monk-soft/40 text-monk-text hover:border-monk-border-strong hover:bg-monk-soft"
+                      }`}
+                    >
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span
+                          className="h-3.5 w-3.5 rounded-full shrink-0 border border-white/20 shadow-xs"
+                          style={{ backgroundColor: tItem.accent }}
+                        />
+                        <span className="text-xs truncate">{tItem.name}</span>
+                      </div>
+                      {active && (
+                        <span className="text-[11px] text-monk-accent font-bold">✓</span>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
             <SettingsRow icon={Globe} title={tUI("settings.language")} description={tUI("settings.languageDesc")}>
               <div className="flex rounded-full bg-monk-soft p-0.5 border border-monk-border/40 shrink-0">
                 {(["id", "en"] as const).map((code) => (
@@ -220,14 +401,24 @@ export default function SettingsScreen() {
             <div className="px-3 py-2">
               <div className="mb-2 flex items-center justify-between">
                 <p className="text-sm font-semibold text-monk-text">{tUI("settings.reminders")}</p>
-                <GhostButton onClick={store.resetReminders} aria-label={tUI("settings.remindersResetAria")} className="!min-h-10 !px-2.5 text-xs">
-                  <RotateCcw className="w-3.5 h-3.5 mr-1" />
-                  {tUI("settings.remindersReset")}
-                </GhostButton>
+                <div className="flex items-center gap-1.5">
+                  <GhostButton
+                    onClick={handleTestReminder}
+                    aria-label="Uji Pengingat"
+                    className="!min-h-7 !px-2.5 text-xs font-semibold text-monk-accent hover:bg-monk-accent/10"
+                  >
+                    <Bell className="w-3.5 h-3.5 mr-1" />
+                    Uji
+                  </GhostButton>
+                  <GhostButton onClick={store.resetReminders} aria-label={tUI("settings.remindersResetAria")} className="!min-h-7 !px-2.5 text-xs">
+                    <RotateCcw className="w-3.5 h-3.5 mr-1" />
+                    {tUI("settings.remindersReset")}
+                  </GhostButton>
+                </div>
               </div>
               <p className="mb-2 text-xs text-monk-muted/70 leading-4">{tUI("settings.remindersDesc")}</p>
               <div className="divide-y divide-monk-border/30 rounded-monk border border-monk-border/40">
-                {store.notificationReminders.map((reminder) => (
+                {displayedReminders.map((reminder) => (
                   <div key={reminder.id} className="flex items-center justify-between gap-3 px-3 py-2">
                     <div className="min-w-0 flex-1">
                       <p className="text-sm font-medium text-monk-text">{tUI(`reminder.${reminder.type}`)}</p>
@@ -402,6 +593,8 @@ export default function SettingsScreen() {
           </Card>
         </motion.div>
 
+
+
         {/* Danger Zone */}
         <motion.div variants={sectionReveal} initial="hidden" whileInView="visible" viewport={{ once: true, amount: 0.2 }}>
           <SectionHeader icon={ShieldAlert} label={tUI("settings.danger")} danger />
@@ -451,6 +644,7 @@ export default function SettingsScreen() {
           window.location.href = "/";
         }}
       />
+      <ZendoProModal isOpen={proModalOpen} onClose={() => setProModalOpen(false)} />
     </>
   );
 }

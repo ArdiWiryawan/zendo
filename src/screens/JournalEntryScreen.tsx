@@ -114,19 +114,12 @@ export function JournalEntryScreen() {
   const hasDraft =
     (currentTab === "morning" && !!answers.morningPages?.trim()) ||
     (currentTab === "reflection" && !!answers.whatMovedToday?.trim());
-  // Guard fires only for a genuinely unsaved change: answers differ from what is
-  // persisted in the store entry. Relying on a boolean `saved` flag broke because
-  // store.saveJournalEntry bumps entry.updatedAt, which re-derives `initial` and
-  // resets `saved=false`, so the guard re-armed even right after saving.
   const savedEntryAnswers = targetEntry?.answers ?? {};
-  const unsaved =
-    hasDraft &&
-    (answers.morningPages !== savedEntryAnswers.morningPages ||
-      answers.whatMovedToday !== savedEntryAnswers.whatMovedToday ||
-      answers.whatDistractedMe !== savedEntryAnswers.whatDistractedMe ||
-      answers.whatDidILearn !== savedEntryAnswers.whatDidILearn ||
-      answers.whatShouldBeEasierTomorrow !== savedEntryAnswers.whatShouldBeEasierTomorrow ||
-      answers.whatShouldBeHarderTomorrow !== savedEntryAnswers.whatShouldBeHarderTomorrow);
+  const currentTabHasChange =
+    currentTab === "morning"
+      ? (answers.morningPages?.trim() || "") !== (savedEntryAnswers.morningPages?.trim() || "")
+      : (answers.whatMovedToday?.trim() || "") !== (savedEntryAnswers.whatMovedToday?.trim() || "");
+  const unsaved = !saved && hasDraft && currentTabHasChange;
   const blocker = useBlocker(() => unsaved);
 
   useEffect(() => {
@@ -265,7 +258,10 @@ export function JournalEntryScreen() {
               value={answers.morningPages ?? ""}
               placeholder={t("journal.morningPlaceholder")}
               className="morning-page-textarea"
-              onChange={(event) => setAnswers((value) => ({ ...value, morningPages: event.target.value }))}
+              onChange={(event) => {
+                setSaved(false);
+                setAnswers((value) => ({ ...value, morningPages: event.target.value }));
+              }}
             />
           </div>
           <p className="text-[11px] text-monk-text-soft text-center leading-relaxed px-2">
@@ -303,7 +299,10 @@ export function JournalEntryScreen() {
               id="whatMovedToday"
               value={answers.whatMovedToday ?? ""}
               placeholder={t("journal.reflectionPlaceholder")}
-              onChange={(event) => setAnswers((value) => ({ ...value, whatMovedToday: event.target.value }))}
+              onChange={(event) => {
+                setSaved(false);
+                setAnswers((value) => ({ ...value, whatMovedToday: event.target.value }));
+              }}
             />
             <p className="text-[11px] text-monk-text-soft mt-3">{t("journal.reflectionHelper")}</p>
             {draftSaved ? (
@@ -318,7 +317,10 @@ export function JournalEntryScreen() {
               label={t("today.closeDay.tomorrowLabel")}
               placeholder={t("today.closeDay.tomorrowPlaceholder")}
               value={tomorrow}
-              onChange={(event) => setTomorrow(event.target.value)}
+              onChange={(event) => {
+                setSaved(false);
+                setTomorrow(event.target.value);
+              }}
             />
           ) : isRequestedDate ? (
             <p className="text-[11px] text-monk-text-soft">{t("journal.tomorrowPast")}</p>
@@ -344,6 +346,7 @@ export function JournalEntryScreen() {
         <PrimaryButton
           disabled={!canSave}
           onClick={() => {
+            leaveRef.current = true;
             store.saveJournalEntry(answers, { date: dateSeed, tab: currentTab });
             localStorage.removeItem(journalDraftKey);
             // Skip the next draft-write debounce so it can't resurrect stale
@@ -387,9 +390,14 @@ export function JournalEntryScreen() {
           {currentTab === "morning" ? t("journal.saveMorning") : t("journal.saveReflection")}
         </PrimaryButton>
         {saved ? (
-          <SecondaryButton onClick={() => navigate(routes.today)}>
-            {t("journal.done")}
-          </SecondaryButton>
+          <div className="flex gap-2">
+            <SecondaryButton className="flex-1" onClick={() => { leaveRef.current = true; navigate(routes.library); }}>
+              {t("journal.openInLibrary")}
+            </SecondaryButton>
+            <PrimaryButton className="flex-1" onClick={() => { leaveRef.current = true; navigate(routes.today); }}>
+              {t("journal.done")}
+            </PrimaryButton>
+          </div>
         ) : null}
       </> : null}
       </div>

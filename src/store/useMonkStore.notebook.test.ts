@@ -157,4 +157,70 @@ describe("notebook store actions", () => {
       .notebookCategories.find((c) => c.id === "cat_karier");
     expect(cat?.name).toBe("Karier Baru");
   });
+
+  it("duplicateNotebookEntry creates a full copy of the note with new ID and unpinned", () => {
+    const { saveNotebookEntry, duplicateNotebookEntry } = useMonkStore.getState();
+    const original = entry({
+      id: "nb_orig",
+      title: "Rencana Usaha",
+      body: "Langkah awal:\n- Riset pasar\n- Validasi ide",
+      pages: ["Langkah awal:\n- Riset pasar\n- Validasi ide", "Halaman 2 riset"],
+      categoryId: "cat_karier",
+      isPinned: true,
+      images: ["img_1", "img_2"]
+    });
+    saveNotebookEntry(original);
+
+    const dup = duplicateNotebookEntry("nb_orig");
+    expect(dup).toBeDefined();
+    expect(dup?.id).not.toBe("nb_orig");
+    expect(dup?.title).toBe("Rencana Usaha (Salinan)");
+    expect(dup?.categoryId).toBe("cat_karier");
+    expect(dup?.isPinned).toBe(false);
+    expect(dup?.pages).toEqual(["Langkah awal:\n- Riset pasar\n- Validasi ide", "Halaman 2 riset"]);
+    expect(dup?.images).toEqual(["img_1", "img_2"]);
+
+    const entries = useMonkStore.getState().notebookEntries;
+    expect(entries.find((e) => e.id === dup?.id)).toBeDefined();
+    expect(entries.find((e) => e.id === "nb_orig")).toBeDefined();
+  });
+
+  it("deleteNotebookCategory sets category tombstone in notebookCategoryDeletedAt", () => {
+    const { deleteNotebookCategory } = useMonkStore.getState();
+    deleteNotebookCategory("cat_spiritual");
+    const s = useMonkStore.getState();
+    expect(s.notebookCategoryDeletedAt?.["cat_spiritual"]).toBeDefined();
+  });
+
+  it("persists paraType, takeaway, and automatically resolves [[Wiki Links]] in body", () => {
+    const { saveNotebookEntry } = useMonkStore.getState();
+    // 1. Create target note
+    saveNotebookEntry(
+      entry({
+        id: "nb_target",
+        title: "Deep Work Architecture",
+        body: "Notes on focus sprints",
+        paraType: "project"
+      })
+    );
+
+    // 2. Create note referencing target note via [[Deep Work Architecture]]
+    saveNotebookEntry(
+      entry({
+        id: "nb_source",
+        title: "Weekly Planning",
+        body: "Check out [[Deep Work Architecture]] for tomorrow block.",
+        paraType: "area",
+        takeaway: "One block per theme wins the day."
+      })
+    );
+
+    const entries = useMonkStore.getState().notebookEntries;
+    const source = entries.find((e) => e.id === "nb_source");
+    expect(source).toBeDefined();
+    expect(source?.paraType).toBe("area");
+    expect(source?.takeaway).toBe("One block per theme wins the day.");
+    expect(source?.linkedNoteIds).toContain("nb_target");
+  });
 });
+

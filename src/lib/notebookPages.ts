@@ -21,3 +21,34 @@ export function removePhotoMarker(page: string, id: string): string {
     })
     .join("\n");
 }
+
+/**
+ * Trim trailing empty/whitespace-only pages from a notebook entry.
+ * Guarantees at least one page is returned (e.g. `[""]`).
+ */
+export function trimTrailingBlankPages(pages: string[] | undefined | null): string[] {
+  if (!pages || !Array.isArray(pages) || pages.length === 0) {
+    return [""];
+  }
+  let lastIndex = pages.length - 1;
+  while (lastIndex > 0 && pages[lastIndex].trim() === "") {
+    lastIndex--;
+  }
+  return pages.slice(0, lastIndex + 1);
+}
+
+/**
+ * Delete a specific page index from the pages array.
+ * If only one page remains and it is deleted, returns `[""]`.
+ */
+export function deletePageAtIndex(pages: string[], index: number): string[] {
+  if (!Array.isArray(pages) || index < 0 || index >= pages.length) {
+    return pages && pages.length > 0 ? pages : [""];
+  }
+  if (pages.length <= 1) {
+    return [""];
+  }
+  const next = [...pages.slice(0, index), ...pages.slice(index + 1)];
+  return trimTrailingBlankPages(next);
+}
+

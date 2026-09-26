@@ -46,4 +46,9 @@ describe("bayargg-checkout fail-closed invariant", () => {
     expect(checkout).toMatch(/create-payment\.php/);
     expect(checkout).toMatch(/X-API-Key/);
   });
+
+  it("sanitizes origin to prevent Open Redirect and SSRF in callbacks", () => {
+    expect(checkout).toMatch(/getSafeOrigin/);
+    expect(checkout).toMatch(/hostname === "localhost"/);
+  });
 });
