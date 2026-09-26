@@ -48,9 +48,9 @@ export function generateIcsContent(
     const dtend = `${icsDate}T${toIcsTime(block.endTime)}`;
     const uid = `${block.id || Math.random().toString(36).slice(2)}-${icsDate}@zendo.app`;
     const summary = escapeIcsText(block.title);
-    const category = escapeIcsText(block.category.replace("_", " ").toUpperCase());
+    const category = escapeIcsText(block.customCategory || block.category.replace("_", " ").toUpperCase());
     const description = escapeIcsText(
-      `[Zendo Plan] ${block.title}\nKategori: ${block.category}\nTanggal: ${date}`
+      `[Zendo Plan] ${block.title}\nKategori: ${block.customCategory || block.category}\nTanggal: ${date}`
     );
 
     return [

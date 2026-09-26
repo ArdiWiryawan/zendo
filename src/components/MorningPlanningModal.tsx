@@ -16,7 +16,9 @@ import {
   BookOpen,
   Briefcase,
   User,
-  Download
+  Download,
+  Tag,
+  RotateCw
 } from "lucide-react";
 import { useMonkStore } from "../store/useMonkStore";
 import { useT } from "../i18n";
@@ -25,7 +27,7 @@ import { getTodayDateString } from "../lib/date";
 import { hapticPress } from "../lib/haptics";
 import { playCompletionChime } from "../lib/audio";
 import { downloadIcsFile } from "../lib/ical";
-import { useCalmToast, PrimaryButton, GhostButton, SecondaryButton } from "./ui";
+import { useCalmToast, PrimaryButton, SecondaryButton } from "./ui";
 import type { TimeBlock, TimeBlockCategory } from "../types/app";
 
 interface MorningPlanningModalProps {
@@ -46,19 +48,19 @@ const CATEGORY_CONFIG: Record<
     bgClass: "bg-amber-500/10",
     borderClass: "border-amber-500/30"
   },
-  shallow: {
-    labelKey: "planning.catShallow",
-    icon: Briefcase,
-    colorClass: "text-blue-500 dark:text-blue-400",
-    bgClass: "bg-blue-500/10",
-    borderClass: "border-blue-500/30"
-  },
   learning: {
     labelKey: "planning.catLearning",
     icon: BookOpen,
     colorClass: "text-purple-500 dark:text-purple-400",
     bgClass: "bg-purple-500/10",
     borderClass: "border-purple-500/30"
+  },
+  shallow: {
+    labelKey: "planning.catShallow",
+    icon: Briefcase,
+    colorClass: "text-blue-500 dark:text-blue-400",
+    bgClass: "bg-blue-500/10",
+    borderClass: "border-blue-500/30"
   },
   rest: {
     labelKey: "planning.catRest",
@@ -76,6 +78,14 @@ const CATEGORY_CONFIG: Record<
   }
 };
 
+const CATEGORIES: TimeBlockCategory[] = [
+  "deep_work",
+  "learning",
+  "shallow",
+  "rest",
+  "personal"
+];
+
 /**
  * Helper to add minutes to "HH:mm"
  */
@@ -88,13 +98,28 @@ function addMinutesToTime(time: string, minutes: number): string {
 }
 
 /**
- * Format minutes difference
+ * Format minutes difference in hours
  */
 function getDurationHours(startTime: string, endTime: string): number {
   const [sh, sm] = startTime.split(":").map(Number);
   const [eh, em] = endTime.split(":").map(Number);
   const diffMinutes = (eh * 60 + em) - (sh * 60 + sm);
   return diffMinutes > 0 ? diffMinutes / 60 : 0;
+}
+
+/**
+ * Format human duration (e.g. 1h 30m or 45m)
+ */
+function formatHumanDuration(startTime: string, endTime: string): string {
+  const [sh, sm] = startTime.split(":").map(Number);
+  const [eh, em] = endTime.split(":").map(Number);
+  const diffMinutes = (eh * 60 + em) - (sh * 60 + sm);
+  if (diffMinutes <= 0) return "0m";
+  const h = Math.floor(diffMinutes / 60);
+  const m = diffMinutes % 60;
+  if (h > 0 && m > 0) return `${h}j ${m}m`;
+  if (h > 0) return `${h}j`;
+  return `${m}m`;
 }
 
 export function MorningPlanningModal({
@@ -119,37 +144,45 @@ export function MorningPlanningModal({
   const [timerRunning, setTimerRunning] = useState<boolean>(true);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
 
+  // Daily Highlight state (Make Time framework)
+  const [dailyHighlight, setDailyHighlight] = useState<string>("");
+
   // Time blocks local draft
   const [timeBlocks, setTimeBlocks] = useState<TimeBlock[]>([]);
   const [newTitle, setNewTitle] = useState("");
-  const [newStartTime, setNewStartTime] = useState("08:00");
-  const [newEndTime, setNewEndTime] = useState("09:30");
+  const [newStartTime, setNewStartTime] = useState("09:00");
+  const [newEndTime, setNewEndTime] = useState("10:30");
   const [newCategory, setNewCategory] = useState<TimeBlockCategory>("deep_work");
+  const [newCustomTag, setNewCustomTag] = useState("");
 
-  // Load existing blocks on open
+  // Load existing blocks & highlight on open
   useEffect(() => {
     if (isOpen) {
+      const initialHighlight =
+        todayPlan?.highlight || todayPlan?.mainAction || goal?.keystoneAction || "";
+      setDailyHighlight(initialHighlight);
+
       if (todayPlan?.timeBlocks && todayPlan.timeBlocks.length > 0) {
         setTimeBlocks(todayPlan.timeBlocks);
+        const lastBlock = todayPlan.timeBlocks[todayPlan.timeBlocks.length - 1];
+        setNewStartTime(lastBlock.endTime);
+        setNewEndTime(addMinutesToTime(lastBlock.endTime, 60));
       } else {
-        // Suggest initial block anchored to keystone action
-        const defaultTitle = todayPlan?.mainAction || goal?.keystoneAction || "Deep Work Sprint";
-        setTimeBlocks([
-          {
-            id: `tb-${Date.now()}-1`,
-            title: defaultTitle,
-            startTime: "09:00",
-            endTime: "10:30",
-            category: "deep_work"
-          }
-        ]);
-        setNewStartTime("10:45");
-        setNewEndTime("11:45");
+        setTimeBlocks([]);
+        setNewStartTime("09:00");
+        setNewEndTime("10:30");
       }
       setSecondsRemaining(targetDuration);
       setTimerRunning(true);
     }
-  }, [isOpen, todayPlan?.timeBlocks, targetDuration]);
+  }, [
+    isOpen,
+    todayPlan?.timeBlocks,
+    todayPlan?.highlight,
+    todayPlan?.mainAction,
+    goal?.keystoneAction,
+    targetDuration
+  ]);
 
   // Timer interval
   useEffect(() => {
@@ -189,38 +222,31 @@ export function MorningPlanningModal({
     .filter((b) => b.category === "deep_work")
     .reduce((sum, b) => sum + getDurationHours(b.startTime, b.endTime), 0);
 
-  // Quick preset adder
-  const handleAddPreset = (
-    title: string,
-    durationMinutes: number,
-    category: TimeBlockCategory
-  ) => {
+  // Quick 1-click: add daily highlight directly as a Deep Work time block
+  const handleAddHighlightAsBlock = () => {
+    if (!dailyHighlight.trim()) return;
     hapticPress("light");
-    let start = "09:00";
-    if (timeBlocks.length > 0) {
-      const lastBlock = timeBlocks[timeBlocks.length - 1];
-      start = lastBlock.endTime;
-    }
-    const end = addMinutesToTime(start, durationMinutes);
+    const start = timeBlocks.length > 0 ? timeBlocks[timeBlocks.length - 1].endTime : "09:00";
+    const end = addMinutesToTime(start, 90);
 
-    const newBlock: TimeBlock = {
+    const block: TimeBlock = {
       id: `tb-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
-      title,
+      title: dailyHighlight.trim(),
       startTime: start,
       endTime: end,
-      category
+      category: "deep_work"
     };
 
-    const updated = [...timeBlocks, newBlock].sort((a, b) =>
+    const updated = [...timeBlocks, block].sort((a, b) =>
       a.startTime.localeCompare(b.startTime)
     );
     setTimeBlocks(updated);
-
-    // Update form next defaults
     setNewStartTime(end);
     setNewEndTime(addMinutesToTime(end, 60));
+    toast.show(t("planning.highlightAddToBlocks"));
   };
 
+  // Add custom time block
   const handleAddCustomBlock = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newTitle.trim()) return;
@@ -231,7 +257,8 @@ export function MorningPlanningModal({
       title: newTitle.trim(),
       startTime: newStartTime,
       endTime: newEndTime,
-      category: newCategory
+      category: newCategory,
+      customCategory: newCustomTag.trim() || undefined
     };
 
     const updated = [...timeBlocks, block].sort((a, b) =>
@@ -239,6 +266,7 @@ export function MorningPlanningModal({
     );
     setTimeBlocks(updated);
     setNewTitle("");
+    setNewCustomTag("");
     setNewStartTime(newEndTime);
     setNewEndTime(addMinutesToTime(newEndTime, 60));
   };
@@ -246,6 +274,13 @@ export function MorningPlanningModal({
   const handleDeleteBlock = (id: string) => {
     hapticPress("light");
     setTimeBlocks(timeBlocks.filter((b) => b.id !== id));
+  };
+
+  const handleClearAllBlocks = () => {
+    hapticPress("medium");
+    setTimeBlocks([]);
+    setNewStartTime("09:00");
+    setNewEndTime("10:30");
   };
 
   const handleExportIcs = () => {
@@ -257,7 +292,11 @@ export function MorningPlanningModal({
   const handleCommitPlan = () => {
     hapticPress("heavy");
     playCompletionChime();
-    store.saveDayTimeBlocks(activeDate, timeBlocks, true);
+    const finalHighlight = dailyHighlight.trim();
+    store.saveDayTimeBlocks(activeDate, timeBlocks, true, finalHighlight);
+    if (finalHighlight) {
+      store.setTodayHighlight(finalHighlight);
+    }
     toast.show(t("planning.commitButton"));
     onCompleted?.();
     onClose();
@@ -267,14 +306,14 @@ export function MorningPlanningModal({
     <AnimatePresence>
       <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/70 backdrop-blur-sm overflow-y-auto">
         <motion.div
-          initial={{ opacity: 0, scale: 0.95, y: 16 }}
+          initial={{ opacity: 0, scale: 0.96, y: 14 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
-          exit={{ opacity: 0, scale: 0.95, y: 16 }}
+          exit={{ opacity: 0, scale: 0.96, y: 14 }}
           transition={{ duration: 0.2, ease: "easeOut" }}
           className="relative w-full max-w-2xl max-h-[92vh] flex flex-col rounded-3xl border border-monk-border/80 bg-monk-surface shadow-2xl overflow-hidden my-auto"
         >
           {/* Header */}
-          <div className="flex items-center justify-between border-b border-monk-border/50 px-5 py-4 bg-monk-soft/30">
+          <div className="flex items-center justify-between border-b border-monk-border/50 px-5 py-3.5 bg-monk-soft/30">
             <div className="flex items-center gap-2.5">
               <div className="grid h-9 w-9 place-items-center rounded-2xl bg-amber-500/15 text-amber-500 dark:text-amber-400">
                 <Clock size={18} strokeWidth={2.2} />
@@ -299,24 +338,24 @@ export function MorningPlanningModal({
           </div>
 
           {/* Modal Body */}
-          <div className="flex-1 overflow-y-auto p-5 sm:p-6 space-y-6">
+          <div className="flex-1 overflow-y-auto p-5 sm:p-6 space-y-5">
             {/* Ritual Timer Bar */}
-            <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-monk-border/70 bg-monk-soft/40 p-3.5">
+            <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-monk-border/70 bg-monk-soft/40 p-3">
               <div className="flex items-center gap-3">
                 <div
-                  className={`grid h-10 w-10 place-items-center rounded-xl font-mono text-xs font-bold transition ${
+                  className={`grid h-9 w-9 place-items-center rounded-xl font-mono text-xs font-bold transition ${
                     timerRunning
                       ? "border border-amber-500/40 bg-amber-500/15 text-amber-500 animate-pulse"
                       : "border border-monk-border bg-monk-surface text-monk-muted"
                   }`}
                 >
-                  <Clock size={16} />
+                  <Clock size={15} />
                 </div>
                 <div>
                   <span className="text-[10px] font-bold uppercase tracking-wider text-monk-muted">
                     {t("planning.timerLabel")}
                   </span>
-                  <p className="text-lg font-bold font-mono text-monk-text leading-tight">
+                  <p className="text-base font-bold font-mono text-monk-text leading-tight">
                     {formattedTimer}
                   </p>
                 </div>
@@ -326,9 +365,9 @@ export function MorningPlanningModal({
                 <button
                   type="button"
                   onClick={() => setTimerRunning(!timerRunning)}
-                  className="flex items-center gap-1.5 rounded-xl border border-monk-border bg-monk-surface px-3 py-1.5 text-xs font-semibold text-monk-text hover:border-monk-accent hover:text-monk-accent transition"
+                  className="flex items-center gap-1.5 rounded-xl border border-monk-border bg-monk-surface px-2.5 py-1 text-xs font-semibold text-monk-text hover:border-monk-accent hover:text-monk-accent transition"
                 >
-                  {timerRunning ? <Pause size={13} /> : <Play size={13} />}
+                  {timerRunning ? <Pause size={12} /> : <Play size={12} />}
                   <span>{timerRunning ? "Pause" : "Start"}</span>
                 </button>
                 <button
@@ -337,10 +376,10 @@ export function MorningPlanningModal({
                     setSecondsRemaining(targetDuration);
                     setTimerRunning(false);
                   }}
-                  className="grid h-8 w-8 place-items-center rounded-xl border border-monk-border bg-monk-surface text-monk-muted hover:text-monk-text transition"
+                  className="grid h-7 w-7 place-items-center rounded-xl border border-monk-border bg-monk-surface text-monk-muted hover:text-monk-text transition"
                   title="Reset timer"
                 >
-                  <RotateCcw size={13} />
+                  <RotateCcw size={12} />
                 </button>
                 <div className="ml-1 flex rounded-xl border border-monk-border bg-monk-surface p-0.5 text-[11px] font-semibold">
                   <button
@@ -349,7 +388,7 @@ export function MorningPlanningModal({
                       setTargetDuration(10 * 60);
                       setSecondsRemaining(10 * 60);
                     }}
-                    className={`rounded-lg px-2 py-1 transition ${
+                    className={`rounded-lg px-2 py-0.5 transition ${
                       targetDuration === 600
                         ? "bg-monk-accent text-white"
                         : "text-monk-muted hover:text-monk-text"
@@ -363,7 +402,7 @@ export function MorningPlanningModal({
                       setTargetDuration(15 * 60);
                       setSecondsRemaining(15 * 60);
                     }}
-                    className={`rounded-lg px-2 py-1 transition ${
+                    className={`rounded-lg px-2 py-0.5 transition ${
                       targetDuration === 900
                         ? "bg-monk-accent text-white"
                         : "text-monk-muted hover:text-monk-text"
@@ -375,93 +414,187 @@ export function MorningPlanningModal({
               </div>
             </div>
 
-            {/* Today's Keystone Anchor */}
-            {goal ? (
-              <div className="rounded-2xl border border-monk-border/80 bg-monk-surface p-4 shadow-xs">
-                <div className="flex items-center justify-between gap-2 mb-1.5">
-                  <div className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-monk-muted">
-                    <Sparkles size={13} className="text-monk-accent" />
-                    <span>{t("planning.todayAnchor")}</span>
+            {/* Daily Highlight (Make Time Framework) */}
+            <div className="rounded-2xl border border-amber-500/30 bg-amber-500/[0.06] p-4 space-y-2.5">
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <div className="grid h-6 w-6 place-items-center rounded-lg bg-amber-500/20 text-amber-600 dark:text-amber-400">
+                    <Sparkles size={13} />
                   </div>
-                  <span className="rounded-full border border-monk-accent/30 bg-monk-accent/10 px-2 py-0.5 text-[10px] font-bold text-monk-accent">
-                    {goal.title}
+                  <span className="text-xs font-bold uppercase tracking-wider text-monk-text">
+                    {t("planning.dailyHighlight")}
+                  </span>
+                  <span className="rounded-md border border-amber-500/30 bg-amber-500/10 px-1.5 py-0.5 text-[9px] font-bold uppercase text-amber-600 dark:text-amber-400">
+                    {t("planning.dailyHighlightBadge")}
                   </span>
                 </div>
-                <p className="text-sm font-bold text-monk-text leading-snug">
-                  {todayPlan?.mainAction || goal.keystoneAction}
-                </p>
+                {dailyHighlight.trim() && (
+                  <button
+                    type="button"
+                    onClick={handleAddHighlightAsBlock}
+                    className="inline-flex items-center gap-1 rounded-lg border border-amber-500/30 bg-amber-500/15 px-2 py-1 text-[11px] font-semibold text-amber-700 dark:text-amber-300 hover:bg-amber-500/25 transition active:scale-95"
+                    title={t("planning.highlightAddToBlocks")}
+                  >
+                    <Plus size={11} />
+                    <span>{t("planning.highlightAddToBlocks")}</span>
+                  </button>
+                )}
               </div>
-            ) : null}
 
-            {/* Quick Presets */}
-            <div>
-              <div className="flex items-center justify-between gap-2 mb-2.5">
-                <span className="text-xs font-bold uppercase tracking-wider text-monk-muted">
-                  {t("planning.quickPresets")}
-                </span>
-                <span className="text-[11px] text-monk-muted">
-                  Klik untuk menambahkan ke urutan
-                </span>
-              </div>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                <button
-                  type="button"
-                  onClick={() => handleAddPreset(goal?.keystoneAction || "Deep Work Sprint", 90, "deep_work")}
-                  className="flex flex-col items-start gap-1 rounded-xl border border-amber-500/30 bg-amber-500/10 p-2.5 text-left transition hover:bg-amber-500/20 active:scale-95"
-                >
-                  <div className="flex items-center gap-1 text-[11px] font-bold text-amber-600 dark:text-amber-400">
-                    <Zap size={12} />
-                    <span>Deep Work</span>
-                  </div>
-                  <span className="text-xs font-semibold text-monk-text">+90 Menit</span>
-                </button>
+              <p className="text-xs text-monk-muted leading-relaxed">
+                {t("planning.dailyHighlightPrompt")}
+              </p>
 
-                <button
-                  type="button"
-                  onClick={() => handleAddPreset("Admin / Balas Chat & Email", 30, "shallow")}
-                  className="flex flex-col items-start gap-1 rounded-xl border border-blue-500/30 bg-blue-500/10 p-2.5 text-left transition hover:bg-blue-500/20 active:scale-95"
-                >
-                  <div className="flex items-center gap-1 text-[11px] font-bold text-blue-600 dark:text-blue-400">
-                    <Briefcase size={12} />
-                    <span>Admin</span>
-                  </div>
-                  <span className="text-xs font-semibold text-monk-text">+30 Menit</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => handleAddPreset("Istirahat & Makan Siang Tenang", 60, "rest")}
-                  className="flex flex-col items-start gap-1 rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-2.5 text-left transition hover:bg-emerald-500/20 active:scale-95"
-                >
-                  <div className="flex items-center gap-1 text-[11px] font-bold text-emerald-600 dark:text-emerald-400">
-                    <Coffee size={12} />
-                    <span>Istirahat</span>
-                  </div>
-                  <span className="text-xs font-semibold text-monk-text">+60 Menit</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => handleAddPreset("Belajar / Baca Buku", 45, "learning")}
-                  className="flex flex-col items-start gap-1 rounded-xl border border-purple-500/30 bg-purple-500/10 p-2.5 text-left transition hover:bg-purple-500/20 active:scale-95"
-                >
-                  <div className="flex items-center gap-1 text-[11px] font-bold text-purple-600 dark:text-purple-400">
-                    <BookOpen size={12} />
-                    <span>Belajar</span>
-                  </div>
-                  <span className="text-xs font-semibold text-monk-text">+45 Menit</span>
-                </button>
+              <div className="relative">
+                <input
+                  type="text"
+                  value={dailyHighlight}
+                  onChange={(e) => setDailyHighlight(e.target.value)}
+                  placeholder={t("planning.dailyHighlightPlaceholder")}
+                  className="w-full rounded-xl border border-amber-500/30 bg-monk-surface px-3.5 py-2 text-xs font-medium text-monk-text placeholder:text-monk-muted/60 focus:border-amber-500 focus:ring-1 focus:ring-amber-500/40 focus:outline-none transition shadow-2xs"
+                />
               </div>
             </div>
 
-            {/* List of Time Blocks */}
-            <div className="space-y-3">
+            {/* Custom Block Input Form (Direct & Fully Customizable) */}
+            <form
+              onSubmit={handleAddCustomBlock}
+              className="rounded-2xl border border-monk-border/70 bg-monk-soft/30 p-4 space-y-3.5"
+            >
               <div className="flex items-center justify-between gap-2">
                 <span className="text-xs font-bold uppercase tracking-wider text-monk-muted">
-                  {t("planning.timeBlocks")} ({timeBlocks.length})
+                  + {t("planning.addBlock")}
                 </span>
+                <span className="text-[11px] text-monk-muted">
+                  Kustom penuh tanpa batasan preset
+                </span>
+              </div>
+
+              {/* Activity Title Input */}
+              <div>
+                <input
+                  type="text"
+                  placeholder={t("planning.blockTitle")}
+                  value={newTitle}
+                  onChange={(e) => setNewTitle(e.target.value)}
+                  className="w-full rounded-xl border border-monk-border bg-monk-surface px-3.5 py-2.5 text-xs text-monk-text focus:border-monk-accent focus:outline-none shadow-2xs"
+                />
+              </div>
+
+              {/* Time Range & Quick Duration Buttons */}
+              <div className="flex flex-wrap items-center gap-2.5">
+                <div className="flex items-center gap-1.5">
+                  <span className="text-xs font-semibold text-monk-muted">
+                    {t("planning.startTime")}:
+                  </span>
+                  <input
+                    type="time"
+                    value={newStartTime}
+                    onChange={(e) => setNewStartTime(e.target.value)}
+                    className="rounded-xl border border-monk-border bg-monk-surface px-2.5 py-1.5 text-xs font-mono text-monk-text focus:border-monk-accent focus:outline-none"
+                  />
+                </div>
+
+                <div className="flex items-center gap-1.5">
+                  <span className="text-xs font-semibold text-monk-muted">
+                    {t("planning.endTime")}:
+                  </span>
+                  <input
+                    type="time"
+                    value={newEndTime}
+                    onChange={(e) => setNewEndTime(e.target.value)}
+                    className="rounded-xl border border-monk-border bg-monk-surface px-2.5 py-1.5 text-xs font-mono text-monk-text focus:border-monk-accent focus:outline-none"
+                  />
+                </div>
+
+                {/* Quick Duration Pills */}
+                <div className="flex items-center gap-1 ml-auto flex-wrap">
+                  {[30, 45, 60, 90, 120].map((mins) => (
+                    <button
+                      key={mins}
+                      type="button"
+                      onClick={() => {
+                        hapticPress("light");
+                        setNewEndTime(addMinutesToTime(newStartTime, mins));
+                      }}
+                      className="rounded-lg border border-monk-border bg-monk-surface px-2 py-1 text-[11px] font-mono font-medium text-monk-muted hover:border-monk-accent hover:text-monk-accent transition active:scale-95"
+                      title={`Set durasi ${mins} menit`}
+                    >
+                      +{mins >= 60 ? `${mins / 60}j` : `${mins}m`}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Category Pills & Optional Custom Tag */}
+              <div className="space-y-2 pt-1 border-t border-monk-border/40">
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  {CATEGORIES.map((cat) => {
+                    const cfg = CATEGORY_CONFIG[cat];
+                    const Icon = cfg.icon;
+                    const isSelected = newCategory === cat;
+                    return (
+                      <button
+                        key={cat}
+                        type="button"
+                        onClick={() => {
+                          hapticPress("light");
+                          setNewCategory(cat);
+                        }}
+                        className={`flex items-center gap-1.5 rounded-xl px-2.5 py-1.5 text-xs font-semibold border transition ${
+                          isSelected
+                            ? `${cfg.borderClass} ${cfg.bgClass} ${cfg.colorClass} shadow-2xs ring-1 ring-monk-accent/20`
+                            : "border-monk-border bg-monk-surface text-monk-muted hover:text-monk-text"
+                        }`}
+                      >
+                        <Icon size={12} />
+                        <span>{t(cfg.labelKey as any)}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+
+                <div className="flex items-center gap-2 pt-1">
+                  <div className="relative flex-1">
+                    <input
+                      type="text"
+                      value={newCustomTag}
+                      onChange={(e) => setNewCustomTag(e.target.value)}
+                      placeholder={t("planning.customTagPlaceholder")}
+                      className="w-full rounded-xl border border-monk-border bg-monk-surface px-3 py-1.5 text-xs text-monk-text placeholder:text-monk-muted/50 focus:border-monk-accent focus:outline-none"
+                    />
+                  </div>
+                  <button
+                    type="submit"
+                    disabled={!newTitle.trim()}
+                    className="inline-flex items-center gap-1.5 rounded-xl bg-monk-accent px-4 py-2 text-xs font-bold text-white shadow-xs hover:bg-monk-accent-hover transition disabled:opacity-40 disabled:cursor-not-allowed active:scale-95"
+                  >
+                    <Plus size={14} strokeWidth={2.5} />
+                    <span>{t("planning.addBlock")}</span>
+                  </button>
+                </div>
+              </div>
+            </form>
+
+            {/* List of Scheduled Time Blocks */}
+            <div className="space-y-3">
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-bold uppercase tracking-wider text-monk-muted">
+                    {t("planning.timeBlocks")} ({timeBlocks.length})
+                  </span>
+                  {timeBlocks.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={handleClearAllBlocks}
+                      className="text-[10px] text-monk-muted hover:text-monk-danger transition underline"
+                    >
+                      {t("planning.clearBlocks")}
+                    </button>
+                  )}
+                </div>
                 <span className="text-xs font-semibold text-monk-accent">
-                  {totalHours.toFixed(1)} jam terencana ({deepWorkHours.toFixed(1)}j Deep Work)
+                  {totalHours.toFixed(1)}j total ({deepWorkHours.toFixed(1)}j Deep Work)
                 </span>
               </div>
 
@@ -474,6 +607,7 @@ export function MorningPlanningModal({
                   {timeBlocks.map((block) => {
                     const cfg = CATEGORY_CONFIG[block.category] || CATEGORY_CONFIG.deep_work;
                     const Icon = cfg.icon;
+                    const durationText = formatHumanDuration(block.startTime, block.endTime);
 
                     return (
                       <div
@@ -485,12 +619,15 @@ export function MorningPlanningModal({
                             <Icon size={14} />
                           </div>
                           <div className="min-w-0">
-                            <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-2 flex-wrap">
                               <span className="font-mono text-xs font-bold text-monk-text">
                                 {block.startTime} – {block.endTime}
                               </span>
+                              <span className="text-[10px] font-mono text-monk-muted">
+                                ({durationText})
+                              </span>
                               <span className={`rounded-md px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider ${cfg.bgClass} ${cfg.colorClass}`}>
-                                {t(cfg.labelKey as any)}
+                                {block.customCategory || t(cfg.labelKey as any)}
                               </span>
                             </div>
                             <p className="text-xs font-semibold text-monk-text truncate mt-0.5">
@@ -513,64 +650,6 @@ export function MorningPlanningModal({
                 </div>
               )}
             </div>
-
-            {/* Custom Block Input Form */}
-            <form onSubmit={handleAddCustomBlock} className="rounded-2xl border border-monk-border/70 bg-monk-soft/30 p-3.5 space-y-3">
-              <div className="flex items-center justify-between gap-2">
-                <span className="text-[11px] font-bold uppercase tracking-wider text-monk-muted">
-                  + {t("planning.addBlock")} Kustom
-                </span>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-12 gap-2.5">
-                <div className="sm:col-span-5">
-                  <input
-                    type="text"
-                    placeholder={t("planning.blockTitle")}
-                    value={newTitle}
-                    onChange={(e) => setNewTitle(e.target.value)}
-                    className="w-full rounded-xl border border-monk-border bg-monk-surface px-3 py-2 text-xs text-monk-text focus:border-monk-accent focus:outline-none"
-                  />
-                </div>
-                <div className="sm:col-span-2">
-                  <input
-                    type="time"
-                    value={newStartTime}
-                    onChange={(e) => setNewStartTime(e.target.value)}
-                    className="w-full rounded-xl border border-monk-border bg-monk-surface px-2 py-2 text-xs font-mono text-monk-text focus:border-monk-accent focus:outline-none"
-                  />
-                </div>
-                <div className="sm:col-span-2">
-                  <input
-                    type="time"
-                    value={newEndTime}
-                    onChange={(e) => setNewEndTime(e.target.value)}
-                    className="w-full rounded-xl border border-monk-border bg-monk-surface px-2 py-2 text-xs font-mono text-monk-text focus:border-monk-accent focus:outline-none"
-                  />
-                </div>
-                <div className="sm:col-span-3 flex gap-2">
-                  <select
-                    value={newCategory}
-                    onChange={(e) => setNewCategory(e.target.value as TimeBlockCategory)}
-                    className="flex-1 rounded-xl border border-monk-border bg-monk-surface px-2 py-2 text-xs text-monk-text focus:border-monk-accent focus:outline-none"
-                  >
-                    <option value="deep_work">Deep Work</option>
-                    <option value="shallow">Admin / Ringan</option>
-                    <option value="learning">Belajar</option>
-                    <option value="rest">Istirahat</option>
-                    <option value="personal">Pribadi</option>
-                  </select>
-                  <button
-                    type="submit"
-                    disabled={!newTitle.trim()}
-                    className="grid h-8 w-8 shrink-0 place-items-center rounded-xl bg-monk-accent text-white font-bold disabled:opacity-40 transition hover:bg-monk-accent-hover self-center"
-                    title="Tambah"
-                  >
-                    <Plus size={15} />
-                  </button>
-                </div>
-              </div>
-            </form>
           </div>
 
           {/* Footer Actions */}

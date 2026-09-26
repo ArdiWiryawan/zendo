@@ -171,6 +171,7 @@ export type TimeBlock = {
   endTime: string;   // "HH:mm" e.g. "10:00"
   title: string;
   category: TimeBlockCategory;
+  customCategory?: string;
   goalId?: string;
   completed?: boolean;
 };

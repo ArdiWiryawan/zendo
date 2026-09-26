@@ -123,7 +123,7 @@ type MonkActions = {
   createSeasonFromOnboarding: () => void;
   getOrCreateCurrentWeeklyPlan: () => WeeklyPlan | undefined;
   createOrUpdateDayPlan: (dateString: string, input: PickTodayInput) => void;
-  saveDayTimeBlocks: (dateString: string, timeBlocks: TimeBlock[], planningCompleted?: boolean) => void;
+  saveDayTimeBlocks: (dateString: string, timeBlocks: TimeBlock[], planningCompleted?: boolean, highlight?: string) => void;
   setDayPlanningCompleted: (dateString: string, completed: boolean) => void;
   clearDayPlan: (dateString: string) => void;
   toggleTodayCompletion: () => void;
@@ -1124,17 +1124,20 @@ export const useMonkStore = create<MonkStore>()(
     set(next);
   },
 
-  saveDayTimeBlocks: (dateString, timeBlocks, planningCompleted = true) => {
+  saveDayTimeBlocks: (dateString, timeBlocks, planningCompleted = true, highlight) => {
     const current = get();
     let base = snapshot(current);
     const season = base.activeSeason;
     if (!season) return;
     const existing = base.dayPlans.find((day) => day.seasonId === season.id && day.date === dateString);
+    const trimmedHighlight = highlight !== undefined ? highlight.trim() : undefined;
     if (!existing) {
       get().createOrUpdateDayPlan(dateString, {
         dayType: "goal",
         timeBlocks,
-        planningCompleted
+        planningCompleted,
+        highlight: trimmedHighlight,
+        mainAction: trimmedHighlight || undefined
       });
       return;
     }
@@ -1142,6 +1145,8 @@ export const useMonkStore = create<MonkStore>()(
     const updatedPlan: DayPlan = {
       ...existing,
       timeBlocks,
+      highlight: trimmedHighlight !== undefined ? (trimmedHighlight || undefined) : existing.highlight,
+      mainAction: trimmedHighlight ? trimmedHighlight : existing.mainAction,
       planningCompleted: planningCompleted !== undefined ? planningCompleted : (existing.planningCompleted ?? false),
       updatedAt: timestamp
     };

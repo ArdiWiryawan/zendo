@@ -133,4 +133,29 @@ describe("time blocking and daily planning store actions", () => {
       .dayPlans.find((d) => d.date === "2026-09-03");
     expect(plan2?.planningCompleted).toBe(false);
   });
+
+  it("saves highlight and customCategory in saveDayTimeBlocks", () => {
+    const blocks: TimeBlock[] = [
+      {
+        id: "tb-custom",
+        title: "Gym Workout",
+        startTime: "06:00",
+        endTime: "07:00",
+        category: "personal",
+        customCategory: "Fitness"
+      }
+    ];
+
+    useMonkStore.getState().saveDayTimeBlocks("2026-09-04", blocks, true, "Ship v2 release");
+
+    const plan = useMonkStore
+      .getState()
+      .dayPlans.find((d) => d.date === "2026-09-04");
+
+    expect(plan).toBeDefined();
+    expect(plan?.highlight).toBe("Ship v2 release");
+    expect(plan?.mainAction).toBe("Ship v2 release");
+    expect(plan?.timeBlocks?.[0].customCategory).toBe("Fitness");
+  });
 });
+
