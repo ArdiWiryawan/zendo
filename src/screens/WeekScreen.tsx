@@ -118,6 +118,8 @@ export function WeekScreen() {
         ) : (
           <>
             <DefenseChips />
+            <div className="space-y-5 lg:grid lg:grid-cols-[minmax(0,1fr)_320px] lg:gap-8 lg:items-start lg:space-y-0 xl:grid-cols-[minmax(0,1fr)_360px]">
+            <div className="min-w-0 space-y-5">
             <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}>
             <Card className="relative p-5 sm:p-6 bg-monk-surface/40 backdrop-blur-sm shadow-[inset_0_1px_0_rgba(255,255,255,0.04),0_2px_12px_rgba(0,0,0,0.3)] border-monk-border/40 overflow-hidden">
               <div className="absolute inset-0 bg-gradient-to-br from-white/[0.02] to-transparent pointer-events-none" />
@@ -380,6 +382,8 @@ export function WeekScreen() {
               </Card>
             ) : null}
 
+            </div>
+            <div className="min-w-0 space-y-5 lg:pt-1">
             <div>
               <SectionHeader title={t("week.goalsTitle")} subtitle={t("week.goalsSubtitle")} />
               <div className="space-y-3">
@@ -455,6 +459,8 @@ export function WeekScreen() {
               weekDates={weekDates}
               today={today}
             />
+            </div>
+            </div>
           </>
         )}
       </div>

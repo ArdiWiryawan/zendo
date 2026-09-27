@@ -27,42 +27,42 @@ const CATEGORY_STYLES: Record<
   deep_work: {
     icon: Zap,
     labelKey: "planning.catDeep",
-    border: "border-amber-500/40",
-    bg: "bg-amber-500/15 hover:bg-amber-500/20",
-    text: "text-amber-600 dark:text-amber-400",
-    dot: "bg-amber-500"
+    border: "border-monk-cat-deep/40",
+    bg: "bg-monk-cat-deep/15 hover:bg-monk-cat-deep/20",
+    text: "text-monk-cat-deep",
+    dot: "bg-monk-cat-deep"
   },
   shallow: {
     icon: Briefcase,
     labelKey: "planning.catShallow",
-    border: "border-blue-500/40",
-    bg: "bg-blue-500/15 hover:bg-blue-500/20",
-    text: "text-blue-600 dark:text-blue-400",
-    dot: "bg-blue-500"
+    border: "border-monk-cat-shallow/40",
+    bg: "bg-monk-cat-shallow/15 hover:bg-monk-cat-shallow/20",
+    text: "text-monk-cat-shallow",
+    dot: "bg-monk-cat-shallow"
   },
   learning: {
     icon: BookOpen,
     labelKey: "planning.catLearning",
-    border: "border-purple-500/40",
-    bg: "bg-purple-500/15 hover:bg-purple-500/20",
-    text: "text-purple-600 dark:text-purple-400",
-    dot: "bg-purple-500"
+    border: "border-monk-cat-learning/40",
+    bg: "bg-monk-cat-learning/15 hover:bg-monk-cat-learning/20",
+    text: "text-monk-cat-learning",
+    dot: "bg-monk-cat-learning"
   },
   rest: {
     icon: Coffee,
     labelKey: "planning.catRest",
-    border: "border-emerald-500/40",
-    bg: "bg-emerald-500/15 hover:bg-emerald-500/20",
-    text: "text-emerald-600 dark:text-emerald-400",
-    dot: "bg-emerald-500"
+    border: "border-monk-cat-rest/40",
+    bg: "bg-monk-cat-rest/15 hover:bg-monk-cat-rest/20",
+    text: "text-monk-cat-rest",
+    dot: "bg-monk-cat-rest"
   },
   personal: {
     icon: User,
     labelKey: "planning.catPersonal",
-    border: "border-rose-500/40",
-    bg: "bg-rose-500/15 hover:bg-rose-500/20",
-    text: "text-rose-600 dark:text-rose-400",
-    dot: "bg-rose-500"
+    border: "border-monk-cat-personal/40",
+    bg: "bg-monk-cat-personal/15 hover:bg-monk-cat-personal/20",
+    text: "text-monk-cat-personal",
+    dot: "bg-monk-cat-personal"
   }
 };
 
@@ -298,11 +298,11 @@ export function DayTimeBlockVisualizer({
                 className="absolute left-0 right-0 z-20 flex items-center pointer-events-none"
                 style={{ top: nowOffsetTop }}
               >
-                <div className="flex items-center gap-1 px-1 bg-rose-500 rounded text-[9px] font-bold text-white uppercase tracking-wider font-mono shadow-sm">
+                <div className="flex items-center gap-1 px-1 bg-monk-danger rounded text-[9px] font-bold text-white uppercase tracking-wider font-mono shadow-sm">
                   <span className="h-1.5 w-1.5 rounded-full bg-white animate-ping" />
                   <span>{t("timeline.daily.nowMarker")}</span>
                 </div>
-                <div className="flex-1 border-b-2 border-rose-500/80 shadow-xs" />
+                <div className="flex-1 border-b-2 border-monk-danger/80 shadow-xs" />
               </div>
             ) : null}
           </div>

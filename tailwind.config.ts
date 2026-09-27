@@ -24,6 +24,11 @@ export default {
           "danger-soft": "var(--color-danger-soft)",
           rest: "var(--color-rest)",
           "rest-soft": "var(--color-rest-soft)",
+          "cat-deep": "rgb(var(--color-cat-deep) / <alpha-value>)",
+          "cat-shallow": "rgb(var(--color-cat-shallow) / <alpha-value>)",
+          "cat-learning": "rgb(var(--color-cat-learning) / <alpha-value>)",
+          "cat-rest": "rgb(var(--color-cat-rest) / <alpha-value>)",
+          "cat-personal": "rgb(var(--color-cat-personal) / <alpha-value>)",
           deep: "var(--color-bg-deep)",
           raised: "var(--color-surface-raised)"
         }

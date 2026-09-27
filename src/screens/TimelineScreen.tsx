@@ -336,12 +336,19 @@ export default function TimelineScreen() {
     store.timelineEvents
       .filter((event) => event.seasonId === season.id || !event.seasonId)
       .forEach((event) => {
-        const date = event.occurredAt.slice(0, 10);
+        // Legacy / partially-synced events can arrive without occurredAt (older
+        // schema, an import, or a truncated sync). Fall back to any other date we
+        // have rather than throwing — an unguarded .slice() here crashed the whole
+        // Linimasa route into the router's error boundary.
+        const raw = event.occurredAt || event.createdAt || event.focusSession?.startedAt;
+        if (!raw) return;
+        const date = raw.slice(0, 10);
+        if (!date) return;
         if (!groups[date]) {
           groups[date] = [];
         }
         if (event.sourceId) seenEventSources.add(event.sourceId);
-        groups[date].push(event);
+        groups[date].push(event.occurredAt ? event : { ...event, occurredAt: raw });
       });
 
     // Fallback: If any focus session in store.focusSessions has no timeline event, include it
@@ -421,7 +428,7 @@ export default function TimelineScreen() {
 
       <div className="space-y-5">
         {/* View Switcher Tabs: Daily | Weekly | Monthly | Season */}
-        <div className="flex rounded-2xl border border-monk-border/80 bg-monk-soft/50 p-1 text-xs font-semibold shadow-2xs">
+        <div className="flex rounded-2xl border border-monk-border/80 bg-monk-soft/50 p-1 text-xs font-semibold shadow-2xs lg:max-w-md">
           <button
             type="button"
             onClick={() => setViewMode("daily")}
@@ -481,16 +488,18 @@ export default function TimelineScreen() {
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.25 }}
-            className="space-y-4"
+            className="space-y-4 lg:grid lg:grid-cols-[minmax(0,1fr)_320px] lg:gap-8 lg:items-start lg:space-y-0 xl:grid-cols-[minmax(0,1fr)_360px]"
           >
             {/* Detailed time block visualizer with live NOW line */}
+            <div className="min-w-0 space-y-4">
             <DayTimeBlockVisualizer
               date={today}
               onOpenPlanning={() => setPlanningModalOpen(true)}
             />
+            </div>
 
             {/* Today Activity Log */}
-            <div className="space-y-3 pt-2">
+            <div className="min-w-0 space-y-3 pt-2 lg:pt-0">
               <SectionHeader
                 title="Aktivitas Hari Ini"
                 subtitle={`Log kegiatan tercatat untuk ${today}`}
@@ -522,9 +531,9 @@ export default function TimelineScreen() {
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.25 }}
-            className="space-y-4"
+            className="space-y-4 lg:grid lg:grid-cols-[minmax(0,1fr)_320px] lg:gap-8 lg:items-start lg:space-y-0 xl:grid-cols-[minmax(0,1fr)_360px]"
           >
-            <StreakConsistencyCard />
+            <div className="min-w-0 space-y-4">
 
             {/* Week navigation control */}
             <div className="flex items-center justify-between rounded-2xl border border-monk-border/80 bg-monk-surface px-4 py-2.5">
@@ -661,6 +670,10 @@ export default function TimelineScreen() {
                 );
               })}
             </div>
+            </div>
+            <div className="min-w-0 lg:pt-1">
+            <StreakConsistencyCard />
+            </div>
           </motion.div>
         )}
 
@@ -670,10 +683,9 @@ export default function TimelineScreen() {
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.25 }}
-            className="space-y-4"
+            className="space-y-4 lg:grid lg:grid-cols-[minmax(0,1fr)_320px] lg:gap-8 lg:items-start lg:space-y-0 xl:grid-cols-[minmax(0,1fr)_360px]"
           >
-            <StreakConsistencyCard />
-
+            <div className="min-w-0">
             <Card className="p-4 sm:p-5 space-y-4">
               <div>
                 <h3 className="text-xs font-bold uppercase tracking-wider text-monk-muted">
@@ -763,6 +775,10 @@ export default function TimelineScreen() {
                 </span>
               </div>
             </Card>
+            </div>
+            <div className="min-w-0 lg:pt-1">
+            <StreakConsistencyCard />
+            </div>
           </motion.div>
         )}
 
@@ -772,11 +788,11 @@ export default function TimelineScreen() {
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.25 }}
-            className="space-y-5"
+            className="space-y-5 lg:grid lg:grid-cols-[minmax(0,1fr)_320px] lg:gap-8 lg:items-start lg:space-y-0 xl:grid-cols-[minmax(0,1fr)_360px]"
           >
+            <div className="min-w-0 space-y-5">
             <WhyCard />
             <SeasonProgressCard />
-            <TimelineStats />
 
             {/* Timeline Activity Feed */}
             <div className="space-y-4 pt-2">
@@ -820,6 +836,10 @@ export default function TimelineScreen() {
                   })}
                 </div>
               )}
+            </div>
+            </div>
+            <div className="min-w-0 space-y-4 lg:space-y-5 lg:pt-1">
+            <TimelineStats />
             </div>
           </motion.div>
         )}

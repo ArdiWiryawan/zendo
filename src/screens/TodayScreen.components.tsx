@@ -9,6 +9,7 @@ import { useT } from "../i18n";
 import type { EnergyLevel } from "../types/app";
 
 export function EnergyCheck({ value, onChange, compact = false }: { value?: EnergyLevel; onChange: (value: EnergyLevel) => void; compact?: boolean }) {
+  const t = useT();
   const store = useMonkStore();
   const today = getTodayDateString();
   const past7 = Array.from({ length: 7 }, (_, i) => {
@@ -28,7 +29,7 @@ export function EnergyCheck({ value, onChange, compact = false }: { value?: Ener
       <div className="mb-3 flex items-center justify-between gap-3">
         <div>
           <p className="font-semibold text-sm">Energy</p>
-          <p className="mt-0.5 text-xs text-monk-muted">How full is the tank today?</p>
+          <p className="mt-0.5 text-xs text-monk-muted">{t("today.energy.tank")}</p>
         </div>
         {value ? (
           <span className={`rounded-full border px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide ${
@@ -195,7 +196,7 @@ export function WhyStrip({ compact = false }: { compact?: boolean }) {
                   <span className="truncate text-monk-accent">✦ {outcome}</span>
                 ) : null}
                 {antiWhy && !outcome ? (
-                  <span className="truncate text-amber-500/90">⚠ {antiWhy}</span>
+                  <span className="truncate text-monk-warning/90">⚠ {antiWhy}</span>
                 ) : null}
               </div>
             ) : null}
@@ -213,8 +214,8 @@ export function WhyStrip({ compact = false }: { compact?: boolean }) {
                 ) : null}
 
                 {antiWhy ? (
-                  <div className="rounded-xl border border-amber-500/25 bg-amber-500/5 p-2.5">
-                    <p className="text-[9px] font-bold uppercase tracking-wider text-amber-500">
+                  <div className="rounded-xl border border-monk-warning/25 bg-monk-warning/5 p-2.5">
+                    <p className="text-[9px] font-bold uppercase tracking-wider text-monk-warning">
                       ⚠ {t("why.badgeAntiWhy")}
                     </p>
                     <p className="mt-0.5 text-xs text-monk-text-soft leading-relaxed">{antiWhy}</p>

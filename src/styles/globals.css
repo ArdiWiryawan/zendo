@@ -2,6 +2,15 @@
 @tailwind components;
 @tailwind utilities;
 :root {
+  /* Time-block category hues (P1-4). RGB triplets so Tailwind opacity
+     modifiers work: bg-monk-cat-deep/15. Muted, distinct from each other and
+     from accent (gold), success (green), warning (amber), danger (red).
+     Re-declared per theme below. */
+  --color-cat-deep: 196 106 91;
+  --color-cat-shallow: 107 154 196;
+  --color-cat-learning: 139 157 196;
+  --color-cat-rest: 107 180 139;
+  --color-cat-personal: 196 139 180;
   /* reserve room for fixed bottom bar (~73-107px) on caret-into-view auto scroll */
   scroll-padding-bottom: 110px;
   --color-bg: #080908;
@@ -34,6 +43,11 @@
 }
 
 [data-theme="sumi_ink"] {
+  --color-cat-deep: 196 128 110;
+  --color-cat-shallow: 125 155 178;
+  --color-cat-learning: 150 148 196;
+  --color-cat-rest: 110 172 138;
+  --color-cat-personal: 186 138 178;
   --color-bg: #0D1117;
   --color-bg-deep: #070A0E;
   --color-surface: #151B23;
@@ -64,6 +78,11 @@
 }
 
 [data-theme="kyoto_moss"] {
+  --color-cat-deep: 190 112 96;
+  --color-cat-shallow: 110 148 172;
+  --color-cat-learning: 142 148 190;
+  --color-cat-rest: 110 168 132;
+  --color-cat-personal: 182 140 172;
   --color-bg: #090D0A;
   --color-bg-deep: #050806;
   --color-surface: #111713;
@@ -94,6 +113,11 @@
 }
 
 [data-theme="wabi_sabi"] {
+  --color-cat-deep: 192 118 100;
+  --color-cat-shallow: 118 150 176;
+  --color-cat-learning: 148 146 192;
+  --color-cat-rest: 116 170 134;
+  --color-cat-personal: 186 142 174;
   --color-bg: #14110E;
   --color-bg-deep: #0D0A08;
   --color-surface: #1C1814;
@@ -124,6 +148,11 @@
 }
 
 [data-theme="kurogane"] {
+  --color-cat-deep: 186 116 100;
+  --color-cat-shallow: 128 148 168;
+  --color-cat-learning: 146 148 186;
+  --color-cat-rest: 112 164 130;
+  --color-cat-personal: 180 138 170;
   --color-bg: #000000;
   --color-bg-deep: #000000;
   --color-surface: #0A0A0A;
@@ -154,6 +183,11 @@
 }
 
 [data-theme="temple_gold"] {
+  --color-cat-deep: 196 122 102;
+  --color-cat-shallow: 122 150 174;
+  --color-cat-learning: 150 148 190;
+  --color-cat-rest: 118 168 136;
+  --color-cat-personal: 188 144 176;
   --color-bg: #0C0A06;
   --color-bg-deep: #060503;
   --color-surface: #17130B;
@@ -226,6 +260,18 @@ body {
   margin-right: auto;
 }
 
+@media (min-width: 1024px) {
+  #root > * {
+    max-width: 1024px;
+  }
+}
+
+@media (min-width: 1280px) {
+  #root > * {
+    max-width: 1280px;
+  }
+}
+
 button,
 input,
 textarea,
@@ -241,6 +287,25 @@ button {
   *:focus-visible {
     outline: 2px solid var(--color-accent);
     outline-offset: 3px;
+  }
+
+  /* Tailwind's `focus-visible:outline-none` utility (specificity 0-2-0) is applied
+     to most buttons and inputs to suppress the default browser ring. That also
+     erased the base rule above, leaving text buttons and form fields with NO
+     perceivable focus indicator on the near-black background (the `ring-*`
+     re-add is a box-shadow flush against the page, so it reads as nothing).
+     Doubling the pseudo-class (0-2-1) beats the utility, so every interactive
+     element keeps a visible indicator. */
+  button:focus-visible:focus-visible,
+  a:focus-visible:focus-visible,
+  input:focus-visible:focus-visible,
+  textarea:focus-visible:focus-visible,
+  select:focus-visible:focus-visible,
+  summary:focus-visible:focus-visible,
+  [role="button"]:focus-visible:focus-visible,
+  [tabindex]:focus-visible:focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 2px;
   }
 }
 

@@ -701,7 +701,8 @@ export function TodayScreen() {
         ) : null}
         {!todayPlan ? (
           <>
-            <div className="today-primary-anchor space-y-5">
+            <div className="space-y-5 lg:grid lg:grid-cols-[minmax(0,1fr)_320px] lg:gap-8 lg:items-start lg:space-y-0 xl:grid-cols-[minmax(0,1fr)_360px]">
+            <div className="today-primary-anchor min-w-0 space-y-5">
               <SeasonProgressCard />
               <FlowPickToday
                 goals={activeGoals}
@@ -709,10 +710,15 @@ export function TodayScreen() {
                 onPickRest={() => setWeeklyReviewModalOpen(true)}
               />
             </div>
+            <div className="min-w-0 lg:pt-1">
             <WeeklyStatusIndicators />
+            </div>
+            </div>
           </>
         ) : (
           <>
+            <div className="space-y-5 lg:grid lg:grid-cols-[minmax(0,1fr)_320px] lg:gap-8 lg:items-start lg:space-y-0 xl:grid-cols-[minmax(0,1fr)_360px]">
+            <div className="min-w-0 space-y-5">
             <Card
               important
               id="today-primary"
@@ -1203,14 +1209,14 @@ export function TodayScreen() {
               ) : null}
 
               {primaryKind === "planning" ? (
-                <Card className="border-amber-500/40 bg-gradient-to-b from-amber-500/10 via-monk-surface to-monk-surface p-5 shadow-xs">
+                <Card className="border-monk-warning/40 bg-gradient-to-b from-monk-warning/10 via-monk-surface to-monk-surface p-5 shadow-xs">
                   <div className="flex items-start gap-3.5">
-                    <div className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-amber-500/20 text-amber-500 dark:text-amber-400">
+                    <div className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-monk-warning/20 text-monk-warning">
                       <Clock size={20} strokeWidth={2} />
                     </div>
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2">
-                        <span className="rounded-md border border-amber-500/40 bg-amber-500/15 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-amber-600 dark:text-amber-400">
+                        <span className="rounded-md border border-monk-warning/40 bg-monk-warning/15 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-monk-warning">
                           {t("planning.strictGatedTitle")}
                         </span>
                       </div>
@@ -1391,7 +1397,8 @@ export function TodayScreen() {
                 </details>
               )}
             </div>
-
+            </div>
+            <div className="min-w-0 space-y-5 lg:pt-1">
             {/* Secondary — collapsed */}
             <details className="group mt-5 rounded-monk border border-monk-border bg-monk-surface transition-all duration-200 ease-monk hover:border-monk-border-strong open:border-monk-border-strong">
               <summary className="flex cursor-pointer list-none items-center justify-between p-4 text-sm font-semibold text-monk-muted hover:text-monk-text marker:content-none [&::-webkit-details-marker]:hidden">
@@ -1475,6 +1482,8 @@ export function TodayScreen() {
             ) : null}
             <WeeklyStatusIndicators />
             <PlanTomorrow goals={activeGoals} />
+            </div>
+            </div>
           </>
         )}
       </div>
@@ -1646,11 +1655,22 @@ function FlowPickToday({
           const recommend = remaining > 0 && remaining === maxRemaining;
           const done = remaining === 0;
           return (
-            <button
+            // A <button> cannot contain another <button> (invalid HTML: React warns
+            // validateDOMNesting, and screen readers/keyboard lose the inner control).
+            // The card is the tap target, so keep the button role + keyboard support
+            // on a div and let the Blueprint button live inside it.
+            <div
               key={allocation.goalId}
-              type="button"
+              role="button"
+              tabIndex={0}
               onClick={() => store.createOrUpdateDayPlan(getTodayDateString(), { dayType: "goal", goalId: allocation.goalId })}
-              className={`w-full rounded-monk border p-4 text-left transition active:scale-[0.99] ${
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  store.createOrUpdateDayPlan(getTodayDateString(), { dayType: "goal", goalId: allocation.goalId });
+                }
+              }}
+              className={`w-full cursor-pointer rounded-monk border p-4 text-left transition active:scale-[0.99] focus-visible:border-monk-accent ${
                 recommend
                   ? "border-monk-accent/50 bg-monk-accent-soft/40"
                   : "border-monk-border bg-monk-surface hover:border-monk-border-strong"
@@ -1699,7 +1719,7 @@ function FlowPickToday({
                   style={{ width: `${progress}%` }}
                 />
               </div>
-            </button>
+            </div>
           );
         })}
         {!restUsed ? (

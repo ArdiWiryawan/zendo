@@ -139,12 +139,12 @@ export function ZendoProModal({ isOpen, onClose }: ZendoProModalProps) {
           role="dialog"
           aria-modal="true"
           aria-labelledby="zendo-support-title"
-          className="relative w-full max-w-lg max-h-[94vh] overflow-y-auto rounded-3xl border border-monk-accent/35 bg-monk-surface p-5 sm:p-6 shadow-2xl my-auto text-monk-text space-y-4"
+          className="relative w-full max-w-lg max-h-[94vh] overflow-y-auto rounded-monk-lg border border-monk-accent/35 bg-monk-surface p-5 sm:p-6 shadow-2xl my-auto text-monk-text space-y-4"
           onClick={(e) => e.stopPropagation()}
         >
           {/* Ambient Warm Radial Aura */}
-          <div className="absolute -top-24 -left-24 w-60 h-60 rounded-full bg-amber-500/10 blur-3xl pointer-events-none" />
-          <div className="absolute -bottom-24 -right-24 w-60 h-60 rounded-full bg-amber-500/10 blur-3xl pointer-events-none" />
+          <div className="absolute -top-24 -left-24 w-60 h-60 rounded-full bg-monk-warning/10 blur-3xl pointer-events-none" />
+          <div className="absolute -bottom-24 -right-24 w-60 h-60 rounded-full bg-monk-warning/10 blur-3xl pointer-events-none" />
 
           {/* Close Button */}
           <button
@@ -158,8 +158,8 @@ export function ZendoProModal({ isOpen, onClose }: ZendoProModalProps) {
 
           {/* Header */}
           <div className="text-center pt-1">
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full border border-amber-500/30 bg-amber-500/10 text-amber-400 text-xs font-bold uppercase tracking-wider mb-2 shadow-xs">
-              <Heart size={13} className="fill-amber-400/20 text-amber-400" />
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full border border-monk-warning/30 bg-monk-warning/10 text-monk-warning text-xs font-bold uppercase tracking-wider mb-2 shadow-xs">
+              <Heart size={13} className="fill-monk-warning/20 text-monk-warning" />
               {isId ? "Dukungan & Donasi Sukarela" : "Voluntary Tips & Support"}
             </span>
             <h2 id="zendo-support-title" className="text-xl sm:text-2xl font-serif font-bold text-monk-text tracking-tight">
@@ -235,7 +235,7 @@ export function ZendoProModal({ isOpen, onClose }: ZendoProModalProps) {
               <p className="text-xs font-bold text-monk-text">
                 {isId ? "Pilih Nominal Dukungan / Tip:" : "Select Support Amount:"}
               </p>
-              <span className="text-xs font-mono font-bold text-amber-500">
+              <span className="text-xs font-mono font-bold text-monk-warning">
                 Rp {currentAmount.toLocaleString("id-ID")}
               </span>
             </div>

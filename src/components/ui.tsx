@@ -9,6 +9,23 @@ import { useT } from "../i18n";
 import { useSyncStatus } from "../lib/syncStatus";
 import { useMonkStore } from "../store/useMonkStore";
 
+/**
+ * Reserved bottom room for the floating nav (58px pill + 12px inset + safe area).
+ * NOTE: this padding only governs the *end* of the page. It does not, and cannot,
+ * stop mid-page content from passing under the nav while scrolling - see the
+ * comment on BOTTOM_NAV_SAFE_SPACE usage in docs/ui_ux_audit.md (P0-1).
+ */
+export const BOTTOM_NAV_SAFE_SPACE = "pb-[calc(env(safe-area-inset-bottom)+148px)]";
+
+/**
+ * For a repeating list that ends a screen: the final item must clear the nav
+ * band, but adding the full BOTTOM_NAV_SAFE_SPACE to every item would leave a
+ * huge gap mid-page. Use `monk-last-item-nav-safe` on the list and this keeps
+ * the bottom room only on the last child.
+ */
+export const LAST_ITEM_NAV_SAFE =
+  "[&>*:last-child]:pb-[calc(env(safe-area-inset-bottom)+148px)]";
+
 export function ScreenContainer({
   children,
   withBottomNavPadding = false
@@ -18,8 +35,8 @@ export function ScreenContainer({
 }) {
   return (
     <main
-      className={`mx-auto min-h-dvh w-full max-w-[430px] px-6 pt-[calc(env(safe-area-inset-top)+24px)] ${
-        withBottomNavPadding ? "pb-[calc(env(safe-area-inset-bottom)+148px)]" : "pb-8"
+      className={`mx-auto min-h-dvh w-full max-w-[430px] px-6 pt-[calc(env(safe-area-inset-top)+24px)] lg:max-w-3xl lg:px-8 xl:max-w-5xl ${
+        withBottomNavPadding ? BOTTOM_NAV_SAFE_SPACE : "pb-8"
       }`}
     >
       {children}
@@ -43,10 +60,33 @@ export function AppShell({ children, showBottomNav = true }: { children: ReactNo
         {children}
       </ScreenContainer>
       {showBottomNav ? (
-        <div className={`fixed inset-x-0 bottom-[calc(env(safe-area-inset-bottom)+12px)] px-6 transition-transform duration-300 z-50 ${
-          navVisible ? "translate-y-0" : "translate-y-[120%]"
-        }`}>
-          <BottomNav />
+        <div
+          className={`fixed inset-x-0 bottom-0 z-50 transition-transform duration-300 ${
+            navVisible ? "translate-y-0" : "translate-y-[150%]"
+          }`}
+        >
+          {/*
+            Bottom fade, not a scrim. The nav is a floating glass pill over long
+            scrolling pages, so content always passes under it mid-scroll — that
+            cannot be prevented by layout. What reads as "broken" is the pill's
+            82%-alpha surface slicing a button in half. A page-background fade
+            makes the overlap read as deliberate depth instead:
+            solid over the pill's own band (pill 58px + 12px inset), fading out
+            over 96px above it. Full-width, no hard top edge.
+            Earlier attempt failed with pt-8 (=32px, a hard-edged grey band —
+            see audit/nav/375-learn-rest.png); this version is measured: 90+96px.
+          */}
+          <div
+            aria-hidden
+            className="pointer-events-none absolute inset-x-0 bottom-0 h-[186px] pb-[calc(env(safe-area-inset-bottom)+12px)]"
+            style={{
+              background:
+                "linear-gradient(to top, var(--color-bg) 0%, var(--color-bg) calc(env(safe-area-inset-bottom) + 90px), transparent calc(env(safe-area-inset-bottom) + 186px))"
+            }}
+          />
+          <div className="relative px-6 pb-[calc(env(safe-area-inset-bottom)+12px)]">
+            <BottomNav />
+          </div>
         </div>
       ) : null}
     </div>
@@ -573,11 +613,11 @@ export function SettingsLink({ onOpenPro }: { onOpenPro?: () => void } = {}) {
         <button
           type="button"
           onClick={onOpenPro}
-          className="flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-bold transition active:scale-95 shadow-sm border border-amber-500/40 bg-amber-500/10 text-amber-600 dark:text-amber-400 hover:bg-amber-500/20"
-          aria-label="Dukung / Donasi Zendo"
+          className="flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-bold transition active:scale-95 shadow-sm border border-monk-warning/40 bg-monk-warning/10 text-monk-warning hover:bg-monk-warning/20"
+          aria-label={t("support.ariaLabel")}
         >
-          <Heart size={13} className="text-amber-500 fill-amber-500/20" />
-          <span>Dukung</span>
+          <Heart size={13} className="text-monk-warning fill-monk-warning/20" />
+          <span>{t("support.label")}</span>
         </button>
       )}
       <NavLink
@@ -742,7 +782,7 @@ export function CalmToast({ message, visible }: { message: string; visible: bool
     <div
       role="status"
       aria-live="polite"
-      className="pointer-events-none fixed inset-x-0 bottom-[calc(env(safe-area-inset-bottom)+88px)] z-[60] flex justify-center px-6"
+      className="pointer-events-none fixed inset-x-0 bottom-[calc(env(safe-area-inset-bottom)+148px)] z-[60] flex justify-center px-6"
     >
       <div className="rounded-full border border-monk-border-strong bg-monk-surface/95 px-4 py-2.5 text-sm font-medium text-monk-text shadow-calm backdrop-blur-md">
         {message}

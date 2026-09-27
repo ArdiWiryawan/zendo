@@ -262,8 +262,8 @@ export function WhyCard() {
       ) : null}
 
       {antiWhy ? (
-        <div className="rounded-xl border border-amber-500/25 bg-amber-500/5 p-3">
-          <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-amber-500">
+        <div className="rounded-xl border border-monk-warning/25 bg-monk-warning/5 p-3">
+          <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-monk-warning">
             <span>⚠</span>
             <span>{t("why.badgeAntiWhy")}</span>
           </div>

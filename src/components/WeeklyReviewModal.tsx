@@ -217,7 +217,7 @@ export function WeeklyReviewModal({ isOpen, onClose, weeklyPlanId }: WeeklyRevie
         animate={{ scale: 1, opacity: 1, y: 0 }}
         exit={{ scale: 0.96, opacity: 0, y: 16 }}
         transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
-        className="relative flex flex-col w-full max-w-xl max-h-[92vh] rounded-3xl border border-monk-border/80 bg-monk-surface shadow-2xl overflow-hidden z-10"
+        className="relative flex flex-col w-full max-w-xl max-h-[92vh] rounded-monk-lg border border-monk-border/80 bg-monk-surface shadow-2xl overflow-hidden z-10"
       >
         {/* Header Bar */}
         <div className="flex items-center justify-between border-b border-monk-border/50 px-5 py-3.5 sm:px-6">
@@ -272,7 +272,7 @@ export function WeeklyReviewModal({ isOpen, onClose, weeklyPlanId }: WeeklyRevie
                 className="space-y-4"
               >
                 <div className="flex items-center gap-2">
-                  <span className="rounded-md bg-purple-500/15 px-2.5 py-0.5 text-[11px] font-bold tracking-wide text-purple-400">
+                  <span className="rounded-md bg-monk-cat-learning/15 px-2.5 py-0.5 text-[11px] font-bold tracking-wide text-monk-cat-learning">
                     {t("weeklyReviewModal.badge.prompt1")}
                   </span>
                 </div>
@@ -310,7 +310,7 @@ export function WeeklyReviewModal({ isOpen, onClose, weeklyPlanId }: WeeklyRevie
                 className="space-y-4"
               >
                 <div className="flex items-center gap-2">
-                  <span className="rounded-md bg-amber-500/15 px-2.5 py-0.5 text-[11px] font-bold tracking-wide text-amber-400">
+                  <span className="rounded-md bg-monk-warning/15 px-2.5 py-0.5 text-[11px] font-bold tracking-wide text-monk-warning">
                     {t("weeklyReviewModal.badge.prompt2")}
                   </span>
                 </div>
@@ -348,7 +348,7 @@ export function WeeklyReviewModal({ isOpen, onClose, weeklyPlanId }: WeeklyRevie
                 className="space-y-4"
               >
                 <div className="flex items-center gap-2">
-                  <span className="rounded-md bg-emerald-500/15 px-2.5 py-0.5 text-[11px] font-bold tracking-wide text-emerald-400">
+                  <span className="rounded-md bg-monk-cat-rest/15 px-2.5 py-0.5 text-[11px] font-bold tracking-wide text-monk-cat-rest">
                     {t("weeklyReviewModal.badge.prompt3")}
                   </span>
                 </div>
@@ -386,7 +386,7 @@ export function WeeklyReviewModal({ isOpen, onClose, weeklyPlanId }: WeeklyRevie
                 className="space-y-4"
               >
                 <div className="flex items-center gap-2">
-                  <span className="rounded-md bg-blue-500/15 px-2.5 py-0.5 text-[11px] font-bold tracking-wide text-blue-400">
+                  <span className="rounded-md bg-monk-cat-shallow/15 px-2.5 py-0.5 text-[11px] font-bold tracking-wide text-monk-cat-shallow">
                     {t("weeklyReviewModal.badge.prompt4")}
                   </span>
                 </div>
@@ -508,7 +508,7 @@ export function WeeklyReviewModal({ isOpen, onClose, weeklyPlanId }: WeeklyRevie
                 className="space-y-4"
               >
                 <div className="flex items-center gap-2">
-                  <span className="rounded-md bg-amber-500/15 px-2.5 py-0.5 text-[11px] font-bold tracking-wide text-amber-400">
+                  <span className="rounded-md bg-monk-warning/15 px-2.5 py-0.5 text-[11px] font-bold tracking-wide text-monk-warning">
                     {t("weeklyReviewModal.badge.prompt5")}
                   </span>
                 </div>

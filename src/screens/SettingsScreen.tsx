@@ -247,13 +247,13 @@ export default function SettingsScreen() {
 
         {/* Support & Donasi Zendo Card */}
         <motion.div variants={sectionReveal} initial="hidden" whileInView="visible" viewport={{ once: true, amount: 0.2 }}>
-          <Card className="relative overflow-hidden border border-amber-500/25 bg-gradient-to-b from-monk-surface via-monk-surface to-monk-accent-soft/20 p-5 sm:p-6 shadow-calm space-y-4">
-            <div className="absolute -top-16 -right-16 w-36 h-36 rounded-full bg-amber-500/10 blur-3xl pointer-events-none" />
+          <Card className="relative overflow-hidden border border-monk-warning/25 bg-gradient-to-b from-monk-surface via-monk-surface to-monk-accent-soft/20 p-5 sm:p-6 shadow-calm space-y-4">
+            <div className="absolute -top-16 -right-16 w-36 h-36 rounded-full bg-monk-warning/10 blur-3xl pointer-events-none" />
 
             {/* Top Row: Icon + Title + Free Badge */}
             <div className="flex items-start gap-3.5">
-              <div className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-gradient-to-br from-amber-500/20 to-amber-700/30 border border-amber-500/40 text-amber-400 shadow-xs">
-                <Heart size={20} className="fill-amber-400/20 text-amber-400" />
+              <div className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-gradient-to-br from-monk-warning/20 to-monk-warning/30 border border-monk-warning/40 text-monk-warning shadow-xs">
+                <Heart size={20} className="fill-monk-warning/20 text-monk-warning" />
               </div>
               <div className="min-w-0 flex-1 space-y-1">
                 <div className="flex flex-wrap items-center gap-2">
@@ -277,9 +277,9 @@ export default function SettingsScreen() {
             <button
               type="button"
               onClick={() => setProModalOpen(true)}
-              className="w-full flex items-center justify-center gap-2 rounded-2xl bg-monk-accent px-4 py-3 text-xs sm:text-sm font-bold text-white shadow-md transition active:scale-[0.98] hover:opacity-95 hover:shadow-lg border border-amber-400/30"
+              className="w-full flex items-center justify-center gap-2 rounded-2xl bg-monk-accent px-4 py-3 text-xs sm:text-sm font-bold text-white shadow-md transition active:scale-[0.98] hover:opacity-95 hover:shadow-lg border border-monk-warning/30"
             >
-              <Sparkles size={15} className="text-amber-200" />
+              <Sparkles size={15} className="text-monk-warning" />
               <span>{lang === "id" ? "☕ Donasi / Traktir Kopi via QRIS" : "☕ Tip / Donate via QRIS"}</span>
             </button>
 

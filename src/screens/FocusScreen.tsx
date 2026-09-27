@@ -232,8 +232,8 @@ export default function FocusScreen() {
       <>
         <PageHeader title={t("focus.title")} subtitle={t("planning.strictGatedTitle")} />
         <div className="space-y-5">
-          <Card className="border-amber-500/40 bg-gradient-to-b from-amber-500/10 via-monk-surface to-monk-surface p-6 text-center space-y-4 shadow-sm">
-            <div className="grid h-12 w-12 mx-auto place-items-center rounded-2xl bg-amber-500/15 text-amber-500">
+          <Card className="border-monk-warning/40 bg-gradient-to-b from-monk-warning/10 via-monk-surface to-monk-surface p-6 text-center space-y-4 shadow-sm">
+            <div className="grid h-12 w-12 mx-auto place-items-center rounded-2xl bg-monk-warning/15 text-monk-warning">
               <Lock size={24} />
             </div>
             <div className="space-y-1.5">
@@ -282,11 +282,11 @@ export default function FocusScreen() {
             <button
               type="button"
               onClick={() => setProModalOpen(true)}
-              className="flex items-center gap-1.5 rounded-full border border-amber-500/40 bg-amber-500/10 px-3 py-1.5 text-xs font-bold text-amber-600 dark:text-amber-400 hover:bg-amber-500/20 transition active:scale-95 shadow-sm"
-              aria-label="Dukung Zendo"
+              className="flex items-center gap-1.5 rounded-full border border-monk-warning/40 bg-monk-warning/10 px-3 py-1.5 text-xs font-bold text-monk-warning hover:bg-monk-warning/20 transition active:scale-95 shadow-sm"
+              aria-label={t("support.ariaLabel")}
             >
-              <Heart size={13} className="text-amber-500 fill-amber-500/20" />
-              <span>Dukung</span>
+              <Heart size={13} className="text-monk-warning fill-monk-warning/20" />
+              <span>{t("support.label")}</span>
             </button>
             <button
               type="button"

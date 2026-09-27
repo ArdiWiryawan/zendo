@@ -153,7 +153,7 @@ export function FocusPrepModal({
         role="dialog"
         aria-modal="true"
         aria-labelledby="prep-dialog-title"
-        className="relative z-10 flex max-h-[92dvh] sm:max-h-[88vh] w-full sm:max-w-[540px] flex-col rounded-t-[28px] sm:rounded-[28px] border border-monk-border bg-monk-surface shadow-2xl overflow-hidden"
+        className="relative z-10 flex max-h-[92dvh] sm:max-h-[88vh] w-full sm:max-w-[540px] flex-col rounded-t-monk-lg sm:rounded-monk-lg border border-monk-border bg-monk-surface shadow-2xl overflow-hidden"
       >
         {/* Mobile drag handle */}
         <div className="flex justify-center pt-2.5 sm:hidden">
@@ -338,7 +338,7 @@ export function FocusPrepModal({
                       ? "Hold"
                       : breathPhase === "exhale"
                       ? "Exhale"
-                      : "Rest"}
+                      : t("focusPrep.breathRest")}
                   </span>
                 </div>
               </div>

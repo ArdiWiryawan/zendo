@@ -116,6 +116,7 @@ export function HabitAudit({ onNext }: { onNext: () => void }) {
 
 export function FrictionSetup({ onNext }: { onNext: () => void }) {
   const { onboarding, toggleFrictionAction } = useMonkStore();
+  const t = useT();
   const selectedHabits = onboarding.selectedHabits;
   const frictionMap = onboarding.frictionActions;
 
@@ -154,7 +155,7 @@ export function FrictionSetup({ onNext }: { onNext: () => void }) {
         subtitle="You do not need willpower. Add friction to your environment so habits cannot start on autopilot."
       />
       <div className="mb-3 flex items-center justify-between">
-        <p className="text-xs text-monk-muted">Choose your practical defenses</p>
+        <p className="text-xs text-monk-muted">{t("onboarding.friction.hint")}</p>
         <span className="rounded-full bg-monk-soft px-2.5 py-1 text-xs font-bold text-monk-muted">
           {checkedCount > 0 ? `${checkedCount} active` : "Recommended"}
         </span>
@@ -211,6 +212,7 @@ export function FrictionSetup({ onNext }: { onNext: () => void }) {
 }
 
 export function GoalBrainDump({ onNext }: { onNext: () => void }) {
+  const t = useT();
   const { onboarding, addGoalDraft, removeGoalDraft, updateGoalDraft, toggleFocusGoal } = useMonkStore();
   const filledCount = onboarding.goalDrafts.filter((g) => g.title.trim()).length;
   const dumpResult = validateGoalBrainDump(onboarding.goalDrafts);
@@ -224,7 +226,7 @@ export function GoalBrainDump({ onNext }: { onNext: () => void }) {
     <>
       <ScreenIntro title="What feels important in this season?" subtitle="Write 3–10 possible goals first, then keep the 1–3 that deserve this season's energy." />
       <div className="mb-3 flex items-center justify-between">
-        <p className="text-xs text-monk-muted">Brain dump first. Selection comes next.</p>
+        <p className="text-xs text-monk-muted">{t("onboarding.goals.hint")}</p>
         <span className="rounded-full bg-monk-soft px-2.5 py-1 text-xs font-bold text-monk-muted">
           {filledCount}/10 · min 3
         </span>
@@ -398,6 +400,7 @@ export function SeasonSetup({ onNext }: { onNext: () => void }) {
 }
 
 export function KeystoneSetup({ onNext }: { onNext: () => void }) {
+  const t = useT();
   const { onboarding, setKeystoneAction, updateOnboarding } = useMonkStore();
   const goals = onboarding.goalDrafts.filter((goal) => onboarding.selectedFocusGoalIds.includes(goal.id));
   const result = validateKeystoneActions(onboarding.selectedFocusGoalIds, onboarding.keystoneActions);
@@ -488,7 +491,7 @@ export function KeystoneSetup({ onNext }: { onNext: () => void }) {
                   onChange={(event) => updateDraft(goal.id, "action", event.target.value)}
                 />
               </div>
-              <p className="mt-2 text-xs text-monk-muted">One specific, repeatable action.</p>
+              <p className="mt-2 text-xs text-monk-muted">{t("onboarding.keystone.hint")}</p>
               <TextInput
                 label="Why this goal (optional)"
                 id={`goal-why-${goal.id}`}
@@ -603,6 +606,7 @@ export function CoachHint({
 }
 
 export function PlanTomorrow({ goals }: { goals: ReturnType<typeof selectActiveGoals> }) {
+  const t = useT();
   const store = useMonkStore();
   const season = store.activeSeason!;
   const tomorrowDate = addDaysToDate(getTodayDateString(), 1);
@@ -628,7 +632,7 @@ export function PlanTomorrow({ goals }: { goals: ReturnType<typeof selectActiveG
           <div>
             <p className="text-xs text-monk-text-soft uppercase tracking-wider font-semibold">Tomorrow's Focus</p>
             <p className="mt-1 font-semibold text-base">
-              {tomorrowPlan.dayType === "rest" ? "Quiet recovery (Rest)" : goal?.title}
+              {tomorrowPlan.dayType === "rest" ? t("today.planTomorrow.quietRecovery") : goal?.title}
             </p>
           </div>
           <button
@@ -645,8 +649,8 @@ export function PlanTomorrow({ goals }: { goals: ReturnType<typeof selectActiveG
 
   return (
     <Card>
-      <p className="font-semibold text-sm">Plan Tomorrow</p>
-      <p className="mt-1 text-xs text-monk-muted">Decide your focus theme one day before.</p>
+      <p className="font-semibold text-sm">{t("today.planTomorrow.title")}</p>
+      <p className="mt-1 text-xs text-monk-muted">{t("today.planTomorrow.subtitle")}</p>
       <div className="mt-4 flex flex-wrap gap-2">
         {goals.map((item) => (
           <button
@@ -663,7 +667,7 @@ export function PlanTomorrow({ goals }: { goals: ReturnType<typeof selectActiveG
           className="min-h-9 rounded-xl border border-monk-border bg-monk-soft px-3 text-xs font-medium text-monk-muted hover:border-monk-accent hover:text-monk-accent"
           onClick={() => handleSelect(undefined, "rest")}
         >
-          Rest
+          {t("today.planTomorrow.rest")}
         </button>
       </div>
     </Card>
@@ -671,6 +675,7 @@ export function PlanTomorrow({ goals }: { goals: ReturnType<typeof selectActiveG
 }
 
 export function WeeklyStatusIndicators() {
+  const t = useT();
   const store = useMonkStore();
   const weeklyPlan = selectCurrentWeeklyPlan(store);
   const goals = selectActiveGoals(store);
@@ -682,7 +687,7 @@ export function WeeklyStatusIndicators() {
   return (
     <Card className="p-4">
       <div className="mb-3 flex items-center justify-between gap-3">
-        <p className="font-semibold text-sm">This week</p>
+        <p className="font-semibold text-sm">{t("today.planTomorrow.thisWeek")}</p>
         <span className="text-xs font-mono text-monk-muted tabular-nums">{doneDays}/{targetDays} focus</span>
       </div>
       <div className="space-y-3">

@@ -44,37 +44,37 @@ const CATEGORY_CONFIG: Record<
   deep_work: {
     labelKey: "planning.catDeep",
     icon: Zap,
-    colorClass: "text-amber-500 dark:text-amber-400",
-    bgClass: "bg-amber-500/10",
-    borderClass: "border-amber-500/30"
+    colorClass: "text-monk-cat-deep",
+    bgClass: "bg-monk-cat-deep/10",
+    borderClass: "border-monk-cat-deep/30"
   },
   learning: {
     labelKey: "planning.catLearning",
     icon: BookOpen,
-    colorClass: "text-purple-500 dark:text-purple-400",
-    bgClass: "bg-purple-500/10",
-    borderClass: "border-purple-500/30"
+    colorClass: "text-monk-cat-learning",
+    bgClass: "bg-monk-cat-learning/10",
+    borderClass: "border-monk-cat-learning/30"
   },
   shallow: {
     labelKey: "planning.catShallow",
     icon: Briefcase,
-    colorClass: "text-blue-500 dark:text-blue-400",
-    bgClass: "bg-blue-500/10",
-    borderClass: "border-blue-500/30"
+    colorClass: "text-monk-cat-shallow",
+    bgClass: "bg-monk-cat-shallow/10",
+    borderClass: "border-monk-cat-shallow/30"
   },
   rest: {
     labelKey: "planning.catRest",
     icon: Coffee,
-    colorClass: "text-emerald-500 dark:text-emerald-400",
-    bgClass: "bg-emerald-500/10",
-    borderClass: "border-emerald-500/30"
+    colorClass: "text-monk-cat-rest",
+    bgClass: "bg-monk-cat-rest/10",
+    borderClass: "border-monk-cat-rest/30"
   },
   personal: {
     labelKey: "planning.catPersonal",
     icon: User,
-    colorClass: "text-rose-500 dark:text-rose-400",
-    bgClass: "bg-rose-500/10",
-    borderClass: "border-rose-500/30"
+    colorClass: "text-monk-cat-personal",
+    bgClass: "bg-monk-cat-personal/10",
+    borderClass: "border-monk-cat-personal/30"
   }
 };
 
@@ -310,12 +310,12 @@ export function MorningPlanningModal({
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.96, y: 14 }}
           transition={{ duration: 0.2, ease: "easeOut" }}
-          className="relative w-full max-w-2xl max-h-[92vh] flex flex-col rounded-3xl border border-monk-border/80 bg-monk-surface shadow-2xl overflow-hidden my-auto"
+          className="relative w-full max-w-2xl max-h-[92vh] flex flex-col rounded-monk-lg border border-monk-border/80 bg-monk-surface shadow-2xl overflow-hidden my-auto"
         >
           {/* Header */}
           <div className="flex items-center justify-between border-b border-monk-border/50 px-5 py-3.5 bg-monk-soft/30">
             <div className="flex items-center gap-2.5">
-              <div className="grid h-9 w-9 place-items-center rounded-2xl bg-amber-500/15 text-amber-500 dark:text-amber-400">
+              <div className="grid h-9 w-9 place-items-center rounded-2xl bg-monk-warning/15 text-monk-warning">
                 <Clock size={18} strokeWidth={2.2} />
               </div>
               <div>
@@ -345,7 +345,7 @@ export function MorningPlanningModal({
                 <div
                   className={`grid h-9 w-9 place-items-center rounded-xl font-mono text-xs font-bold transition ${
                     timerRunning
-                      ? "border border-amber-500/40 bg-amber-500/15 text-amber-500 animate-pulse"
+                      ? "border border-monk-warning/40 bg-monk-warning/15 text-monk-warning animate-pulse"
                       : "border border-monk-border bg-monk-surface text-monk-muted"
                   }`}
                 >
@@ -415,16 +415,16 @@ export function MorningPlanningModal({
             </div>
 
             {/* Daily Highlight (Make Time Framework) */}
-            <div className="rounded-2xl border border-amber-500/30 bg-amber-500/[0.06] p-4 space-y-2.5">
+            <div className="rounded-2xl border border-monk-warning/30 bg-monk-warning/[0.06] p-4 space-y-2.5">
               <div className="flex items-center justify-between gap-2">
                 <div className="flex items-center gap-2">
-                  <div className="grid h-6 w-6 place-items-center rounded-lg bg-amber-500/20 text-amber-600 dark:text-amber-400">
+                  <div className="grid h-6 w-6 place-items-center rounded-lg bg-monk-warning/20 text-monk-warning">
                     <Sparkles size={13} />
                   </div>
                   <span className="text-xs font-bold uppercase tracking-wider text-monk-text">
                     {t("planning.dailyHighlight")}
                   </span>
-                  <span className="rounded-md border border-amber-500/30 bg-amber-500/10 px-1.5 py-0.5 text-[9px] font-bold uppercase text-amber-600 dark:text-amber-400">
+                  <span className="rounded-md border border-monk-warning/30 bg-monk-warning/10 px-1.5 py-0.5 text-[9px] font-bold uppercase text-monk-warning">
                     {t("planning.dailyHighlightBadge")}
                   </span>
                 </div>
@@ -432,7 +432,7 @@ export function MorningPlanningModal({
                   <button
                     type="button"
                     onClick={handleAddHighlightAsBlock}
-                    className="inline-flex items-center gap-1 rounded-lg border border-amber-500/30 bg-amber-500/15 px-2 py-1 text-[11px] font-semibold text-amber-700 dark:text-amber-300 hover:bg-amber-500/25 transition active:scale-95"
+                    className="inline-flex items-center gap-1 rounded-lg border border-monk-warning/30 bg-monk-warning/15 px-2 py-1 text-[11px] font-semibold text-monk-warning hover:bg-monk-warning/25 transition active:scale-95"
                     title={t("planning.highlightAddToBlocks")}
                   >
                     <Plus size={11} />
@@ -451,7 +451,7 @@ export function MorningPlanningModal({
                   value={dailyHighlight}
                   onChange={(e) => setDailyHighlight(e.target.value)}
                   placeholder={t("planning.dailyHighlightPlaceholder")}
-                  className="w-full rounded-xl border border-amber-500/30 bg-monk-surface px-3.5 py-2 text-xs font-medium text-monk-text placeholder:text-monk-muted/60 focus:border-amber-500 focus:ring-1 focus:ring-amber-500/40 focus:outline-none transition shadow-2xs"
+                  className="w-full rounded-xl border border-monk-warning/30 bg-monk-surface px-3.5 py-2 text-xs font-medium text-monk-text placeholder:text-monk-muted/60 focus:border-monk-warning focus:ring-1 focus:ring-monk-warning/40 focus:outline-none transition shadow-2xs"
                 />
               </div>
             </div>

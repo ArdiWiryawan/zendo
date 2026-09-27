@@ -134,7 +134,7 @@ export function GoalBlueprintModal({ goalId, isOpen, onClose }: GoalBlueprintMod
         role="dialog"
         aria-modal="true"
         aria-labelledby="blueprint-dialog-title"
-        className="relative z-10 flex max-h-[92dvh] sm:max-h-[88vh] w-full sm:max-w-[560px] flex-col rounded-t-[28px] sm:rounded-[28px] border border-monk-border bg-monk-surface shadow-2xl overflow-hidden"
+        className="relative z-10 flex max-h-[92dvh] sm:max-h-[88vh] w-full sm:max-w-[560px] flex-col rounded-t-monk-lg sm:rounded-monk-lg border border-monk-border bg-monk-surface shadow-2xl overflow-hidden"
       >
         {/* Mobile drag handle */}
         <div className="flex justify-center pt-2.5 sm:hidden">
@@ -270,7 +270,7 @@ export function GoalBlueprintModal({ goalId, isOpen, onClose }: GoalBlueprintMod
               {/* Pillar 3: When & Where */}
               <div className="rounded-2xl border border-monk-border bg-monk-soft/40 p-3.5 space-y-2">
                 <div className="flex items-center gap-2 text-monk-text font-bold text-xs uppercase tracking-wider">
-                  <div className="grid h-5 w-5 place-items-center rounded bg-blue-500/20 text-blue-500">
+                  <div className="grid h-5 w-5 place-items-center rounded bg-monk-cat-shallow/20 text-monk-cat-shallow">
                     <Clock size={12} />
                   </div>
                   <span>{t("blueprint.pillar3Title")}</span>
