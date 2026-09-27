@@ -1104,9 +1104,13 @@ export const en = {
   "timeline.streak.completed": "Completed",
   "timeline.streak.missed": "Missed (Bolong)",
   "timeline.streak.rest": "Rest",
+  "timeline.streak.partial": "Partial",
   "timeline.daily.nowMarker": "NOW",
   "timeline.daily.noBlocks": "No time blocks planned for today yet.",
   "timeline.daily.planTodayCta": "Open Daily Planning",
+  "timeline.daily.blocksPlanned": "{n} blocks planned",
+  "timeline.daily.editPlanCta": "Edit Plan",
+  "timeline.daily.emptyHint": "Start the day with 10-15 minutes of time blocking to map your priorities and focus hours.",
 
   "why.sectionTitle": "Start With Why",
   "why.coreQuestion": "Why does this matter to you?",

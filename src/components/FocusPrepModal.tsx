@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   Wind,
   CheckCircle2,
@@ -10,7 +10,7 @@ import {
   Check
 } from "lucide-react";
 import { useT } from "../i18n";
-import { PrimaryButton, GhostButton } from "./ui";
+import { PrimaryButton, GhostButton, useModalA11y } from "./ui";
 import { hapticPress } from "../lib/haptics";
 import { playFocusChime, playZenBell, unlockAudio } from "../lib/audio";
 
@@ -100,18 +100,9 @@ export function FocusPrepModal({
     return () => clearInterval(cycle);
   }, [isOpen, activeTab]);
 
-  // Escape key handler
-  useEffect(() => {
-    if (!isOpen) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        e.preventDefault();
-        onClose();
-      }
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [isOpen, onClose]);
+  // Escape closes, Tab stays inside, focus returns to the opener on unmount.
+  const cardRef = useRef<HTMLDivElement>(null);
+  useModalA11y({ open: isOpen, ref: cardRef, onClose });
 
   if (!isOpen) return null;
 
@@ -150,6 +141,8 @@ export function FocusPrepModal({
 
       {/* Main Modal Card */}
       <div
+        ref={cardRef}
+        tabIndex={-1}
         role="dialog"
         aria-modal="true"
         aria-labelledby="prep-dialog-title"
@@ -208,7 +201,7 @@ export function FocusPrepModal({
               }}
               className={`flex items-center gap-1 px-3 py-1.5 rounded-xl border text-xs font-semibold transition active:scale-95 ${
                 isRunning
-                  ? "border-monk-accent bg-monk-accent text-white shadow-xs"
+                  ? "border-monk-accent bg-monk-accent text-monk-bg shadow-xs"
                   : "border-monk-border bg-monk-surface text-monk-text hover:border-monk-accent"
               }`}
             >
@@ -292,7 +285,7 @@ export function FocusPrepModal({
                       <span
                         className={`grid h-6 w-6 shrink-0 place-items-center rounded-full border-2 transition ${
                           isChecked
-                            ? "border-monk-accent bg-monk-accent text-white"
+                            ? "border-monk-accent bg-monk-accent text-monk-bg"
                             : "border-monk-border-strong bg-monk-surface"
                         }`}
                       >

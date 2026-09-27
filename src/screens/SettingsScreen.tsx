@@ -277,7 +277,7 @@ export default function SettingsScreen() {
             <button
               type="button"
               onClick={() => setProModalOpen(true)}
-              className="w-full flex items-center justify-center gap-2 rounded-2xl bg-monk-accent px-4 py-3 text-xs sm:text-sm font-bold text-white shadow-md transition active:scale-[0.98] hover:opacity-95 hover:shadow-lg border border-monk-warning/30"
+              className="w-full flex items-center justify-center gap-2 rounded-2xl bg-monk-accent px-4 py-3 text-xs sm:text-sm font-bold text-monk-bg shadow-md transition active:scale-[0.98] hover:opacity-95 hover:shadow-lg border border-monk-warning/30"
             >
               <Sparkles size={15} className="text-monk-warning" />
               <span>{lang === "id" ? "☕ Donasi / Traktir Kopi via QRIS" : "☕ Tip / Donate via QRIS"}</span>

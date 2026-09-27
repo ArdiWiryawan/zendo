@@ -118,7 +118,7 @@ export function WeekScreen() {
         ) : (
           <>
             <DefenseChips />
-            <div className="space-y-5 lg:grid lg:grid-cols-[minmax(0,1fr)_320px] lg:gap-8 lg:items-start lg:space-y-0 xl:grid-cols-[minmax(0,1fr)_360px]">
+            <div className="space-y-5">
             <div className="min-w-0 space-y-5">
             <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}>
             <Card className="relative p-5 sm:p-6 bg-monk-surface/40 backdrop-blur-sm shadow-[inset_0_1px_0_rgba(255,255,255,0.04),0_2px_12px_rgba(0,0,0,0.3)] border-monk-border/40 overflow-hidden">
@@ -383,7 +383,7 @@ export function WeekScreen() {
             ) : null}
 
             </div>
-            <div className="min-w-0 space-y-5 lg:pt-1">
+            <div className="min-w-0 space-y-5">
             <div>
               <SectionHeader title={t("week.goalsTitle")} subtitle={t("week.goalsSubtitle")} />
               <div className="space-y-3">
@@ -595,7 +595,7 @@ function WeekReviewCard({
             <button
               type="button"
               onClick={onOpenFullReview}
-              className="flex items-center gap-1.5 rounded-lg bg-monk-accent px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition active:scale-95 hover:bg-monk-accent-hover"
+              className="flex items-center gap-1.5 rounded-lg bg-monk-accent px-3 py-1.5 text-xs font-semibold text-monk-bg shadow-sm transition active:scale-95 hover:bg-monk-accent-hover"
             >
               <Sparkles size={12} />
               <span>{t("week.openReviewModal")}</span>

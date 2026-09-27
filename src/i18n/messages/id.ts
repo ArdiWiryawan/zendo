@@ -1106,9 +1106,13 @@ export const id: Record<MessageKey, string> = {
   "timeline.streak.completed": "Selesai",
   "timeline.streak.missed": "Bolong",
   "timeline.streak.rest": "Istirahat",
+  "timeline.streak.partial": "Sebagian",
   "timeline.daily.nowMarker": "SEKARANG",
   "timeline.daily.noBlocks": "Belum ada time block untuk hari ini.",
   "timeline.daily.planTodayCta": "Buka Planning Harian",
+  "timeline.daily.blocksPlanned": "{n} blok terencana",
+  "timeline.daily.editPlanCta": "Ubah Rencana",
+  "timeline.daily.emptyHint": "Mulai hari dengan time blocking 10-15 menit untuk memetakan prioritas dan jam fokus.",
 
   "why.sectionTitle": "Mulai Dari 'Why'",
   "why.coreQuestion": "Mengapa ini penting bagimu?",

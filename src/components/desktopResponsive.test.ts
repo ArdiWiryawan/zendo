@@ -13,17 +13,18 @@ const week = () => src("src/screens/WeekScreen.tsx");
 const timeline = () => src("src/screens/TimelineScreen.tsx");
 const css = () => src("src/styles/globals.css");
 
-// Two-column desktop grid pattern used by Today/Week/Timeline.
-const GRID = /lg:grid lg:grid-cols-\[minmax\(0,1fr\)_\d+px\]/g;
-const GRID_XL = /xl:grid-cols-\[minmax\(0,1fr\)_\d+px\]/g;
+// Phone-first: desktop is the mobile column, centred. Any desktop-tier
+// widening utility would contradict that, so the screens must contain none at
+// all. `sm:` is a phone-class tweak and is expected to remain.
+const DESKTOP_TIER = /(?:^|[\s"'])(lg|xl|2xl):/g;
 
-describe("ScreenContainer desktop tier", () => {
-  it("widens at lg/xl while keeping the mobile base", () => {
+describe("ScreenContainer is a single phone column", () => {
+  it("caps at the 480px mobile width and does not widen", () => {
     const s = ui();
-    expect(s).toContain("max-w-[430px]");
-    expect(s).toContain("lg:max-w-3xl");
-    expect(s).toContain("xl:max-w-5xl");
-    expect(s).toContain("lg:px-8");
+    expect(s).toContain("max-w-[480px]");
+    expect(s).not.toContain("lg:max-w-3xl");
+    expect(s).not.toContain("xl:max-w-5xl");
+    expect(s).not.toContain("lg:px-8");
     // Mobile base padding untouched.
     expect(s).toContain("px-6 pt-[calc(env(safe-area-inset-top)+24px)]");
   });
@@ -34,12 +35,6 @@ describe("ScreenContainer desktop tier", () => {
     // end of the page; it cannot stop mid-page content passing under the nav.
     expect(s).toContain("pb-[calc(env(safe-area-inset-bottom)+148px)]");
     expect(s).toContain("withBottomNavPadding ? BOTTOM_NAV_SAFE_SPACE : \"pb-8\"");
-  });
-
-  it("new width classes are lg: or larger only", () => {
-    const s = ui();
-    const wideners = s.match(/(sm|md):max-w-\S+/g) ?? [];
-    expect(wideners).toEqual([]);
   });
 });
 
@@ -72,41 +67,25 @@ describe.each([
   ["Today", today],
   ["Week", week],
   ["Timeline", timeline]
-])("%s two-column layout", (_name, load) => {
-  it("grids at lg with an xl widening, stacked below", () => {
-    const s = load();
-    expect(s.match(GRID)?.length ?? 0).toBeGreaterThanOrEqual(1);
-    expect(s.match(GRID_XL)?.length ?? 0).toBeGreaterThanOrEqual(1);
+])("%s stays a phone stack", (_name, load) => {
+  it("has no desktop-tier widening utilities", () => {
+    const found = load().match(DESKTOP_TIER) ?? [];
+    expect(found).toEqual([]);
   });
 
-  it("stacks vertically on mobile (base space-y kept before lg:grid)", () => {
+  it("has no two-column grid tier", () => {
     const s = load();
-    const stacked = s.match(/space-y-\d+ lg:grid/g) ?? [];
-    expect(stacked.length).toBeGreaterThanOrEqual(1);
+    expect(s).not.toMatch(/lg:grid/);
+    expect(s).not.toMatch(/grid-cols-\[minmax\(0,1fr\)_/);
+    expect(s).not.toMatch(/lg:space-y-0/);
   });
 
-  it("resets stack spacing when the grid takes over", () => {
-    const s = load();
-    const grids = s.match(GRID) ?? [];
-    const resets = s.match(/lg:space-y-0/g) ?? [];
-    expect(resets.length).toBeGreaterThanOrEqual(grids.length);
+  it("keeps a plain vertical stack between sections", () => {
+    expect(load()).toMatch(/className="space-y-\d+"/);
   });
 
-  it("grid children can shrink (min-w-0 prevents overflow)", () => {
-    const s = load();
-    const grids = s.match(GRID) ?? [];
-    const shrinkable = s.match(/min-w-0/g) ?? [];
-    expect(shrinkable.length).toBeGreaterThanOrEqual(grids.length);
-  });
-
-  it("uses minmax(0,1fr) tracks, never bare 1fr at lg", () => {
-    const s = load();
-    const bare = s.match(/lg:grid-cols-\[1fr_/g) ?? [];
-    expect(bare).toEqual([]);
-  });
-
-  it("no md: tier changes — mobile unchanged, desktop starts at lg", () => {
-    expect(load()).not.toContain("md:");
+  it("still guards shrinkable children that once fed the grid track", () => {
+    expect(load()).toMatch(/min-w-0/);
   });
 
   it("no viewport-width overflow hazards", () => {
@@ -120,11 +99,14 @@ describe("no horizontal overflow (page level)", () => {
     expect(css()).toMatch(/html\s*{[^}]*overflow-x:\s*hidden/);
   });
 
-  it("root caps width per breakpoint", () => {
+  it("root caps at the 480px phone width at every breakpoint", () => {
     const s = css();
     expect(s).toContain("#root > *");
-    expect(s).toContain("@media (min-width: 1024px)");
-    expect(s).toContain("@media (min-width: 1280px)");
+    const caps = s.match(/max-width:\s*480px/g) ?? [];
+    expect(caps.length).toBeGreaterThanOrEqual(1);
+    // The old 1024/1280 widening media blocks must be gone.
+    expect(s).not.toContain("max-width: 1024px");
+    expect(s).not.toContain("max-width: 1280px");
   });
 });
 
@@ -133,13 +115,38 @@ describe("mobile base intact", () => {
     expect(week()).toContain('<div className="space-y-5">');
   });
 
-  it("Timeline filter row keeps mobile sizing with lg cap only", () => {
-    expect(timeline()).toContain("lg:max-w-md");
+  it("Timeline view switcher row is uncapped (no dangling lg: cap)", () => {
+    expect(timeline()).not.toContain("lg:max-w-md");
+  });
+});
+
+describe("launcher icons are distinct real files", () => {
+  it("maskable icons are not copies of the any-purpose icons", () => {
+    const read = (p: string) => readFileSync(p);
+    expect(read("public/icons/maskable-512.png").equals(read("public/icons/icon-512.png"))).toBe(false);
+    expect(read("public/icons/maskable-192.png").equals(read("public/icons/icon-192.png"))).toBe(false);
+  });
+
+  it("favicon.ico is a real ICO container, not a renamed PNG", () => {
+    const head = readFileSync("public/favicon.ico").subarray(0, 4);
+    // PNG magic is 89 50 4E 47; ICO reserves the first two bytes and uses 01 00.
+    expect(head[0]).toBe(0x00);
+    expect(head[1]).toBe(0x00);
+    expect(head[2]).toBe(0x01);
+    expect(head[3]).toBe(0x00);
   });
 });
 
 describe("touched i18n keys exist in both locales", () => {
-  for (const key of ["focusPrep.breathRest", "today.energy.tank"] as const) {
+  const keys = [
+    "focusPrep.breathRest",
+    "today.energy.tank",
+    "timeline.streak.partial",
+    "timeline.daily.blocksPlanned",
+    "timeline.daily.editPlanCta",
+    "timeline.daily.emptyHint"
+  ] as const;
+  for (const key of keys) {
     it(key, () => {
       expect(en[key]).toBeTruthy();
       expect(id[key]).toBeTruthy();

@@ -21,16 +21,20 @@ import {
   writeNotebookDraft
 } from "../lib/storage";
 
-const CATEGORY_HEX: Record<string, string> = {
-  cat_pribadi: "#e07c6b",
-  cat_karier: "#6b9ac4",
-  cat_keuangan: "#6bb48b",
-  cat_kesehatan: "#c48bb4",
-  cat_hubungan: "#c4a06b",
-  cat_spiritual: "#8b9dc4",
-  cat_perjalanan: "#6bc4b4",
-  cat_kreatif: "#c48b6b",
-  cat_lainnya: "#a0a0a0"
+// Category hues resolve through the per-theme tokens in globals.css rather than
+// literal hex, so the notebook stays legible in every theme. Built-in categories
+// map onto the time-block category hues (also re-declared per theme); user-made
+// ones map onto the themed --nb-user-* pool.
+const CATEGORY_TOKEN: Record<string, string> = {
+  cat_pribadi: "--color-cat-deep",
+  cat_karier: "--color-cat-shallow",
+  cat_keuangan: "--color-cat-rest",
+  cat_kesehatan: "--color-cat-personal",
+  cat_hubungan: "--nb-user-5",
+  cat_spiritual: "--color-cat-learning",
+  cat_perjalanan: "--nb-user-7",
+  cat_kreatif: "--nb-user-8",
+  cat_lainnya: "--nb-user-6"
 };
 
 // Same palette used to color category chips; the kebab menu for a category
@@ -122,13 +126,12 @@ function CategoryMenu({
   );
 }
 
-// Zendo-palette fallback pool for user-created categories. Each id maps to a
-// stable color via a small string hash, so the same category keeps its color
-// across renders/sessions but new categories land on varied on-palette hues
-// instead of the grey fallback.
-const CUSTOM_CATEGORY_PALETTE = [
-  "#e07c6b", "#6b9ac4", "#6bb48b", "#c48bb4",
-  "#c4a06b", "#8b9dc4", "#6bc4b4", "#c48b6b"
+// Fallback pool for user-created categories. Each id maps to a stable slot via a
+// small string hash, so the same category keeps its tint across renders and
+// sessions, while new categories land on varied on-palette hues.
+const CUSTOM_CATEGORY_TOKENS = [
+  "--nb-user-1", "--nb-user-2", "--nb-user-3", "--nb-user-4",
+  "--nb-user-5", "--nb-user-6", "--nb-user-7", "--nb-user-8"
 ];
 
 function hashId(s: string): number {
@@ -137,9 +140,8 @@ function hashId(s: string): number {
   return h;
 }
 
-function catHex(id: string) {
-  if (CATEGORY_HEX[id]) return CATEGORY_HEX[id];
-  return CUSTOM_CATEGORY_PALETTE[hashId(id) % CUSTOM_CATEGORY_PALETTE.length];
+function catToken(id: string): string {
+  return CATEGORY_TOKEN[id] ?? CUSTOM_CATEGORY_TOKENS[hashId(id) % CUSTOM_CATEGORY_TOKENS.length];
 }
 
 function wordCount(text: string) {
@@ -429,7 +431,7 @@ export default function JournalNotebook({ onEditingChange, initialEntryId }: { o
           {t("notebook.all")}
         </button>
         {categories.map((cat) => {
-          const hex = catHex(cat.id);
+          const token = catToken(cat.id);
           const isActive = filterCat === cat.id;
           const count = entries.filter((e) => e.categoryId === cat.id).length;
           const menuOpen = catMenu?.id === cat.id;
@@ -438,8 +440,10 @@ export default function JournalNotebook({ onEditingChange, initialEntryId }: { o
               <div
                 className="flex items-center rounded-full border py-1.5 pl-3 pr-1.5 text-xs font-semibold transition duration-200"
                 style={{
-                  borderColor: isActive ? hex : "var(--color-border)",
-                  backgroundColor: isActive ? `${hex}18` : "var(--color-surface)"
+                  borderColor: isActive ? `rgb(var(${token}))` : "var(--color-border)",
+                  backgroundColor: isActive
+                    ? `rgb(var(${token}) / 0.09)`
+                    : "var(--color-surface)"
                 }}
               >
                 <button
@@ -448,10 +452,13 @@ export default function JournalNotebook({ onEditingChange, initialEntryId }: { o
                   onClick={() => setFilterCat(isActive ? null : cat.id)}
                   className="flex items-center gap-1.5 text-xs font-semibold active:scale-[0.97]"
                   style={{
-                    color: isActive ? hex : "var(--color-text-muted)"
+                    color: isActive ? `rgb(var(${token}))` : "var(--color-text-muted)"
                   }}
                 >
-                  <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: hex }} />
+                  <span
+                    className="h-1.5 w-1.5 rounded-full"
+                    style={{ backgroundColor: `rgb(var(${token}))` }}
+                  />
                   {cat.name}
                   {count > 0 ? (
                     <span className="font-mono text-[10px] opacity-70">{count}</span>
@@ -523,7 +530,7 @@ export default function JournalNotebook({ onEditingChange, initialEntryId }: { o
       ) : (
         <div className="space-y-3">
           {sorted.map((entry, index) => {
-            const hex = catHex(entry.categoryId);
+            const token = catToken(entry.categoryId);
             const cat = categories.find((c) => c.id === entry.categoryId);
             return (
               <article
@@ -573,9 +580,15 @@ export default function JournalNotebook({ onEditingChange, initialEntryId }: { o
                     ) : null}
                     <span
                       className="inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 font-semibold uppercase tracking-wide"
-                      style={{ borderColor: `${hex}44`, color: hex }}
+                      style={{
+                        borderColor: `rgb(var(${token}) / 0.27)`,
+                        color: `rgb(var(${token}))`
+                      }}
                     >
-                      <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: hex }} />
+                      <span
+                        className="h-1.5 w-1.5 rounded-full"
+                        style={{ backgroundColor: `rgb(var(${token}))` }}
+                      />
                       {cat?.name ?? t("notebook.other")}
                     </span>
                     <span className="font-mono">{formatRelative(entry.updatedAt, t, dateLocale)}</span>
@@ -727,7 +740,7 @@ export function NotebookEntryDetail({
   const liveEntry = store.notebookEntries.find((e) => e.id === entry.id) ?? entry;
   const body = liveEntry.body ?? "";
   const cat = store.notebookCategories.find((c) => c.id === liveEntry.categoryId);
-  const hex = catHex(liveEntry.categoryId);
+  const token = catToken(liveEntry.categoryId);
   const rawPages = liveEntry.pages && liveEntry.pages.length > 0 ? liveEntry.pages : [body];
   const pages = trimTrailingBlankPages(rawPages);
   const words = wordCount(body);
@@ -800,9 +813,16 @@ export function NotebookEntryDetail({
           ) : null}
           <span
             className="inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide"
-            style={{ borderColor: `${hex}44`, color: hex, backgroundColor: `${hex}14` }}
+            style={{
+              borderColor: `rgb(var(${token}) / 0.27)`,
+              color: `rgb(var(${token}))`,
+              backgroundColor: `rgb(var(${token}) / 0.08)`
+            }}
           >
-            <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: hex }} />
+            <span
+              className="h-1.5 w-1.5 rounded-full"
+              style={{ backgroundColor: `rgb(var(${token}))` }}
+            />
             {cat?.name ?? t("notebook.other")}
           </span>
           <span className="min-w-0 flex-1 truncate text-xs font-semibold text-monk-accent">
@@ -834,7 +854,13 @@ export function NotebookEntryDetail({
       {/* Unified Paper Sheet Container */}
       <div
         className="nb-open-page nb-open-enter mt-4 select-text"
-        style={{ "--nb-cat": hex } as React.CSSProperties}
+        style={
+          {
+            // Resolved here because --nb-cat feeds `background`, `caret-color`
+            // and `border-color`, which have no alpha slot to wrap it in.
+            "--nb-cat": `rgb(var(${token}))`
+          } as React.CSSProperties
+        }
       >
         <h1 className="nb-page-title m-0 select-text">
           {liveEntry.title || t("notebook.untitled")}
@@ -1507,7 +1533,7 @@ export function NotebookEditor({
     return () => window.removeEventListener("keydown", onKey);
   }, [handleSave]);
 
-  const activeCatHex = catHex(catId);
+  const activeCatToken = catToken(catId);
   const words = pages.reduce((n, p) => n + wordCount(p), 0);
   // Save gate must consider ALL pages, not just the page in view: a note whose
   // content lives on another page but whose current page is empty would
@@ -1609,7 +1635,7 @@ export function NotebookEditor({
         <>
         <div className="flex items-center gap-1.5 overflow-x-auto pb-3 pt-2 scrollbar-none">
           {categories.map((cat) => {
-            const hex = catHex(cat.id);
+            const token = catToken(cat.id);
             const active = catId === cat.id;
             const menuOpen = catMenu?.id === cat.id;
             return (
@@ -1617,9 +1643,11 @@ export function NotebookEditor({
                 <div
                   className="flex h-8 items-center rounded-full border pl-2.5 pr-1 text-xs font-medium transition-all"
                   style={{
-                    borderColor: active ? `${hex}88` : "var(--color-border)",
-                    backgroundColor: active ? `${hex}18` : "var(--color-surface)",
-                    color: active ? hex : "var(--color-text-muted)"
+                    borderColor: active ? `rgb(var(${token}) / 0.53)` : "var(--color-border)",
+                    backgroundColor: active
+                      ? `rgb(var(${token}) / 0.09)`
+                      : "var(--color-surface)",
+                    color: active ? `rgb(var(${token}))` : "var(--color-text-muted)"
                   }}
                 >
                   <button
@@ -1633,7 +1661,11 @@ export function NotebookEditor({
                   >
                     <span
                       className="h-1.5 w-1.5 rounded-full shrink-0"
-                      style={{ backgroundColor: active ? hex : "var(--color-text-soft)" }}
+                      style={{
+                        backgroundColor: active
+                          ? `rgb(var(${token}))`
+                          : "var(--color-text-soft)"
+                      }}
                     />
                     <span className="whitespace-nowrap">{cat.name}</span>
                   </button>
@@ -1916,7 +1948,7 @@ export function NotebookEditor({
       <div
         ref={sheetRef}
         className="nb-open-page nb-open-enter"
-        style={{ "--nb-cat": activeCatHex } as React.CSSProperties}
+        style={{ "--nb-cat": `rgb(var(${activeCatToken}))` } as React.CSSProperties}
       >
         <textarea
           ref={titleRef}

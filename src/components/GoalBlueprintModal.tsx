@@ -14,7 +14,7 @@ import {
 } from "lucide-react";
 import { useMonkStore } from "../store/useMonkStore";
 import { useT } from "../i18n";
-import { PrimaryButton, SecondaryButton, TextInput, Textarea, useCalmToast } from "./ui";
+import { PrimaryButton, SecondaryButton, TextInput, Textarea, useCalmToast, useModalA11y } from "./ui";
 import { hapticPress } from "../lib/haptics";
 import { GOAL_TEMPLATES, GoalBlueprintTemplate } from "../constants/goalTemplates";
 
@@ -64,21 +64,16 @@ export function GoalBlueprintModal({ goalId, isOpen, onClose }: GoalBlueprintMod
     }
   }, [goal, isOpen]);
 
-  useEffect(() => {
-    if (!isOpen) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        e.preventDefault();
-        if (showTemplates) {
-          setShowTemplates(false);
-        } else {
-          onClose();
-        }
-      }
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [isOpen, onClose, showTemplates]);
+  // Escape closes (backing out of the template picker first), Tab stays inside,
+  // focus returns to the opener on unmount.
+  useModalA11y({
+    open: isOpen,
+    ref: modalRef,
+    onClose: () => {
+      if (showTemplates) setShowTemplates(false);
+      else onClose();
+    }
+  });
 
   if (!goal || !isOpen) return null;
 
@@ -131,6 +126,7 @@ export function GoalBlueprintModal({ goalId, isOpen, onClose }: GoalBlueprintMod
       {/* Main Modal / Bottom Sheet */}
       <div
         ref={modalRef}
+        tabIndex={-1}
         role="dialog"
         aria-modal="true"
         aria-labelledby="blueprint-dialog-title"
@@ -167,7 +163,7 @@ export function GoalBlueprintModal({ goalId, isOpen, onClose }: GoalBlueprintMod
                 }}
                 className={`flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-[11px] font-semibold transition active:scale-95 ${
                   showTemplates
-                    ? "bg-monk-accent text-white shadow-sm"
+                    ? "bg-monk-accent text-monk-bg shadow-sm"
                     : "border border-monk-accent/40 bg-monk-accent/10 text-monk-accent hover:bg-monk-accent/20"
                 }`}
               >
@@ -250,7 +246,7 @@ export function GoalBlueprintModal({ goalId, isOpen, onClose }: GoalBlueprintMod
               {/* Pillar 2: Next Keystone Action */}
               <div className="rounded-2xl border border-monk-accent/30 bg-monk-accent-soft/20 p-3.5 space-y-2">
                 <div className="flex items-center gap-2 text-monk-accent font-bold text-xs uppercase tracking-wider">
-                  <div className="grid h-5 w-5 place-items-center rounded bg-monk-accent text-white">
+                  <div className="grid h-5 w-5 place-items-center rounded bg-monk-accent text-monk-bg">
                     <Zap size={12} />
                   </div>
                   <span>{t("blueprint.pillar2Title")}</span>

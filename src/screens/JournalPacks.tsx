@@ -1,6 +1,6 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { useMonkStore } from "../store/useMonkStore";
-import { Card, PrimaryButton, SecondaryButton, GhostButton, EmptyState } from "../components/ui";
+import { Card, PrimaryButton, SecondaryButton, GhostButton, EmptyState, useModalA11y } from "../components/ui";
 import { Lock, ChevronLeft, Check, Crown, Sparkles } from "lucide-react";
 import type { JournalPack, JournalPackSession } from "../types/app";
 import { useT, useLanguage } from "../i18n";
@@ -110,7 +110,7 @@ function PackList({
       {!isPro && (
         <div className="rounded-2xl border border-monk-accent/40 bg-gradient-to-r from-monk-accent-soft/40 via-monk-surface to-monk-surface p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-sm">
           <div className="flex items-center gap-3">
-            <div className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-monk-accent text-white shadow-sm">
+            <div className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-monk-accent text-monk-bg shadow-sm">
               <Crown size={18} />
             </div>
             <div>
@@ -127,7 +127,7 @@ function PackList({
           <button
             type="button"
             onClick={onOpenPro}
-            className="shrink-0 rounded-monk bg-monk-accent px-3.5 py-1.5 text-xs font-bold text-white shadow-sm transition active:scale-95 hover:opacity-90 flex items-center gap-1"
+            className="shrink-0 rounded-monk bg-monk-accent px-3.5 py-1.5 text-xs font-bold text-monk-bg shadow-sm transition active:scale-95 hover:opacity-90 flex items-center gap-1"
           >
             <Sparkles size={12} />
             {lang === "id" ? "Buka Zendo Pro" : "Get Zendo Pro"}
@@ -274,7 +274,7 @@ function PackCard({
               store.startJournalPack(pack.id);
               onStart(pack.id);
             }}
-            className="shrink-0 rounded-monk bg-monk-accent px-3.5 py-2 text-xs font-semibold text-white transition active:scale-95 hover:opacity-90"
+            className="shrink-0 rounded-monk bg-monk-accent px-3.5 py-2 text-xs font-semibold text-monk-bg transition active:scale-95 hover:opacity-90"
           >
             {inProgress ? t("packs.continue") : completedCount > 0 ? t("packs.again") : t("packs.start")}
           </button>
@@ -386,7 +386,7 @@ function PackSession({ pack, onBack }: { pack: JournalPack; onBack: () => void }
                 <button
                   type="button"
                   onClick={handleBridgeAction}
-                  className="flex items-center gap-1.5 rounded-monk bg-monk-accent px-3 py-2 text-xs font-semibold text-white transition hover:bg-monk-accent-hover active:scale-95 shadow-sm"
+                  className="flex items-center gap-1.5 rounded-monk bg-monk-accent px-3 py-2 text-xs font-semibold text-monk-bg transition hover:bg-monk-accent-hover active:scale-95 shadow-sm"
                 >
                   <Sparkles size={13} />
                   <span>{t("packs.setAsTomorrowAction")}</span>
@@ -474,6 +474,10 @@ function PurchaseModal({
   const [done, setDone] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Escape closes, Tab stays inside, focus returns to the opener on unmount.
+  const sheetRef = useRef<HTMLDivElement>(null);
+  useModalA11y({ open: true, ref: sheetRef, onClose });
+
   // After Bayar GG redirects back (?purchased=<packId>), the webhook has
   // persisted the purchase — mark it unlocked immediately and refresh from Supabase.
   useEffect(() => {
@@ -520,6 +524,10 @@ function PurchaseModal({
       onClick={onClose}
     >
       <div
+        ref={sheetRef}
+        tabIndex={-1}
+        role="dialog"
+        aria-modal="true"
         className="w-full max-w-sm rounded-t-2xl border border-monk-border bg-monk-surface p-6 sm:m-4 sm:rounded-2xl"
         onClick={(e) => e.stopPropagation()}
       >

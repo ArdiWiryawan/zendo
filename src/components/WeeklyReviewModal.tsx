@@ -6,7 +6,7 @@ import { useT } from "../i18n";
 import { selectActiveGoals, selectCurrentWeeklyPlan } from "../store/selectors";
 import { getTodayDateString } from "../lib/date";
 import { hapticPress } from "../lib/haptics";
-import { useCalmToast, PrimaryButton, GhostButton, TextInput, Textarea } from "./ui";
+import { useCalmToast, PrimaryButton, GhostButton, TextInput, Textarea, useModalA11y } from "./ui";
 import { REST_ACTIVITIES, REST_CATEGORIES, RestActivityCategory, RestActivityDef } from "../constants/restActivities";
 import type { WeeklyReviewDecision, WeeklyReflectionAnswers, RestActivityItem } from "../types/app";
 
@@ -107,18 +107,9 @@ export function WeeklyReviewModal({ isOpen, onClose, weeklyPlanId }: WeeklyRevie
     }
   }, [isOpen, targetWeeklyPlan?.id]);
 
-  // Escape key handler
-  useEffect(() => {
-    if (!isOpen) return;
-    const handleKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        e.preventDefault();
-        onClose();
-      }
-    };
-    window.addEventListener("keydown", handleKey);
-    return () => window.removeEventListener("keydown", handleKey);
-  }, [isOpen, onClose]);
+  // Escape closes, Tab stays inside, focus returns to the opener on unmount.
+  const cardRef = useRef<HTMLDivElement>(null);
+  useModalA11y({ open: isOpen, ref: cardRef, onClose });
 
   if (!isOpen || !targetWeeklyPlan) return null;
 
@@ -217,6 +208,10 @@ export function WeeklyReviewModal({ isOpen, onClose, weeklyPlanId }: WeeklyRevie
         animate={{ scale: 1, opacity: 1, y: 0 }}
         exit={{ scale: 0.96, opacity: 0, y: 16 }}
         transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
+        ref={cardRef}
+        tabIndex={-1}
+        role="dialog"
+        aria-modal="true"
         className="relative flex flex-col w-full max-w-xl max-h-[92vh] rounded-monk-lg border border-monk-border/80 bg-monk-surface shadow-2xl overflow-hidden z-10"
       >
         {/* Header Bar */}

@@ -166,6 +166,12 @@ function StreakConsistencyCard() {
             <Moon size={12} />
             <span>{restCount} {t("timeline.streak.rest")}</span>
           </span>
+          {partialCount > 0 ? (
+            <span className="inline-flex items-center gap-1 rounded-lg border border-monk-accent/30 bg-monk-accent-soft/40 px-2 py-1 text-monk-accent">
+              <Flame size={12} />
+              <span>{partialCount} {t("timeline.streak.partial")}</span>
+            </span>
+          ) : null}
           {missedCount > 0 ? (
             <span className="inline-flex items-center gap-1 rounded-lg border border-rose-500/30 bg-rose-500/10 px-2 py-1 text-rose-500 dark:text-rose-400">
               <span className="inline-block h-1.5 w-1.5 rounded-full bg-rose-500" />
@@ -399,13 +405,13 @@ export default function TimelineScreen() {
 
     if (isDateToday) {
       if (isCompleted) return "bg-monk-success ring-2 ring-monk-success/40 text-white";
-      if (isPartial) return "bg-monk-accent/80 ring-2 ring-monk-accent/40 text-white";
+      if (isPartial) return "bg-monk-accent/80 ring-2 ring-monk-accent/40 text-monk-bg";
       if (isRelapse) return "bg-monk-danger/80 ring-2 ring-monk-danger/40 text-white";
       if (isRest) return "bg-monk-rest/70 ring-2 ring-monk-rest/40 text-white";
       return "bg-monk-border-strong animate-pulse ring-2 ring-monk-accent/40 text-monk-text";
     }
     if (isCompleted) return "bg-monk-success/80 text-white";
-    if (isPartial) return "bg-monk-accent/70 text-white";
+    if (isPartial) return "bg-monk-accent/70 text-monk-bg";
     if (isRelapse) return "bg-monk-danger/60 text-white";
     if (isRest) return "bg-monk-rest/50 text-white";
     if (isMissed) return "bg-rose-500/20 border border-rose-500/40 text-rose-500";
@@ -428,7 +434,7 @@ export default function TimelineScreen() {
 
       <div className="space-y-5">
         {/* View Switcher Tabs: Daily | Weekly | Monthly | Season */}
-        <div className="flex rounded-2xl border border-monk-border/80 bg-monk-soft/50 p-1 text-xs font-semibold shadow-2xs lg:max-w-md">
+        <div className="flex rounded-2xl border border-monk-border/80 bg-monk-soft/50 p-1 text-xs font-semibold shadow-2xs">
           <button
             type="button"
             onClick={() => setViewMode("daily")}
@@ -488,18 +494,16 @@ export default function TimelineScreen() {
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.25 }}
-            className="space-y-4 lg:grid lg:grid-cols-[minmax(0,1fr)_320px] lg:gap-8 lg:items-start lg:space-y-0 xl:grid-cols-[minmax(0,1fr)_360px]"
+            className="space-y-4"
           >
             {/* Detailed time block visualizer with live NOW line */}
-            <div className="min-w-0 space-y-4">
             <DayTimeBlockVisualizer
               date={today}
               onOpenPlanning={() => setPlanningModalOpen(true)}
             />
-            </div>
 
             {/* Today Activity Log */}
-            <div className="min-w-0 space-y-3 pt-2 lg:pt-0">
+            <div className="min-w-0 space-y-3 pt-2">
               <SectionHeader
                 title="Aktivitas Hari Ini"
                 subtitle={`Log kegiatan tercatat untuk ${today}`}
@@ -531,10 +535,8 @@ export default function TimelineScreen() {
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.25 }}
-            className="space-y-4 lg:grid lg:grid-cols-[minmax(0,1fr)_320px] lg:gap-8 lg:items-start lg:space-y-0 xl:grid-cols-[minmax(0,1fr)_360px]"
+            className="space-y-4"
           >
-            <div className="min-w-0 space-y-4">
-
             {/* Week navigation control */}
             <div className="flex items-center justify-between rounded-2xl border border-monk-border/80 bg-monk-surface px-4 py-2.5">
               <button
@@ -670,10 +672,7 @@ export default function TimelineScreen() {
                 );
               })}
             </div>
-            </div>
-            <div className="min-w-0 lg:pt-1">
             <StreakConsistencyCard />
-            </div>
           </motion.div>
         )}
 
@@ -683,9 +682,8 @@ export default function TimelineScreen() {
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.25 }}
-            className="space-y-4 lg:grid lg:grid-cols-[minmax(0,1fr)_320px] lg:gap-8 lg:items-start lg:space-y-0 xl:grid-cols-[minmax(0,1fr)_360px]"
+            className="space-y-4"
           >
-            <div className="min-w-0">
             <Card className="p-4 sm:p-5 space-y-4">
               <div>
                 <h3 className="text-xs font-bold uppercase tracking-wider text-monk-muted">
@@ -740,6 +738,8 @@ export default function TimelineScreen() {
                               <Check size={9} strokeWidth={3} className="mt-0.5" />
                             ) : !isFuture && status === "rest" ? (
                               <Moon size={9} className="mt-0.5" />
+                            ) : !isFuture && status === "partial" ? (
+                              <Flame size={9} className="mt-0.5" />
                             ) : !isFuture && (status === "missed" || status === "relapse") ? (
                               <span className="text-[8px] mt-0.5 font-bold">✕</span>
                             ) : null}
@@ -762,7 +762,7 @@ export default function TimelineScreen() {
                   <span>Istirahat</span>
                 </span>
                 <span className="flex items-center gap-1.5">
-                  <span className="h-3 w-3 rounded-md bg-monk-accent/70" />
+                  <span className="h-3 w-3 rounded-md bg-monk-accent/70 flex items-center justify-center text-[8px] text-monk-bg"><Flame size={8} /></span>
                   <span>Sebagian</span>
                 </span>
                 <span className="flex items-center gap-1.5">
@@ -775,10 +775,7 @@ export default function TimelineScreen() {
                 </span>
               </div>
             </Card>
-            </div>
-            <div className="min-w-0 lg:pt-1">
             <StreakConsistencyCard />
-            </div>
           </motion.div>
         )}
 
@@ -788,9 +785,8 @@ export default function TimelineScreen() {
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.25 }}
-            className="space-y-5 lg:grid lg:grid-cols-[minmax(0,1fr)_320px] lg:gap-8 lg:items-start lg:space-y-0 xl:grid-cols-[minmax(0,1fr)_360px]"
+            className="space-y-5"
           >
-            <div className="min-w-0 space-y-5">
             <WhyCard />
             <SeasonProgressCard />
 
@@ -837,10 +833,7 @@ export default function TimelineScreen() {
                 </div>
               )}
             </div>
-            </div>
-            <div className="min-w-0 space-y-4 lg:space-y-5 lg:pt-1">
             <TimelineStats />
-            </div>
           </motion.div>
         )}
       </div>

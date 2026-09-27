@@ -114,24 +114,30 @@ The acute problem is not the volume, it is that **the modal shell is spelled thr
 Single screens mix 3–4 radii: `JournalNotebook.tsx` (`monk` 9 / `lg` 12 / `xl` 4 / `md` 3), `TimelineScreen.tsx` (`md` 12 / `lg` 8 / `xl` 6 / `2xl` 3).
 **Fix:** one documented radius scale, and one modal-shell token used by all five modals.
 
-### P1-7 · 23 files hand-roll an accent button instead of using the primitive
+### P1-7 · Accent buttons put white on gold — 3.27:1, fails WCAG AA — FIXED
 **Evidence:** `PrimaryButton` (`ui.tsx:181`) uses `bg-monk-accent text-monk-bg`. The pattern `rounded-lg bg-monk-accent` + `text-white` is repeated locally in 23 files (JournalNotebook 7, JournalPacks 5, TodayScreen 4, GoalBlueprintModal 4, FocusPrepModal 4, MorningPlanningModal 3, SeasonWidgets 3, DayTimeBlockVisualizer 3, 15 files ×1–2) against only 2 uses of the primitive. The two variants differ (`text-monk-bg` vs `text-white`), so the same button is not quite the same color across screens.
 Raw `<button>` vs primitives: TodayScreen 24 raw vs 50 primitive refs; LibraryScreen 18 raw vs 10 primitive refs; TimelineScreen 9 raw vs 3 primitive refs.
-**Fix:** route the local variants through `PrimaryButton`; unify the label color to the token.
+**Measured, not just inconsistent:** white on the gold accent (`#A48B5E`) is **3.27:1** — below the AA floor of 4.5:1 for body text. `PrimaryButton` already used `text-monk-bg`, which measures **6.11:1**. So the drift was an accessibility defect, not only a consistency one.
 
-### P1-8 · Modals are inconsistent about escape, focus, and focus-trap
+**Fix:** all **19** co-occurring `bg-monk-accent` + `text-white` sites swapped to `text-monk-bg` (DayTimeBlockVisualizer, FocusPrepModal ×2, GoalBlueprintModal ×2, MorningPlanningModal ×3, JournalPacks ×4, SettingsScreen, TimelineScreen ×3, TodayScreen ×2, WeekScreen). These are compact pills, so they keep their own geometry rather than being forced onto `PrimaryButton` (which is `w-full min-h-12`); only the foreground token was unified. Re-measured live in-browser: every accent-background button is now 6.11:1, zero below AA.
+
+### P1-8 · No modal trapped focus — WCAG 2.1.2 failure — FIXED
 **Evidence:** `focustrap|initialfocus|inert` → **zero matches repo-wide**. `autoFocus` appears in 3 files only (ZendoProModal, LoginScreen, SignupScreen).
 Escape handling present in FocusPrepModal, GoalBlueprintModal, WeeklyReviewModal, ZendoProModal, `ui.tsx` CalmDialog. **Absent** in MorningPlanningModal, RetroLogModal, and the `JournalPacks` modal.
 `JournalPacks` also hand-rolls a `fixed inset-0` overlay instead of using `CalmDialog`, which is the only overlay in `screens/` — every other modal lives in `components/`.
 **Why it matters:** WCAG 2.1.2 (no keyboard trap / escape) and 2.4.3 (focus order). A modal a keyboard user cannot dismiss is a hard failure.
-**Fix:** add Escape handling to the three gaps and adopt `CalmDialog` in `JournalPacks`.
+**Fix:** one shared `useModalA11y` hook in `ui.tsx` (open/ref/onClose) now owns the whole contract: Escape closes, Tab and Shift+Tab wrap inside the container, focus parks on the panel when it has no focusable children, and focus returns to the opener on unmount. `CalmDialog` consumes it, so every modal already routing through that shell inherited it for free. The hook was then adopted by all six remaining overlays, each of which had hand-rolled Escape and none of which had a trap: `FocusPrepModal`, `GoalBlueprintModal` (whose Escape keeps backing out of the template picker first), `MorningPlanningModal`, `WeeklyReviewModal`, `ZendoProModal`, `JournalPacks`. `RetroLogModal` needed nothing — it already routes through `CalmDialog`.
 
-### P1-9 · Hardcoded hex in TSX bypasses the theme system
+**Verified in a real browser** (`tools/audit/modal-a11y.mjs`): 25 forward Tabs and 25 backward Tabs inside `MorningPlanningModal` produced **0 escapes**, focus entered the dialog on open, and Escape closed it. The remaining five are guarded by `src/components/modalA11y.test.ts` (27 assertions), which also fails if any modal reintroduces its own Escape listener.
+
+### P1-9 · Hardcoded hex bypassed the theme system — FIXED
 **Evidence:**
 - `src/components/DrawingCanvas.tsx:27` `"#1a1714"` fill, `:31` `"#e8dcc8"` stroke — will not follow any of the five themes.
 - `src/screens/JournalNotebook.tsx:25-33` nine category colors (`#e07c6b #6b9ac4 #6bb48b #c48bb4 #c4a06b #8b9dc4 #6bc4b4 #c48b6b #a0a0a0`), then `:130-131` re-lists the same hexes in a palette array — a duplicated single source of truth.
 - `src/screens/SettingsScreen.tsx:334-339` six theme swatches — defensible, since those *are* the theme definitions.
-**Fix:** the notebook category colors become tokens; DrawingCanvas reads from CSS variables so the notebook is readable in all themes.
+**Fix:** `JournalNotebook`'s nine built-in categories now resolve to `--color-cat-*` / `--nb-user-*` tokens (all nine map to **distinct** tokens — an initial mapping collided two pairs onto the same hue, which would have made those chips indistinguishable). User-created categories hash onto the themed `--nb-user-1..8` pool, declared once in `:root` as RGB triplets so alpha can still be appended. The alpha suffixes were rewritten to `rgb(var(--token) / 0.09)`. `DrawingCanvas` reads `--notebook-bg` and `--notebook-text` via `getComputedStyle`, because canvas `fillStyle` cannot resolve `var()`.
+
+**Verified across all six themes** (`audit/theme/*.png`): `--notebook-bg` resolves to six distinct values (`#1a1814 #10141A #101712 #1A1511 #080808 #140F08`) and the category chips visibly re-tint — blue in Sumi Ink, monochrome in Kurogane. Before this change the notebook was frozen to the default theme's colors.
 
 ---
 
@@ -143,7 +149,7 @@ Escape handling present in FocusPrepModal, GoalBlueprintModal, WeeklyReviewModal
 - **P2-4** `/learn` is a long undivided form (scrollHeight 2164 at 390) with a nav bar floating over its middle; the `CATATAN` textarea is half-hidden (see P0-1).
 - **P2-5** Em-dash in visible copy, FIXED. 19 occurrences in `id.ts`, 18 in `en.ts`, replaced with commas which read naturally in both languages. All remaining em-dashes in `src` are code comments.
 - **P2-6** `/library` empty-ish state: 4 date rows and a bare "Tulis entri baru" text link — no explanation of what the archive is for.
-- **P2-7** `tailwind.config.js` + `tailwind.config.ts` + `tailwind.config.d.ts` all coexist; `.ts` wins but the `.js` is stale and confusing.
+- **P2-7** FIXED. Deleted `tailwind.config.js` and `tailwind.config.d.ts`. The `.js` was genuinely stale (missing the five `cat-*` tokens the app depends on) and the `.d.ts` was its generated shadow; `tailwind.config.ts` is the single source of truth. No residual references.
 
 ### Also observed, not yet prioritised
 - **Card padding is arbitrary:** `p-4` in 14 files (TodayScreen 12), `p-5` in 13 files, `p-6` in 5. `ui.tsx` itself mixes `p-4`/`p-5`/`p-6` across Card, Card `large`, Textarea, ChoiceCard, CalmAlert, CalmDialog, SeasonPreviewCard.

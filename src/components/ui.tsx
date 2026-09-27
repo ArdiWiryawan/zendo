@@ -1,4 +1,4 @@
-import type { ButtonHTMLAttributes, InputHTMLAttributes, ReactNode, TextareaHTMLAttributes } from "react";
+import type { ButtonHTMLAttributes, InputHTMLAttributes, ReactNode, RefObject, TextareaHTMLAttributes } from "react";
 import { useEffect, useId, useRef, useState } from "react";
 import { MotionConfig } from "framer-motion";
 import { ArrowLeft, ArrowRight, BookOpen, Calendar, Check, Download, FileJson, FileText, Flag, Grid3X3, Settings, Sun, Upload, Crown, Heart } from "lucide-react";
@@ -35,7 +35,7 @@ export function ScreenContainer({
 }) {
   return (
     <main
-      className={`mx-auto min-h-dvh w-full max-w-[430px] px-6 pt-[calc(env(safe-area-inset-top)+24px)] lg:max-w-3xl lg:px-8 xl:max-w-5xl ${
+      className={`mx-auto min-h-dvh w-full max-w-[480px] px-6 pt-[calc(env(safe-area-inset-top)+24px)] ${
         withBottomNavPadding ? BOTTOM_NAV_SAFE_SPACE : "pb-8"
       }`}
     >
@@ -474,6 +474,62 @@ export function CalmAlert({
   );
 }
 
+/**
+ * Shared modal keyboard contract (WCAG 2.1.2): holds Tab inside the container,
+ * closes on Escape, and restores focus to the opener on unmount. `ref` is the
+ * container; give it `tabIndex={-1}` so it can hold focus when it has no
+ * focusable children of its own.
+ */
+export function useModalA11y({
+  open,
+  ref,
+  onClose
+}: {
+  open: boolean;
+  ref: RefObject<HTMLElement | null>;
+  onClose: () => void;
+}) {
+  useEffect(() => {
+    if (!open) return;
+    const prev = document.activeElement as HTMLElement | null;
+    const root = ref.current;
+    const focusable = root?.querySelectorAll<HTMLElement>(
+      'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+    );
+    const first = focusable?.[0];
+    const last = focusable?.[focusable.length - 1];
+    if (first) first.focus();
+    else root?.focus();
+
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        e.preventDefault();
+        onClose();
+        return;
+      }
+      if (e.key !== "Tab") return;
+      if (!first || !last) {
+        e.preventDefault();
+        root?.focus();
+        return;
+      }
+      const active = document.activeElement;
+      if (e.shiftKey && (active === first || active === root)) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && active === last) {
+        e.preventDefault();
+        first.focus();
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      prev?.focus?.();
+    };
+  }, [open, ref, onClose]);
+}
+
 export function CalmDialog({
   open,
   title,
@@ -499,38 +555,7 @@ export function CalmDialog({
 }) {
   const dialogRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    if (!open) return;
-    const prev = document.activeElement as HTMLElement | null;
-    const root = dialogRef.current;
-    const focusable = root?.querySelectorAll<HTMLElement>(
-      'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
-    );
-    focusable?.[0]?.focus();
-
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        e.preventDefault();
-        onCancel();
-        return;
-      }
-      if (e.key !== "Tab" || !focusable || focusable.length === 0) return;
-      const first = focusable[0];
-      const last = focusable[focusable.length - 1];
-      if (e.shiftKey && document.activeElement === first) {
-        e.preventDefault();
-        last.focus();
-      } else if (!e.shiftKey && document.activeElement === last) {
-        e.preventDefault();
-        first.focus();
-      }
-    };
-    window.addEventListener("keydown", onKey);
-    return () => {
-      window.removeEventListener("keydown", onKey);
-      prev?.focus?.();
-    };
-  }, [open, onCancel]);
+  useModalA11y({ open, ref: dialogRef, onClose: onCancel });
 
   if (!open) return null;
 
@@ -547,6 +572,7 @@ export function CalmDialog({
         role="dialog"
         aria-modal="true"
         aria-labelledby="calm-dialog-title"
+        tabIndex={-1}
         className="relative w-full max-w-[360px] rounded-monk-lg border border-monk-border bg-monk-surface p-5 shadow-calm"
       >
         <h2 id="calm-dialog-title" className="text-base font-semibold text-monk-text">

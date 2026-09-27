@@ -24,11 +24,14 @@ export function DrawingCanvas({ onDrawComplete, initialData }: DrawingCanvasProp
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
-    ctx.fillStyle = "#1a1714";
+    // Canvas fillStyle cannot resolve `var(...)`, so read the live theme tokens
+    // off the document. Falls back to the dark-theme values if unavailable.
+    const cs = getComputedStyle(document.documentElement);
+    ctx.fillStyle = cs.getPropertyValue("--notebook-bg").trim() || "#1a1714";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
     const allStrokes = currentStroke ? [...strokes, currentStroke] : strokes;
-    ctx.strokeStyle = "#e8dcc8";
+    ctx.strokeStyle = cs.getPropertyValue("--notebook-text").trim() || "#e8dcc8";
     ctx.lineWidth = 3;
     ctx.lineCap = "round";
     ctx.lineJoin = "round";

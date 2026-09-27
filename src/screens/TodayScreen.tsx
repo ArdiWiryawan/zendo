@@ -647,7 +647,7 @@ export function TodayScreen() {
                   <button
                     type="button"
                     onClick={() => setBlueprintGoalId(unclarifiedGoal.id)}
-                    className="flex items-center gap-1.5 rounded-lg bg-monk-accent px-3.5 py-1.5 text-xs font-semibold text-white shadow-sm transition active:scale-95 hover:bg-monk-accent-hover"
+                    className="flex items-center gap-1.5 rounded-lg bg-monk-accent px-3.5 py-1.5 text-xs font-semibold text-monk-bg shadow-sm transition active:scale-95 hover:bg-monk-accent-hover"
                   >
                     <Sparkles size={13} />
                     <span>{t("blueprint.clarifyPromptCta")}</span>
@@ -682,7 +682,7 @@ export function TodayScreen() {
                       store.createOrUpdateDayPlan(today, { dayType: "rest" });
                       setWeeklyReviewModalOpen(true);
                     }}
-                    className="flex items-center gap-1.5 rounded-lg bg-monk-accent px-3.5 py-1.5 text-xs font-semibold text-white shadow-sm transition active:scale-95 hover:bg-monk-accent-hover"
+                    className="flex items-center gap-1.5 rounded-lg bg-monk-accent px-3.5 py-1.5 text-xs font-semibold text-monk-bg shadow-sm transition active:scale-95 hover:bg-monk-accent-hover"
                   >
                     <Moon size={13} />
                     <span>{t("today.sixDaysCompleted.cta")}</span>
@@ -701,7 +701,7 @@ export function TodayScreen() {
         ) : null}
         {!todayPlan ? (
           <>
-            <div className="space-y-5 lg:grid lg:grid-cols-[minmax(0,1fr)_320px] lg:gap-8 lg:items-start lg:space-y-0 xl:grid-cols-[minmax(0,1fr)_360px]">
+            <div className="space-y-5">
             <div className="today-primary-anchor min-w-0 space-y-5">
               <SeasonProgressCard />
               <FlowPickToday
@@ -710,14 +710,14 @@ export function TodayScreen() {
                 onPickRest={() => setWeeklyReviewModalOpen(true)}
               />
             </div>
-            <div className="min-w-0 lg:pt-1">
+            <div className="min-w-0">
             <WeeklyStatusIndicators />
             </div>
             </div>
           </>
         ) : (
           <>
-            <div className="space-y-5 lg:grid lg:grid-cols-[minmax(0,1fr)_320px] lg:gap-8 lg:items-start lg:space-y-0 xl:grid-cols-[minmax(0,1fr)_360px]">
+            <div className="space-y-5">
             <div className="min-w-0 space-y-5">
             <Card
               important
@@ -1398,7 +1398,7 @@ export function TodayScreen() {
               )}
             </div>
             </div>
-            <div className="min-w-0 space-y-5 lg:pt-1">
+            <div className="min-w-0 space-y-5">
             {/* Secondary — collapsed */}
             <details className="group mt-5 rounded-monk border border-monk-border bg-monk-surface transition-all duration-200 ease-monk hover:border-monk-border-strong open:border-monk-border-strong">
               <summary className="flex cursor-pointer list-none items-center justify-between p-4 text-sm font-semibold text-monk-muted hover:text-monk-text marker:content-none [&::-webkit-details-marker]:hidden">

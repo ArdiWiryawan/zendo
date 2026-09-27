@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Sparkles,
@@ -16,7 +16,7 @@ import {
   ImageIcon,
 } from "lucide-react";
 import { useMonkStore } from "../store/useMonkStore";
-import { PrimaryButton, SecondaryButton, GhostButton, useCalmToast } from "./ui";
+import { PrimaryButton, SecondaryButton, GhostButton, useCalmToast, useModalA11y } from "./ui";
 import { playZenBell } from "../lib/audio";
 import { useLanguage } from "../i18n";
 import {
@@ -80,13 +80,9 @@ export function ZendoProModal({ isOpen, onClose }: ZendoProModalProps) {
   const [customAmount, setCustomAmount] = useState<string>("");
   const [isCustom, setIsCustom] = useState<boolean>(false);
 
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
-    };
-    if (isOpen) window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [isOpen, onClose]);
+  // Escape closes, Tab stays inside, focus returns to the opener on unmount.
+  const cardRef = useRef<HTMLDivElement>(null);
+  useModalA11y({ open: isOpen, ref: cardRef, onClose });
 
   const currentAmount = isCustom
     ? Math.max(1000, parseInt(customAmount.replace(/[^0-9]/g, ""), 10) || 10000)
@@ -136,6 +132,8 @@ export function ZendoProModal({ isOpen, onClose }: ZendoProModalProps) {
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.95, y: 12 }}
           transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
+          ref={cardRef}
+          tabIndex={-1}
           role="dialog"
           aria-modal="true"
           aria-labelledby="zendo-support-title"

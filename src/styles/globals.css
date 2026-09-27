@@ -40,6 +40,16 @@
   --notebook-text: #d4cdc0;
   --notebook-text-title: #e5e2da;
   --notebook-text-body: #c8c2b4;
+  /* Palette for user-created notebook categories. Theme-tinted, and RGB
+     triplets so the UI can append an alpha hex (e.g. `${hex}18`) to them. */
+  --nb-user-1: 224 124 107;
+  --nb-user-2: 107 154 196;
+  --nb-user-3: 107 180 139;
+  --nb-user-4: 196 139 180;
+  --nb-user-5: 196 160 107;
+  --nb-user-6: 139 157 196;
+  --nb-user-7: 107 196 180;
+  --nb-user-8: 196 139 107;
 }
 
 [data-theme="sumi_ink"] {
@@ -258,18 +268,6 @@ body {
   max-width: 480px;
   margin-left: auto;
   margin-right: auto;
-}
-
-@media (min-width: 1024px) {
-  #root > * {
-    max-width: 1024px;
-  }
-}
-
-@media (min-width: 1280px) {
-  #root > * {
-    max-width: 1280px;
-  }
 }
 
 button,

@@ -144,7 +144,7 @@ export function DayTimeBlockVisualizer({
             </h3>
             <p className="text-[11px] text-monk-muted">
               {timeBlocks.length > 0
-                ? `${timeBlocks.length} blok terencana`
+                ? t("timeline.daily.blocksPlanned", { n: timeBlocks.length })
                 : t("timeline.daily.noBlocks")}
             </p>
           </div>
@@ -170,10 +170,10 @@ export function DayTimeBlockVisualizer({
                 hapticPress("light");
                 onOpenPlanning();
               }}
-              className="flex items-center gap-1 rounded-lg bg-monk-accent px-2.5 py-1 text-[11px] font-semibold text-white shadow-xs hover:bg-monk-accent-hover transition active:scale-95"
+              className="flex items-center gap-1 rounded-lg bg-monk-accent px-2.5 py-1 text-[11px] font-semibold text-monk-bg shadow-xs hover:bg-monk-accent-hover transition active:scale-95"
             >
               <Edit3 size={11} />
-              <span>{timeBlocks.length > 0 ? "Edit Planning" : t("timeline.daily.planTodayCta")}</span>
+              <span>{timeBlocks.length > 0 ? t("timeline.daily.editPlanCta") : t("timeline.daily.planTodayCta")}</span>
             </button>
           ) : null}
         </div>
@@ -181,30 +181,18 @@ export function DayTimeBlockVisualizer({
 
       {/* Grid Timeline Canvas */}
       {timeBlocks.length === 0 ? (
-        <div className="p-8 text-center space-y-3">
+        <div className="p-8 text-center">
           <div className="grid h-12 w-12 mx-auto place-items-center rounded-2xl bg-monk-soft text-monk-muted">
             <Calendar size={22} />
           </div>
-          <div>
-            <p className="text-sm font-semibold text-monk-text">
-              {t("timeline.daily.noBlocks")}
-            </p>
-            <p className="mt-1 text-xs text-monk-muted max-w-sm mx-auto">
-              Mulai hari dengan intentional time blocking 10–15 menit untuk memetakan prioritas dan jam fokus.
-            </p>
-          </div>
-          {onOpenPlanning ? (
-            <div className="pt-2">
-              <button
-                type="button"
-                onClick={onOpenPlanning}
-                className="inline-flex items-center gap-1.5 rounded-xl bg-monk-accent px-4 py-2 text-xs font-bold text-white shadow-sm hover:bg-monk-accent-hover transition"
-              >
-                <Zap size={13} />
-                <span>{t("planning.openPlanningBtn")}</span>
-              </button>
-            </div>
-          ) : null}
+          {/*
+            No repeated title and no second CTA here: the header above already
+            states that nothing is planned and carries the one action. This
+            block only adds the guidance the header does not have.
+          */}
+          <p className="mt-3 text-xs text-monk-muted max-w-sm mx-auto">
+            {t("timeline.daily.emptyHint")}
+          </p>
         </div>
       ) : (
         <div

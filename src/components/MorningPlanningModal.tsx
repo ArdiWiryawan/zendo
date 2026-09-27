@@ -27,7 +27,7 @@ import { getTodayDateString } from "../lib/date";
 import { hapticPress } from "../lib/haptics";
 import { playCompletionChime } from "../lib/audio";
 import { downloadIcsFile } from "../lib/ical";
-import { useCalmToast, PrimaryButton, SecondaryButton } from "./ui";
+import { useCalmToast, PrimaryButton, SecondaryButton, useModalA11y } from "./ui";
 import type { TimeBlock, TimeBlockCategory } from "../types/app";
 
 interface MorningPlanningModalProps {
@@ -143,6 +143,10 @@ export function MorningPlanningModal({
   const [secondsRemaining, setSecondsRemaining] = useState<number>(15 * 60);
   const [timerRunning, setTimerRunning] = useState<boolean>(true);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Escape closes, Tab stays inside, focus returns to the opener on unmount.
+  const sheetRef = useRef<HTMLDivElement>(null);
+  useModalA11y({ open: isOpen, ref: sheetRef, onClose });
 
   // Daily Highlight state (Make Time framework)
   const [dailyHighlight, setDailyHighlight] = useState<string>("");
@@ -310,6 +314,10 @@ export function MorningPlanningModal({
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.96, y: 14 }}
           transition={{ duration: 0.2, ease: "easeOut" }}
+          ref={sheetRef}
+          tabIndex={-1}
+          role="dialog"
+          aria-modal="true"
           className="relative w-full max-w-2xl max-h-[92vh] flex flex-col rounded-monk-lg border border-monk-border/80 bg-monk-surface shadow-2xl overflow-hidden my-auto"
         >
           {/* Header */}
@@ -390,7 +398,7 @@ export function MorningPlanningModal({
                     }}
                     className={`rounded-lg px-2 py-0.5 transition ${
                       targetDuration === 600
-                        ? "bg-monk-accent text-white"
+                        ? "bg-monk-accent text-monk-bg"
                         : "text-monk-muted hover:text-monk-text"
                     }`}
                   >
@@ -404,7 +412,7 @@ export function MorningPlanningModal({
                     }}
                     className={`rounded-lg px-2 py-0.5 transition ${
                       targetDuration === 900
-                        ? "bg-monk-accent text-white"
+                        ? "bg-monk-accent text-monk-bg"
                         : "text-monk-muted hover:text-monk-text"
                     }`}
                   >
@@ -567,7 +575,7 @@ export function MorningPlanningModal({
                   <button
                     type="submit"
                     disabled={!newTitle.trim()}
-                    className="inline-flex items-center gap-1.5 rounded-xl bg-monk-accent px-4 py-2 text-xs font-bold text-white shadow-xs hover:bg-monk-accent-hover transition disabled:opacity-40 disabled:cursor-not-allowed active:scale-95"
+                    className="inline-flex items-center gap-1.5 rounded-xl bg-monk-accent px-4 py-2 text-xs font-bold text-monk-bg shadow-xs hover:bg-monk-accent-hover transition disabled:opacity-40 disabled:cursor-not-allowed active:scale-95"
                   >
                     <Plus size={14} strokeWidth={2.5} />
                     <span>{t("planning.addBlock")}</span>
