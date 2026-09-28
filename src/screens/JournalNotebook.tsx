@@ -5,7 +5,7 @@ import { PrimaryButton, SecondaryButton, GhostButton, CalmDialog, useCalmToast }
 import { createId } from "../lib/ids";
 import { nowIso, getTodayDateString, addDaysToDate } from "../lib/date";
 import type { NotebookCategory, NotebookEntry, ParaType } from "../types/app";
-import { Search, Plus, Pin, PinOff, Trash2, ArrowLeft, X, BookOpen, ImagePlus, Camera, MoreVertical, Pencil, Maximize2, Minimize2, ListTodo, List, ListOrdered, Heading, Bold, Italic, Quote, Crown, Sparkles, Copy, Link2, ArrowRight, Check, FileText } from "lucide-react";
+import { Search, Plus, Pin, PinOff, Trash2, ArrowLeft, X, BookOpen, ImagePlus, Camera, MoreVertical, Pencil, Maximize2, Minimize2, ListTodo, List, ListOrdered, Heading, Bold, Italic, Quote, Crown, Sparkles, Copy, Link2, ArrowRight, Check, FileText, Sun, Moon, Target, PenLine, SlidersHorizontal } from "lucide-react";
 import { useT, useLanguage, type MessageKey } from "../i18n";
 import { hapticPress } from "../lib/haptics";
 import { autolistMarker, groupPhotoRuns, renderBodyMarkdown } from "../lib/notebookMarkdown";
@@ -26,100 +26,109 @@ import {
 export type ZenTemplate = {
   id: string;
   titleKey: MessageKey;
-  icon: string;
+  iconName: "sun" | "moon" | "target" | "pen";
+  descId: string;
+  descEn: string;
   defaultTitle: (lang: string) => string;
   defaultPages: (lang: string) => string[];
   defaultCategory?: string;
   defaultPara?: ParaType;
 };
 
+export function TemplateIcon({ name, className = "" }: { name: "sun" | "moon" | "target" | "pen"; className?: string }) {
+  if (name === "sun") return <Sun size={15} strokeWidth={1.5} className={className} />;
+  if (name === "moon") return <Moon size={15} strokeWidth={1.5} className={className} />;
+  if (name === "target") return <Target size={15} strokeWidth={1.5} className={className} />;
+  return <PenLine size={15} strokeWidth={1.5} className={className} />;
+}
+
 export const ZEN_NOTEBOOK_TEMPLATES: ZenTemplate[] = [
   {
     id: "morning",
     titleKey: "notebook.templateMorningTitle",
-    icon: "🌅",
-    defaultTitle: (lang) => (lang === "id" ? "Refleksi Pagi & Niat" : "Morning Intention"),
+    iconName: "sun",
+    descId: "Niat hari, fokus tunggal, dan kesiapan pikiran",
+    descEn: "Daily intention, single focus, and mental readiness",
+    defaultTitle: (lang) => (lang === "id" ? "Refleksi Pagi" : "Morning Intention"),
     defaultPages: (lang) => [
       lang === "id"
-        ? `### Niat Pagi
-- Fokus Tunggal: 
-- Prioritas Utama: 
-- Kesiapan Pikiran: 
+        ? `## Niat Pagi
+- Fokus Utama: 
+- Hambatan yang Diantisipasi: 
 
-### Blok Fokus
-- Sesi 1: 
-- Sesi 2: 
+## Blok Waktu
+- Sesi Inti: 
 
 ---
-*Satu hal diselesaikan dengan tenang lebih bernilai dari seribu hal terburu-buru.*`
-        : `### Morning Intention
+*Fokus pada satu hal dengan tenang.*`
+        : `## Morning Intention
 - Single Focus: 
-- Key Milestone: 
-- Mental Readiness: 
+- Anticipated Friction: 
 
-### Focus Blocks
-- Session 1: 
-- Session 2: 
+## Focus Blocks
+- Core Session: 
 
 ---
-*One thing finished in stillness is worth a thousand touched in haste.*`
+*Stay with one thing in stillness.*`
     ],
     defaultPara: "project"
   },
   {
     id: "evening",
     titleKey: "notebook.templateEveningTitle",
-    icon: "🌙",
-    defaultTitle: (lang) => (lang === "id" ? "Refleksi Petang & Evaluasi" : "Evening Wind-Down"),
+    iconName: "moon",
+    descId: "Kemenangan hari ini & persiapan aksi esok",
+    descEn: "Wins of the day & tomorrow's first step",
+    defaultTitle: (lang) => (lang === "id" ? "Refleksi Petang" : "Evening Reflection"),
     defaultPages: (lang) => [
       lang === "id"
-        ? `### Refleksi Petang
-- Kemajuan Bermakna: 
-- Hambatan / Pelajaran: 
-- Intisari Hari Ini: 
+        ? `## Refleksi Petang
+- Selesai Hari Ini: 
+- Intisari / Pelajaran: 
 
-### Rencana Awal Esok
-- Aksi pertama: 
+## Aksi Awal Esok
+- Langkah pertama: 
 
 ---
-*Lepaskan hari ini dengan rasa syukur. Besok lembaran baru yang jernih.*`
-        : `### Evening Reflection
-- Meaningful Progress: 
-- Friction or Learning: 
+*Lepaskan hari ini dengan rasa syukur.*`
+        : `## Evening Reflection
+- Completed Today: 
 - Core Takeaway: 
 
-### Tomorrow's Anchor
+## Tomorrow's Anchor
 - First action: 
 
 ---
-*Release today with gratitude. Tomorrow is a clean slate.*`
+*Release today with gratitude.*`
     ],
     defaultPara: "area"
   },
   {
     id: "deep_work",
     titleKey: "notebook.templateDeepWorkTitle",
-    icon: "🧠",
-    defaultTitle: (lang) => (lang === "id" ? "Deep Work Clarity Dump" : "Deep Work Brain Dump"),
+    iconName: "target",
+    descId: "Tujuan sesi mendalam & parkir distraksi",
+    descEn: "Deep flow objective & distraction parking lot",
+    defaultTitle: (lang) => (lang === "id" ? "Deep Work Log" : "Deep Work Log"),
     defaultPages: (lang) => [
       lang === "id"
-        ? `### Sesi Deep Work
+        ? `## Deep Work
 - Tujuan Sesi: 
-- Hasil Nyata: 
+- Target Output: 
 
-### Parkir Ide & Distraksi
+## Parkir Ide & Distraksi
 - 
 
-### Catatan & Temuan
+## Temuan
 - `
-        : `### Deep Work Session
+        : `## Deep Work
 - Session Objective: 
-- Expected Outcome: 
+- Target Output: 
 
-### Distraction Parking Lot
+## Distraction Parking Lot
 - 
 
-### Notes & Findings
+## Key Findings
 - `
     ],
     defaultPara: "project"
@@ -127,7 +136,9 @@ export const ZEN_NOTEBOOK_TEMPLATES: ZenTemplate[] = [
   {
     id: "blank",
     titleKey: "notebook.templateBlankTitle",
-    icon: "📝",
+    iconName: "pen",
+    descId: "Mulai menulis bebas di halaman bersih",
+    descEn: "Start freely on a clean blank canvas",
     defaultTitle: (lang) => (lang === "id" ? "Catatan Baru" : "New Note"),
     defaultPages: () => [""]
   }
@@ -325,6 +336,7 @@ export default function JournalNotebook({ onEditingChange, initialEntryId }: { o
   const [view, setView] = useState<"list" | "edit" | "read">("list");
   const [editEntry, setEditEntry] = useState<NotebookEntry | null>(null);
   const [selectedTemplate, setSelectedTemplate] = useState<ZenTemplate | null>(null);
+  const [showNewModal, setShowNewModal] = useState(false);
   const [readEntry, setReadEntry] = useState<NotebookEntry | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [filterCat, setFilterCat] = useState<string | null>(null);
@@ -478,7 +490,7 @@ export default function JournalNotebook({ onEditingChange, initialEntryId }: { o
             </p>
             <button
               type="button"
-              onClick={openNew}
+              onClick={() => setShowNewModal(true)}
               className="flex min-h-10 items-center gap-1.5 rounded-full bg-monk-accent px-3.5 text-xs font-bold text-monk-bg shadow-[inset_0_1px_0_rgba(255,255,255,0.25),0_4px_12px_rgba(0,0,0,0.35)] transition active:scale-95"
             >
               <Plus size={14} strokeWidth={2} />
@@ -533,33 +545,6 @@ export default function JournalNotebook({ onEditingChange, initialEntryId }: { o
               </div>
             );
           })()}
-
-          {/* Quick Zen Mindful Template Launchers */}
-          <div className="mb-4 space-y-1.5">
-            <div className="flex items-center justify-between px-0.5">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-monk-muted">
-                {t("notebook.templatesTitle")}
-              </span>
-              <span className="text-[10px] text-monk-muted/70">
-                {t("notebook.templatesSubtitle")}
-              </span>
-            </div>
-            <div className="-mx-1 flex items-center gap-2 overflow-x-auto px-1 pb-1 scrollbar-none">
-              {ZEN_NOTEBOOK_TEMPLATES.map((tmpl) => (
-                <button
-                  key={tmpl.id}
-                  type="button"
-                  onClick={() => openNewWithTemplate(tmpl)}
-                  className="group flex shrink-0 items-center gap-2 rounded-xl border border-monk-border/70 bg-monk-surface/80 hover:bg-monk-surface hover:border-monk-accent/60 px-3 py-2 text-xs font-medium text-monk-text transition active:scale-95 shadow-xs"
-                >
-                  <span className="text-sm">{tmpl.icon}</span>
-                  <span className="font-semibold text-monk-text group-hover:text-monk-accent">
-                    {t(tmpl.titleKey)}
-                  </span>
-                </button>
-              ))}
-            </div>
-          </div>
 
           <div className="relative mb-5">
         <Search
@@ -762,8 +747,9 @@ export default function JournalNotebook({ onEditingChange, initialEntryId }: { o
                     })()}
                   </div>
                   {entry.takeaway ? (
-                    <p className="mt-1.5 text-xs italic font-serif text-monk-accent/90 line-clamp-1">
-                      💡 {entry.takeaway}
+                    <p className="mt-1.5 flex items-center gap-1.5 text-xs italic font-serif text-monk-accent/90 line-clamp-1">
+                      <Sparkles size={11} className="shrink-0 text-monk-accent" />
+                      <span className="truncate">{entry.takeaway}</span>
                     </p>
                   ) : null}
                   <div className="mt-3 flex flex-wrap items-center gap-1.5 text-[11px] text-monk-text-soft">
@@ -779,7 +765,8 @@ export default function JournalNotebook({ onEditingChange, initialEntryId }: { o
                       const g = store.goals.find((goal) => goal.id === entry.goalId);
                       return g ? (
                         <span className="inline-flex items-center gap-1 rounded-full bg-monk-accent/10 px-2 py-0.5 text-[10px] font-semibold text-monk-accent border border-monk-accent/30">
-                          🎯 {g.track ? `${g.track} · ` : ""}{g.title}
+                          <Target size={10} strokeWidth={2} className="shrink-0" />
+                          <span>{g.track ? `${g.track} · ` : ""}{g.title}</span>
                         </span>
                       ) : null;
                     })() : null}
@@ -849,12 +836,56 @@ export default function JournalNotebook({ onEditingChange, initialEntryId }: { o
 
       <button
         type="button"
-        onClick={openNew}
+        onClick={() => setShowNewModal(true)}
         className="fixed bottom-[calc(env(safe-area-inset-bottom)+88px)] right-6 z-40 grid h-14 w-14 place-items-center rounded-full bg-monk-accent text-monk-bg shadow-[inset_0_1px_0_rgba(255,255,255,0.25),0_10px_26px_rgba(164,139,94,0.4)] transition duration-200 hover:scale-[1.05] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.3),0_14px_34px_rgba(164,139,94,0.5)] active:scale-90"
         aria-label={t("notebook.newNoteAria")}
       >
         <Plus size={24} strokeWidth={2} />
       </button>
+
+      {/* Zen New Note Modal */}
+      <CalmDialog
+        open={showNewModal}
+        title={lang === "id" ? "Mulai Menulis" : "Start Note"}
+        description={lang === "id" ? "Pilih format lembar atau mulai dari halaman kosong." : "Choose a template or begin with a blank page."}
+        confirmLabel={lang === "id" ? "Tutup" : "Close"}
+        cancelLabel={lang === "id" ? "Batal" : "Cancel"}
+        onConfirm={() => setShowNewModal(false)}
+        onCancel={() => setShowNewModal(false)}
+      >
+        <div className="space-y-2 mt-2">
+          {ZEN_NOTEBOOK_TEMPLATES.map((tmpl) => (
+            <button
+              key={tmpl.id}
+              type="button"
+              onClick={() => {
+                setShowNewModal(false);
+                if (tmpl.id === "blank") {
+                  openNew();
+                } else {
+                  openNewWithTemplate(tmpl);
+                }
+              }}
+              className="w-full flex items-center justify-between p-3 rounded-xl border border-monk-border/60 bg-monk-surface hover:bg-monk-surface-raised hover:border-monk-accent/50 text-left transition active:scale-[0.99] group"
+            >
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="grid h-8 w-8 place-items-center rounded-lg bg-monk-accent/10 border border-monk-accent/20 text-monk-accent group-hover:bg-monk-accent group-hover:text-monk-bg transition shrink-0">
+                  <TemplateIcon name={tmpl.iconName} />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-xs font-bold text-monk-text group-hover:text-monk-accent transition truncate">
+                    {t(tmpl.titleKey)}
+                  </p>
+                  <p className="text-[10px] text-monk-muted mt-0.5 truncate">
+                    {lang === "id" ? tmpl.descId : tmpl.descEn}
+                  </p>
+                </div>
+              </div>
+              <ArrowRight size={13} className="text-monk-muted group-hover:text-monk-accent group-hover:translate-x-0.5 transition shrink-0" />
+            </button>
+          ))}
+        </div>
+      </CalmDialog>
 
       <CalmDialog
         open={confirmKind === "delete-list"}
@@ -1020,7 +1051,8 @@ export function NotebookEntryDetail({
             const g = store.goals.find((goal) => goal.id === liveEntry.goalId);
             return g ? (
               <span className="inline-flex items-center gap-1 rounded-full bg-monk-accent/10 px-2 py-0.5 text-[10px] font-semibold text-monk-accent border border-monk-accent/30 shrink-0">
-                🎯 {g.track ? `${g.track} · ` : ""}{g.title}
+                <Target size={10} strokeWidth={2} className="shrink-0" />
+                <span>{g.track ? `${g.track} · ` : ""}{g.title}</span>
               </span>
             ) : null;
           })() : null}
@@ -1460,6 +1492,7 @@ export function NotebookEditor({
   const [pendingDeleteCat, setPendingDeleteCat] = useState<{ id: string; name: string } | null>(null);
   const [draftSaved, setDraftSaved] = useState(false);
   const [focusMode, setFocusMode] = useState(false);
+  const [showDetails, setShowDetails] = useState(false);
 
   useEffect(() => {
     // Existing notes: do not steal focus/scroll. New note: focus title to write.
@@ -1920,166 +1953,266 @@ export function NotebookEditor({
       </div>
 
       {focusMode ? null : (
-        <>
-        <div className="flex items-center gap-1.5 overflow-x-auto pb-3 pt-2 scrollbar-none">
-          {categories.map((cat) => {
-            const token = catToken(cat.id);
-            const active = catId === cat.id;
-            const menuOpen = catMenu?.id === cat.id;
-            return (
-              <div key={cat.id} className="relative shrink-0">
-                <div
-                  className="flex h-8 items-center rounded-full border pl-2.5 pr-1 text-xs font-medium transition-all"
-                  style={{
-                    borderColor: active ? `rgb(var(${token}) / 0.53)` : "var(--color-border)",
-                    backgroundColor: active
-                      ? `rgb(var(${token}) / 0.09)`
-                      : "var(--color-surface)",
-                    color: active ? `rgb(var(${token}))` : "var(--color-text-muted)"
-                  }}
-                >
+        !showDetails ? (
+          <div className="flex items-center justify-between gap-2 pb-2 pt-1">
+            <div className="flex min-w-0 items-center gap-1.5 overflow-x-auto scrollbar-none">
+              {/* Active Category badge */}
+              {(() => {
+                const activeCat = categories.find((c) => c.id === catId);
+                const token = catToken(catId);
+                return activeCat ? (
                   <button
                     type="button"
-                    aria-pressed={active}
-                    onClick={() => {
-                      setCatId(cat.id);
-                      markDirty();
+                    onClick={() => setShowDetails(true)}
+                    title={t("notebook.collection")}
+                    className="flex h-7 shrink-0 items-center gap-1.5 rounded-full border px-2.5 text-xs font-medium transition active:scale-95"
+                    style={{
+                      borderColor: `rgb(var(${token}) / 0.4)`,
+                      backgroundColor: `rgb(var(${token}) / 0.08)`,
+                      color: `rgb(var(${token}))`
                     }}
-                    className="flex items-center gap-1.5 text-xs font-medium active:scale-[0.97]"
                   >
                     <span
                       className="h-1.5 w-1.5 rounded-full shrink-0"
-                      style={{
-                        backgroundColor: active
-                          ? `rgb(var(${token}))`
-                          : "var(--color-text-soft)"
-                      }}
+                      style={{ backgroundColor: `rgb(var(${token}))` }}
                     />
-                    <span className="whitespace-nowrap">{cat.name}</span>
+                    <span className="truncate max-w-[120px]">{activeCat.name}</span>
                   </button>
-                  <button
-                    type="button"
-                    aria-label={t("notebook.categoryMenu", { name: cat.name })}
-                    aria-haspopup="menu"
-                    aria-expanded={menuOpen}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setCatMenu((cur) => (cur?.id === cat.id ? null : { id: cat.id, anchor: e.currentTarget }));
-                    }}
-                    className={`ml-1 grid h-5 w-5 place-items-center rounded-full transition ${
-                      menuOpen ? "bg-monk-soft text-monk-text" : "text-monk-text-soft hover:bg-monk-soft/60 hover:text-monk-text"
-                    }`}
-                  >
-                    <MoreVertical size={12} strokeWidth={2} />
-                  </button>
-                </div>
-                <CategoryMenu
-                  trigger={catMenu?.anchor ?? null}
-                  cat={cat}
-                  count={entriesInCat(cat.id)}
-                  open={menuOpen}
-                  canDelete={categories.length > 1}
-                  onClose={() => setCatMenu(null)}
-                  onRename={(name) => {
-                    setCatMenu(null);
-                    setRenameCat({ id: cat.id, name });
-                  }}
-                  onDelete={() => {
-                    setCatMenu(null);
-                    setPendingDeleteCat({ id: cat.id, name: cat.name });
-                    setConfirmKind("delete-cat-editor");
-                  }}
-                />
-              </div>
-            );
-          })}
-          <button
-            type="button"
-            onClick={() => setShowNewCat((v) => !v)}
-            aria-expanded={showNewCat}
-            aria-controls="nb-new-cat"
-            className="flex h-8 shrink-0 items-center rounded-full border border-dashed border-monk-border px-2.5 text-xs font-medium text-monk-muted hover:border-monk-accent hover:text-monk-accent transition whitespace-nowrap"
-          >
-            {t("notebook.addCategory")}
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              setIsPinned((v) => !v);
-              markDirty();
-            }}
-            aria-pressed={isPinned}
-            className={`ml-auto flex h-8 shrink-0 items-center gap-1.5 rounded-full border px-3 text-xs font-medium transition whitespace-nowrap ${
-              isPinned
-                ? "border-monk-accent/40 bg-monk-accent-soft text-monk-accent font-semibold"
-                : "border-monk-border text-monk-muted hover:border-monk-accent hover:text-monk-accent"
-            }`}
-          >
-            {isPinned ? <Pin size={12} className="shrink-0" /> : <PinOff size={12} className="shrink-0" />}
-            <span>{isPinned ? t("notebook.pinned") : t("notebook.pin")}</span>
-          </button>
-        </div>
-        <div className="flex items-center gap-1.5 overflow-x-auto pb-2 pt-0.5 scrollbar-none text-xs">
-          <span className="text-[10px] font-bold uppercase tracking-wider text-monk-muted shrink-0 mr-1">
-            {t("notebook.paraLabel")}:
-          </span>
-          {(
-            [
-              { id: "project", label: t("notebook.paraProjects") },
-              { id: "area", label: t("notebook.paraAreas") },
-              { id: "resource", label: t("notebook.paraResources") },
-              { id: "archive", label: t("notebook.paraArchives") },
-            ] as const
-          ).map((tab) => {
-            const active = paraType === tab.id;
-            return (
+                ) : null;
+              })()}
+
+              {/* Active PARA badge if set */}
+              {paraType ? (
+                <span className="shrink-0 rounded-full bg-monk-soft/80 border border-monk-border/40 px-2 py-0.5 text-[10px] font-semibold text-monk-muted uppercase tracking-wider">
+                  {paraType === "project" ? t("notebook.paraProjects") :
+                   paraType === "area" ? t("notebook.paraAreas") :
+                   paraType === "resource" ? t("notebook.paraResources") :
+                   t("notebook.paraArchives")}
+                </span>
+              ) : null}
+
+              {/* Active Goal badge if set */}
+              {goalId ? (() => {
+                const g = store.goals.find((goal) => goal.id === goalId);
+                return g ? (
+                  <span className="shrink-0 flex items-center gap-1 rounded-full bg-monk-accent/10 border border-monk-accent/30 px-2 py-0.5 text-[10px] font-semibold text-monk-accent">
+                    <Target size={10} strokeWidth={2} />
+                    <span className="truncate max-w-[100px]">{g.title}</span>
+                  </span>
+                ) : null;
+              })() : null}
+            </div>
+
+            <div className="flex shrink-0 items-center gap-1.5">
+              {/* Pin button */}
               <button
-                key={tab.id}
                 type="button"
                 onClick={() => {
-                  setParaType((cur) => (cur === tab.id ? undefined : (tab.id as ParaType)));
+                  setIsPinned((v) => !v);
                   markDirty();
                 }}
-                className={`shrink-0 rounded-full px-2.5 py-0.5 text-[11px] font-semibold transition active:scale-95 ${
-                  active
-                    ? "bg-monk-accent text-monk-bg shadow-xs"
-                    : "bg-monk-soft/80 text-monk-muted hover:bg-monk-soft hover:text-monk-text border border-monk-border/40"
+                aria-pressed={isPinned}
+                aria-label={isPinned ? t("notebook.unpin") : t("notebook.pin")}
+                className={`flex h-7 items-center gap-1 rounded-full border px-2.5 text-xs font-medium transition ${
+                  isPinned
+                    ? "border-monk-accent/40 bg-monk-accent-soft text-monk-accent font-semibold"
+                    : "border-monk-border text-monk-muted hover:border-monk-accent hover:text-monk-accent"
                 }`}
               >
-                {tab.label}
+                {isPinned ? <Pin size={11} className="shrink-0" /> : <PinOff size={11} className="shrink-0" />}
+                <span className="hidden sm:inline">{isPinned ? t("notebook.pinned") : t("notebook.pin")}</span>
               </button>
-            );
-          })}
-        </div>
-        {activeGoals.length > 0 ? (
-          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 text-xs">
-            <span className="shrink-0 text-[10px] font-bold uppercase tracking-wider text-monk-muted mr-1 flex items-center gap-1">
-              🎯 Goal:
-            </span>
-            {activeGoals.map((g) => {
-              const active = goalId === g.id;
-              return (
+
+              {/* Options toggle */}
+              <button
+                type="button"
+                onClick={() => setShowDetails(true)}
+                aria-expanded={showDetails}
+                className="flex h-7 items-center gap-1 rounded-full border border-monk-border bg-monk-soft/40 px-2.5 text-xs font-medium text-monk-muted transition hover:border-monk-accent hover:text-monk-accent active:scale-95"
+              >
+                <SlidersHorizontal size={11} strokeWidth={1.8} />
+                <span>{lang === "id" ? "Opsi" : "Options"}</span>
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="mb-2 space-y-2.5 rounded-2xl border border-monk-border/60 bg-monk-soft/15 p-3">
+            <div className="flex items-center justify-between pb-1 border-b border-monk-border/30">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-monk-muted">
+                {lang === "id" ? "Pengaturan Catatan" : "Note Details"}
+              </span>
+              <div className="flex items-center gap-2">
                 <button
-                  key={g.id}
                   type="button"
                   onClick={() => {
-                    setGoalId((cur) => (cur === g.id ? undefined : g.id));
+                    setIsPinned((v) => !v);
                     markDirty();
                   }}
-                  className={`shrink-0 rounded-full px-2.5 py-0.5 text-[11px] font-semibold transition active:scale-95 flex items-center gap-1 ${
-                    active
-                      ? "bg-monk-accent text-monk-bg shadow-xs font-bold"
-                      : "bg-monk-soft/80 text-monk-muted hover:bg-monk-soft hover:text-monk-text border border-monk-border/40"
+                  aria-pressed={isPinned}
+                  className={`flex h-6 items-center gap-1 rounded-full border px-2 text-[10px] font-medium transition ${
+                    isPinned
+                      ? "border-monk-accent/40 bg-monk-accent-soft text-monk-accent font-semibold"
+                      : "border-monk-border text-monk-muted hover:border-monk-accent hover:text-monk-accent"
                   }`}
                 >
-                  {g.track ? <span>{g.track}</span> : null}
-                  <span className="truncate max-w-[130px]">{g.title}</span>
+                  {isPinned ? <Pin size={10} className="shrink-0" /> : <PinOff size={10} className="shrink-0" />}
+                  <span>{isPinned ? t("notebook.pinned") : t("notebook.pin")}</span>
                 </button>
-              );
-            })}
+                <button
+                  type="button"
+                  onClick={() => setShowDetails(false)}
+                  className="text-[11px] font-semibold text-monk-accent hover:underline px-1 py-0.5"
+                >
+                  {lang === "id" ? "Tutup" : "Close"}
+                </button>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-1.5 overflow-x-auto pb-1 pt-0.5 scrollbar-none">
+              {categories.map((cat) => {
+                const token = catToken(cat.id);
+                const active = catId === cat.id;
+                const menuOpen = catMenu?.id === cat.id;
+                return (
+                  <div key={cat.id} className="relative shrink-0">
+                    <div
+                      className="flex h-7 items-center rounded-full border pl-2.5 pr-1 text-xs font-medium transition-all"
+                      style={{
+                        borderColor: active ? `rgb(var(${token}) / 0.53)` : "var(--color-border)",
+                        backgroundColor: active
+                          ? `rgb(var(${token}) / 0.09)`
+                          : "var(--color-surface)",
+                        color: active ? `rgb(var(${token}))` : "var(--color-text-muted)"
+                      }}
+                    >
+                      <button
+                        type="button"
+                        aria-pressed={active}
+                        onClick={() => {
+                          setCatId(cat.id);
+                          markDirty();
+                        }}
+                        className="flex items-center gap-1.5 text-xs font-medium active:scale-[0.97]"
+                      >
+                        <span
+                          className="h-1.5 w-1.5 rounded-full shrink-0"
+                          style={{
+                            backgroundColor: active
+                              ? `rgb(var(${token}))`
+                              : "var(--color-text-soft)"
+                          }}
+                        />
+                        <span className="whitespace-nowrap">{cat.name}</span>
+                      </button>
+                      <button
+                        type="button"
+                        aria-label={t("notebook.categoryMenu", { name: cat.name })}
+                        aria-haspopup="menu"
+                        aria-expanded={menuOpen}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setCatMenu((cur) => (cur?.id === cat.id ? null : { id: cat.id, anchor: e.currentTarget }));
+                        }}
+                        className={`ml-1 grid h-4 w-4 place-items-center rounded-full transition ${
+                          menuOpen ? "bg-monk-soft text-monk-text" : "text-monk-text-soft hover:bg-monk-soft/60 hover:text-monk-text"
+                        }`}
+                      >
+                        <MoreVertical size={11} strokeWidth={2} />
+                      </button>
+                    </div>
+                    <CategoryMenu
+                      trigger={catMenu?.anchor ?? null}
+                      cat={cat}
+                      count={entriesInCat(cat.id)}
+                      open={menuOpen}
+                      canDelete={categories.length > 1}
+                      onClose={() => setCatMenu(null)}
+                      onRename={(name) => {
+                        setCatMenu(null);
+                        setRenameCat({ id: cat.id, name });
+                      }}
+                      onDelete={() => {
+                        setCatMenu(null);
+                        setPendingDeleteCat({ id: cat.id, name: cat.name });
+                        setConfirmKind("delete-cat-editor");
+                      }}
+                    />
+                  </div>
+                );
+              })}
+              <button
+                type="button"
+                onClick={() => setShowNewCat((v) => !v)}
+                aria-expanded={showNewCat}
+                aria-controls="nb-new-cat"
+                className="flex h-7 shrink-0 items-center rounded-full border border-dashed border-monk-border px-2.5 text-xs font-medium text-monk-muted hover:border-monk-accent hover:text-monk-accent transition whitespace-nowrap"
+              >
+                {t("notebook.addCategory")}
+              </button>
+            </div>
+            <div className="flex items-center gap-1.5 overflow-x-auto pb-1 pt-0.5 scrollbar-none text-xs">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-monk-muted shrink-0 mr-1">
+                {t("notebook.paraLabel")}:
+              </span>
+              {(
+                [
+                  { id: "project", label: t("notebook.paraProjects") },
+                  { id: "area", label: t("notebook.paraAreas") },
+                  { id: "resource", label: t("notebook.paraResources") },
+                  { id: "archive", label: t("notebook.paraArchives") },
+                ] as const
+              ).map((tab) => {
+                const active = paraType === tab.id;
+                return (
+                  <button
+                    key={tab.id}
+                    type="button"
+                    onClick={() => {
+                      setParaType((cur) => (cur === tab.id ? undefined : (tab.id as ParaType)));
+                      markDirty();
+                    }}
+                    className={`shrink-0 rounded-full px-2.5 py-0.5 text-[11px] font-semibold transition active:scale-95 ${
+                      active
+                        ? "bg-monk-accent text-monk-bg shadow-xs"
+                        : "bg-monk-soft/80 text-monk-muted hover:bg-monk-soft hover:text-monk-text border border-monk-border/40"
+                    }`}
+                  >
+                    {tab.label}
+                  </button>
+                );
+              })}
+            </div>
+            {activeGoals.length > 0 ? (
+              <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5 text-xs">
+                <span className="shrink-0 text-[10px] font-bold uppercase tracking-wider text-monk-muted mr-1 flex items-center gap-1">
+                  <Target size={11} strokeWidth={2} />
+                  <span>Goal:</span>
+                </span>
+                {activeGoals.map((g) => {
+                  const active = goalId === g.id;
+                  return (
+                    <button
+                      key={g.id}
+                      type="button"
+                      onClick={() => {
+                        setGoalId((cur) => (cur === g.id ? undefined : g.id));
+                        markDirty();
+                      }}
+                      className={`shrink-0 rounded-full px-2.5 py-0.5 text-[11px] font-semibold transition active:scale-95 flex items-center gap-1 ${
+                        active
+                          ? "bg-monk-accent text-monk-bg shadow-xs font-bold"
+                          : "bg-monk-soft/80 text-monk-muted hover:bg-monk-soft hover:text-monk-text border border-monk-border/40"
+                      }`}
+                    >
+                      {g.track ? <span>{g.track}</span> : null}
+                      <span className="truncate max-w-[130px]">{g.title}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            ) : null}
           </div>
-        ) : null}
-      </>
+        )
       )}
 
       {showNewCat ? (
@@ -2292,24 +2425,6 @@ export function NotebookEditor({
           className="nb-page-title"
         />
 
-        {/* Core Takeaway */}
-        <div className="mx-4 my-2 rounded-xl border border-monk-border/50 bg-monk-soft/25 p-2.5 transition focus-within:border-monk-accent/50 focus-within:bg-monk-soft/40">
-          <label className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-monk-accent/90 mb-1">
-            <Sparkles size={11} />
-            <span>{t("notebook.takeawayLabel")}</span>
-          </label>
-          <textarea
-            rows={1}
-            value={takeaway}
-            onChange={(e) => {
-              setTakeaway(e.target.value);
-              markDirty();
-              queueResize(e.currentTarget);
-            }}
-            placeholder={t("notebook.takeawayPlaceholder")}
-            className="nb-takeaway-textarea w-full resize-none bg-transparent text-xs italic font-serif leading-relaxed text-monk-text placeholder:text-monk-text-soft/60 focus:outline-none"
-          />
-        </div>
         {pages.map((pg, i) => (
           <div key={i} className="nb-sheet-stack">
             {/* Sheet Folio Top Header - only show when multiple sheets exist */}
@@ -2401,6 +2516,25 @@ export function NotebookEditor({
             </div>
           </div>
         ))}
+
+        {/* Core Takeaway */}
+        <div className="my-3 rounded-xl border border-monk-border/50 bg-monk-soft/25 p-3 transition focus-within:border-monk-accent/50 focus-within:bg-monk-soft/40">
+          <label className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-monk-accent/90 mb-1.5">
+            <Sparkles size={11} />
+            <span>{t("notebook.takeawayLabel")}</span>
+          </label>
+          <textarea
+            rows={1}
+            value={takeaway}
+            onChange={(e) => {
+              setTakeaway(e.target.value);
+              markDirty();
+              queueResize(e.currentTarget);
+            }}
+            placeholder={t("notebook.takeawayPlaceholder")}
+            className="nb-takeaway-textarea w-full resize-none bg-transparent text-xs italic font-serif leading-relaxed text-monk-text placeholder:text-monk-text-soft/60 focus:outline-none"
+          />
+        </div>
 
         <div className="mt-2 mb-3">
           <button
@@ -2499,11 +2633,13 @@ export function NotebookEditor({
               }}
               className="w-full flex items-center justify-between p-3 rounded-xl border border-monk-border/60 bg-monk-surface hover:bg-monk-surface-raised hover:border-monk-accent/50 text-left transition active:scale-[0.99]"
             >
-              <div className="flex items-center gap-2.5">
-                <span className="text-xl">{tmpl.icon}</span>
+              <div className="flex items-center gap-3">
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-monk-soft border border-monk-border/60 text-monk-accent">
+                  <TemplateIcon name={tmpl.iconName} className="h-4 w-4" />
+                </div>
                 <div>
                   <p className="text-xs font-bold text-monk-text">{t(tmpl.titleKey)}</p>
-                  <p className="text-[10px] text-monk-muted">{tmpl.defaultTitle(lang)}</p>
+                  <p className="text-[10px] text-monk-muted">{lang === "id" ? tmpl.descId : tmpl.descEn}</p>
                 </div>
               </div>
               <ArrowRight size={14} className="text-monk-muted" />
