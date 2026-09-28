@@ -375,6 +375,32 @@ export function FocusSessionSummary({
   const distractions = distractionMatch ? Number(distractionMatch[1]) : 0;
   const intention = parseIntention(mainAction || "");
 
+  const store = useMonkStore();
+  const [noteText, setNoteText] = useState("");
+  const [noteSaved, setNoteSaved] = useState(false);
+
+  const saveInsight = () => {
+    if (!noteText.trim()) return;
+    const catId = store.notebookCategories[0]?.id ?? "default";
+    const now = new Date().toISOString();
+    store.saveNotebookEntry({
+      id: `nb_${Date.now()}`,
+      title: mainAction ? `Insight: ${mainAction}` : `Catatan Sesi Fokus`,
+      body: noteText.trim(),
+      pages: [noteText.trim()],
+      categoryId: catId,
+      paraType: "resource",
+      goalId: session.goalId,
+      takeaway: noteText.trim(),
+      tags: ["focus-insight"],
+      isPinned: false,
+      createdAt: now,
+      updatedAt: now
+    });
+    setNoteSaved(true);
+    hapticPress("success");
+  };
+
   return (
     <Card
       important
@@ -416,6 +442,45 @@ export function FocusSessionSummary({
           <p className="mt-1 text-sm font-semibold text-monk-text">{mainAction}</p>
         </div>
       ) : null}
+
+      {/* Quick Session Takeaway / Capture */}
+      <div className="mt-4 rounded-2xl border border-monk-border/70 bg-monk-bg p-3 text-left space-y-2">
+        <div className="flex items-center justify-between">
+          <p className="text-[10px] font-bold uppercase tracking-wider text-monk-muted flex items-center gap-1.5">
+            <span>💡</span> Catat Insight Sesi (Opsional)
+          </p>
+          {noteSaved ? (
+            <span className="flex items-center gap-1 text-[11px] font-bold text-emerald-400">
+              <Check size={12} strokeWidth={2.5} /> Tersimpan
+            </span>
+          ) : null}
+        </div>
+        {!noteSaved ? (
+          <div className="flex items-center gap-2">
+            <input
+              type="text"
+              value={noteText}
+              onChange={(e) => setNoteText(e.target.value)}
+              placeholder="Ide atau pelajaran yang didapat..."
+              className="flex-1 rounded-xl border border-monk-border bg-monk-surface px-3 py-2 text-xs text-monk-text placeholder:text-monk-muted focus:border-monk-accent focus:outline-none"
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && noteText.trim()) {
+                  saveInsight();
+                }
+              }}
+            />
+            {noteText.trim() ? (
+              <button
+                type="button"
+                onClick={saveInsight}
+                className="shrink-0 rounded-xl bg-monk-accent px-3 py-2 text-xs font-bold text-monk-bg transition active:scale-95 hover:bg-monk-accent-hover"
+              >
+                Simpan
+              </button>
+            ) : null}
+          </div>
+        ) : null}
+      </div>
 
       <div className="mt-5 flex flex-col gap-2">
         <PrimaryButton onClick={onCloseDay}>{t("focus.closeDayCta")}</PrimaryButton>

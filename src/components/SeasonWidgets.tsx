@@ -54,8 +54,14 @@ export function SeasonProgressCard({ compact = false }: { compact?: boolean }) {
       {!compact && goals.length ? (
         <div className="mt-4 flex flex-wrap gap-2">
           {goals.map((goal) => (
-            <span key={goal.id} className="rounded-full border border-monk-border bg-monk-soft px-3 py-1 text-xs text-monk-muted">
-              {goal.title}
+            <span
+              key={goal.id}
+              className="inline-flex items-center gap-1.5 rounded-full border border-monk-border bg-monk-soft px-3 py-1 text-xs text-monk-text-soft"
+            >
+              {goal.track ? (
+                <span className="font-semibold text-monk-accent">{goal.track} ·</span>
+              ) : null}
+              <span>{goal.title}</span>
             </span>
           ))}
         </div>

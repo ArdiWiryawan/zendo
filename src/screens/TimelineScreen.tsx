@@ -147,6 +147,7 @@ function TimelineStats() {
 function StreakConsistencyCard() {
   const store = useMonkStore();
   const t = useT();
+  const lang = useLanguage();
   const season = store.activeSeason!;
   const today = getTodayDateString();
   const streak = getFocusStreak(store, today);
@@ -176,10 +177,15 @@ function StreakConsistencyCard() {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-xl leading-none">🔥</span>
-            <span className="text-base font-bold text-white tracking-tight">
-              {t("timeline.streak.days", { n: streak.count })}
-            </span>
+            <span className="text-xl leading-none" aria-hidden="true">🔥</span>
+            <div className="flex items-baseline gap-1.5">
+              <span className="text-xl font-mono font-bold text-monk-accent leading-none">
+                {streak.count}
+              </span>
+              <span className="text-base font-bold text-white tracking-tight">
+                {lang === "id" ? "Hari Streak" : "Days Streak"}
+              </span>
+            </div>
             {streak.best > streak.count ? (
               <span className="text-[11px] font-mono font-medium text-monk-accent bg-monk-accent/10 px-1.5 py-0.5 rounded-md border border-monk-accent/30">
                 {t("timeline.streak.best", { n: streak.best })}
@@ -563,17 +569,38 @@ export default function TimelineScreen() {
     // 1. Outside current month (adjacent month padding)
     if (!isCurrentMonth) {
       return {
-        tileClass: "bg-transparent border-transparent opacity-25 hover:opacity-60 text-monk-muted/40",
-        numClass: "text-monk-muted/50 font-normal",
+        tileClass: "bg-monk-soft/20 border-monk-border/30 text-monk-muted/50 hover:border-monk-border/60 hover:text-monk-muted transition",
+        numClass: "text-monk-muted/60 font-medium",
         iconElement: null
       };
     }
 
     // 2. Current month, but outside active season range
     if (!isWithinSeason) {
+      if (status === "completed") {
+        return {
+          tileClass: "bg-emerald-950/40 border-emerald-600/50 text-white",
+          numClass: "text-emerald-200 font-bold",
+          iconElement: <Check size={11} strokeWidth={2.5} className="text-emerald-400" />
+        };
+      }
+      if (status === "rest") {
+        return {
+          tileClass: "bg-slate-900/60 border-slate-600/50 text-white",
+          numClass: "text-slate-200 font-bold",
+          iconElement: <Moon size={11} strokeWidth={2} className="text-slate-300" />
+        };
+      }
+      if (status === "partial") {
+        return {
+          tileClass: "bg-amber-950/40 border-amber-600/50 text-white",
+          numClass: "text-amber-200 font-bold",
+          iconElement: <Flame size={11} strokeWidth={2} className="text-amber-400" />
+        };
+      }
       return {
-        tileClass: "bg-monk-surface/20 border-monk-border/30 text-monk-muted/50 hover:border-monk-border/60",
-        numClass: "text-monk-muted/60 font-medium",
+        tileClass: "bg-monk-surface/40 border-monk-border/40 text-monk-muted/70 hover:border-monk-border-strong",
+        numClass: "text-monk-muted/80 font-medium",
         iconElement: null
       };
     }

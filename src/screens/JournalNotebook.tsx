@@ -14,7 +14,7 @@ import { IMG_MARKER, compressImage, putImage, deleteImage, matchImageMarkers } f
 import { InlinePhoto, PhotoLightbox, photoIdsInBody, useObjectUrl } from "../components/NotebookImages";
 import { ZendoProModal } from "../components/ZendoProModal";
 import { findBacklinks, findRelatedNotes } from "../lib/notebookLinks";
-import { selectJournalEntryForToday } from "../store/selectors";
+import { selectJournalEntryForToday, selectActiveGoals } from "../store/selectors";
 import { routes } from "../constants/routes";
 import {
   NOTEBOOK_DRAFT_KEY,
@@ -775,6 +775,14 @@ export default function JournalNotebook({ onEditingChange, initialEntryId }: { o
                          t("notebook.paraArchives")}
                       </span>
                     ) : null}
+                    {entry.goalId ? (() => {
+                      const g = store.goals.find((goal) => goal.id === entry.goalId);
+                      return g ? (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-monk-accent/10 px-2 py-0.5 text-[10px] font-semibold text-monk-accent border border-monk-accent/30">
+                          🎯 {g.track ? `${g.track} · ` : ""}{g.title}
+                        </span>
+                      ) : null;
+                    })() : null}
                     <span
                       className="inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 font-semibold uppercase tracking-wide"
                       style={{
@@ -1008,6 +1016,14 @@ export function NotebookEntryDetail({
                t("notebook.paraArchives")}
             </span>
           ) : null}
+          {liveEntry.goalId ? (() => {
+            const g = store.goals.find((goal) => goal.id === liveEntry.goalId);
+            return g ? (
+              <span className="inline-flex items-center gap-1 rounded-full bg-monk-accent/10 px-2 py-0.5 text-[10px] font-semibold text-monk-accent border border-monk-accent/30 shrink-0">
+                🎯 {g.track ? `${g.track} · ` : ""}{g.title}
+              </span>
+            ) : null;
+          })() : null}
           <span
             className="inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide"
             style={{
@@ -1329,6 +1345,12 @@ export function NotebookEditor({
     if (entry?.paraType) return entry.paraType;
     return initialTemplate?.defaultPara;
   });
+  const activeGoals = selectActiveGoals(store);
+  const [goalId, setGoalId] = useState<string | undefined>(() => {
+    if (draftWins) return draft?.goalId;
+    if (entry?.goalId) return entry.goalId;
+    return undefined;
+  });
   const [takeaway, setTakeaway] = useState<string>(draftWins ? (draft?.takeaway ?? "") : (entry?.takeaway ?? ""));
   const [pages, setPages] = useState<string[]>(() => {
     const raw = draftWins
@@ -1470,6 +1492,7 @@ export function NotebookEditor({
         categoryId: catId,
         isPinned,
         paraType,
+        goalId,
         takeaway,
         createdAt: createdAtRef.current
       });
@@ -1478,7 +1501,7 @@ export function NotebookEditor({
     return () => {
       if (draftTimerRef.current) clearTimeout(draftTimerRef.current);
     };
-  }, [title, pages, catId, isPinned, paraType, takeaway, dirty, draftKey]);
+  }, [title, pages, catId, isPinned, paraType, goalId, takeaway, dirty, draftKey]);
 
   const resolveTitle = useCallback(() => {
     const trimmed = title.trim();
@@ -1717,6 +1740,7 @@ export function NotebookEditor({
         pages: cleanPages,
         categoryId: catId,
         paraType,
+        goalId,
         takeaway: takeaway.trim() || undefined,
         tags: entry?.tags ?? [],
         isPinned,
@@ -1736,7 +1760,7 @@ export function NotebookEditor({
       window.setTimeout(() => setSavedFlash(false), 1200);
       if (andBack) onBack();
     },
-    [pages, catId, paraType, takeaway, entry?.tags, isPinned, images, onBack, resolveTitle, store, draftKey]
+    [pages, catId, paraType, goalId, takeaway, entry?.tags, isPinned, images, onBack, resolveTitle, store, draftKey]
   );
 
   // Enter-autolist + Backspace-unlist: native-feel list continuation in the
@@ -2027,6 +2051,34 @@ export function NotebookEditor({
             );
           })}
         </div>
+        {activeGoals.length > 0 ? (
+          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 text-xs">
+            <span className="shrink-0 text-[10px] font-bold uppercase tracking-wider text-monk-muted mr-1 flex items-center gap-1">
+              🎯 Goal:
+            </span>
+            {activeGoals.map((g) => {
+              const active = goalId === g.id;
+              return (
+                <button
+                  key={g.id}
+                  type="button"
+                  onClick={() => {
+                    setGoalId((cur) => (cur === g.id ? undefined : g.id));
+                    markDirty();
+                  }}
+                  className={`shrink-0 rounded-full px-2.5 py-0.5 text-[11px] font-semibold transition active:scale-95 flex items-center gap-1 ${
+                    active
+                      ? "bg-monk-accent text-monk-bg shadow-xs font-bold"
+                      : "bg-monk-soft/80 text-monk-muted hover:bg-monk-soft hover:text-monk-text border border-monk-border/40"
+                  }`}
+                >
+                  {g.track ? <span>{g.track}</span> : null}
+                  <span className="truncate max-w-[130px]">{g.title}</span>
+                </button>
+              );
+            })}
+          </div>
+        ) : null}
       </>
       )}
 

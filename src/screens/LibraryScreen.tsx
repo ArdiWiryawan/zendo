@@ -318,6 +318,16 @@ export function JournalLibraryScreen() {
                       <p className="text-xs text-monk-muted leading-relaxed line-clamp-2">
                         {item.snippet}
                       </p>
+                      {item.raw?.goalId ? (() => {
+                        const g = store.goals.find((goal) => goal.id === item.raw.goalId);
+                        return g ? (
+                          <div className="pt-1">
+                            <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-monk-accent bg-monk-accent/10 px-2 py-0.5 rounded-full border border-monk-accent/20">
+                              🎯 {g.track ? `${g.track} · ` : ""}{g.title}
+                            </span>
+                          </div>
+                        ) : null;
+                      })() : null}
                     </div>
                   );
                 })}

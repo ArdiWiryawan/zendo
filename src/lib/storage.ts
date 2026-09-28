@@ -45,6 +45,7 @@ export type NotebookDraft = {
   categoryId: string;
   isPinned: boolean;
   paraType?: ParaType;
+  goalId?: string;
   takeaway?: string;
   createdAt?: string;
 };
