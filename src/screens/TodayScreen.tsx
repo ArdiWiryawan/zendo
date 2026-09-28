@@ -9,7 +9,7 @@ import { useCalmToast } from "../components/ui";
 import { getTodayDateString, addDaysToDate, getSeasonDayLabel, getDaysLeft } from "../lib/date";
 import { CORE_VALUES } from "../constants/whyValues";
 import { routes } from "../constants/routes";
-import { FOCUS_PRESETS } from "../constants/focusPresets";
+import { FOCUS_PRESETS, getPresetLabel } from "../constants/focusPresets";
 import { formatIntention, parseIntention } from "../lib/implementationIntention";
 import { playCompletionChime, playZenBell, unlockAudio } from "../lib/audio";
 import { loadLastFocus, saveLastFocus } from "../lib/storage";
@@ -31,9 +31,9 @@ import {
   TextInput,
   Textarea,
 } from "../components/ui";
-import { FocusSessionPanel, FocusSessionStarter } from "../screens/FocusSession";
-import { CoachHint, PlanTomorrow, WeeklyStatusIndicators } from "./OnboardingSteps";
-import { SeasonProgressCard, WhyEditor } from "../components/SeasonWidgets";
+import { FocusSessionPanel } from "../screens/FocusSession";
+import { CoachHint } from "./OnboardingSteps";
+import { WhyEditor } from "../components/SeasonWidgets";
 import { EnergyCheck, WhyStrip, GoalTasksCard } from "./TodayScreen.components";
 import { GoalBlueprintModal } from "../components/GoalBlueprintModal";
 import { WeeklyReviewModal } from "../components/WeeklyReviewModal";
@@ -110,6 +110,7 @@ function CloseDayCard({ onSkip }: { onSkip?: () => void }) {
               dayType: "goal",
               goalId: targetGoalId,
               mainAction: tomorrowText,
+              highlight: tomorrowText,
               status: "planned",
               planningCompleted: true
             });
@@ -474,7 +475,6 @@ export function TodayScreen() {
     | "held"
     | "close"
     | "rest"
-    | "planning"
     | "morning"
     | "intention"
     | "focus";
@@ -489,8 +489,6 @@ export function TodayScreen() {
     ? "close"
     : isRest
     ? "rest"
-    : !todayPlan.planningCompleted
-    ? "planning"
     : !hasIntention
     ? "intention"
     : showMorningNudge
@@ -517,18 +515,6 @@ export function TodayScreen() {
     ? "border-monk-rest/30 bg-monk-rest-soft text-monk-rest"
     : "border-monk-border bg-monk-soft text-monk-muted";
 
-  const checklist = todayPlan
-    ? [
-        { id: "highlight", label: t("today.check.highlight"), done: !!(todayPlan?.highlight?.trim() || todayPlan?.mainAction?.trim()), hide: isRest },
-        { id: "morning", label: t("today.check.morning"), done: hasMorningPages, hide: false },
-        { id: "focus", label: isRest ? t("today.check.restHeld") : t("today.check.focusDone"), done: isDone, hide: false },
-        { id: "learn", label: t("today.check.learn"), done: hasLearning, hide: isRest },
-        { id: "energy", label: t("today.check.energy"), done: !!energy, hide: false },
-        { id: "reflect", label: t("today.check.reflect"), done: hasJournal && !!todayEntry?.answers.whatMovedToday?.trim(), hide: false }
-      ].filter((item) => !item.hide)
-    : [];
-  const checklistDone = checklist.filter((c) => c.done).length;
-
   const coachStep = getCoachStep({
     seasonStartDate: season.startDate,
     seasonStatus: season.status,
@@ -539,6 +525,31 @@ export function TodayScreen() {
     dayClosed
   });
   void coachTick;
+
+  type ActiveBannerKind = "nmt2" | "reentry" | "sixDays" | "restSuggestion" | "unclarifiedGoal" | "coach" | null;
+
+  const activeBanner: ActiveBannerKind = useMemo(() => {
+    if (nmt2Visible) return "nmt2";
+    if (reentryVisible) return "reentry";
+    if (sixDaysCompleted && !savedReview && !sixDaysBannerDismissed && !isRest) return "sixDays";
+    if (!restDismissed && shouldSuggestRest(store, today) && !isRest) return "restSuggestion";
+    if (unclarifiedGoal && !clarifyBannerDismissed) return "unclarifiedGoal";
+    if (coachStep) return "coach";
+    return null;
+  }, [
+    nmt2Visible,
+    reentryVisible,
+    sixDaysCompleted,
+    savedReview,
+    sixDaysBannerDismissed,
+    isRest,
+    restDismissed,
+    store,
+    today,
+    unclarifiedGoal,
+    clarifyBannerDismissed,
+    coachStep,
+  ]);
 
   const coachCta = () => {
     if (!coachStep) return;
@@ -568,8 +579,8 @@ export function TodayScreen() {
         rightSlot={<SettingsLink onOpenPro={() => setProModalOpen(true)} />}
       />
       <div className="space-y-5">
-        <WhyStrip compact={reentryVisible || nmt2Visible} />
-        {nmt2Visible ? (
+        <WhyStrip compact={activeBanner !== null} />
+        {activeBanner === "nmt2" ? (
           <Nmt2Banner
             onDismissedChange={setNmt2Dismissed}
             onOpenIntention={() => {
@@ -577,10 +588,43 @@ export function TodayScreen() {
               document.querySelector(".today-primary-anchor")?.scrollIntoView({ behavior: "smooth", block: "start" });
             }}
           />
-        ) : (
+        ) : activeBanner === "reentry" ? (
           <ReEntryBanner onDismissedChange={setReentryDismissed} />
-        )}
-        {!restDismissed && shouldSuggestRest(store, today) && !isRest && !reentryVisible && !nmt2Visible && !coachStep ? (
+        ) : activeBanner === "sixDays" ? (
+          <Card className="border-monk-accent/30 bg-monk-accent-soft/30 p-4 shadow-sm">
+            <div className="flex items-start gap-3">
+              <div className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-monk-accent/15 text-monk-accent">
+                <Sparkles size={18} />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-bold text-monk-text">{t("today.sixDaysCompleted.title")}</p>
+                <p className="mt-1 text-xs text-monk-muted leading-relaxed">
+                  {t("today.sixDaysCompleted.body")}
+                </p>
+                <div className="mt-3 flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      store.createOrUpdateDayPlan(today, { dayType: "rest" });
+                      setWeeklyReviewModalOpen(true);
+                    }}
+                    className="flex items-center gap-1.5 rounded-lg bg-monk-accent px-3.5 py-1.5 text-xs font-semibold text-monk-bg shadow-sm transition active:scale-95 hover:bg-monk-accent-hover"
+                  >
+                    <Moon size={13} />
+                    <span>{t("today.sixDaysCompleted.cta")}</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setSixDaysBannerDismissed(true)}
+                    className="rounded-lg px-2.5 py-1.5 text-xs font-medium text-monk-muted transition hover:text-monk-text"
+                  >
+                    {t("today.reentry.dismiss")}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </Card>
+        ) : activeBanner === "restSuggestion" ? (
           <Card className="border-monk-rest/25 bg-monk-rest-soft/30 p-4">
             <p className="text-sm font-semibold">{t("today.restSuggestion.title")}</p>
             <p className="mt-1 text-sm text-monk-muted">{t("today.restSuggestion.body")}</p>
@@ -603,18 +647,7 @@ export function TodayScreen() {
               </GhostButton>
             </div>
           </Card>
-        ) : null}
-        {coachStep && !reentryVisible && !nmt2Visible ? (
-          <CoachHint
-            step={coachStep}
-            onDismiss={() => {
-              dismissCoachStep(coachStep);
-              setCoachTick((n) => n + 1);
-            }}
-            onCta={coachCta}
-          />
-        ) : null}
-        {unclarifiedGoal && !clarifyBannerDismissed && !reentryVisible && !nmt2Visible && !coachStep ? (
+        ) : activeBanner === "unclarifiedGoal" && unclarifiedGoal ? (
           <Card className="border-monk-accent/30 bg-monk-accent-soft/30 p-4 shadow-sm">
             <div className="flex items-start gap-3">
               <div className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-monk-accent/15 text-monk-accent">
@@ -650,58 +683,24 @@ export function TodayScreen() {
               </div>
             </div>
           </Card>
-        ) : null}
-        {sixDaysCompleted && !savedReview && !sixDaysBannerDismissed && !isRest ? (
-          <Card className="border-monk-accent/30 bg-monk-accent-soft/30 p-4 shadow-sm">
-            <div className="flex items-start gap-3">
-              <div className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-monk-accent/15 text-monk-accent">
-                <Sparkles size={18} />
-              </div>
-              <div className="min-w-0 flex-1">
-                <p className="text-sm font-bold text-monk-text">{t("today.sixDaysCompleted.title")}</p>
-                <p className="mt-1 text-xs text-monk-muted leading-relaxed">
-                  {t("today.sixDaysCompleted.body")}
-                </p>
-                <div className="mt-3 flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      store.createOrUpdateDayPlan(today, { dayType: "rest" });
-                      setWeeklyReviewModalOpen(true);
-                    }}
-                    className="flex items-center gap-1.5 rounded-lg bg-monk-accent px-3.5 py-1.5 text-xs font-semibold text-monk-bg shadow-sm transition active:scale-95 hover:bg-monk-accent-hover"
-                  >
-                    <Moon size={13} />
-                    <span>{t("today.sixDaysCompleted.cta")}</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setSixDaysBannerDismissed(true)}
-                    className="rounded-lg px-2.5 py-1.5 text-xs font-medium text-monk-muted transition hover:text-monk-text"
-                  >
-                    {t("today.reentry.dismiss")}
-                  </button>
-                </div>
-              </div>
-            </div>
-          </Card>
+        ) : activeBanner === "coach" && coachStep ? (
+          <CoachHint
+            step={coachStep}
+            onDismiss={() => {
+              dismissCoachStep(coachStep);
+              setCoachTick((n) => n + 1);
+            }}
+            onCta={coachCta}
+          />
         ) : null}
         {!todayPlan ? (
-          <>
-            <div className="space-y-5">
-            <div className="today-primary-anchor min-w-0 space-y-5">
-              <SeasonProgressCard />
-              <FlowPickToday
-                goals={activeGoals}
-                onOpenBlueprint={(id) => setBlueprintGoalId(id)}
-                onPickRest={() => setWeeklyReviewModalOpen(true)}
-              />
-            </div>
-            <div className="min-w-0">
-            <WeeklyStatusIndicators />
-            </div>
-            </div>
-          </>
+          <div className="today-primary-anchor min-w-0 space-y-4">
+            <FlowPickToday
+              goals={activeGoals}
+              onOpenBlueprint={(id) => setBlueprintGoalId(id)}
+              onPickRest={() => setWeeklyReviewModalOpen(true)}
+            />
+          </div>
         ) : (
           <>
             <div className="space-y-5">
@@ -1165,37 +1164,6 @@ export function TodayScreen() {
                 </>
               ) : null}
 
-              {primaryKind === "planning" ? (
-                <Card className="border-monk-warning/40 bg-gradient-to-b from-monk-warning/10 via-monk-surface to-monk-surface p-5 shadow-xs">
-                  <div className="flex items-start gap-3.5">
-                    <div className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-monk-warning/20 text-monk-warning">
-                      <Clock size={20} strokeWidth={2} />
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2">
-                        <span className="rounded-md border border-monk-warning/40 bg-monk-warning/15 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-monk-warning">
-                          {t("planning.strictGatedTitle")}
-                        </span>
-                      </div>
-                      <p className="mt-2 text-base font-bold text-monk-text">
-                        {t("planning.modalTitle")}
-                      </p>
-                      <p className="mt-1 text-xs text-monk-muted leading-relaxed">
-                        {t("planning.strictGatedDesc")}
-                      </p>
-                      <div className="mt-4 flex flex-wrap items-center gap-2">
-                        <PrimaryButton
-                          onClick={() => setPlanningModalOpen(true)}
-                          className="text-xs py-2 px-4 inline-flex items-center gap-1.5 font-bold"
-                        >
-                          <Zap size={14} />
-                          <span>{t("planning.openPlanningBtn")}</span>
-                        </PrimaryButton>
-                      </div>
-                    </div>
-                  </div>
-                </Card>
-              ) : null}
 
               {primaryKind === "morning" ? (
                 <Card className="border-monk-accent/25 bg-monk-accent-soft/30 p-4">
@@ -1274,7 +1242,7 @@ export function TodayScreen() {
                                 navigate(routes.focus);
                               }}
                             >
-                              {t("focus.beginWith", { label: FOCUS_PRESETS[last.preset].shortLabel })}
+                              {t("focus.beginWith", { label: getPresetLabel(last.preset, store.appSettings.language) })}
                             </PrimaryButton>
                             <div className="flex flex-wrap items-center justify-center gap-2">
                               <GhostButton onClick={() => navigate(routes.focus)}>
@@ -1411,34 +1379,29 @@ export function TodayScreen() {
               </div>
             </details>
 
-            {checklist.length ? (
-              <div role="list" aria-label={t("today.check.stripAria")} className="space-y-2">
-                <div className="grid grid-cols-5 gap-1.5">
-                  {checklist.map((item) => (
-                    <span
-                      key={item.id}
-                      role="listitem"
-                      title={`${item.label}: ${item.done ? t("today.checklistDone") : t("today.check.tap")}`}
-                      aria-label={`${item.label}: ${item.done ? t("today.checklistDone") : t("today.check.tap")}`}
-                      className={`block h-1.5 rounded-full ${item.done ? "bg-monk-success" : "bg-monk-border/40"}`}
-                    />
-                  ))}
-                </div>
-                <p className="text-[11px] font-medium text-monk-muted">
-                  {t("today.checklistAria", { done: checklistDone, total: checklist.length })}
-                </p>
-              </div>
-            ) : null}
-            <SeasonProgressCard compact />
             {!isRest ? (
-              <DayTimeBlockVisualizer
-                compact
-                date={today}
-                onOpenPlanning={() => setPlanningModalOpen(true)}
-              />
+              <details className="group rounded-monk border border-monk-border bg-monk-surface transition-all duration-200 ease-monk hover:border-monk-border-strong open:border-monk-border-strong">
+                <summary className="flex cursor-pointer list-none items-center justify-between p-4 text-sm font-semibold text-monk-muted hover:text-monk-text marker:content-none [&::-webkit-details-marker]:hidden">
+                  <span className="flex items-center gap-2">
+                    <Clock size={15} className="text-monk-accent" />
+                    <span>{t("planning.modalTitle")}</span>
+                    {todayPlan.timeBlocks && todayPlan.timeBlocks.length > 0 ? (
+                      <span className="rounded-full bg-monk-soft px-2 py-0.5 font-mono text-[11px] text-monk-accent">
+                        {todayPlan.timeBlocks.length}
+                      </span>
+                    ) : null}
+                  </span>
+                  <ChevronRight size={16} className="transition-transform duration-200 group-open:rotate-90 text-monk-muted" />
+                </summary>
+                <div className="space-y-3 border-t border-monk-border p-4 pt-3">
+                  <DayTimeBlockVisualizer
+                    compact
+                    date={today}
+                    onOpenPlanning={() => setPlanningModalOpen(true)}
+                  />
+                </div>
+              </details>
             ) : null}
-            <WeeklyStatusIndicators />
-            <PlanTomorrow goals={activeGoals} />
             </div>
             </div>
           </>

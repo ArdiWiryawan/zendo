@@ -4,9 +4,13 @@ import { getExpectedSessionConfig } from "./focusSessionStatus";
 export type FocusPresetConfig = {
   id: FocusSessionPreset;
   title: string;
+  titleId?: string;
   shortLabel: string;
+  shortLabelId?: string;
   description: string;
+  descriptionId?: string;
   summary: string;
+  summaryId?: string;
   buildPhases: (customMinutes?: number) => FocusSessionPhase[];
 };
 
@@ -24,17 +28,25 @@ export const FOCUS_PRESETS: Record<FocusSessionPreset, FocusPresetConfig> = {
   custom: {
     id: "custom",
     title: "Custom Focus Session",
+    titleId: "Sesi Fokus Kustom",
     shortLabel: "Custom",
+    shortLabelId: "Kustom",
     description: "Choose your own focus duration.",
+    descriptionId: "Pilih durasi fokusmu sendiri.",
     summary: "Choose your own focus duration.",
+    summaryId: "Pilih durasi fokusmu sendiri.",
     buildPhases: (customMinutes = 50) => [phase("focus", "Custom Focus", customMinutes)]
   },
   deep_work: {
     id: "deep_work",
     title: "Deep Work Focus Session",
+    titleId: "Sesi Fokus Deep Work",
     shortLabel: "Deep Work",
+    shortLabelId: "Deep Work",
     description: "Best for serious work. 50 minutes focus, 10 minutes rest, repeated twice.",
+    descriptionId: "Terbaik untuk pekerjaan mendalam. 50 menit fokus, 10 menit jeda, diulang 2 kali.",
     summary: "2 hours total · 50 min deep work + 10 min break x 2",
+    summaryId: "Total 2 jam · 50 mnt deep work + 10 mnt jeda x 2",
     buildPhases: () => [
       phase("focus", "Deep Work 1", 50),
       phase("break", "Break 1", 10),
@@ -45,9 +57,13 @@ export const FOCUS_PRESETS: Record<FocusSessionPreset, FocusPresetConfig> = {
   pomodoro: {
     id: "pomodoro",
     title: "Pomodoro Focus Session",
+    titleId: "Sesi Fokus Pomodoro",
     shortLabel: "Pomodoro",
+    shortLabelId: "Pomodoro",
     description: "Best for getting started. 25 minutes focus, 5 minutes rest, repeated 4 times.",
+    descriptionId: "Terbaik untuk memulai momentum. 25 menit fokus, 5 menit jeda, diulang 4 kali.",
     summary: "4 rounds · 25 min focus + 5 min break",
+    summaryId: "4 ronde · 25 mnt fokus + 5 mnt jeda",
     buildPhases: () => [
       phase("focus", "Pomodoro 1", 25),
       phase("break", "Break 1", 5),
@@ -60,6 +76,24 @@ export const FOCUS_PRESETS: Record<FocusSessionPreset, FocusPresetConfig> = {
     ]
   }
 };
+
+export function getPresetLabel(preset: FocusSessionPreset, lang: "id" | "en" = "id"): string {
+  const p = FOCUS_PRESETS[preset];
+  if (!p) return "Focus";
+  return lang === "id" && p.shortLabelId ? p.shortLabelId : p.shortLabel;
+}
+
+export function getPresetTitle(preset: FocusSessionPreset, lang: "id" | "en" = "id"): string {
+  const p = FOCUS_PRESETS[preset];
+  if (!p) return "Focus";
+  return lang === "id" && p.titleId ? p.titleId : p.title;
+}
+
+export function getPresetDescription(preset: FocusSessionPreset, lang: "id" | "en" = "id"): string {
+  const p = FOCUS_PRESETS[preset];
+  if (!p) return "";
+  return lang === "id" && p.descriptionId ? p.descriptionId : p.description;
+}
 
 export function createFocusPhases(preset: FocusSessionPreset, customMinutes?: number) {
   return FOCUS_PRESETS[preset].buildPhases(customMinutes).map((item, index) => ({

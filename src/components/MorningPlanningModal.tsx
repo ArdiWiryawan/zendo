@@ -21,7 +21,7 @@ import {
   RotateCw
 } from "lucide-react";
 import { useMonkStore } from "../store/useMonkStore";
-import { useT } from "../i18n";
+import { useT, useLanguage } from "../i18n";
 import { selectTodayPlan } from "../store/selectors";
 import { getTodayDateString } from "../lib/date";
 import { hapticPress } from "../lib/haptics";
@@ -110,15 +110,15 @@ function getDurationHours(startTime: string, endTime: string): number {
 /**
  * Format human duration (e.g. 1h 30m or 45m)
  */
-function formatHumanDuration(startTime: string, endTime: string): string {
+function formatHumanDuration(startTime: string, endTime: string, isId = true): string {
   const [sh, sm] = startTime.split(":").map(Number);
   const [eh, em] = endTime.split(":").map(Number);
   const diffMinutes = (eh * 60 + em) - (sh * 60 + sm);
   if (diffMinutes <= 0) return "0m";
   const h = Math.floor(diffMinutes / 60);
   const m = diffMinutes % 60;
-  if (h > 0 && m > 0) return `${h}j ${m}m`;
-  if (h > 0) return `${h}j`;
+  if (h > 0 && m > 0) return isId ? `${h}j ${m}m` : `${h}h ${m}m`;
+  if (h > 0) return isId ? `${h}j` : `${h}h`;
   return `${m}m`;
 }
 
@@ -129,6 +129,8 @@ export function MorningPlanningModal({
   onCompleted
 }: MorningPlanningModalProps) {
   const t = useT();
+  const lang = useLanguage();
+  const isId = lang === "id";
   const toast = useCalmToast();
   const store = useMonkStore();
   const activeDate = date || getTodayDateString();
@@ -615,7 +617,7 @@ export function MorningPlanningModal({
                   {timeBlocks.map((block) => {
                     const cfg = CATEGORY_CONFIG[block.category] || CATEGORY_CONFIG.deep_work;
                     const Icon = cfg.icon;
-                    const durationText = formatHumanDuration(block.startTime, block.endTime);
+                    const durationText = formatHumanDuration(block.startTime, block.endTime, isId);
 
                     return (
                       <div
@@ -648,7 +650,8 @@ export function MorningPlanningModal({
                           type="button"
                           onClick={() => handleDeleteBlock(block.id)}
                           className="grid h-7 w-7 shrink-0 place-items-center rounded-lg text-monk-muted hover:text-monk-danger hover:bg-monk-surface/80 transition"
-                          title="Hapus blok"
+                          title={isId ? "Hapus blok" : "Delete block"}
+                          aria-label={isId ? "Hapus blok" : "Delete block"}
                         >
                           <Trash2 size={13} />
                         </button>

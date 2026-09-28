@@ -5,11 +5,13 @@ import { Card } from "../components/ui";
 import { WhyEditor } from "../components/SeasonWidgets";
 import { ChevronRight } from "lucide-react";
 import { CORE_VALUES } from "../constants/whyValues";
-import { useT } from "../i18n";
+import { useT, useLanguage } from "../i18n";
 import type { EnergyLevel, Goal } from "../types/app";
 
 export function EnergyCheck({ value, onChange, compact = false }: { value?: EnergyLevel; onChange: (value: EnergyLevel) => void; compact?: boolean }) {
   const t = useT();
+  const lang = useLanguage();
+  const isId = lang === "id";
   const store = useMonkStore();
   const today = getTodayDateString();
   const past7 = Array.from({ length: 7 }, (_, i) => {
@@ -19,16 +21,16 @@ export function EnergyCheck({ value, onChange, compact = false }: { value?: Ener
   });
 
   const labels: Record<EnergyLevel, string> = {
-    low: "Low",
-    medium: "Steady",
-    high: "High"
+    low: isId ? "Rendah" : "Low",
+    medium: isId ? "Stabil" : "Steady",
+    high: isId ? "Tinggi" : "High"
   };
 
   return (
     <Card className="p-4">
       <div className="mb-3 flex items-center justify-between gap-3">
         <div>
-          <p className="font-semibold text-sm">Energy</p>
+          <p className="font-semibold text-sm">{isId ? "Energi" : "Energy"}</p>
           <p className="mt-0.5 text-xs text-monk-muted">{t("today.energy.tank")}</p>
         </div>
         {value ? (
@@ -73,8 +75,10 @@ export function EnergyCheck({ value, onChange, compact = false }: { value?: Ener
       </div>
       {!compact ? (
         <div className="mt-4">
-          <p className="mb-1.5 text-[10px] font-medium uppercase tracking-wider text-monk-muted">7-day trend</p>
-          <div className="flex items-end gap-1.5" aria-label="Energy trend last 7 days">
+          <p className="mb-1.5 text-[10px] font-medium uppercase tracking-wider text-monk-muted">
+            {isId ? "Tren 7 Hari" : "7-Day Trend"}
+          </p>
+          <div className="flex items-end gap-1.5" aria-label={isId ? "Tren energi 7 hari terakhir" : "Energy trend last 7 days"}>
             {past7.map((date) => {
               const log = store.energyLogs?.find((l) => l.date === date);
               const isToday = date === today;
@@ -104,6 +108,8 @@ export function EnergyCheck({ value, onChange, compact = false }: { value?: Ener
 export function WhyStrip({ compact = false }: { compact?: boolean }) {
   const store = useMonkStore();
   const t = useT();
+  const lang = useLanguage();
+  const isId = lang === "id";
   const why = store.activeSeason?.why;
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState(false);
@@ -226,12 +232,13 @@ export function WhyStrip({ compact = false }: { compact?: boolean }) {
                   <div className="flex flex-wrap gap-1.5 pt-1">
                     {why.protectValues.map((id) => {
                       const v = CORE_VALUES.find((c) => c.id === id);
+                      const valLabel = isId ? v?.labelId : v?.labelEn;
                       return (
                         <span
                           key={id}
                           className="rounded-full border border-monk-border bg-monk-bg px-2 py-0.5 text-[10px] font-medium text-monk-muted"
                         >
-                          {v?.label ?? id}
+                          {valLabel ?? v?.label ?? id}
                         </span>
                       );
                     })}
@@ -264,6 +271,8 @@ export function WhyStrip({ compact = false }: { compact?: boolean }) {
 
 export function GoalTasksCard({ goal, todayMainAction }: { goal: Goal; todayMainAction?: string }) {
   const store = useMonkStore();
+  const lang = useLanguage();
+  const isId = lang === "id";
   const today = getTodayDateString();
   const [newTitle, setNewTitle] = useState("");
   const [isAdding, setIsAdding] = useState(false);
@@ -288,7 +297,7 @@ export function GoalTasksCard({ goal, todayMainAction }: { goal: Goal; todayMain
     <div className="mt-3.5 space-y-2 rounded-xl border border-monk-border/70 bg-monk-soft/30 p-3.5">
       <div className="flex items-center justify-between gap-2">
         <p className="text-[11px] font-bold uppercase tracking-wider text-monk-muted flex items-center gap-1.5">
-          <span>📋 Langkah / Subtask</span>
+          <span>{isId ? "📋 Langkah / Subtask" : "📋 Steps / Subtasks"}</span>
           {tasks.length > 0 ? (
             <span className="font-mono text-[10px] text-monk-accent">
               ({tasks.filter((t) => t.completed).length}/{tasks.length})
@@ -301,7 +310,7 @@ export function GoalTasksCard({ goal, todayMainAction }: { goal: Goal; todayMain
             onClick={() => setIsAdding(true)}
             className="text-[11px] font-semibold text-monk-accent hover:underline active:scale-95"
           >
-            + Tambah
+            {isId ? "+ Tambah" : "+ Add"}
           </button>
         )}
       </div>
@@ -339,7 +348,7 @@ export function GoalTasksCard({ goal, todayMainAction }: { goal: Goal; todayMain
                   </span>
                   {isCurrentMain && (
                     <span className="shrink-0 rounded-full bg-monk-accent/20 px-1.5 py-0.2 text-[9px] font-bold text-monk-accent">
-                      Aksi Hari Ini
+                      {isId ? "Aksi Hari Ini" : "Today's Action"}
                     </span>
                   )}
                 </div>
@@ -348,16 +357,16 @@ export function GoalTasksCard({ goal, todayMainAction }: { goal: Goal; todayMain
                   {!task.completed && !isCurrentMain && (
                     <button
                       type="button"
-                      title="Jadikan Aksi Hari Ini"
+                      title={isId ? "Jadikan Aksi Hari Ini" : "Set as Today's Action"}
                       onClick={() => handlePromoteToAction(task.title)}
                       className="rounded px-1.5 py-0.5 text-[10px] font-semibold text-monk-accent hover:bg-monk-accent/15 transition active:scale-95"
                     >
-                      Jadikan Aksi
+                      {isId ? "Jadikan Aksi" : "Set Action"}
                     </button>
                   )}
                   <button
                     type="button"
-                    title="Hapus"
+                    title={isId ? "Hapus" : "Delete"}
                     onClick={() => store.deleteGoalTask(goal.id, task.id)}
                     className="text-monk-muted/60 hover:text-rose-400 p-0.5 transition"
                   >
@@ -382,7 +391,7 @@ export function GoalTasksCard({ goal, todayMainAction }: { goal: Goal; todayMain
                 handleAdd();
               }
             }}
-            placeholder="Langkah 10 menit (mis: Tulis draft bab 1)..."
+            placeholder={isId ? "Langkah 10 menit (mis: Tulis draft bab 1)..." : "10-minute step (e.g. Write draft of chapter 1)..."}
             autoFocus
             className="flex-1 rounded-lg border border-monk-border bg-monk-surface px-2.5 py-1 text-xs text-monk-text placeholder:text-monk-muted focus:border-monk-accent focus:outline-none"
           />
@@ -391,14 +400,14 @@ export function GoalTasksCard({ goal, todayMainAction }: { goal: Goal; todayMain
             onClick={handleAdd}
             className="rounded-lg bg-monk-accent px-2.5 py-1 text-xs font-semibold text-monk-bg transition active:scale-95"
           >
-            Simpan
+            {isId ? "Simpan" : "Save"}
           </button>
           <button
             type="button"
             onClick={() => setIsAdding(false)}
             className="text-xs text-monk-muted hover:text-monk-text px-1"
           >
-            Batal
+            {isId ? "Batal" : "Cancel"}
           </button>
         </div>
       ) : tasks.length === 0 ? (
@@ -407,7 +416,7 @@ export function GoalTasksCard({ goal, todayMainAction }: { goal: Goal; todayMain
           onClick={() => setIsAdding(true)}
           className="w-full text-center py-1.5 text-xs text-monk-muted/80 hover:text-monk-accent border border-dashed border-monk-border/60 rounded-lg transition"
         >
-          + Pecah target ini jadi langkah-langkah kecil
+          {isId ? "+ Pecah target ini jadi langkah-langkah kecil" : "+ Break this goal into small steps"}
         </button>
       ) : null}
     </div>

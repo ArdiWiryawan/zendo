@@ -1,10 +1,10 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Sparkles, Moon, Heart, Coffee, Gamepad2, BatteryCharging, Check, ArrowRight } from "lucide-react";
+import { Sparkles, Moon, BatteryCharging, Check, ArrowRight } from "lucide-react";
 import { useMonkStore } from "../store/useMonkStore";
-import { useT } from "../i18n";
+import { useT, useLanguage } from "../i18n";
 import { hapticPress } from "../lib/haptics";
-import { Card, PrimaryButton, SecondaryButton, GhostButton, useCalmToast } from "./ui";
+import { Card, PrimaryButton, GhostButton, useCalmToast } from "./ui";
 import { getTodayDateString } from "../lib/date";
 import type { EnergyLevel } from "../types/app";
 
@@ -18,8 +18,10 @@ type EnergiserType = "play" | "people" | "power";
 interface RestActivity {
   id: string;
   type: EnergiserType;
-  title: string;
-  subtitle: string;
+  titleId: string;
+  titleEn: string;
+  subtitleId: string;
+  subtitleEn: string;
   icon: string;
 }
 
@@ -28,22 +30,28 @@ const ENERGISERS: RestActivity[] = [
   {
     id: "play_film",
     type: "play",
-    title: "Tonton Film / Serial Favorit",
-    subtitle: "Nikmati cerita tanpa rasa bersalah atau memikirkan kerjaan.",
+    titleId: "Tonton Film / Serial Favorit",
+    titleEn: "Watch a Favorite Movie or Show",
+    subtitleId: "Nikmati cerita tanpa rasa bersalah atau memikirkan kerjaan.",
+    subtitleEn: "Enjoy a story without guilt or thinking about work.",
     icon: "🎬"
   },
   {
     id: "play_music",
     type: "play",
-    title: "Eksplorasi Musik / Podcast Santai",
-    subtitle: "Dengarkan album favorit atau topik hobi dengan headphone yang nyaman.",
+    titleId: "Eksplorasi Musik / Podcast Santai",
+    titleEn: "Explore Music or Relaxing Podcast",
+    subtitleId: "Dengarkan album favorit atau topik hobi dengan headphone yang nyaman.",
+    subtitleEn: "Listen to a favorite album or hobby topic with comfortable headphones.",
     icon: "🎧"
   },
   {
     id: "play_hobby",
     type: "play",
-    title: "Hobi Kreatif / Gaming Ringan",
-    subtitle: "Menggambar, merakit, menulis fiksi, atau main game santai.",
+    titleId: "Hobi Kreatif / Gaming Ringan",
+    titleEn: "Creative Hobby or Light Gaming",
+    subtitleId: "Menggambar, merakit, menulis fiksi, atau main game santai.",
+    subtitleEn: "Draw, craft, write fiction, or play a cozy game.",
     icon: "🎮"
   },
 
@@ -51,22 +59,28 @@ const ENERGISERS: RestActivity[] = [
   {
     id: "people_hangout",
     type: "people",
-    title: "Ngopi / Makan Bareng Teman",
-    subtitle: "Bertemu sahabat dekat untuk obrolan santai yang menghangatkan hati.",
+    titleId: "Ngopi / Makan Bareng Teman",
+    titleEn: "Coffee or Meal with a Friend",
+    subtitleId: "Bertemu sahabat dekat untuk obrolan santai yang menghangatkan hati.",
+    subtitleEn: "Meet a close friend for a relaxing, heartwarming chat.",
     icon: "☕"
   },
   {
     id: "people_call",
     type: "people",
-    title: "Telepon Orang Tua / Keluarga",
-    subtitle: "Tanyakan kabar dan berbagi cerita tanpa terburu-buru waktu.",
+    titleId: "Telepon Orang Tua / Keluarga",
+    titleEn: "Call Parents or Family",
+    subtitleId: "Tanyakan kabar dan berbagi cerita tanpa terburu-buru waktu.",
+    subtitleEn: "Catch up and share stories without rushing.",
     icon: "📞"
   },
   {
     id: "people_walk",
     type: "people",
-    title: "Jalan Santai Berdua",
-    subtitle: "Habiskan waktu bersama pasangan atau sahabat di ruang terbuka.",
+    titleId: "Jalan Santai Berdua",
+    titleEn: "Casual Walk Together",
+    subtitleId: "Habiskan waktu bersama pasangan atau sahabat di ruang terbuka.",
+    subtitleEn: "Spend time with your partner or friend outdoors.",
     icon: "🌿"
   },
 
@@ -74,28 +88,36 @@ const ENERGISERS: RestActivity[] = [
   {
     id: "power_nap",
     type: "power",
-    title: "Tidur Siang / Rehat Total",
-    subtitle: "Istirahatkan mata dan sistem saraf tanpa pasang alarm terburu-buru.",
+    titleId: "Tidur Siang / Rehat Total",
+    titleEn: "Power Nap / Total Rest",
+    subtitleId: "Istirahatkan mata dan sistem saraf tanpa pasang alarm terburu-buru.",
+    subtitleEn: "Rest your eyes and nervous system without an urgent alarm.",
     icon: "🛌"
   },
   {
     id: "power_walk",
     type: "power",
-    title: "Silent Nature Walk",
-    subtitle: "Jalan santai 30 menit di luar tanpa layar HP dan earphone.",
+    titleId: "Jalan Sunyi di Alam (Silent Walk)",
+    titleEn: "Silent Nature Walk",
+    subtitleId: "Jalan santai 30 menit di luar tanpa layar HP dan earphone.",
+    subtitleEn: "Take a 30-minute stroll outside without screens or earbuds.",
     icon: "🌲"
   },
   {
     id: "power_meal",
     type: "power",
-    title: "Masak Santai & Santap Makanan Sehat",
-    subtitle: "Nikmati proses menyiapkan makanan bergizi secara pelan-pelan.",
+    titleId: "Masak Santai & Santap Makanan Sehat",
+    titleEn: "Mindful Cooking & Nourishing Meal",
+    subtitleId: "Nikmati proses menyiapkan makanan bergizi secara pelan-pelan.",
+    subtitleEn: "Enjoy preparing a nutritious meal at an unhurried pace.",
     icon: "🍲"
   }
 ];
 
 export function FeelGoodRestCanvas({ onOpenWeeklyReview, className = "" }: FeelGoodRestCanvasProps) {
   const t = useT();
+  const lang = useLanguage();
+  const isId = lang === "id";
   const toast = useCalmToast();
   const store = useMonkStore();
   const today = getTodayDateString();
@@ -119,10 +141,11 @@ export function FeelGoodRestCanvas({ onOpenWeeklyReview, className = "" }: FeelG
   const handleSelectActivity = (act: RestActivity) => {
     hapticPress("light");
     setSelectedId(act.id);
+    const actTitle = isId ? act.titleId : act.titleEn;
     store.createOrUpdateDayPlan(today, {
       dayType: "rest",
       mainAction: `rest:${act.id}`,
-      highlight: act.title,
+      highlight: actTitle,
       status: "rest"
     });
     toast.show(t("toast.saved"));
@@ -169,14 +192,16 @@ export function FeelGoodRestCanvas({ onOpenWeeklyReview, className = "" }: FeelG
                 Feel-Good Rest Day
               </span>
               <span className="text-[10px] font-medium text-emerald-400/90 flex items-center gap-1">
-                <Check size={11} strokeWidth={2.5} /> Streak Terjaga
+                <Check size={11} strokeWidth={2.5} /> {isId ? "Streak Terjaga" : "Streak Preserved"}
               </span>
             </div>
             <h3 className="mt-1.5 text-base font-bold text-monk-text tracking-tight">
-              Pemulihan Sadar (Sharpen the Saw)
+              {isId ? "Pemulihan Sadar (Sharpen the Saw)" : "Mindful Recovery (Sharpen the Saw)"}
             </h3>
             <p className="mt-1 text-xs text-monk-muted leading-relaxed">
-              Istirahat bukanlah hilangnya produktivitas, melainkan bahan bakar untuk performa minggu depan. Pilih aktivitas yang menyegarkan energimu hari ini.
+              {isId
+                ? "Istirahat bukanlah hilangnya produktivitas, melainkan bahan bakar untuk performa minggu depan. Pilih aktivitas yang menyegarkan energimu hari ini."
+                : "Rest is not lost productivity, but fuel for next week's focus. Choose an activity that rejuvenates your energy today."}
             </p>
           </div>
         </div>
@@ -185,14 +210,14 @@ export function FeelGoodRestCanvas({ onOpenWeeklyReview, className = "" }: FeelG
         <div className="mt-4 pt-3.5 border-t border-monk-border/40 flex flex-wrap items-center justify-between gap-2">
           <span className="text-[11px] font-semibold text-monk-muted/90 flex items-center gap-1.5">
             <BatteryCharging size={13} className="text-monk-accent" />
-            Energi bateraimu saat ini:
+            {isId ? "Energi bateraimu saat ini:" : "Current energy level:"}
           </span>
           <div className="flex items-center gap-1.5">
             {(
               [
-                { lvl: "low", label: "Rendah", icon: "🪫", color: "hover:border-rose-400 text-rose-300" },
-                { lvl: "medium", label: "Sedang", icon: "⚡", color: "hover:border-amber-400 text-amber-300" },
-                { lvl: "high", label: "Penuh", icon: "🚀", color: "hover:border-emerald-400 text-emerald-300" }
+                { lvl: "low", label: isId ? "Rendah" : "Low", icon: "🪫", color: "hover:border-rose-400 text-rose-300" },
+                { lvl: "medium", label: isId ? "Sedang" : "Steady", icon: "⚡", color: "hover:border-amber-400 text-amber-300" },
+                { lvl: "high", label: isId ? "Penuh" : "Full", icon: "🚀", color: "hover:border-emerald-400 text-emerald-300" }
               ] as const
             ).map((item) => {
               const active = currentEnergy === item.lvl;
@@ -220,10 +245,10 @@ export function FeelGoodRestCanvas({ onOpenWeeklyReview, className = "" }: FeelG
       <div className="flex rounded-xl bg-monk-soft p-1 border border-monk-border/40">
         {(
           [
-            { id: "all", label: "Semua", icon: "✨" },
-            { id: "play", label: "Play (Joy)", icon: "🎮" },
-            { id: "people", label: "People (Koneksi)", icon: "👥" },
-            { id: "power", label: "Power (Rejuvenasi)", icon: "⚡" }
+            { id: "all", label: isId ? "Semua" : "All", icon: "✨" },
+            { id: "play", label: isId ? "Play (Joy)" : "Play (Joy)", icon: "🎮" },
+            { id: "people", label: isId ? "People (Koneksi)" : "People (Connection)", icon: "👥" },
+            { id: "power", label: isId ? "Power (Rejuvenasi)" : "Power (Recharge)", icon: "⚡" }
           ] as const
         ).map((tab) => (
           <button
@@ -250,6 +275,8 @@ export function FeelGoodRestCanvas({ onOpenWeeklyReview, className = "" }: FeelG
         <AnimatePresence mode="popLayout">
           {filteredEnergisers.map((item) => {
             const isSelected = selectedId === item.id;
+            const title = isId ? item.titleId : item.titleEn;
+            const subtitle = isId ? item.subtitleId : item.subtitleEn;
             return (
               <motion.button
                 key={item.id}
@@ -272,16 +299,16 @@ export function FeelGoodRestCanvas({ onOpenWeeklyReview, className = "" }: FeelG
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center justify-between gap-2">
                     <p className={`text-xs font-bold ${isSelected ? "text-monk-rest font-extrabold" : "text-monk-text"}`}>
-                      {item.title}
+                      {title}
                     </p>
                     {isSelected && (
                       <span className="rounded-full bg-monk-rest/20 px-2 py-0.5 text-[10px] font-bold text-monk-rest">
-                        Dipilih
+                        {isId ? "Dipilih" : "Selected"}
                       </span>
                     )}
                   </div>
                   <p className="mt-0.5 text-[11px] text-monk-muted leading-relaxed line-clamp-2">
-                    {item.subtitle}
+                    {subtitle}
                   </p>
                 </div>
               </motion.button>
@@ -293,20 +320,22 @@ export function FeelGoodRestCanvas({ onOpenWeeklyReview, className = "" }: FeelG
         <div className="mt-1">
           {isEditingCustom ? (
             <div className="rounded-2xl border border-monk-rest/50 bg-monk-surface p-3.5 space-y-2.5">
-              <p className="text-xs font-bold text-monk-text">Aktivitas Istirahat Pilihanmu:</p>
+              <p className="text-xs font-bold text-monk-text">
+                {isId ? "Aktivitas Istirahat Pilihanmu:" : "Your Chosen Rest Activity:"}
+              </p>
               <input
                 type="text"
                 value={customAction}
                 onChange={(e) => setCustomAction(e.target.value)}
-                placeholder="Contoh: Baca buku di taman, bersepeda sore..."
+                placeholder={isId ? "Contoh: Baca buku di taman, bersepeda sore..." : "E.g. Read a book in the park, evening bike ride..."}
                 className="w-full rounded-xl border border-monk-border bg-monk-soft px-3 py-2 text-xs text-monk-text placeholder:text-monk-muted focus:border-monk-rest focus:outline-none"
               />
               <div className="flex items-center justify-end gap-2">
                 <GhostButton className="text-xs py-1.5 px-3" onClick={() => setIsEditingCustom(false)}>
-                  Batal
+                  {isId ? "Batal" : "Cancel"}
                 </GhostButton>
                 <PrimaryButton className="text-xs py-1.5 px-4 w-auto" onClick={handleSaveCustom}>
-                  Simpan
+                  {isId ? "Simpan" : "Save"}
                 </PrimaryButton>
               </div>
             </div>
@@ -316,7 +345,7 @@ export function FeelGoodRestCanvas({ onOpenWeeklyReview, className = "" }: FeelG
               onClick={() => setIsEditingCustom(true)}
               className="w-full text-center py-2 text-xs font-medium text-monk-muted hover:text-monk-rest transition"
             >
-              + Tulis aktivitas istirahat kustom sendiri
+              {isId ? "+ Tulis aktivitas istirahat kustom sendiri" : "+ Write your own custom rest activity"}
             </button>
           )}
         </div>
@@ -327,17 +356,19 @@ export function FeelGoodRestCanvas({ onOpenWeeklyReview, className = "" }: FeelG
         <div className="min-w-0 text-center sm:text-left">
           <p className="text-xs font-bold text-monk-text flex items-center justify-center sm:justify-start gap-1.5">
             <Sparkles size={14} className="text-monk-accent" />
-            Siap untuk evaluasi mingguan?
+            {isId ? "Siap untuk evaluasi mingguan?" : "Ready for weekly review?"}
           </p>
           <p className="mt-0.5 text-[11px] text-monk-muted">
-            Tutup minggu dengan tenang: renungkan apa yang berhasil dan rencanakan prioritas berikutnya.
+            {isId
+              ? "Tutup minggu dengan tenang: renungkan apa yang berhasil dan rencanakan prioritas berikutnya."
+              : "Close the week with clarity: reflect on what worked and plan your next priorities."}
           </p>
         </div>
         <PrimaryButton
           onClick={onOpenWeeklyReview}
           className="text-xs py-2 px-4 w-full sm:w-auto shrink-0 flex items-center justify-center gap-1.5"
         >
-          <span>Mulai Refleksi Mingguan</span>
+          <span>{isId ? "Mulai Refleksi Mingguan" : "Start Weekly Review"}</span>
           <ArrowRight size={13} />
         </PrimaryButton>
       </Card>

@@ -362,6 +362,7 @@ export function JournalEntryScreen() {
                   dayType: "goal",
                   goalId: targetGoalId,
                   mainAction: tomorrowText,
+                  highlight: tomorrowText,
                   status: "planned",
                   planningCompleted: true
                 });

@@ -16,7 +16,7 @@ import {
 import { getFocusStreak } from "../lib/focusStreak";
 import { selectActiveGoals } from "../store/selectors";
 import { useMonkStore } from "../store/useMonkStore";
-import { useT } from "../i18n";
+import { useT, useLanguage } from "../i18n";
 import type { SeasonWhy } from "../types/app";
 
 export function SeasonProgressCard({ compact = false }: { compact?: boolean }) {
@@ -109,6 +109,8 @@ export function WhyEditor({
   onCancel: () => void;
 }) {
   const t = useT();
+  const lang = useLanguage();
+  const isId = lang === "id";
   const [whyText, setWhyText] = useState(initial?.why || initial?.identity || "");
   const [desiredOutcome, setDesiredOutcome] = useState(initial?.desiredOutcome || "");
   const [antiWhy, setAntiWhy] = useState(initial?.antiWhy || initial?.consequenceOfInaction || "");
@@ -157,7 +159,7 @@ export function WhyEditor({
           {CORE_VALUES.map((v) => (
             <ChoiceCard
               key={v.id}
-              title={v.label}
+              title={(isId ? v.labelId : v.labelEn) || v.label}
               selected={protect.includes(v.id)}
               onClick={() => toggleValue(v.id)}
             />
@@ -166,7 +168,7 @@ export function WhyEditor({
       </div>
       <div className="flex gap-3 pt-1">
         <SecondaryButton className="flex-1 min-h-11" onClick={onCancel}>
-          Cancel
+          {isId ? "Batal" : "Cancel"}
         </SecondaryButton>
         <PrimaryButton
           className="flex-1 min-h-11"
@@ -196,6 +198,8 @@ export function WhyEditor({
 export function WhyCard() {
   const store = useMonkStore();
   const t = useT();
+  const lang = useLanguage();
+  const isId = lang === "id";
   const why = store.activeSeason?.why;
   const [editing, setEditing] = useState(false);
   const intrinsicWhy = why?.why || why?.identity;
@@ -286,7 +290,7 @@ export function WhyCard() {
                 key={id}
                 className="rounded-full border border-monk-border bg-monk-soft px-2.5 py-1 text-[11px] text-monk-muted"
               >
-                {v?.label ?? id}
+                {(isId ? v?.labelId : v?.labelEn) ?? v?.label ?? id}
               </span>
             );
           })}

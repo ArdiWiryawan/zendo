@@ -1,14 +1,14 @@
 export const CORE_VALUES = [
-  { id: "growth", label: "Growth", description: "Continuous learning and self-improvement" },
-  { id: "health", label: "Health", description: "Physical and mental well-being" },
-  { id: "family", label: "Family", description: "Time and connection with loved ones" },
-  { id: "freedom", label: "Freedom", description: "Autonomy and flexibility" },
-  { id: "creativity", label: "Creativity", description: "Self-expression and innovation" },
-  { id: "impact", label: "Impact", description: "Making a meaningful difference" },
-  { id: "mastery", label: "Mastery", description: "Deep expertise in your craft" },
-  { id: "connection", label: "Connection", description: "Community and relationships" },
-  { id: "stability", label: "Stability", description: "Financial and emotional security" },
-  { id: "adventure", label: "Adventure", description: "New experiences and exploration" },
-  { id: "service", label: "Service", description: "Helping and supporting others" },
-  { id: "authenticity", label: "Authenticity", description: "Being true to yourself" }
+  { id: "growth", label: "Growth", labelId: "Pertumbuhan", labelEn: "Growth", description: "Continuous learning and self-improvement", descriptionId: "Belajar terus-menerus dan pengembangan diri", descriptionEn: "Continuous learning and self-improvement" },
+  { id: "health", label: "Health", labelId: "Kesehatan", labelEn: "Health", description: "Physical and mental well-being", descriptionId: "Kesejahteraan fisik dan mental", descriptionEn: "Physical and mental well-being" },
+  { id: "family", label: "Family", labelId: "Keluarga", labelEn: "Family", description: "Time and connection with loved ones", descriptionId: "Waktu dan kedekatan bersama orang tersayang", descriptionEn: "Time and connection with loved ones" },
+  { id: "freedom", label: "Freedom", labelId: "Kebebasan", labelEn: "Freedom", description: "Autonomy and flexibility", descriptionId: "Kemandirian dan fleksibilitas", descriptionEn: "Autonomy and flexibility" },
+  { id: "creativity", label: "Creativity", labelId: "Kreativitas", labelEn: "Creativity", description: "Self-expression and innovation", descriptionId: "Ekspresi diri dan inovasi karya", descriptionEn: "Self-expression and innovation" },
+  { id: "impact", label: "Impact", labelId: "Dampak", labelEn: "Impact", description: "Making a meaningful difference", descriptionId: "Memberikan manfaat nyata bagi sekitar", descriptionEn: "Making a meaningful difference" },
+  { id: "mastery", label: "Mastery", labelId: "Keahlian", labelEn: "Mastery", description: "Deep expertise in your craft", descriptionId: "Keahlian mendalam dalam bidangmu", descriptionEn: "Deep expertise in your craft" },
+  { id: "connection", label: "Connection", labelId: "Hubungan", labelEn: "Connection", description: "Community and relationships", descriptionId: "Komunitas dan relasi yang hangat", descriptionEn: "Community and relationships" },
+  { id: "stability", label: "Stability", labelId: "Stabilitas", labelEn: "Stability", description: "Financial and emotional security", descriptionId: "Keamanan finansial dan emosional", descriptionEn: "Financial and emotional security" },
+  { id: "adventure", label: "Adventure", labelId: "Petualangan", labelEn: "Adventure", description: "New experiences and exploration", descriptionId: "Pengalaman baru dan eksplorasi hidup", descriptionEn: "New experiences and exploration" },
+  { id: "service", label: "Service", labelId: "Pelayanan", labelEn: "Service", description: "Helping and supporting others", descriptionId: "Membantu dan mendukung sesama", descriptionEn: "Helping and supporting others" },
+  { id: "authenticity", label: "Authenticity", labelId: "Otentisitas", labelEn: "Authenticity", description: "Being true to yourself", descriptionId: "Jujur pada diri sendiri dan nilai hidup", descriptionEn: "Being true to yourself" }
 ] as const;

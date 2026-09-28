@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Volume1, Volume2, VolumeX, Lock, Sparkles, Crown, Music, Heart, Play, Pause, Waves, Sliders } from "lucide-react";
+import { Volume1, Volume2, VolumeX, Sparkles, Crown, Music, Heart, Play, Pause, Waves, Sliders } from "lucide-react";
 import {
   Card,
   EmptyState,
@@ -9,7 +9,6 @@ import {
   PrimaryButton,
   SecondaryButton,
 } from "../components/ui";
-import { MorningPlanningModal } from "../components/MorningPlanningModal";
 import { FocusSessionPanel, FocusSessionStarter, FocusSessionSummary } from "../screens/FocusSession";
 import { routes } from "../constants/routes";
 import { getTodayDateString } from "../lib/date";
@@ -209,8 +208,6 @@ export default function FocusScreen() {
     setMusicOn(true);
   };
 
-  const [planningModalOpen, setPlanningModalOpen] = useState(false);
-
   if (!plan) {
     return (
       <>
@@ -220,42 +217,6 @@ export default function FocusScreen() {
           description={t("focus.emptyDesc")}
           actionLabel={t("focus.pickToday")}
           onAction={() => navigate(routes.today)}
-        />
-        <ZendoProModal isOpen={proModalOpen} onClose={() => setProModalOpen(false)} />
-      </>
-    );
-  }
-
-  // Strict Gating: Daily Planning must be completed before entering focus mode
-  if (plan.dayType !== "rest" && !plan.planningCompleted) {
-    return (
-      <>
-        <PageHeader title={t("focus.title")} subtitle={t("planning.strictGatedTitle")} />
-        <div className="space-y-5">
-          <Card className="border-monk-warning/40 bg-gradient-to-b from-monk-warning/10 via-monk-surface to-monk-surface p-6 text-center space-y-4 shadow-sm">
-            <div className="grid h-12 w-12 mx-auto place-items-center rounded-2xl bg-monk-warning/15 text-monk-warning">
-              <Lock size={24} />
-            </div>
-            <div className="space-y-1.5">
-              <h3 className="text-base font-bold text-monk-text">{t("planning.strictGatedTitle")}</h3>
-              <p className="text-xs text-monk-muted max-w-md mx-auto leading-relaxed">
-                {t("planning.strictGatedDesc")}
-              </p>
-            </div>
-            <div className="flex flex-wrap justify-center gap-2 pt-2">
-              <PrimaryButton onClick={() => setPlanningModalOpen(true)}>
-                {t("planning.openPlanningBtn")}
-              </PrimaryButton>
-              <GhostButton onClick={() => navigate(routes.today)}>
-                {t("focus.pickToday")}
-              </GhostButton>
-            </div>
-          </Card>
-        </div>
-        <MorningPlanningModal
-          isOpen={planningModalOpen}
-          onClose={() => setPlanningModalOpen(false)}
-          date={today}
         />
         <ZendoProModal isOpen={proModalOpen} onClose={() => setProModalOpen(false)} />
       </>
