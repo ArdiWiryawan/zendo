@@ -13,6 +13,29 @@
   --color-cat-personal: 196 139 180;
   /* reserve room for fixed bottom bar (~73-107px) on caret-into-view auto scroll */
   scroll-padding-bottom: 110px;
+}
+
+/* Subtle Zen scrollbars across the application */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.16) transparent;
+}
+::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.16);
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.28);
+}
+
+:root {
   --color-bg: #080908;
   --color-bg-deep: #040504;
   --color-surface: #111211;

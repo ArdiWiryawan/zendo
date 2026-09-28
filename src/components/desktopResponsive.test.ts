@@ -144,7 +144,20 @@ describe("touched i18n keys exist in both locales", () => {
     "timeline.streak.partial",
     "timeline.daily.blocksPlanned",
     "timeline.daily.editPlanCta",
-    "timeline.daily.emptyHint"
+    "timeline.daily.emptyHint",
+    "timeline.noAction",
+    "timeline.restDay",
+    "timeline.streak.noMissed",
+    "timeline.streak.best",
+    "timeline.weekLabel",
+    "timeline.weekRange",
+    "timeline.todayLogTitle",
+    "timeline.todayLogSubtitle",
+    "timeline.todayLogEmpty",
+    "timeline.month.title",
+    "timeline.month.hint",
+    "timeline.retroLog",
+    "timeline.todayBadge"
   ] as const;
   for (const key of keys) {
     it(key, () => {
