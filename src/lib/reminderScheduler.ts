@@ -146,7 +146,11 @@ export function interpolateReminderMessage(
   const end = new Date(seasonEnd + "T00:00:00");
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   const n = Math.max(0, Math.round((end.getTime() - today.getTime()) / 86_400_000));
-  return message.split("{n}").join(String(n));
+  let res = message.split("{n}").join(String(n));
+  if (n === 1) {
+    res = res.replace("1 days", "1 day");
+  }
+  return res;
 }
 
 type FireHandler = {

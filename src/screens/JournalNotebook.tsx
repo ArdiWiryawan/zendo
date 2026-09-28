@@ -1,11 +1,11 @@
 import { useState, useMemo, useRef, useEffect, useCallback } from "react";
-import { useSearchParams, useBlocker } from "react-router-dom";
+import { useSearchParams, useBlocker, useNavigate } from "react-router-dom";
 import { useMonkStore } from "../store/useMonkStore";
 import { PrimaryButton, SecondaryButton, GhostButton, CalmDialog, useCalmToast } from "../components/ui";
 import { createId } from "../lib/ids";
 import { nowIso, getTodayDateString, addDaysToDate } from "../lib/date";
 import type { NotebookCategory, NotebookEntry, ParaType } from "../types/app";
-import { Search, Plus, Pin, PinOff, Trash2, ArrowLeft, X, BookOpen, ImagePlus, Camera, MoreVertical, Pencil, Maximize2, Minimize2, ListTodo, List, ListOrdered, Heading, Bold, Italic, Quote, Crown, Sparkles, Copy, Link2, ArrowRight, Check } from "lucide-react";
+import { Search, Plus, Pin, PinOff, Trash2, ArrowLeft, X, BookOpen, ImagePlus, Camera, MoreVertical, Pencil, Maximize2, Minimize2, ListTodo, List, ListOrdered, Heading, Bold, Italic, Quote, Crown, Sparkles, Copy, Link2, ArrowRight, Check, FileText } from "lucide-react";
 import { useT, useLanguage, type MessageKey } from "../i18n";
 import { hapticPress } from "../lib/haptics";
 import { autolistMarker, groupPhotoRuns, renderBodyMarkdown } from "../lib/notebookMarkdown";
@@ -14,12 +14,126 @@ import { IMG_MARKER, compressImage, putImage, deleteImage, matchImageMarkers } f
 import { InlinePhoto, PhotoLightbox, photoIdsInBody, useObjectUrl } from "../components/NotebookImages";
 import { ZendoProModal } from "../components/ZendoProModal";
 import { findBacklinks, findRelatedNotes } from "../lib/notebookLinks";
+import { selectJournalEntryForToday } from "../store/selectors";
+import { routes } from "../constants/routes";
 import {
   NOTEBOOK_DRAFT_KEY,
   clearNotebookDraft,
   readNotebookDraft,
   writeNotebookDraft
 } from "../lib/storage";
+
+export type ZenTemplate = {
+  id: string;
+  titleKey: MessageKey;
+  icon: string;
+  defaultTitle: (lang: string) => string;
+  defaultPages: (lang: string) => string[];
+  defaultCategory?: string;
+  defaultPara?: ParaType;
+};
+
+export const ZEN_NOTEBOOK_TEMPLATES: ZenTemplate[] = [
+  {
+    id: "morning",
+    titleKey: "notebook.templateMorningTitle",
+    icon: "🌅",
+    defaultTitle: (lang) => (lang === "id" ? "Refleksi Pagi & Niat" : "Morning Intention"),
+    defaultPages: (lang) => [
+      lang === "id"
+        ? `## 🌅 Niat Pagi & Mindset
+- **Fokus Tunggal Hari Ini**: 
+- **1 Hal yang Harus Selesai**: 
+- **Energi & Kesiapan Mental**: 
+
+### 🎯 Blok Waktu Rencana:
+- 09:00 - Sesi Deep Work Utama
+- 14:00 - Review & Administrasi
+
+---
+*Kutipan Tenang: "Satu hal yang diselesaikan dengan tenang lebih bernilai dari seribu hal yang disentuh setengah jalan."*`
+        : `## 🌅 Morning Intention
+- **Single Focus Object Today**: 
+- **1 Must-Complete Milestone**: 
+- **Energy & Mental Readiness**: 
+
+### 🎯 Planned Time Blocks:
+- 09:00 - Core Deep Work Block
+- 14:00 - Review & Admin
+
+---
+*Calm Thought: "One thing finished in stillness is worth a thousand touched in haste."*`
+    ],
+    defaultPara: "project"
+  },
+  {
+    id: "evening",
+    titleKey: "notebook.templateEveningTitle",
+    icon: "🌙",
+    defaultTitle: (lang) => (lang === "id" ? "Refleksi Petang & Evaluasi" : "Evening Wind-Down"),
+    defaultPages: (lang) => [
+      lang === "id"
+        ? `## 🌙 Refleksi Petang
+- **Kemenangan / Kemajuan Hari Ini**: 
+- **Hambatan yang Muncul**: 
+- **Pelajaran Inti (Takeaway)**: 
+
+### ⚓ Jangkar Esok Hari:
+- Aksi pertama saat bangun esok hari: 
+
+---
+*Lepaskan hari ini dengan penuh syukur. Besok lembaran baru yang jernih.*`
+        : `## 🌙 Evening Reflection
+- **Today's Small Wins**: 
+- **Friction or Obstacle**: 
+- **Core Takeaway**: 
+
+### ⚓ Tomorrow's Anchor:
+- First action upon starting tomorrow: 
+
+---
+*Release today with gratitude. Tomorrow is a clean slate.*`
+    ],
+    defaultPara: "area"
+  },
+  {
+    id: "deep_work",
+    titleKey: "notebook.templateDeepWorkTitle",
+    icon: "🧠",
+    defaultTitle: (lang) => (lang === "id" ? "Deep Work Clarity Dump" : "Deep Work Brain Dump"),
+    defaultPages: (lang) => [
+      lang === "id"
+        ? `## 🧠 Sesi Deep Work
+- **Tujuan Sesi**: 
+- **Hasil Nyata yang Diharapkan**: 
+
+### 🅿️ Tempat Parkir Distraksi:
+*(Tulis ide liar atau distraksi yang muncul di sini agar fokus tetap terlindungi)*
+- 
+
+### 📝 Catatan & Temuan:
+- `
+        : `## 🧠 Deep Work Session
+- **Session Objective**: 
+- **Expected Artifact/Outcome**: 
+
+### 🅿️ Distraction Parking Lot:
+*(Write stray thoughts here so your attention stays clean)*
+- 
+
+### 📝 Notes & Findings:
+- `
+    ],
+    defaultPara: "project"
+  },
+  {
+    id: "blank",
+    titleKey: "notebook.templateBlankTitle",
+    icon: "📝",
+    defaultTitle: (lang) => (lang === "id" ? "Catatan Baru" : "New Note"),
+    defaultPages: () => [""]
+  }
+];
 
 // Category hues resolve through the per-theme tokens in globals.css rather than
 // literal hex, so the notebook stays legible in every theme. Built-in categories
@@ -205,12 +319,14 @@ export default function JournalNotebook({ onEditingChange, initialEntryId }: { o
   const store = useMonkStore();
   const t = useT();
   const lang = useLanguage();
+  const navigate = useNavigate();
   const dateLocale = lang === "id" ? "id-ID" : "en-US";
   const entries = store.notebookEntries;
   const categories = store.notebookCategories;
   const toast = useCalmToast();
   const [view, setView] = useState<"list" | "edit" | "read">("list");
   const [editEntry, setEditEntry] = useState<NotebookEntry | null>(null);
+  const [selectedTemplate, setSelectedTemplate] = useState<ZenTemplate | null>(null);
   const [readEntry, setReadEntry] = useState<NotebookEntry | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [filterCat, setFilterCat] = useState<string | null>(null);
@@ -258,6 +374,7 @@ export default function JournalNotebook({ onEditingChange, initialEntryId }: { o
   const goBackToList = useCallback(() => {
     setView("list");
     setEditEntry(null);
+    setSelectedTemplate(null);
     setReadEntry(null);
     onEditingChange?.(false);
   }, [onEditingChange]);
@@ -272,12 +389,21 @@ export default function JournalNotebook({ onEditingChange, initialEntryId }: { o
 
   const openNew = () => {
     setEditEntry(null);
+    setSelectedTemplate(null);
+    setView("edit");
+    onEditingChange?.(true);
+  };
+
+  const openNewWithTemplate = (tmpl: ZenTemplate) => {
+    setEditEntry(null);
+    setSelectedTemplate(tmpl);
     setView("edit");
     onEditingChange?.(true);
   };
 
   const openEdit = (entry: NotebookEntry) => {
     setEditEntry(entry);
+    setSelectedTemplate(null);
     setView("edit");
     onEditingChange?.(true);
   };
@@ -302,6 +428,7 @@ export default function JournalNotebook({ onEditingChange, initialEntryId }: { o
       <NotebookEditor
         entry={editEntry}
         initialCategoryId={filterCat ?? undefined}
+        initialTemplate={selectedTemplate}
         onBack={goBackToList}
       />
     );
@@ -363,8 +490,80 @@ export default function JournalNotebook({ onEditingChange, initialEntryId }: { o
         </div>
 
         <div className="nb-sheets">
+          {/* Daily Reflection & Journaling Status Banner */}
+          {(() => {
+            const todayEntry = selectJournalEntryForToday(store);
+            const hasCompletedJournal = Boolean(
+              todayEntry?.answers?.whatMovedToday ||
+              todayEntry?.answers?.whatDidILearn ||
+              todayEntry?.answers?.whatDistractedMe ||
+              todayEntry?.answers?.morningPages
+            );
 
-      <div className="relative mb-5">
+            return (
+              <div className="mb-4 rounded-2xl border border-monk-border/60 bg-gradient-to-r from-monk-surface via-monk-surface to-monk-soft/50 p-3.5 shadow-sm">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <div className={`grid h-8 w-8 place-items-center rounded-xl border shrink-0 ${
+                      hasCompletedJournal
+                        ? "bg-emerald-950/60 border-emerald-500/40 text-emerald-400"
+                        : "bg-monk-accent/15 border-monk-accent/30 text-monk-accent"
+                    }`}>
+                      {hasCompletedJournal ? <Check size={15} strokeWidth={2.5} /> : <Sparkles size={15} strokeWidth={2} />}
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-xs font-bold text-monk-text truncate">
+                        {hasCompletedJournal ? t("notebook.dailyJournalSaved") : t("notebook.dailyJournalPending")}
+                      </p>
+                      <p className="text-[10px] text-monk-muted truncate">
+                        {hasCompletedJournal ? (lang === "id" ? "Tersambung dengan ritme harian Zendo" : "Connected to Zendo daily rhythm") : (lang === "id" ? "Refleksi 3 menit: Menang, Hambatan, Intisari" : "3-minute reflection: Wins, Obstacle, Takeaway")}
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => navigate(routes.journal)}
+                    className={`shrink-0 rounded-xl px-3 py-1.5 text-xs font-bold transition active:scale-95 flex items-center gap-1 ${
+                      hasCompletedJournal
+                        ? "border border-monk-border/80 bg-monk-surface text-monk-text-soft hover:text-monk-text"
+                        : "bg-monk-accent text-monk-bg hover:bg-monk-accent-hover shadow-xs"
+                    }`}
+                  >
+                    <span>{hasCompletedJournal ? t("notebook.viewDailyJournal") : t("notebook.openDailyJournal")}</span>
+                  </button>
+                </div>
+              </div>
+            );
+          })()}
+
+          {/* Quick Zen Mindful Template Launchers */}
+          <div className="mb-4 space-y-1.5">
+            <div className="flex items-center justify-between px-0.5">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-monk-muted">
+                {t("notebook.templatesTitle")}
+              </span>
+              <span className="text-[10px] text-monk-muted/70">
+                {t("notebook.templatesSubtitle")}
+              </span>
+            </div>
+            <div className="-mx-1 flex items-center gap-2 overflow-x-auto px-1 pb-1 scrollbar-none">
+              {ZEN_NOTEBOOK_TEMPLATES.map((tmpl) => (
+                <button
+                  key={tmpl.id}
+                  type="button"
+                  onClick={() => openNewWithTemplate(tmpl)}
+                  className="group flex shrink-0 items-center gap-2 rounded-xl border border-monk-border/70 bg-monk-surface/80 hover:bg-monk-surface hover:border-monk-accent/60 px-3 py-2 text-xs font-medium text-monk-text transition active:scale-95 shadow-xs"
+                >
+                  <span className="text-sm">{tmpl.icon}</span>
+                  <span className="font-semibold text-monk-text group-hover:text-monk-accent">
+                    {t(tmpl.titleKey)}
+                  </span>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="relative mb-5">
         <Search
           size={14}
           className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-monk-text-soft"
@@ -867,27 +1066,44 @@ export function NotebookEntryDetail({
         </h1>
 
         {liveEntry.takeaway ? (
-          <div className="mx-4 mb-5 rounded-xl border border-monk-accent/30 bg-monk-accent-soft/20 p-3.5 shadow-xs">
-            <div className="flex flex-wrap items-center justify-between gap-2 mb-1.5">
+          <div className="mx-4 mb-5 rounded-2xl border border-monk-accent/35 bg-gradient-to-br from-monk-surface via-monk-surface to-monk-soft/50 p-4 shadow-sm">
+            <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
               <span className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-monk-accent">
                 <Sparkles size={13} />
                 {t("notebook.takeawayBadge")}
               </span>
-              <button
-                type="button"
-                onClick={() => {
-                  const tomorrow = addDaysToDate(getTodayDateString(), 1);
-                  store.createOrUpdateDayPlan(tomorrow, {
-                    dayType: "goal",
-                    mainAction: liveEntry.takeaway
-                  });
-                  toast.show(t("notebook.tomorrowActionToast"));
-                  hapticPress("success");
-                }}
-                className="flex items-center gap-1 rounded-md bg-monk-accent px-2.5 py-1 text-[11px] font-semibold text-monk-bg transition hover:bg-monk-accent-hover active:scale-95 shadow-xs"
-              >
-                <span>{t("notebook.setAsTomorrowAction")}</span>
-              </button>
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const today = getTodayDateString();
+                    store.createOrUpdateDayPlan(today, {
+                      dayType: "goal",
+                      mainAction: liveEntry.takeaway
+                    });
+                    toast.show(t("notebook.todayActionToast"));
+                    hapticPress("success");
+                  }}
+                  className="flex items-center gap-1 rounded-lg border border-monk-accent/40 bg-monk-accent/10 px-2.5 py-1 text-[11px] font-bold text-monk-accent transition hover:bg-monk-accent/20 active:scale-95"
+                >
+                  <span>{t("notebook.setAsTodayAction")}</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const tomorrow = addDaysToDate(getTodayDateString(), 1);
+                    store.createOrUpdateDayPlan(tomorrow, {
+                      dayType: "goal",
+                      mainAction: liveEntry.takeaway
+                    });
+                    toast.show(t("notebook.tomorrowActionToast"));
+                    hapticPress("success");
+                  }}
+                  className="flex items-center gap-1 rounded-lg bg-monk-accent px-2.5 py-1 text-[11px] font-bold text-monk-bg transition hover:bg-monk-accent-hover active:scale-95 shadow-xs"
+                >
+                  <span>{t("notebook.setAsTomorrowAction")}</span>
+                </button>
+              </div>
             </div>
             <p className="text-sm italic leading-relaxed text-monk-text font-serif">
               "{liveEntry.takeaway}"
@@ -932,23 +1148,30 @@ export function NotebookEntryDetail({
 
         {/* Backlinks & Heuristic Related Notes */}
         {(backlinks.length > 0 || relatedNotes.length > 0) && (
-          <div className="mt-8 border-t border-monk-border/50 pt-5 px-4 space-y-5">
+          <div className="mt-8 border-t border-monk-border/50 pt-5 px-4 space-y-6">
             {backlinks.length > 0 && (
               <div>
                 <h4 className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-monk-text-soft mb-2.5">
                   <Link2 size={13} className="text-monk-accent" />
                   <span>{t("notebook.backlinksTitle")} ({backlinks.length})</span>
                 </h4>
-                <div className="flex flex-wrap gap-2">
+                <div className="flex flex-col gap-2">
                   {backlinks.map((b) => (
                     <button
                       key={b.id}
                       type="button"
                       onClick={() => (onOpenNote ? onOpenNote(b) : onEdit())}
-                      className="flex items-center gap-1.5 rounded-lg border border-monk-border bg-monk-surface px-3 py-1.5 text-xs font-medium text-monk-text transition hover:border-monk-accent hover:text-monk-accent active:scale-95 shadow-xs"
+                      className="group flex items-center justify-between gap-3 rounded-xl border border-monk-border/70 bg-monk-surface/70 hover:bg-monk-surface hover:border-monk-accent/50 p-2.5 px-3 text-xs text-left transition-all active:scale-[0.99] shadow-xs"
                     >
-                      <Link2 size={12} className="text-monk-muted" />
-                      <span>{b.title || t("notebook.untitled")}</span>
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <div className="grid h-6 w-6 place-items-center rounded-lg bg-monk-soft text-monk-muted group-hover:text-monk-accent transition shrink-0">
+                          <Link2 size={12} />
+                        </div>
+                        <span className="font-semibold text-monk-text group-hover:text-white truncate">
+                          {b.title || t("notebook.untitled")}
+                        </span>
+                      </div>
+                      <ArrowRight size={13} className="text-monk-muted group-hover:text-monk-accent group-hover:translate-x-0.5 transition shrink-0" />
                     </button>
                   ))}
                 </div>
@@ -957,20 +1180,43 @@ export function NotebookEntryDetail({
 
             {relatedNotes.length > 0 && (
               <div>
-                <h4 className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-monk-text-soft mb-2.5">
-                  <Sparkles size={13} className="text-monk-accent" />
-                  <span>{t("notebook.relatedTitle")}</span>
-                </h4>
-                <div className="flex flex-wrap gap-2">
+                <div className="flex items-center justify-between mb-2.5">
+                  <h4 className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-monk-accent">
+                    <Sparkles size={13} className="text-monk-accent" />
+                    <span>{t("notebook.relatedTitle")}</span>
+                  </h4>
+                  <span className="font-mono text-[10px] text-monk-muted">
+                    {relatedNotes.length} {lang === "id" ? "terhubung" : "connected"}
+                  </span>
+                </div>
+                <div className="flex flex-col gap-2">
                   {relatedNotes.map((r) => (
                     <button
                       key={r.note.id}
                       type="button"
                       onClick={() => (onOpenNote ? onOpenNote(r.note) : onEdit())}
-                      className="flex items-center gap-1.5 rounded-lg border border-monk-border/70 bg-monk-soft/50 px-3 py-1.5 text-xs font-medium text-monk-text-soft transition hover:border-monk-accent hover:text-monk-text active:scale-95"
+                      className="group flex items-center justify-between gap-3 rounded-xl border border-monk-border/70 bg-monk-surface/80 hover:bg-monk-surface hover:border-monk-accent/60 p-3 text-xs text-left transition-all active:scale-[0.99] shadow-xs"
                     >
-                      <span>{r.note.title || t("notebook.untitled")}</span>
-                      <ArrowRight size={11} className="opacity-60" />
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <div className="grid h-7 w-7 place-items-center rounded-lg bg-monk-soft/80 border border-monk-border/40 text-monk-muted group-hover:text-monk-accent group-hover:border-monk-accent/30 transition shrink-0">
+                          <FileText size={13} strokeWidth={1.8} />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="font-semibold text-monk-text group-hover:text-white truncate">
+                            {r.note.title || t("notebook.untitled")}
+                          </p>
+                          {r.note.takeaway ? (
+                            <p className="text-[11px] text-monk-muted truncate font-serif italic mt-0.5">
+                              "{r.note.takeaway}"
+                            </p>
+                          ) : (
+                            <p className="text-[10px] font-mono text-monk-muted/80 mt-0.5 truncate">
+                              {r.note.body ? r.note.body.replace(/\{\{img:[^}]+\}\}/g, "").slice(0, 50).trim() : t("notebook.noBody")}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                      <ArrowRight size={14} className="text-monk-muted group-hover:text-monk-accent group-hover:translate-x-0.5 transition shrink-0" />
                     </button>
                   ))}
                 </div>
@@ -981,32 +1227,35 @@ export function NotebookEntryDetail({
       </div>
 
       {/* Bottom Floating Bar */}
-      <div className="fixed inset-x-0 bottom-0 z-40 border-t border-monk-border bg-monk-bg/95 px-6 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur-md">
-        <div className="mx-auto flex max-w-[430px] items-center justify-between gap-2">
-          <GhostButton
-            className="text-monk-danger"
+      <div className="fixed inset-x-0 bottom-0 z-40 border-t border-monk-border/70 bg-monk-bg/95 px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur-md shadow-lg">
+        <div className="mx-auto flex max-w-[440px] items-center justify-between gap-2">
+          <button
+            type="button"
             onClick={() => setDeleteConfirm(true)}
+            className="flex items-center gap-1.5 rounded-xl border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-xs font-semibold text-rose-300 hover:bg-rose-500/20 active:scale-95 transition"
           >
-            {t("notebook.delete")}
-          </GhostButton>
+            <Trash2 size={13} strokeWidth={2} />
+            <span>{t("notebook.delete")}</span>
+          </button>
           <div className="flex items-center gap-2">
             {onDuplicate ? (
-              <SecondaryButton
-                className="!w-auto px-3.5"
+              <button
+                type="button"
                 onClick={() => onDuplicate(liveEntry)}
+                className="flex items-center gap-1.5 rounded-xl border border-monk-border bg-monk-surface px-3 py-2 text-xs font-semibold text-monk-text hover:border-monk-accent hover:text-monk-accent active:scale-95 transition shadow-xs"
               >
-                <span className="flex items-center gap-1.5">
-                  <Copy size={13} strokeWidth={1.8} />
-                  {t("notebook.duplicate")}
-                </span>
-              </SecondaryButton>
+                <Copy size={13} strokeWidth={2} />
+                <span>{t("notebook.duplicate")}</span>
+              </button>
             ) : null}
-            <PrimaryButton className="!w-auto px-6" onClick={onEdit}>
-              <span className="flex items-center gap-2">
-                <Pencil size={14} strokeWidth={2} />
-                {t("notebook.edit")}
-              </span>
-            </PrimaryButton>
+            <button
+              type="button"
+              onClick={onEdit}
+              className="flex items-center gap-2 rounded-xl bg-monk-accent px-5 py-2 text-xs font-bold text-monk-bg shadow-sm hover:bg-monk-accent-hover active:scale-95 transition"
+            >
+              <Pencil size={14} strokeWidth={2.2} />
+              <span>{t("notebook.edit")}</span>
+            </button>
           </div>
         </div>
       </div>
@@ -1041,10 +1290,12 @@ export function NotebookEntryDetail({
 export function NotebookEditor({
   entry,
   initialCategoryId,
+  initialTemplate,
   onBack
 }: {
   entry: NotebookEntry | null;
   initialCategoryId?: string;
+  initialTemplate?: ZenTemplate | null;
   onBack: () => void;
 }) {
   const store = useMonkStore();
@@ -1058,6 +1309,8 @@ export function NotebookEditor({
   const sheetRef = useRef<HTMLDivElement>(null);
   const galleryInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
+  const [showTemplatePicker, setShowTemplatePicker] = useState(false);
+
   // Autosaved draft: a note being edited is persisted to localStorage on every
   // keystroke (debounced) so a tab close / crash / accidental nav never loses
   // typed text — mirror of the journal's draft pattern. Restore only when the
@@ -1067,15 +1320,28 @@ export function NotebookEditor({
   const draftKey = useMemo(() => `${NOTEBOOK_DRAFT_KEY}:${entryIdRef.current}`, []);
   const draft = useMemo(() => readNotebookDraft(draftKey), [draftKey]);
   const draftWins = Boolean(draft && (!entry || new Date(draft.createdAt ?? 0) > new Date(entry.updatedAt)));
-  const [title, setTitle] = useState(draftWins ? draft?.title ?? "" : entry?.title ?? "");
-  const [paraType, setParaType] = useState<ParaType | undefined>(draftWins ? draft?.paraType : entry?.paraType);
+  const [title, setTitle] = useState(() => {
+    if (draftWins && draft?.title) return draft.title;
+    if (entry?.title) return entry.title;
+    if (initialTemplate) return initialTemplate.defaultTitle(lang);
+    return "";
+  });
+  const [paraType, setParaType] = useState<ParaType | undefined>(() => {
+    if (draftWins) return draft?.paraType;
+    if (entry?.paraType) return entry.paraType;
+    return initialTemplate?.defaultPara;
+  });
   const [takeaway, setTakeaway] = useState<string>(draftWins ? (draft?.takeaway ?? "") : (entry?.takeaway ?? ""));
   const [pages, setPages] = useState<string[]>(() => {
     const raw = draftWins
       ? draft?.pages ?? []
       : entry?.pages && entry.pages.length > 0
         ? entry.pages
-        : [entry?.body ?? ""];
+        : entry?.body
+          ? [entry.body]
+          : initialTemplate
+            ? initialTemplate.defaultPages(lang)
+            : [""];
     return trimTrailingBlankPages(raw);
   });
   // Index of the focused body textarea — photo-insert target and auto-page
@@ -1824,6 +2090,19 @@ export function NotebookEditor({
 
       {/* Sleek Zen Markdown Island Toolbar */}
       <div className="mb-3 flex items-center gap-1 overflow-x-auto rounded-xl border border-monk-border/60 bg-monk-surface/90 p-1 backdrop-blur-md shadow-xs scrollbar-none">
+        {/* Zen Template Picker */}
+        <button
+          type="button"
+          onClick={() => setShowTemplatePicker(true)}
+          title={t("notebook.templatesTitle")}
+          className="flex h-8 shrink-0 whitespace-nowrap items-center gap-1.5 rounded-lg px-2.5 text-xs font-semibold text-monk-accent bg-monk-accent/15 border border-monk-accent/30 transition hover:bg-monk-accent/25 active:scale-95"
+        >
+          <Sparkles size={13} className="shrink-0 text-monk-accent" />
+          <span>{t("notebook.templatesTitle")}</span>
+        </button>
+
+        <div className="h-4 w-px bg-monk-border/50 shrink-0 mx-0.5" />
+
         {/* To-Do Checklist */}
         <button
           type="button"
@@ -2111,25 +2390,78 @@ export function NotebookEditor({
           </button>
         </div>
       ) : (
-      <div className="fixed inset-x-0 bottom-0 z-40 border-t border-monk-border bg-monk-bg/95 px-6 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur-md">
-        <div className="mx-auto flex max-w-[430px] items-center justify-end gap-2">
+      <div className="fixed inset-x-0 bottom-0 z-40 border-t border-monk-border/70 bg-monk-bg/95 px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur-md shadow-lg">
+        <div className="mx-auto flex max-w-[440px] items-center justify-between gap-2">
             {entry ? (
-              <GhostButton
-                className="text-monk-danger"
+              <button
+                type="button"
+                className="flex items-center gap-1.5 rounded-xl border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-xs font-semibold text-rose-300 hover:bg-rose-500/20 active:scale-95 transition"
                 onClick={() => setConfirmKind("delete-editor")}
               >
-                {t("notebook.delete")}
-              </GhostButton>
-            ) : null}
-            <SecondaryButton className="!w-auto px-4" onClick={() => handleSave(false)} disabled={!canSave}>
-              {t("notebook.save")}
-            </SecondaryButton>
-            <PrimaryButton className="!w-auto px-5" onClick={() => handleSave(true)} disabled={!canSave}>
-              {t("notebook.done")}
-            </PrimaryButton>
+                <Trash2 size={13} strokeWidth={2} />
+                <span>{t("notebook.delete")}</span>
+              </button>
+            ) : <div />}
+            <div className="flex items-center gap-2">
+              <SecondaryButton className="!w-auto px-4" onClick={() => handleSave(false)} disabled={!canSave}>
+                {t("notebook.save")}
+              </SecondaryButton>
+              <PrimaryButton className="!w-auto px-5" onClick={() => handleSave(true)} disabled={!canSave}>
+                {t("notebook.done")}
+              </PrimaryButton>
+            </div>
           </div>
       </div>
       )}
+
+      {/* Zen Templates Dialog */}
+      <CalmDialog
+        open={showTemplatePicker}
+        title={t("notebook.templatesTitle")}
+        description={t("notebook.templatesSubtitle")}
+        confirmLabel={t("dialog.confirm")}
+        cancelLabel={t("dialog.cancel")}
+        onConfirm={() => setShowTemplatePicker(false)}
+        onCancel={() => setShowTemplatePicker(false)}
+      >
+        <div className="space-y-2 mt-2">
+          {ZEN_NOTEBOOK_TEMPLATES.map((tmpl) => (
+            <button
+              key={tmpl.id}
+              type="button"
+              onClick={() => {
+                if (!title.trim() || title === t("notebook.untitled")) {
+                  setTitle(tmpl.defaultTitle(lang));
+                }
+                if (tmpl.defaultPara && !paraType) {
+                  setParaType(tmpl.defaultPara);
+                }
+                const tmplPages = tmpl.defaultPages(lang);
+                const activePg = pages[activePage] ?? "";
+                if (!activePg.trim()) {
+                  setPages((prev) => prev.map((p, idx) => (idx === activePage ? tmplPages[0] ?? "" : p)));
+                } else {
+                  setPages((prev) => [...prev, tmplPages[0] ?? ""]);
+                  setActivePage((prev) => prev + 1);
+                }
+                markDirty();
+                setShowTemplatePicker(false);
+                hapticPress("light");
+              }}
+              className="w-full flex items-center justify-between p-3 rounded-xl border border-monk-border/60 bg-monk-surface hover:bg-monk-surface-raised hover:border-monk-accent/50 text-left transition active:scale-[0.99]"
+            >
+              <div className="flex items-center gap-2.5">
+                <span className="text-xl">{tmpl.icon}</span>
+                <div>
+                  <p className="text-xs font-bold text-monk-text">{t(tmpl.titleKey)}</p>
+                  <p className="text-[10px] text-monk-muted">{tmpl.defaultTitle(lang)}</p>
+                </div>
+              </div>
+              <ArrowRight size={14} className="text-monk-muted" />
+            </button>
+          ))}
+        </div>
+      </CalmDialog>
 
       <CalmDialog
         open={confirmKind === "leave"}
