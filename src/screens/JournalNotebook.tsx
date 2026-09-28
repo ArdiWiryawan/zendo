@@ -41,28 +41,28 @@ export const ZEN_NOTEBOOK_TEMPLATES: ZenTemplate[] = [
     defaultTitle: (lang) => (lang === "id" ? "Refleksi Pagi & Niat" : "Morning Intention"),
     defaultPages: (lang) => [
       lang === "id"
-        ? `## 🌅 Niat Pagi & Mindset
-- **Fokus Tunggal Hari Ini**: 
-- **1 Hal yang Harus Selesai**: 
-- **Energi & Kesiapan Mental**: 
+        ? `### Niat Pagi
+- Fokus Tunggal: 
+- Prioritas Utama: 
+- Kesiapan Pikiran: 
 
-### 🎯 Blok Waktu Rencana:
-- 09:00 - Sesi Deep Work Utama
-- 14:00 - Review & Administrasi
-
----
-*Kutipan Tenang: "Satu hal yang diselesaikan dengan tenang lebih bernilai dari seribu hal yang disentuh setengah jalan."*`
-        : `## 🌅 Morning Intention
-- **Single Focus Object Today**: 
-- **1 Must-Complete Milestone**: 
-- **Energy & Mental Readiness**: 
-
-### 🎯 Planned Time Blocks:
-- 09:00 - Core Deep Work Block
-- 14:00 - Review & Admin
+### Blok Fokus
+- Sesi 1: 
+- Sesi 2: 
 
 ---
-*Calm Thought: "One thing finished in stillness is worth a thousand touched in haste."*`
+*Satu hal diselesaikan dengan tenang lebih bernilai dari seribu hal terburu-buru.*`
+        : `### Morning Intention
+- Single Focus: 
+- Key Milestone: 
+- Mental Readiness: 
+
+### Focus Blocks
+- Session 1: 
+- Session 2: 
+
+---
+*One thing finished in stillness is worth a thousand touched in haste.*`
     ],
     defaultPara: "project"
   },
@@ -73,23 +73,23 @@ export const ZEN_NOTEBOOK_TEMPLATES: ZenTemplate[] = [
     defaultTitle: (lang) => (lang === "id" ? "Refleksi Petang & Evaluasi" : "Evening Wind-Down"),
     defaultPages: (lang) => [
       lang === "id"
-        ? `## 🌙 Refleksi Petang
-- **Kemenangan / Kemajuan Hari Ini**: 
-- **Hambatan yang Muncul**: 
-- **Pelajaran Inti (Takeaway)**: 
+        ? `### Refleksi Petang
+- Kemajuan Bermakna: 
+- Hambatan / Pelajaran: 
+- Intisari Hari Ini: 
 
-### ⚓ Jangkar Esok Hari:
-- Aksi pertama saat bangun esok hari: 
+### Rencana Awal Esok
+- Aksi pertama: 
 
 ---
-*Lepaskan hari ini dengan penuh syukur. Besok lembaran baru yang jernih.*`
-        : `## 🌙 Evening Reflection
-- **Today's Small Wins**: 
-- **Friction or Obstacle**: 
-- **Core Takeaway**: 
+*Lepaskan hari ini dengan rasa syukur. Besok lembaran baru yang jernih.*`
+        : `### Evening Reflection
+- Meaningful Progress: 
+- Friction or Learning: 
+- Core Takeaway: 
 
-### ⚓ Tomorrow's Anchor:
-- First action upon starting tomorrow: 
+### Tomorrow's Anchor
+- First action: 
 
 ---
 *Release today with gratitude. Tomorrow is a clean slate.*`
@@ -103,25 +103,23 @@ export const ZEN_NOTEBOOK_TEMPLATES: ZenTemplate[] = [
     defaultTitle: (lang) => (lang === "id" ? "Deep Work Clarity Dump" : "Deep Work Brain Dump"),
     defaultPages: (lang) => [
       lang === "id"
-        ? `## 🧠 Sesi Deep Work
-- **Tujuan Sesi**: 
-- **Hasil Nyata yang Diharapkan**: 
+        ? `### Sesi Deep Work
+- Tujuan Sesi: 
+- Hasil Nyata: 
 
-### 🅿️ Tempat Parkir Distraksi:
-*(Tulis ide liar atau distraksi yang muncul di sini agar fokus tetap terlindungi)*
+### Parkir Ide & Distraksi
 - 
 
-### 📝 Catatan & Temuan:
+### Catatan & Temuan
 - `
-        : `## 🧠 Deep Work Session
-- **Session Objective**: 
-- **Expected Artifact/Outcome**: 
+        : `### Deep Work Session
+- Session Objective: 
+- Expected Outcome: 
 
-### 🅿️ Distraction Parking Lot:
-*(Write stray thoughts here so your attention stays clean)*
+### Distraction Parking Lot
 - 
 
-### 📝 Notes & Findings:
+### Notes & Findings
 - `
     ],
     defaultPara: "project"
@@ -1066,10 +1064,10 @@ export function NotebookEntryDetail({
         </h1>
 
         {liveEntry.takeaway ? (
-          <div className="mx-4 mb-5 rounded-2xl border border-monk-accent/35 bg-gradient-to-br from-monk-surface via-monk-surface to-monk-soft/50 p-4 shadow-sm">
+          <div className="mx-4 mb-4 rounded-xl border border-monk-accent/30 bg-monk-soft/25 p-3.5 shadow-xs">
             <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
               <span className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-monk-accent">
-                <Sparkles size={13} />
+                <Sparkles size={12} />
                 {t("notebook.takeawayBadge")}
               </span>
               <div className="flex items-center gap-1.5 flex-wrap">
@@ -2003,7 +2001,6 @@ export function NotebookEditor({
           </span>
           {(
             [
-              { id: undefined, label: t("notebook.paraAll") },
               { id: "project", label: t("notebook.paraProjects") },
               { id: "area", label: t("notebook.paraAreas") },
               { id: "resource", label: t("notebook.paraResources") },
@@ -2013,10 +2010,10 @@ export function NotebookEditor({
             const active = paraType === tab.id;
             return (
               <button
-                key={tab.id ?? "none"}
+                key={tab.id}
                 type="button"
                 onClick={() => {
-                  setParaType(tab.id as ParaType | undefined);
+                  setParaType((cur) => (cur === tab.id ? undefined : (tab.id as ParaType)));
                   markDirty();
                 }}
                 className={`shrink-0 rounded-full px-2.5 py-0.5 text-[11px] font-semibold transition active:scale-95 ${
@@ -2243,10 +2240,10 @@ export function NotebookEditor({
           className="nb-page-title"
         />
 
-        {/* Tier 3 Progressive Distillation: Executive Takeaway */}
-        <div className="mx-4 my-2.5 rounded-xl border border-monk-border/60 bg-monk-soft/30 p-2.5 transition focus-within:border-monk-accent/60">
-          <label className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-monk-accent mb-1">
-            <Sparkles size={12} />
+        {/* Core Takeaway */}
+        <div className="mx-4 my-2 rounded-xl border border-monk-border/50 bg-monk-soft/25 p-2.5 transition focus-within:border-monk-accent/50 focus-within:bg-monk-soft/40">
+          <label className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-monk-accent/90 mb-1">
+            <Sparkles size={11} />
             <span>{t("notebook.takeawayLabel")}</span>
           </label>
           <textarea
@@ -2258,28 +2255,28 @@ export function NotebookEditor({
               queueResize(e.currentTarget);
             }}
             placeholder={t("notebook.takeawayPlaceholder")}
-            className="w-full resize-none bg-transparent text-xs italic font-serif leading-relaxed text-monk-text placeholder:text-monk-text-soft/60 focus:outline-none"
+            className="nb-takeaway-textarea w-full resize-none bg-transparent text-xs italic font-serif leading-relaxed text-monk-text placeholder:text-monk-text-soft/60 focus:outline-none"
           />
         </div>
         {pages.map((pg, i) => (
           <div key={i} className="nb-sheet-stack">
-            {/* Sheet Folio Top Header */}
-            <div className="flex items-center justify-between px-3 py-1.5 border-b border-monk-border/40 bg-monk-soft/30 text-xs">
-              <div className="flex items-center gap-1.5 font-medium text-monk-muted">
-                <span
-                  className={`h-1.5 w-1.5 rounded-full transition-colors ${
-                    activePage === i ? "bg-monk-accent scale-110 shadow-xs" : "bg-monk-text-soft/40"
-                  }`}
-                />
-                <span className="font-semibold text-monk-text text-[11px]">
-                  {lang === "id" ? `Lembar #${i + 1}` : `Sheet #${i + 1}`}
-                </span>
-                <span className="text-monk-text-soft">·</span>
-                <span className="text-[10px] text-monk-muted">
-                  {t("notebook.words", { n: wordCount(pg) })}
-                </span>
-              </div>
-              {pages.length > 1 ? (
+            {/* Sheet Folio Top Header - only show when multiple sheets exist */}
+            {pages.length > 1 ? (
+              <div className="flex items-center justify-between px-4 py-1.5 border-b border-monk-border/30 bg-monk-soft/20 text-xs">
+                <div className="flex items-center gap-1.5 font-medium text-monk-muted">
+                  <span
+                    className={`h-1.5 w-1.5 rounded-full transition-colors ${
+                      activePage === i ? "bg-monk-accent scale-110 shadow-xs" : "bg-monk-text-soft/40"
+                    }`}
+                  />
+                  <span className="font-semibold text-monk-text text-[11px]">
+                    {lang === "id" ? `Lembar #${i + 1}` : `Sheet #${i + 1}`}
+                  </span>
+                  <span className="text-monk-text-soft">·</span>
+                  <span className="text-[10px] text-monk-muted">
+                    {t("notebook.words", { n: wordCount(pg) })}
+                  </span>
+                </div>
                 <button
                   type="button"
                   onClick={() => handleDeletePage(i)}
@@ -2290,8 +2287,8 @@ export function NotebookEditor({
                   <Trash2 size={11} strokeWidth={2} />
                   <span>{lang === "id" ? "Hapus Lembar" : "Delete Sheet"}</span>
                 </button>
-              ) : null}
-            </div>
+              </div>
+            ) : null}
 
             <textarea
               ref={setBodyRef(i)}

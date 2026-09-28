@@ -50,8 +50,8 @@ describe("bottom nav overlay assumptions", () => {
     expect(ui()).toContain("h-[58px]");
   });
 
-  it("toast sits above the reserved safe space, not under the pill", () => {
-    expect(ui()).toContain("bottom-[calc(env(safe-area-inset-bottom)+148px)]");
+  it("toast sits in the top safe space, clear of typing and bottom nav", () => {
+    expect(ui()).toContain("top-[calc(env(safe-area-inset-top)+14px)]");
   });
 
   it("repeating-list tail helper exists as an exported utility", () => {

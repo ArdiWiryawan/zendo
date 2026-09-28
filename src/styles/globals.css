@@ -771,32 +771,17 @@ h5.md-heading, h6.md-heading { font-size: 1rem; }
     inset 0 0 32px rgba(0, 0, 0, 0.25);
 }
 
-/* Open page: unruled sheet with spine fold + category margin line */
+/* Open page: clean stationery sheet with subtle shadow */
 .nb-open-page {
   position: relative;
-  border-radius: 8px;
+  border-radius: 12px;
   background: var(--notebook-bg);
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.05),
-    inset 0 0 0 1px rgba(164, 139, 94, 0.06),
-    inset 16px 0 20px -18px rgba(0, 0, 0, 0.55),
-    0 10px 28px rgba(0, 0, 0, 0.32);
+    inset 0 0 0 1px rgba(164, 139, 94, 0.08),
+    0 8px 24px rgba(0, 0, 0, 0.28);
   /* visible so auto-growing title/body textareas never clip the caret */
   overflow: visible;
-}
-
-/* Vertical margin line (classic notebook), tinted by category via --nb-cat.
-   Applied as a box-shadow so a 1px line renders regardless of PostCSS color-mix support. */
-.nb-open-page::before {
-  content: "";
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  left: 26px;
-  width: 1px;
-  background: var(--nb-cat, #a48b5e);
-  opacity: 0.35;
-  pointer-events: none;
 }
 
 /* Stacked editor sheets: one auto-growing ruled page after another in a single
@@ -804,17 +789,18 @@ h5.md-heading, h6.md-heading { font-size: 1rem; }
 .nb-sheet-stack {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 8px;
 }
 
 .nb-page-title {
   display: block;
   width: 100%;
-  padding: 26px 22px 16px 46px;
+  padding: 20px 20px 10px;
   font-family: 'Outfit', ui-sans-serif, system-ui, sans-serif;
-  font-size: clamp(1.6rem, 4.5vw, 2.1rem);
-  font-weight: 650;
-  line-height: 1.25;
+  font-size: clamp(1.25rem, 3.8vw, 1.55rem);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  line-height: 1.35;
   color: var(--notebook-text-title);
   background: transparent;
   border: none;
@@ -839,14 +825,26 @@ h5.md-heading, h6.md-heading { font-size: 1rem; }
   caret-color: var(--nb-cat, var(--color-accent));
 }
 
+/* Suppress heavy focus ring on zen stationery textareas so page stays calm */
+.nb-page-title:focus,
+.nb-page-title:focus-visible,
+.nb-page-body:focus,
+.nb-page-body:focus-visible,
+.nb-takeaway-textarea:focus,
+.nb-takeaway-textarea:focus-visible {
+  outline: none !important;
+  outline-offset: 0 !important;
+  box-shadow: none !important;
+}
+
 /* Body owns its rules, so title growth cannot shift text-to-rule alignment. */
 .nb-page-body {
   display: block;
   width: 100%;
-  min-height: 432px;
-  padding: 6px 22px 20px 46px;
+  min-height: 380px;
+  padding: 8px 20px 24px;
   font-family: 'Outfit', ui-sans-serif, system-ui, sans-serif;
-  font-size: 1rem;
+  font-size: 0.98rem;
   line-height: 24px;
   color: var(--notebook-text-body);
   background-color: transparent;
@@ -873,10 +871,10 @@ h5.md-heading, h6.md-heading { font-size: 1rem; }
 .nb-page-body-reader {
   display: block;
   width: 100%;
-  min-height: 432px;
-  padding: 6px 22px 20px 46px;
+  min-height: 380px;
+  padding: 8px 20px 24px;
   font-family: 'Outfit', ui-sans-serif, system-ui, sans-serif;
-  font-size: 1rem;
+  font-size: 0.98rem;
   line-height: 24px;
   color: var(--notebook-text-body);
   background-color: transparent;
@@ -901,9 +899,9 @@ h5.md-heading, h6.md-heading { font-size: 1rem; }
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 14px 22px 16px 46px;
+  padding: 12px 20px 14px;
   font-family: 'Outfit', ui-sans-serif, system-ui, sans-serif;
-  font-size: 0.8rem;
+  font-size: 0.78rem;
   color: var(--notebook-text-body);
   opacity: 0.75;
   border-top: 1px dashed var(--notebook-card-line);
@@ -911,16 +909,18 @@ h5.md-heading, h6.md-heading { font-size: 1rem; }
 
 @media (max-width: 480px) {
   .nb-page-title {
-    padding: 22px 18px 14px 46px;
+    padding: 16px 16px 8px;
   }
 
   .nb-page-body,
   .nb-page-body-reader {
-    padding-right: 18px;
+    padding-left: 16px;
+    padding-right: 16px;
   }
 
   .nb-folio {
-    padding-right: 18px;
+    padding-left: 16px;
+    padding-right: 16px;
   }
 }
 
@@ -943,15 +943,15 @@ h5.md-heading, h6.md-heading { font-size: 1rem; }
 /* Read view: a saved note typeset as a clean page (no textarea, no ruler).
    Prose typography + margin line tinted by category, like a printed entry. */
 .nb-reader {
-  padding: 30px 24px 24px 46px;
+  padding: 24px 20px 20px;
 }
 
 .nb-reader-title {
   margin: 0 0 10px;
   font-family: 'Outfit', ui-sans-serif, system-ui, sans-serif;
-  font-size: clamp(1.5rem, 4.2vw, 2rem);
-  font-weight: 650;
-  line-height: 1.25;
+  font-size: clamp(1.3rem, 3.8vw, 1.65rem);
+  font-weight: 600;
+  line-height: 1.3;
   color: var(--notebook-text-title);
 }
 
@@ -987,20 +987,20 @@ h5.md-heading, h6.md-heading { font-size: 1rem; }
 
 /* Photo add buttons: sit below the folio, inside the notebook page sheet. */
 .nb-photos {
-  padding: 4px 22px 20px 46px;
+  padding: 4px 20px 20px;
 }
 
 /* Photo cards inside a stacked sheet: indent past the spine/margin line so a
    photo reads as content of that page, aligned with the text indent. */
 .nb-photo-card {
-  padding: 4px 22px 0 46px;
+  padding: 4px 20px 0;
 }
 
 .nb-photos-head {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 0 22px 8px 46px;
+  padding: 0 20px 8px;
   font-family: 'Outfit', ui-sans-serif, system-ui, sans-serif;
   font-size: 0.72rem;
   font-weight: 650;

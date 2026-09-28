@@ -808,9 +808,9 @@ export function CalmToast({ message, visible }: { message: string; visible: bool
     <div
       role="status"
       aria-live="polite"
-      className="pointer-events-none fixed inset-x-0 bottom-[calc(env(safe-area-inset-bottom)+148px)] z-[60] flex justify-center px-6"
+      className="pointer-events-none fixed inset-x-0 top-[calc(env(safe-area-inset-top)+14px)] z-[80] flex justify-center px-4 animate-scale-in"
     >
-      <div className="rounded-full border border-monk-border-strong bg-monk-surface/95 px-4 py-2.5 text-sm font-medium text-monk-text shadow-calm backdrop-blur-md">
+      <div className="rounded-full border border-monk-border-strong/80 bg-monk-surface/95 px-4 py-2 text-xs font-semibold text-monk-text shadow-calm backdrop-blur-md">
         {message}
       </div>
     </div>
