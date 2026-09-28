@@ -57,9 +57,20 @@ export function getDailyStatusForDate(store: MonkMVPState, date: string): Timeli
   // logged-but-sessionless day (retro "Focus Goal" resolves 'partial' in the
   // store, but no session exists to recompute from). Honor them verbatim.
   if (day?.status === "relapse" || day?.status === "rest") return day.status;
+
+  const plan = store.dayPlans.find((p) => p.date === date && (!seasonId || p.seasonId === seasonId));
+  if (plan?.dayType === "rest" || plan?.status === "rest") return "rest";
+  if (plan?.status === "missed") return "missed";
+
   const core = getCoreDailyStatusForDate(store, date);
-  if (core === "not_started" && day?.status === "partial") return "partial";
-  return core;
+  if (core === "completed" || plan?.status === "completed") return "completed";
+  if (core === "partial" || day?.status === "partial" || plan?.status === "partial") return "partial";
+
+  const today = getTodayDateString();
+  if (date < today) {
+    return "missed";
+  }
+  return "not_started";
 }
 
 export function getCoreDailyStatusForDate(store: MonkMVPState, date: string) {

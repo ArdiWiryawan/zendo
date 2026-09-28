@@ -10,12 +10,23 @@ function findPlan(store: MonkMVPState, seasonId: string, date: string) {
 // — they are part of the system.
 function isHeldDay(store: MonkMVPState, seasonId: string, date: string): boolean {
   const plan = findPlan(store, seasonId, date);
-  return !!plan && plan.dayType === "goal" && (plan.status === "completed" || plan.status === "partial");
+  if (plan) {
+    if (plan.dayType === "rest") return false;
+    if (plan.status === "missed") return false;
+    if (plan.status === "completed" || plan.status === "partial") return true;
+  }
+  const day = store.timelineDays?.find((item) => item.date === date && (!seasonId || item.seasonId === seasonId));
+  if (day) {
+    if (day.status === "completed" || day.status === "partial") return true;
+  }
+  return false;
 }
 
 function isRestDay(store: MonkMVPState, seasonId: string, date: string): boolean {
   const plan = findPlan(store, seasonId, date);
-  return !!plan && plan.dayType === "rest";
+  if (plan && plan.dayType === "rest") return true;
+  const day = store.timelineDays?.find((item) => item.date === date && (!seasonId || item.seasonId === seasonId));
+  return day?.status === "rest";
 }
 
 export function getFocusStreak(store: MonkMVPState, today = getTodayDateString()): { count: number; best: number } {

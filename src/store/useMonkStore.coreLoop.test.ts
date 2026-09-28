@@ -157,9 +157,9 @@ describe("core loop (integrated)", () => {
     useMonkStore.getState().completeFocusSession(session!.id);
 
     const plan = selectTodayPlan(lastState())!;
-    expect(plan.status).toBe("active"); // focus alone -> partial day
+    expect(plan.status).toBe("completed"); // completed focus session resolves day to completed per specification
 
-    // Learning closes the completion gate (resolveDailyActivityStatus).
+    // Additional learning session keeps completion status intact.
     const learning: LearningSession = {
       id: "learn2",
       seasonId: "s_active",

@@ -71,19 +71,21 @@ function TimelineStats() {
   const store = useMonkStore();
   const t = useT();
   const season = store.activeSeason!;
+  const today = getTodayDateString();
 
   const focusSummary = selectSeasonFocusSummary(store, season.id);
   const totalFocusMinutes = focusSummary.totalMinutes;
   const totalFocusSessions = focusSummary.count;
 
-  const completedDaysCount = store.dayPlans.filter(
-    (day) => day.seasonId === season.id && day.status === "completed"
-  ).length;
-
   const totalPassedDays = Math.min(
     season.durationDays,
-    getDaysPassed(season.startDate)
+    getDaysPassed(season.startDate, today)
   );
+  const passedDates = datesInRange(season.startDate, totalPassedDays);
+  const completedDaysCount = passedDates.filter((d) => {
+    return getDailyStatusForDate(store, d) === "completed";
+  }).length;
+  const consistencyRate = totalPassedDays > 0 ? Math.round((completedDaysCount / totalPassedDays) * 100) : 0;
 
   return (
     <motion.div
@@ -94,9 +96,14 @@ function TimelineStats() {
       <div className="rounded-2xl border border-monk-accent/30 bg-gradient-to-br from-monk-surface via-monk-surface to-monk-soft/50 p-4 sm:p-5 relative overflow-hidden transition-all duration-200 hover:border-monk-accent/50 shadow-sm monk-depth">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
-            <p className="text-[11px] font-bold uppercase tracking-wider text-monk-muted">
-              {t("timeline.stats.focus")}
-            </p>
+            <div className="flex items-center gap-1.5">
+              <p className="text-[11px] font-bold uppercase tracking-wider text-monk-muted">
+                {t("timeline.stats.focus")}
+              </p>
+              <span className="text-[9px] font-mono font-medium text-monk-accent/80 bg-monk-accent/10 px-1.5 py-0.2 rounded border border-monk-accent/20">
+                Deep Work
+              </span>
+            </div>
             <div className="mt-1 flex items-baseline gap-1">
               <span className="text-3xl sm:text-4xl font-mono font-bold text-monk-accent tabular-nums leading-none">
                 {totalFocusMinutes}
@@ -127,7 +134,7 @@ function TimelineStats() {
           </div>
           <div className="text-right">
             <span className="font-mono text-xs font-bold text-monk-accent bg-monk-accent/10 px-2 py-0.5 rounded-md border border-monk-accent/20">
-              {totalPassedDays > 0 ? Math.round((completedDaysCount / totalPassedDays) * 100) : 0}%
+              {consistencyRate}%
             </span>
           </div>
         </div>
@@ -1191,6 +1198,25 @@ export default function TimelineScreen() {
                           ) : null}
                         </div>
 
+                        {/* Productivity Framework Insight */}
+                        {inspectedStatus === "completed" ? (
+                          <div className="rounded-lg bg-emerald-950/30 border border-emerald-500/20 px-2.5 py-1.5 text-[11px] text-emerald-300/90 leading-relaxed">
+                            💡 <span className="font-semibold text-emerald-300">Deep Work:</span> Sesi fokus selesai. Kualitas atensi mengalahkan kuantitas waktu.
+                          </div>
+                        ) : inspectedStatus === "rest" ? (
+                          <div className="rounded-lg bg-slate-900/40 border border-slate-700/40 px-2.5 py-1.5 text-[11px] text-slate-300/90 leading-relaxed">
+                            🌱 <span className="font-semibold text-slate-300">Sharpen the Saw:</span> Istirahat sadar melindungi energi dan menjaga streak tetap aman.
+                          </div>
+                        ) : inspectedStatus === "partial" ? (
+                          <div className="rounded-lg bg-amber-950/30 border border-amber-600/20 px-2.5 py-1.5 text-[11px] text-amber-300/90 leading-relaxed">
+                            ⚡ <span className="font-semibold text-amber-300">Never Miss Twice:</span> Sesi parsial tetap berharga daripada nol. Momentum tetap terjaga.
+                          </div>
+                        ) : inspectedStatus === "missed" && !isFuture && !isDateToday ? (
+                          <div className="rounded-lg bg-rose-950/30 border border-rose-500/20 px-2.5 py-1.5 text-[11px] text-rose-300/90 leading-relaxed">
+                            🧭 <span className="font-semibold text-rose-300">Data, Bukan Vonis:</span> Hari terlewat adalah kompas belajar. Sambung kembali hari ini.
+                          </div>
+                        ) : null}
+
                         {isDateToday ? (
                           <button
                             type="button"
@@ -1251,8 +1277,10 @@ export default function TimelineScreen() {
             transition={{ duration: 0.25 }}
             className="space-y-5"
           >
-            <WhyCard />
+            {/* High-level Focus Time and Returns Consistency at top */}
+            <TimelineStats />
             <SeasonProgressCard />
+            <WhyCard />
 
             {/* Timeline Activity Feed */}
             <div className="space-y-4 pt-2 min-w-0">
@@ -1297,8 +1325,6 @@ export default function TimelineScreen() {
                 </div>
               )}
             </div>
-
-            <TimelineStats />
           </motion.div>
         )}
       </div>
