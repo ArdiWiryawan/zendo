@@ -34,12 +34,13 @@ import {
 import { FocusSessionPanel, FocusSessionStarter } from "../screens/FocusSession";
 import { CoachHint, PlanTomorrow, WeeklyStatusIndicators } from "./OnboardingSteps";
 import { SeasonProgressCard, WhyEditor } from "../components/SeasonWidgets";
-import { EnergyCheck, WhyStrip } from "./TodayScreen.components";
+import { EnergyCheck, WhyStrip, GoalTasksCard } from "./TodayScreen.components";
 import { GoalBlueprintModal } from "../components/GoalBlueprintModal";
 import { WeeklyReviewModal } from "../components/WeeklyReviewModal";
 import { MorningPlanningModal } from "../components/MorningPlanningModal";
 import { DayTimeBlockVisualizer } from "../components/DayTimeBlockVisualizer";
 import { ZendoProModal } from "../components/ZendoProModal";
+import { FeelGoodRestCanvas } from "../components/FeelGoodRestCanvas";
 import type { EnergyLevel } from "../types/app";
 
 function CloseDayCard({ onSkip }: { onSkip?: () => void }) {
@@ -103,29 +104,15 @@ function CloseDayCard({ onSkip }: { onSkip?: () => void }) {
           });
           const tomorrowText = tomorrow.trim();
           if (tomorrowText) {
-            const isRest = todayPlan?.dayType === "rest";
-            if (isRest) {
-              // Rest-day "tomorrow I will…" is an explicit resume action, so it
-              // creates a GOAL day for tomorrow (not another rest day — the week
-              // budget is 1 rest day, and a written action means intent to resume).
-              const goalId = selectActiveGoals(store)[0]?.id;
-              if (goalId) {
-                store.createOrUpdateDayPlan(addDaysToDate(today, 1), {
-                  dayType: "goal",
-                  goalId,
-                  mainAction: tomorrowText
-                });
-              }
-              // ponytail: no active goal → skip tomorrow plan write; add freeform
-              // tomorrow when the plan model allows text without a goal.
-            } else if (todayPlan?.goalId) {
-              store.createOrUpdateDayPlan(addDaysToDate(today, 1), {
-                dayType: "goal",
-                goalId: todayPlan.goalId,
-                mainAction: tomorrowText
-              });
-            }
-            // ponytail: no goalId → skip tomorrow plan write; add freeform tomorrow when plan model allows
+            const tomorrowDate = addDaysToDate(today, 1);
+            const targetGoalId = todayPlan?.goalId || selectActiveGoals(store)[0]?.id;
+            store.createOrUpdateDayPlan(tomorrowDate, {
+              dayType: "goal",
+              goalId: targetGoalId,
+              mainAction: tomorrowText,
+              status: "planned",
+              planningCompleted: true
+            });
           }
           setError("");
           setSaved(true);
@@ -1040,6 +1027,11 @@ export function TodayScreen() {
                     </div>
                   );
                 })() : null}
+
+                {/* Subtask checklist with 1-tap promotion to today's action */}
+                {!isRest && goal ? (
+                  <GoalTasksCard goal={goal} todayMainAction={todayPlan.mainAction} />
+                ) : null}
               </div>
 
               {/* Bottom Meta & Progress Bar */}
@@ -1166,42 +1158,7 @@ export function TodayScreen() {
 
               {primaryKind === "rest" ? (
                 <>
-                  <Card className="border-monk-rest/35 bg-gradient-to-b from-monk-rest-soft/40 to-monk-surface p-5">
-                    <div className="flex items-start gap-3.5">
-                      <div className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-monk-rest/15 text-monk-rest">
-                        <Moon size={20} strokeWidth={2} />
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <span className="rounded-md border border-monk-rest/40 bg-monk-rest-soft px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-monk-rest">
-                            {savedReview ? t("week.reviewDoneBadge") : t("today.restRenewal.title")}
-                          </span>
-                        </div>
-                        <p className="mt-2 text-base font-bold text-monk-text">
-                          {savedReview?.restActivity ? (
-                            <span className="flex items-center gap-1.5">
-                              <span>{savedReview.restActivity.icon || "🌿"}</span>
-                              <span>{savedReview.restActivity.title}</span>
-                            </span>
-                          ) : (
-                            t("today.restPathTitle")
-                          )}
-                        </p>
-                        <p className="mt-1 text-xs text-monk-muted leading-relaxed">
-                          {savedReview ? t("week.softWin.held") : t("today.restRenewal.subtitle")}
-                        </p>
-                        <div className="mt-4 flex flex-wrap items-center gap-2">
-                          <PrimaryButton
-                            onClick={() => setWeeklyReviewModalOpen(true)}
-                            className="text-xs py-2 px-4 w-auto inline-flex items-center gap-1.5"
-                          >
-                            <Sparkles size={13} />
-                            <span>{savedReview ? t("today.restRenewal.ctaView") : t("today.restRenewal.cta")}</span>
-                          </PrimaryButton>
-                        </div>
-                      </div>
-                    </div>
-                  </Card>
+                  <FeelGoodRestCanvas onOpenWeeklyReview={() => setWeeklyReviewModalOpen(true)} />
                   {!dayClosed ? (
                     <CloseDayCard onSkip={() => setCloseDaySkipped(true)} />
                   ) : null}
@@ -1642,23 +1599,74 @@ function FlowPickToday({
     .sort((a, b) => b.remaining - a.remaining);
   const maxRemaining = ranked[0]?.remaining ?? 0;
 
+  const [selectedTrack, setSelectedTrack] = useState<string | "all">("all");
+  const tracks = useMemo(() => {
+    return Array.from(new Set(goals.map((g) => g.track).filter(Boolean))) as string[];
+  }, [goals]);
+
+  const filteredRanked = useMemo(() => {
+    if (selectedTrack === "all") return ranked;
+    return ranked.filter(({ allocation }) => {
+      const g = goals.find((item) => item.id === allocation.goalId);
+      return g?.track === selectedTrack;
+    });
+  }, [ranked, goals, selectedTrack]);
+
   return (
     <Card important>
-      <p className="font-semibold">{t("today.pickHeading")}</p>
-      <p className="mt-2 text-sm leading-6 text-monk-muted">{t("today.pickBody")}</p>
-      <div className="mt-5 space-y-3">
-        {ranked.map(({ allocation, remaining }) => {
+      <div className="flex items-center justify-between gap-2">
+        <p className="font-semibold">{t("today.pickHeading")}</p>
+        {tracks.length > 0 ? (
+          <span className="text-[10px] font-medium text-monk-muted">
+            {tracks.length} Jalur Fokus (Tracks)
+          </span>
+        ) : null}
+      </div>
+      <p className="mt-1 text-sm leading-6 text-monk-muted">{t("today.pickBody")}</p>
+
+      {/* Goal Tracks Switcher */}
+      {tracks.length > 0 ? (
+        <div className="mt-3 flex flex-wrap gap-1.5 pt-1">
+          <button
+            type="button"
+            onClick={() => setSelectedTrack("all")}
+            className={`rounded-lg px-2.5 py-1 text-[11px] font-semibold transition active:scale-95 border ${
+              selectedTrack === "all"
+                ? "border-monk-accent bg-monk-accent/15 text-monk-accent"
+                : "border-monk-border/60 bg-monk-soft/40 text-monk-muted hover:text-monk-text"
+            }`}
+          >
+            Semua
+          </button>
+          {tracks.map((trk) => (
+            <button
+              key={trk}
+              type="button"
+              onClick={() => setSelectedTrack(trk)}
+              className={`rounded-lg px-2.5 py-1 text-[11px] font-semibold transition active:scale-95 border ${
+                selectedTrack === trk
+                  ? "border-monk-accent bg-monk-accent/15 text-monk-accent"
+                  : "border-monk-border/60 bg-monk-soft/40 text-monk-muted hover:text-monk-text"
+              }`}
+            >
+              {trk}
+            </button>
+          ))}
+        </div>
+      ) : null}
+
+      <div className="mt-4 space-y-3">
+        {filteredRanked.map(({ allocation, remaining }) => {
           const goal = goals.find((item) => item.id === allocation.goalId);
           const progress = allocation.targetCount > 0
             ? Math.min(100, Math.round((allocation.completedCount / allocation.targetCount) * 100))
             : 0;
           const recommend = remaining > 0 && remaining === maxRemaining;
           const done = remaining === 0;
+          const completedSubtasks = goal?.tasks ? goal.tasks.filter((t) => t.completed).length : 0;
+          const totalSubtasks = goal?.tasks ? goal.tasks.length : 0;
+
           return (
-            // A <button> cannot contain another <button> (invalid HTML: React warns
-            // validateDOMNesting, and screen readers/keyboard lose the inner control).
-            // The card is the tap target, so keep the button role + keyboard support
-            // on a div and let the Blueprint button live inside it.
             <div
               key={allocation.goalId}
               role="button"
@@ -1680,6 +1688,11 @@ function FlowPickToday({
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-2">
                     <p className="font-semibold">{goal?.title ?? t("today.goalFallback")}</p>
+                    {goal?.track ? (
+                      <span className="rounded-md border border-monk-border/60 bg-monk-soft px-1.5 py-0.5 text-[9px] font-bold text-monk-muted">
+                        {goal.track}
+                      </span>
+                    ) : null}
                     {recommend ? (
                       <span className="rounded-full border border-monk-accent/40 bg-monk-accent-soft px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-monk-accent">
                         {t("today.suggested")}
@@ -1694,6 +1707,12 @@ function FlowPickToday({
                   <p className="mt-1 text-xs text-monk-muted line-clamp-2">
                     {goal?.keystoneAction?.trim() || (remaining === 1 ? t("today.daysLeftWeek", { n: remaining }) : t("today.daysLeftWeekPlural", { n: remaining }))}
                   </p>
+                  {totalSubtasks > 0 ? (
+                    <p className="mt-1 text-[10px] font-medium text-monk-accent/80 flex items-center gap-1">
+                      <span>📋</span>
+                      <span>{completedSubtasks}/{totalSubtasks} langkah selesai</span>
+                    </p>
+                  ) : null}
                 </div>
                 <div className="flex shrink-0 items-center gap-2">
                   <button

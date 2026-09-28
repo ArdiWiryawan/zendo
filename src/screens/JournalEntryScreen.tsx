@@ -353,33 +353,19 @@ export function JournalEntryScreen() {
             // answers just after the saved draft was cleared.
             draftSkipRef.current = true;
             let wroteTomorrow = false;
-            if (currentTab === "reflection" && !isRequestedDate && targetPlan) {
+            if (currentTab === "reflection" && !isRequestedDate) {
               const tomorrowText = tomorrow.trim();
               if (tomorrowText) {
                 const tomorrowDate = addDaysToDate(dateSeed, 1);
-                const goalId = targetPlan?.goalId ?? selectActiveGoals(store)[0]?.id;
-                const isRest = targetPlan?.dayType === "rest";
-                if (isRest) {
-                  // Rest-day "tomorrow I will…" is an explicit resume action → a
-                  // GOAL day for tomorrow (week budget is 1 rest day; a written
-                  // action means intent to resume). Save intention text as mainAction.
-                  if (goalId) {
-                    store.createOrUpdateDayPlan(tomorrowDate, {
-                      dayType: "goal",
-                      goalId,
-                      mainAction: tomorrowText
-                    });
-                    wroteTomorrow = true;
-                  }
-                  // ponytail: no active goal → skip tomorrow plan write.
-                } else if (goalId) {
-                  store.createOrUpdateDayPlan(tomorrowDate, {
-                    dayType: "goal",
-                    goalId,
-                    mainAction: tomorrowText
-                  });
-                  wroteTomorrow = true;
-                }
+                const targetGoalId = targetPlan?.goalId ?? selectActiveGoals(store)[0]?.id;
+                store.createOrUpdateDayPlan(tomorrowDate, {
+                  dayType: "goal",
+                  goalId: targetGoalId,
+                  mainAction: tomorrowText,
+                  status: "planned",
+                  planningCompleted: true
+                });
+                wroteTomorrow = true;
               }
             }
             setTomorrowSaved(wroteTomorrow);

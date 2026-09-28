@@ -52,6 +52,7 @@ import type {
   FocusSession,
   Goal,
   GoalAllocation,
+  GoalTask,
   JournalAnswers,
   JournalPackAnswer,
   LearningSession,
@@ -158,12 +159,18 @@ type MonkActions = {
       keystoneAction?: string;
       weeklyTargetCount?: number;
       why?: string;
+      track?: string;
+      tasks?: GoalTask[];
       whenWhere?: string;
       definitionOfDone?: string;
       obstacle?: string;
       obstacleMitigation?: string;
     }
   ) => void;
+  addGoalTask: (goalId: string, title: string) => void;
+  toggleGoalTask: (goalId: string, taskId: string) => void;
+  deleteGoalTask: (goalId: string, taskId: string) => void;
+  updateGoalTrack: (goalId: string, track: string) => void;
   releaseGoalFromSeason: (goalId: string, note?: string) => void;
   updateSettings: (patch: Partial<AppSettings>) => void;
   updateReminder: (id: string, patch: Partial<NotificationReminder>) => void;
@@ -317,7 +324,7 @@ function getLearningSessionsForDay(state: MonkMVPState, dayPlan: DayPlan) {
 function deriveTimelineStatus(state: MonkMVPState, dayPlan: DayPlan): TimelineStatus {
   const relapses = state.relapseLogs.filter((log) => log.dayPlanId === dayPlan.id);
   if (relapses.length > 0) return "relapse";
-  if (dayPlan.dayType === "rest" && dayPlan.status === "completed") return "rest";
+  if (dayPlan.dayType === "rest" || dayPlan.status === "rest") return "rest";
   if (dayPlan.status === "completed") return "completed";
   const focusSessions = getFocusSessionsForDay(state, dayPlan).filter(
     (session) => resolveFocusSessionStatus(session) === "completed" || session.status === "ended_early"
@@ -325,7 +332,6 @@ function deriveTimelineStatus(state: MonkMVPState, dayPlan: DayPlan): TimelineSt
   const learningSessions = getLearningSessionsForDay(state, dayPlan);
   const status = resolveDailyActivityStatus({ focusSessions, learningSessions });
   if (status !== "not_started") return status;
-  if (dayPlan.status === "planned") return "partial";
   if (dayPlan.status === "missed") return "missed";
   return "not_started";
 }
@@ -1107,7 +1113,7 @@ export const useMonkStore = create<MonkStore>()(
       mainAction: input.dayType === "goal" ? (input.mainAction !== undefined ? input.mainAction : (existing?.mainAction ?? goal?.keystoneAction)) : undefined,
       highlight: input.highlight !== undefined ? input.highlight : existing?.highlight,
       energyLevel: input.energyLevel ?? existing?.energyLevel,
-      status: input.status ?? (existing?.status ?? "active"),
+      status: input.status ?? (existing?.status ?? (input.dayType === "rest" ? "rest" : "active")),
       planningCompleted: input.planningCompleted !== undefined ? input.planningCompleted : (existing?.planningCompleted ?? false),
       timeBlocks: input.timeBlocks !== undefined ? input.timeBlocks : (existing?.timeBlocks ?? []),
       createdAt: existing?.createdAt ?? timestamp,
@@ -1989,6 +1995,8 @@ export const useMonkStore = create<MonkStore>()(
         keystoneAction: blueprint.keystoneAction !== undefined ? (blueprint.keystoneAction.trim() || g.keystoneAction) : g.keystoneAction,
         weeklyTargetCount: blueprint.weeklyTargetCount !== undefined ? Math.max(1, Math.min(7, blueprint.weeklyTargetCount)) : g.weeklyTargetCount,
         why: blueprint.why !== undefined ? (blueprint.why.trim() || undefined) : g.why,
+        track: blueprint.track !== undefined ? (blueprint.track.trim() || undefined) : g.track,
+        tasks: blueprint.tasks !== undefined ? blueprint.tasks : g.tasks,
         whenWhere: blueprint.whenWhere !== undefined ? (blueprint.whenWhere.trim() || undefined) : g.whenWhere,
         definitionOfDone: blueprint.definitionOfDone !== undefined ? (blueprint.definitionOfDone.trim() || undefined) : g.definitionOfDone,
         obstacle: blueprint.obstacle !== undefined ? (blueprint.obstacle.trim() || undefined) : g.obstacle,
@@ -2015,6 +2023,59 @@ export const useMonkStore = create<MonkStore>()(
     }
 
     set({ goals: updatedGoals, weeklyPlans });
+  },
+
+  addGoalTask: (goalId, title) => {
+    const trimmed = title.trim();
+    if (!trimmed) return;
+    const state = get();
+    const newTask: GoalTask = {
+      id: createId("task"),
+      title: trimmed,
+      completed: false,
+      createdAt: nowIso()
+    };
+    set({
+      goals: state.goals.map((g) =>
+        g.id === goalId ? { ...g, tasks: [...(g.tasks || []), newTask], updatedAt: nowIso() } : g
+      )
+    });
+  },
+
+  toggleGoalTask: (goalId, taskId) => {
+    const state = get();
+    set({
+      goals: state.goals.map((g) => {
+        if (g.id !== goalId) return g;
+        return {
+          ...g,
+          tasks: (g.tasks || []).map((t) => (t.id === taskId ? { ...t, completed: !t.completed } : t)),
+          updatedAt: nowIso()
+        };
+      })
+    });
+  },
+
+  deleteGoalTask: (goalId, taskId) => {
+    const state = get();
+    set({
+      goals: state.goals.map((g) => {
+        if (g.id !== goalId) return g;
+        return {
+          ...g,
+          tasks: (g.tasks || []).filter((t) => t.id !== taskId),
+          updatedAt: nowIso()
+        };
+      })
+    });
+  },
+
+  updateGoalTrack: (goalId, track) => {
+    const state = get();
+    const trimmed = track.trim() || undefined;
+    set({
+      goals: state.goals.map((g) => (g.id === goalId ? { ...g, track: trimmed, updatedAt: nowIso() } : g))
+    });
   },
 
   reviewWeek: (weekId, decisions, opts) => {

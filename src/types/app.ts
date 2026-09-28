@@ -80,12 +80,23 @@ export type Season = {
   updatedAt: ISODateString;
 };
 
+export type GoalTask = {
+  id: string;
+  title: string;
+  completed: boolean;
+  createdAt: ISODateString;
+};
+
 export type Goal = {
   id: string;
   seasonId: string;
   title: string;
   description?: string;
   keystoneAction: string;
+  /** Goal Track (e.g. "Magang", "YouTube", "Bisnis", "Personal") */
+  track?: string;
+  /** Subtasks breakdown for the goal */
+  tasks?: GoalTask[];
   /** Why this goal matters — short personal reason. */
   why?: string;
   /** Implementation intention context (When & Where: e.g. "Tomorrow 08:30 at work desk") */

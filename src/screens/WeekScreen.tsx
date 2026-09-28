@@ -502,9 +502,13 @@ function WeekReviewCard({
   const skipWeekReview = useMonkStore((s) => s.skipWeekReview);
   const savedReview = useMonkStore((s) => s.weeklyReviews?.[weeklyPlan.id]);
   const [decisions, setDecisions] = useState<Record<string, WeekReviewDecision>>({});
-
-  const weekEnded = remainingDays === 0 || weekDates[weekDates.length - 1] < today;
-  const shouldShow = showWeekWrap || weekEnded;
+  const isTodayRest = useMonkStore((s) => {
+    const plan = s.dayPlans.find((d) => d.date === today && d.seasonId === weeklyPlan.seasonId);
+    return plan?.dayType === "rest" || plan?.status === "rest";
+  });
+  const isSunday = new Date(today + "T00:00:00").getDay() === 0;
+  const weekEnded = remainingDays <= 1 || weekDates[weekDates.length - 1] <= today || isSunday;
+  const shouldShow = isTodayRest || weekEnded || !!savedReview;
   if (!shouldShow) return null;
 
   const setAction = (goalId: string, action: WeekReviewDecision["action"]) => {

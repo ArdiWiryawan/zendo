@@ -6,7 +6,7 @@ import { WhyEditor } from "../components/SeasonWidgets";
 import { ChevronRight } from "lucide-react";
 import { CORE_VALUES } from "../constants/whyValues";
 import { useT } from "../i18n";
-import type { EnergyLevel } from "../types/app";
+import type { EnergyLevel, Goal } from "../types/app";
 
 export function EnergyCheck({ value, onChange, compact = false }: { value?: EnergyLevel; onChange: (value: EnergyLevel) => void; compact?: boolean }) {
   const t = useT();
@@ -257,6 +257,158 @@ export function WhyStrip({ compact = false }: { compact?: boolean }) {
             {t("why.editButton")}
           </button>
         </div>
+      ) : null}
+    </div>
+  );
+}
+
+export function GoalTasksCard({ goal, todayMainAction }: { goal: Goal; todayMainAction?: string }) {
+  const store = useMonkStore();
+  const today = getTodayDateString();
+  const [newTitle, setNewTitle] = useState("");
+  const [isAdding, setIsAdding] = useState(false);
+  const tasks = goal.tasks || [];
+
+  const handleAdd = () => {
+    if (!newTitle.trim()) return;
+    store.addGoalTask(goal.id, newTitle.trim());
+    setNewTitle("");
+    setIsAdding(false);
+  };
+
+  const handlePromoteToAction = (taskTitle: string) => {
+    store.createOrUpdateDayPlan(today, {
+      dayType: "goal",
+      goalId: goal.id,
+      mainAction: taskTitle
+    });
+  };
+
+  return (
+    <div className="mt-3.5 space-y-2 rounded-xl border border-monk-border/70 bg-monk-soft/30 p-3.5">
+      <div className="flex items-center justify-between gap-2">
+        <p className="text-[11px] font-bold uppercase tracking-wider text-monk-muted flex items-center gap-1.5">
+          <span>📋 Langkah / Subtask</span>
+          {tasks.length > 0 ? (
+            <span className="font-mono text-[10px] text-monk-accent">
+              ({tasks.filter((t) => t.completed).length}/{tasks.length})
+            </span>
+          ) : null}
+        </p>
+        {!isAdding && (
+          <button
+            type="button"
+            onClick={() => setIsAdding(true)}
+            className="text-[11px] font-semibold text-monk-accent hover:underline active:scale-95"
+          >
+            + Tambah
+          </button>
+        )}
+      </div>
+
+      {tasks.length > 0 ? (
+        <div className="space-y-1.5 pt-1">
+          {tasks.map((task) => {
+            const isCurrentMain = todayMainAction?.trim() === task.title.trim();
+            return (
+              <div
+                key={task.id}
+                className={`flex items-center justify-between gap-2 rounded-lg border px-2.5 py-1.5 text-xs transition ${
+                  isCurrentMain
+                    ? "border-monk-accent/50 bg-monk-accent/10"
+                    : "border-monk-border/40 bg-monk-surface/60 hover:bg-monk-surface"
+                }`}
+              >
+                <div className="flex min-w-0 flex-1 items-center gap-2">
+                  <input
+                    type="checkbox"
+                    checked={task.completed}
+                    onChange={() => store.toggleGoalTask(goal.id, task.id)}
+                    className="h-3.5 w-3.5 rounded border-monk-border text-monk-accent focus:ring-0 cursor-pointer"
+                  />
+                  <span
+                    className={`min-w-0 truncate text-xs ${
+                      task.completed
+                        ? "line-through text-monk-muted"
+                        : isCurrentMain
+                        ? "font-semibold text-monk-accent"
+                        : "text-monk-text"
+                    }`}
+                  >
+                    {task.title}
+                  </span>
+                  {isCurrentMain && (
+                    <span className="shrink-0 rounded-full bg-monk-accent/20 px-1.5 py-0.2 text-[9px] font-bold text-monk-accent">
+                      Aksi Hari Ini
+                    </span>
+                  )}
+                </div>
+
+                <div className="flex items-center gap-1 shrink-0">
+                  {!task.completed && !isCurrentMain && (
+                    <button
+                      type="button"
+                      title="Jadikan Aksi Hari Ini"
+                      onClick={() => handlePromoteToAction(task.title)}
+                      className="rounded px-1.5 py-0.5 text-[10px] font-semibold text-monk-accent hover:bg-monk-accent/15 transition active:scale-95"
+                    >
+                      Jadikan Aksi
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    title="Hapus"
+                    onClick={() => store.deleteGoalTask(goal.id, task.id)}
+                    className="text-monk-muted/60 hover:text-rose-400 p-0.5 transition"
+                  >
+                    ✕
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      ) : null}
+
+      {isAdding ? (
+        <div className="flex items-center gap-2 pt-1">
+          <input
+            type="text"
+            value={newTitle}
+            onChange={(e) => setNewTitle(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                handleAdd();
+              }
+            }}
+            placeholder="Langkah 10 menit (mis: Tulis draft bab 1)..."
+            autoFocus
+            className="flex-1 rounded-lg border border-monk-border bg-monk-surface px-2.5 py-1 text-xs text-monk-text placeholder:text-monk-muted focus:border-monk-accent focus:outline-none"
+          />
+          <button
+            type="button"
+            onClick={handleAdd}
+            className="rounded-lg bg-monk-accent px-2.5 py-1 text-xs font-semibold text-monk-bg transition active:scale-95"
+          >
+            Simpan
+          </button>
+          <button
+            type="button"
+            onClick={() => setIsAdding(false)}
+            className="text-xs text-monk-muted hover:text-monk-text px-1"
+          >
+            Batal
+          </button>
+        </div>
+      ) : tasks.length === 0 ? (
+        <button
+          type="button"
+          onClick={() => setIsAdding(true)}
+          className="w-full text-center py-1.5 text-xs text-monk-muted/80 hover:text-monk-accent border border-dashed border-monk-border/60 rounded-lg transition"
+        >
+          + Pecah target ini jadi langkah-langkah kecil
+        </button>
       ) : null}
     </div>
   );

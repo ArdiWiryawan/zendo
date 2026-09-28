@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, BookOpen, FileText, History } from "lucide-react";
+import { ArrowLeft, BookOpen, FileText, History, Search, Sparkles, Filter } from "lucide-react";
 import { useMonkStore } from "../store/useMonkStore";
 import { useT, useLanguage } from "../i18n";
 import { getJournalAnswerItems } from "../i18n/prompts";
@@ -114,14 +114,90 @@ export function JournalLibraryScreen() {
   const packSessions = store.journalPackSessions.filter(s => s.completedAt);
   const categories = store.notebookCategories;
 
-  const [libTab, setLibTab] = useState<"reflections" | "notebook" | "packs" | "learning">("reflections");
+  const [libTab, setLibTab] = useState<"all" | "reflections" | "notebook" | "packs" | "learning">("all");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [filterType, setFilterType] = useState<"all" | "note" | "reflection" | "learning">("all");
   const [openPackSessionId, setOpenPackSessionId] = useState<string | null>(null);
   const [openLearningId, setOpenLearningId] = useState<string | null>(null);
   const learningSessions = [...store.learningSessions].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
 
   const catName = (id: string) => categories.find((c) => c.id === id)?.name ?? t("library.unknown");
+
+  const unifiedItems = useMemo(() => {
+    type UnifiedItem = {
+      id: string;
+      type: "note" | "reflection" | "learning";
+      title: string;
+      snippet: string;
+      date: string;
+      category?: string;
+      raw: any;
+    };
+
+    const items: UnifiedItem[] = [];
+
+    // Notes
+    notebookEntries.forEach((n) => {
+      items.push({
+        id: `note_${n.id}`,
+        type: "note",
+        title: n.title || t("library.untitled"),
+        snippet: n.body.replace(/\n/g, " ").slice(0, 180),
+        date: n.updatedAt || n.createdAt,
+        category: catName(n.categoryId),
+        raw: n
+      });
+    });
+
+    // Reflections
+    journalEntries.forEach((j) => {
+      const moved = j.answers.whatMovedToday || "";
+      const learned = j.answers.whatDidILearn || "";
+      const morning = j.answers.morningPages || "";
+      const snippet = moved || learned || morning || "Refleksi harian tersimpan.";
+      items.push({
+        id: `journal_${j.id}`,
+        type: "reflection",
+        title: `Refleksi · ${formatHumanDate(j.date)}`,
+        snippet: snippet.replace(/\n/g, " ").slice(0, 180),
+        date: j.createdAt || j.date,
+        raw: j
+      });
+    });
+
+    // Learning
+    learningSessions.forEach((l) => {
+      items.push({
+        id: `learn_${l.id}`,
+        type: "learning",
+        title: l.sourceTitle || `${l.sourceType.toUpperCase()} Learning`,
+        snippet: (l.lesson || l.actionIdea || l.content || "").replace(/\n/g, " ").slice(0, 180),
+        date: l.createdAt,
+        category: l.sourceType,
+        raw: l
+      });
+    });
+
+    return items.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  }, [notebookEntries, journalEntries, learningSessions, t]);
+
+  const filteredUnified = useMemo(() => {
+    const q = searchQuery.toLowerCase().trim();
+    return unifiedItems.filter((item) => {
+      if (filterType !== "all" && item.type !== filterType) return false;
+      if (!q) return true;
+      return (
+        item.title.toLowerCase().includes(q) ||
+        item.snippet.toLowerCase().includes(q) ||
+        (item.category && item.category.toLowerCase().includes(q))
+      );
+    });
+  }, [unifiedItems, filterType, searchQuery]);
+
   const subtitle =
-    libTab === "reflections"
+    libTab === "all"
+      ? `${unifiedItems.length} total rekaman pengetahuan`
+      : libTab === "reflections"
       ? t("library.reflectionsCount", { n: journalEntries.length })
       : libTab === "notebook"
         ? t("library.notesCount", { n: notebookEntries.length })
@@ -137,12 +213,118 @@ export function JournalLibraryScreen() {
         rightSlot={<SettingsLink />}
       />
       <div className="flex rounded-xl bg-monk-soft p-1 mb-5 border border-monk-border/40 overflow-x-auto">
-        <button type="button" className={`flex-1 rounded-lg py-2 text-xs font-semibold tracking-wide transition whitespace-nowrap px-2 ${libTab === "reflections" ? "bg-monk-surface text-monk-text border border-monk-border-strong shadow-sm" : "text-monk-muted hover:text-monk-text"}`} onClick={() => setLibTab("reflections")}>{t("library.tab.reflections")}</button>
-        <button type="button" className={`flex-1 rounded-lg py-2 text-xs font-semibold tracking-wide transition whitespace-nowrap px-2 ${libTab === "notebook" ? "bg-monk-surface text-monk-text border border-monk-border-strong shadow-sm" : "text-monk-muted hover:text-monk-text"}`} onClick={() => setLibTab("notebook")}>{t("library.tab.notebook")}</button>
-        <button type="button" className={`flex-1 rounded-lg py-2 text-xs font-semibold tracking-wide transition whitespace-nowrap px-2 ${libTab === "learning" ? "bg-monk-surface text-monk-text border border-monk-border-strong shadow-sm" : "text-monk-muted hover:text-monk-text"}`} onClick={() => setLibTab("learning")}>{t("library.tab.learning")}</button>
-        <button type="button" className={`flex-1 rounded-lg py-2 text-xs font-semibold tracking-wide transition whitespace-nowrap px-2 ${libTab === "packs" ? "bg-monk-surface text-monk-text border border-monk-border-strong shadow-sm" : "text-monk-muted hover:text-monk-text"}`} onClick={() => setLibTab("packs")}>{t("library.tab.packs")}</button>
+        <button type="button" className={`flex-1 rounded-lg py-2 text-xs font-semibold tracking-wide transition whitespace-nowrap px-2.5 ${libTab === "all" ? "bg-monk-surface text-monk-text border border-monk-border-strong shadow-sm font-bold" : "text-monk-muted hover:text-monk-text"}`} onClick={() => setLibTab("all")}>Semua</button>
+        <button type="button" className={`flex-1 rounded-lg py-2 text-xs font-semibold tracking-wide transition whitespace-nowrap px-2.5 ${libTab === "reflections" ? "bg-monk-surface text-monk-text border border-monk-border-strong shadow-sm font-bold" : "text-monk-muted hover:text-monk-text"}`} onClick={() => setLibTab("reflections")}>{t("library.tab.reflections")}</button>
+        <button type="button" className={`flex-1 rounded-lg py-2 text-xs font-semibold tracking-wide transition whitespace-nowrap px-2.5 ${libTab === "notebook" ? "bg-monk-surface text-monk-text border border-monk-border-strong shadow-sm font-bold" : "text-monk-muted hover:text-monk-text"}`} onClick={() => setLibTab("notebook")}>{t("library.tab.notebook")}</button>
+        <button type="button" className={`flex-1 rounded-lg py-2 text-xs font-semibold tracking-wide transition whitespace-nowrap px-2.5 ${libTab === "learning" ? "bg-monk-surface text-monk-text border border-monk-border-strong shadow-sm font-bold" : "text-monk-muted hover:text-monk-text"}`} onClick={() => setLibTab("learning")}>{t("library.tab.learning")}</button>
+        <button type="button" className={`flex-1 rounded-lg py-2 text-xs font-semibold tracking-wide transition whitespace-nowrap px-2.5 ${libTab === "packs" ? "bg-monk-surface text-monk-text border border-monk-border-strong shadow-sm font-bold" : "text-monk-muted hover:text-monk-text"}`} onClick={() => setLibTab("packs")}>{t("library.tab.packs")}</button>
       </div>
       <div className="space-y-4 pb-8">
+        {libTab === "all" ? (
+          <div className="space-y-3.5">
+            {/* Search and Filter Row */}
+            <div className="space-y-2">
+              <div className="relative">
+                <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-monk-muted" />
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Cari ide, catatan, refleksi, ringkasan belajar..."
+                  className="w-full rounded-xl border border-monk-border bg-monk-surface pl-10 pr-3.5 py-2 text-xs text-monk-text placeholder:text-monk-muted focus:border-monk-accent focus:outline-none"
+                />
+              </div>
+
+              {/* Quick filter chips */}
+              <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
+                {[
+                  { id: "all", label: "Semua", count: unifiedItems.length },
+                  { id: "note", label: "Catatan", count: notebookEntries.length },
+                  { id: "reflection", label: "Refleksi", count: journalEntries.length },
+                  { id: "learning", label: "Belajar", count: learningSessions.length }
+                ].map((chip) => (
+                  <button
+                    key={chip.id}
+                    type="button"
+                    onClick={() => setFilterType(chip.id as any)}
+                    className={`flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-[11px] font-semibold transition active:scale-95 border ${
+                      filterType === chip.id
+                        ? "border-monk-accent bg-monk-accent/15 text-monk-accent font-bold"
+                        : "border-monk-border/60 bg-monk-soft/50 text-monk-muted hover:text-monk-text"
+                    }`}
+                  >
+                    <span>{chip.label}</span>
+                    <span className="font-mono text-[10px] text-monk-muted/80">({chip.count})</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* List */}
+            {filteredUnified.length === 0 ? (
+              <EmptyState
+                title="Tidak Ada Rekaman"
+                description={searchQuery ? "Tidak ada hasil yang cocok dengan pencarianmu." : "Mulai catat ide, renungan harian, atau sesi belajar untuk mengisi Second Brain kamu."}
+                actionLabel={searchQuery ? "Reset Pencarian" : "Tulis Catatan"}
+                onAction={() => (searchQuery ? setSearchQuery("") : navigate(routes.notebook))}
+              />
+            ) : (
+              <div className="space-y-2.5">
+                {filteredUnified.map((item) => {
+                  const isNote = item.type === "note";
+                  const isReflection = item.type === "reflection";
+                  const isLearning = item.type === "learning";
+
+                  return (
+                    <div
+                      key={item.id}
+                      onClick={() => {
+                        if (isNote) navigate(`${routes.notebook}?open=${item.raw.id}`);
+                        else if (isReflection) setLibTab("reflections");
+                        else if (isLearning) {
+                          setOpenLearningId(item.raw.id);
+                          setLibTab("learning");
+                        }
+                      }}
+                      className="group cursor-pointer rounded-2xl border border-monk-border/60 bg-monk-surface p-4 transition-all hover:border-monk-accent/60 active:scale-[0.99] shadow-xs space-y-1.5"
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <span
+                            className={`rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider shrink-0 ${
+                              isNote
+                                ? "bg-amber-500/15 text-amber-400 border border-amber-500/30"
+                                : isReflection
+                                ? "bg-emerald-500/15 text-emerald-400 border border-emerald-500/30"
+                                : "bg-sky-500/15 text-sky-400 border border-sky-500/30"
+                            }`}
+                          >
+                            {isNote ? "Catatan" : isReflection ? "Refleksi" : "Belajar"}
+                          </span>
+                          {item.category ? (
+                            <span className="text-[10px] text-monk-muted truncate font-medium">
+                              • {item.category}
+                            </span>
+                          ) : null}
+                        </div>
+                        <span className="text-[10px] text-monk-muted font-mono shrink-0">
+                          {formatHumanDate(item.date.slice(0, 10))}
+                        </span>
+                      </div>
+
+                      <h4 className="text-xs sm:text-sm font-bold text-monk-text group-hover:text-monk-accent transition truncate">
+                        {item.title}
+                      </h4>
+                      <p className="text-xs text-monk-muted leading-relaxed line-clamp-2">
+                        {item.snippet}
+                      </p>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        ) : null}
 
         {libTab === "notebook" ? (
           notebookEntries.length === 0

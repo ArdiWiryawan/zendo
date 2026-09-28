@@ -42,6 +42,7 @@ export function GoalBlueprintModal({ goalId, isOpen, onClose }: GoalBlueprintMod
   const [definitionOfDone, setDefinitionOfDone] = useState("");
 
   // Additional settings
+  const [track, setTrack] = useState("");
   const [why, setWhy] = useState("");
   const [weeklyTargetCount, setWeeklyTargetCount] = useState(4);
   const [obstacleMitigation, setObstacleMitigation] = useState("");
@@ -55,6 +56,7 @@ export function GoalBlueprintModal({ goalId, isOpen, onClose }: GoalBlueprintMod
       setKeystoneAction(goal.keystoneAction || "");
       setWhenWhere(goal.whenWhere || "");
       setDefinitionOfDone(goal.definitionOfDone || "");
+      setTrack(goal.track || "");
       setWhy(goal.why || "");
       setWeeklyTargetCount(goal.weeklyTargetCount || 4);
       setObstacleMitigation(goal.obstacleMitigation || "");
@@ -103,6 +105,7 @@ export function GoalBlueprintModal({ goalId, isOpen, onClose }: GoalBlueprintMod
     store.updateGoalBlueprint(goal.id, {
       title: title.trim(),
       keystoneAction: keystoneAction.trim(),
+      track: track.trim() || undefined,
       whenWhere: whenWhere.trim() || undefined,
       definitionOfDone: definitionOfDone.trim() || undefined,
       weeklyTargetCount,
@@ -241,6 +244,35 @@ export function GoalBlueprintModal({ goalId, isOpen, onClose }: GoalBlueprintMod
                   className="bg-monk-surface text-sm font-semibold"
                 />
                 <p className="text-[11px] text-monk-muted">{t("blueprint.pillar1Desc")}</p>
+              </div>
+
+              {/* Goal Track / Focus Area */}
+              <div className="rounded-2xl border border-monk-border bg-monk-soft/30 p-3.5 space-y-2">
+                <label className="text-xs font-bold uppercase tracking-wider text-monk-muted block">
+                  Jalur Fokus / Track (Opsional)
+                </label>
+                <TextInput
+                  value={track}
+                  onChange={(e) => setTrack(e.target.value)}
+                  placeholder="Misal: 🎓 Magang, ▶️ YouTube, 🚀 Bisnis, 🌿 Personal..."
+                  className="bg-monk-surface text-sm"
+                />
+                <div className="flex flex-wrap gap-1.5 pt-0.5">
+                  {["🎓 Magang", "▶️ YouTube", "🚀 Bisnis", "🌿 Personal", "📚 Studi"].map((chip) => (
+                    <button
+                      key={chip}
+                      type="button"
+                      onClick={() => setTrack(chip)}
+                      className={`rounded-lg px-2 py-0.5 text-[10px] font-semibold transition active:scale-95 border ${
+                        track === chip
+                          ? "border-monk-accent bg-monk-accent/15 text-monk-accent font-bold"
+                          : "border-monk-border/60 bg-monk-surface text-monk-muted hover:text-monk-text"
+                      }`}
+                    >
+                      {chip}
+                    </button>
+                  ))}
+                </div>
               </div>
 
               {/* Pillar 2: Next Keystone Action */}

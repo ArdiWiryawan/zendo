@@ -24,9 +24,9 @@ function isHeldDay(store: MonkMVPState, seasonId: string, date: string): boolean
 
 function isRestDay(store: MonkMVPState, seasonId: string, date: string): boolean {
   const plan = findPlan(store, seasonId, date);
-  if (plan && plan.dayType === "rest") return true;
+  if (plan && (plan.dayType === "rest" || plan.status === "rest")) return true;
   const day = store.timelineDays?.find((item) => item.date === date && (!seasonId || item.seasonId === seasonId));
-  return day?.status === "rest";
+  return day?.status === "rest" || day?.dayType === "rest";
 }
 
 export function getFocusStreak(store: MonkMVPState, today = getTodayDateString()): { count: number; best: number } {
