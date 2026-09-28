@@ -208,7 +208,7 @@ export function DayTimeBlockVisualizer({
               {timeBlocks.length > 0
                 ? t("timeline.daily.blocksPlanned", { n: timeBlocks.length })
                 : t("timeline.daily.noBlocks")}
-              {timeBlocks.length > 0 ? ` (${totalPlannedHours} jam)` : ""}
+              {timeBlocks.length > 0 ? ` (${totalPlannedHours} ${lang === "id" ? "jam" : "h"})` : ""}
             </p>
           </div>
         </div>

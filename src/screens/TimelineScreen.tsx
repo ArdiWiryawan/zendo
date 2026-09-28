@@ -51,7 +51,9 @@ import {
   getTodayDateString,
   getCurrentWeekNumber,
   getWeekStartDate,
+  parseLocalDateKey,
 } from "../lib/date";
+import { differenceInCalendarDays, format } from "date-fns";
 import {
   getDailyStatusForDate,
   isRetroEligible,
@@ -158,20 +160,33 @@ function StreakConsistencyCard() {
     else if (status === "missed" || status === "relapse") missedCount++;
   });
 
+  const milestones = [3, 7, 14, 21, 30, 60, 90];
+  const nextMilestone = milestones.find((m) => m > streak.count) ?? null;
+  const daysToMilestone = nextMilestone ? nextMilestone - streak.count : 0;
+
   return (
     <div className="rounded-2xl border border-monk-border/80 bg-monk-surface/90 p-4 sm:p-5 shadow-xs transition-all duration-200">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="min-w-0">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             <span className="text-xl leading-none">🔥</span>
             <span className="text-base font-bold text-white tracking-tight">
-              {streak.count} {t("timeline.streak.days", { n: streak.count })}
+              {t("timeline.streak.days", { n: streak.count })}
             </span>
             {streak.best > streak.count ? (
               <span className="text-[11px] font-mono font-medium text-monk-accent bg-monk-accent/10 px-1.5 py-0.5 rounded-md border border-monk-accent/30">
                 {t("timeline.streak.best", { n: streak.best })}
               </span>
             ) : null}
+            {nextMilestone ? (
+              <span className="text-[10px] font-mono font-medium text-emerald-400 bg-emerald-950/40 px-2 py-0.5 rounded-md border border-emerald-500/30">
+                {t("timeline.streak.nextMilestone", { target: nextMilestone, left: daysToMilestone })}
+              </span>
+            ) : (
+              <span className="text-[10px] font-mono font-medium text-monk-accent bg-monk-accent/10 px-2 py-0.5 rounded-md border border-monk-accent/30">
+                {t("timeline.streak.milestoneMax")}
+              </span>
+            )}
           </div>
           <p className="mt-1 text-xs text-monk-muted">
             {t("timeline.streak.title")}
@@ -355,20 +370,123 @@ export default function TimelineScreen() {
   const currentWeekNum = useMemo(() => getCurrentWeekNumber(season.startDate, today), [season.startDate, today]);
   const [selectedWeek, setSelectedWeek] = useState<number>(currentWeekNum);
 
+  // Month navigation and calendar grid state for Monthly View
+  const [viewYearMonth, setViewYearMonth] = useState<{ year: number; month: number }>(() => {
+    const d = parseLocalDateKey(today);
+    return { year: d.getFullYear(), month: d.getMonth() };
+  });
+
   // Selected date inspector state for Monthly View
   const [selectedMonthDate, setSelectedMonthDate] = useState<string>(today);
 
-  const dates = useMemo(() => {
-    return datesInRange(season.startDate, season.durationDays);
-  }, [season.startDate, season.durationDays]);
+  // Generate complete rectangular Monday-aligned calendar month grid
+  const calendarGrid = useMemo(() => {
+    const firstDay = new Date(viewYearMonth.year, viewYearMonth.month, 1);
+    const daysInMonth = new Date(viewYearMonth.year, viewYearMonth.month + 1, 0).getDate();
+    // Monday = 0, Sunday = 6
+    const startDayOfWeek = (firstDay.getDay() + 6) % 7;
+    const seasonEndDate = addDaysToDate(season.startDate, season.durationDays - 1);
 
-  const chunks = useMemo(() => {
-    const result: string[][] = [];
-    for (let i = 0; i < dates.length; i += 7) {
-      result.push(dates.slice(i, i + 7));
+    const cells: Array<{
+      dateStr: string;
+      dayNum: number;
+      isCurrentMonth: boolean;
+      isWithinSeason: boolean;
+    }> = [];
+
+    // Trailing days of previous month
+    if (startDayOfWeek > 0) {
+      const prevMonthLastDay = new Date(viewYearMonth.year, viewYearMonth.month, 0).getDate();
+      for (let i = startDayOfWeek - 1; i >= 0; i--) {
+        const day = prevMonthLastDay - i;
+        const d = new Date(viewYearMonth.year, viewYearMonth.month - 1, day);
+        const dateStr = format(d, "yyyy-MM-dd");
+        cells.push({
+          dateStr,
+          dayNum: day,
+          isCurrentMonth: false,
+          isWithinSeason: dateStr >= season.startDate && dateStr <= seasonEndDate
+        });
+      }
     }
-    return result;
-  }, [dates]);
+
+    // Days in current month (guaranteed 1 to daysInMonth)
+    for (let day = 1; day <= daysInMonth; day++) {
+      const d = new Date(viewYearMonth.year, viewYearMonth.month, day);
+      const dateStr = format(d, "yyyy-MM-dd");
+      cells.push({
+        dateStr,
+        dayNum: day,
+        isCurrentMonth: true,
+        isWithinSeason: dateStr >= season.startDate && dateStr <= seasonEndDate
+      });
+    }
+
+    // Leading days of next month to complete 7-day row
+    const remainder = cells.length % 7;
+    const trailingCount = remainder === 0 ? 0 : 7 - remainder;
+    for (let day = 1; day <= trailingCount; day++) {
+      const d = new Date(viewYearMonth.year, viewYearMonth.month + 1, day);
+      const dateStr = format(d, "yyyy-MM-dd");
+      cells.push({
+        dateStr,
+        dayNum: day,
+        isCurrentMonth: false,
+        isWithinSeason: dateStr >= season.startDate && dateStr <= seasonEndDate
+      });
+    }
+
+    // Group into rows of 7
+    const rows: typeof cells[] = [];
+    for (let i = 0; i < cells.length; i += 7) {
+      rows.push(cells.slice(i, i + 7));
+    }
+    return rows;
+  }, [viewYearMonth.year, viewYearMonth.month, season.startDate, season.durationDays]);
+
+  const isViewingTodayMonth = useMemo(() => {
+    const d = parseLocalDateKey(today);
+    return d.getFullYear() === viewYearMonth.year && d.getMonth() === viewYearMonth.month;
+  }, [today, viewYearMonth]);
+
+  const handlePrevMonth = () => {
+    setViewYearMonth((curr) =>
+      curr.month === 0 ? { year: curr.year - 1, month: 11 } : { year: curr.year, month: curr.month - 1 }
+    );
+  };
+
+  const handleNextMonth = () => {
+    setViewYearMonth((curr) =>
+      curr.month === 11 ? { year: curr.year + 1, month: 0 } : { year: curr.year, month: curr.month + 1 }
+    );
+  };
+
+  const handleTodayMonth = () => {
+    const d = parseLocalDateKey(today);
+    setViewYearMonth({ year: d.getFullYear(), month: d.getMonth() });
+    setSelectedMonthDate(today);
+  };
+
+  const monthSeasonStats = useMemo(() => {
+    let totalInMonth = 0;
+    let seasonDaysInMonth = 0;
+    let completedInMonth = 0;
+
+    calendarGrid.forEach((week) => {
+      week.forEach((cell) => {
+        if (cell.isCurrentMonth) {
+          totalInMonth++;
+          if (cell.isWithinSeason) {
+            seasonDaysInMonth++;
+            const status = getDailyStatusForDate(store, cell.dateStr);
+            if (status === "completed") completedInMonth++;
+          }
+        }
+      });
+    });
+
+    return { totalInMonth, seasonDaysInMonth, completedInMonth };
+  }, [calendarGrid, store]);
 
   const groupedEvents = useMemo(() => {
     const groups: Record<string, TimelineEvent[]> = {};
@@ -425,11 +543,35 @@ export default function TimelineScreen() {
   const DOW = ["Sen", "Sel", "Rab", "Kam", "Jum", "Sab", "Min"];
 
   // High-contrast, tactile calendar tile styles
-  function getStatusTileStyle(dateStr: string) {
+  function getStatusTileStyle(cell: {
+    dateStr: string;
+    isCurrentMonth: boolean;
+    isWithinSeason: boolean;
+  }) {
+    const { dateStr, isCurrentMonth, isWithinSeason } = cell;
     const status = getDailyStatusForDate(store, dateStr);
     const isDateToday = dateStr === today;
     const isFuture = dateStr > today;
 
+    // 1. Outside current month (adjacent month padding)
+    if (!isCurrentMonth) {
+      return {
+        tileClass: "bg-transparent border-transparent opacity-25 hover:opacity-60 text-monk-muted/40",
+        numClass: "text-monk-muted/50 font-normal",
+        iconElement: null
+      };
+    }
+
+    // 2. Current month, but outside active season range
+    if (!isWithinSeason) {
+      return {
+        tileClass: "bg-monk-surface/20 border-monk-border/30 text-monk-muted/50 hover:border-monk-border/60",
+        numClass: "text-monk-muted/60 font-medium",
+        iconElement: null
+      };
+    }
+
+    // 3. Current month, within season, FUTURE day
     if (isFuture) {
       return {
         tileClass: "bg-monk-surface/40 border-monk-border/50 text-monk-muted hover:border-monk-border-strong",
@@ -438,10 +580,11 @@ export default function TimelineScreen() {
       };
     }
 
+    // 4. Current month, within season, TODAY
     if (isDateToday) {
       if (status === "completed") {
         return {
-          tileClass: "bg-emerald-950/70 border-emerald-500 ring-2 ring-monk-accent text-white shadow-sm",
+          tileClass: "bg-emerald-950/80 border-emerald-500 ring-2 ring-monk-accent text-white shadow-sm",
           numClass: "text-white font-black",
           iconElement: <Check size={11} strokeWidth={3} className="text-emerald-400" />
         };
@@ -455,14 +598,14 @@ export default function TimelineScreen() {
       }
       if (status === "partial") {
         return {
-          tileClass: "bg-amber-950/70 border-amber-500 ring-2 ring-monk-accent text-white shadow-sm",
+          tileClass: "bg-amber-950/80 border-amber-500 ring-2 ring-monk-accent text-white shadow-sm",
           numClass: "text-amber-200 font-black",
           iconElement: <Flame size={11} strokeWidth={2.5} className="text-amber-400" />
         };
       }
       if (status === "relapse" || status === "missed") {
         return {
-          tileClass: "bg-rose-950/70 border-rose-500 ring-2 ring-monk-accent text-white shadow-sm",
+          tileClass: "bg-rose-950/80 border-rose-500 ring-2 ring-monk-accent text-white shadow-sm",
           numClass: "text-rose-200 font-black",
           iconElement: <span className="text-[10px] font-black text-rose-400 leading-none">✕</span>
         };
@@ -474,10 +617,10 @@ export default function TimelineScreen() {
       };
     }
 
-    // Past days:
+    // 5. Current month, within season, PAST days
     if (status === "completed") {
       return {
-        tileClass: "bg-emerald-950/50 border-emerald-600/70 hover:border-emerald-400 text-white",
+        tileClass: "bg-emerald-950/60 border-emerald-600/70 hover:border-emerald-400 text-white",
         numClass: "text-white font-bold",
         iconElement: <Check size={11} strokeWidth={3} className="text-emerald-400" />
       };
@@ -491,14 +634,14 @@ export default function TimelineScreen() {
     }
     if (status === "partial") {
       return {
-        tileClass: "bg-amber-950/50 border-amber-600/70 hover:border-amber-400 text-white",
+        tileClass: "bg-amber-950/60 border-amber-600/70 hover:border-amber-400 text-white",
         numClass: "text-amber-200 font-bold",
         iconElement: <Flame size={11} strokeWidth={2.5} className="text-amber-400" />
       };
     }
     if (status === "missed" || status === "relapse") {
       return {
-        tileClass: "bg-rose-950/50 border-rose-600/70 hover:border-rose-400 text-rose-300",
+        tileClass: "bg-rose-950/60 border-rose-600/70 hover:border-rose-400 text-rose-300",
         numClass: "text-rose-300 font-bold",
         iconElement: <span className="text-[10px] font-black text-rose-400 leading-none">✕</span>
       };
@@ -527,13 +670,13 @@ export default function TimelineScreen() {
 
   const seasonMonthLabel = useMemo(() => {
     try {
-      const d = new Date(today);
+      const d = new Date(viewYearMonth.year, viewYearMonth.month, 1);
       const locale = lang === "id" ? "id-ID" : "en-US";
       return d.toLocaleDateString(locale, { month: "long", year: "numeric" });
     } catch {
       return t("timeline.month.title");
     }
-  }, [today, lang, t]);
+  }, [viewYearMonth, lang, t]);
 
   const daysPassedCount = Math.min(season.durationDays, getDaysPassed(season.startDate, today));
 
@@ -824,20 +967,58 @@ export default function TimelineScreen() {
             className="space-y-4"
           >
             <Card className="p-4 sm:p-5 space-y-4 border border-monk-border/80 bg-monk-surface/90">
-              {/* Calendar Header with Month/Year & Season Progress */}
+              {/* Calendar Header with Month/Year Navigation & Season Progress */}
               <div className="flex flex-wrap items-center justify-between gap-2 border-b border-monk-border/60 pb-3">
-                <div>
-                  <h3 className="text-sm font-bold text-white tracking-wide capitalize">
-                    {seasonMonthLabel}
-                  </h3>
-                  <p className="text-xs text-monk-muted mt-0.5">
-                    {t("timeline.month.hint")}
-                  </p>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={handlePrevMonth}
+                    className="grid h-8 w-8 place-items-center rounded-lg text-monk-muted hover:text-monk-text hover:bg-monk-soft border border-monk-border/60 transition active:scale-95"
+                    aria-label={t("timeline.month.prev")}
+                    title={t("timeline.month.prev")}
+                  >
+                    <ChevronLeft size={16} />
+                  </button>
+                  <div className="min-w-0">
+                    <h3 className="text-sm font-bold text-white tracking-wide capitalize leading-none">
+                      {seasonMonthLabel}
+                    </h3>
+                    <p className="text-[11px] text-monk-muted mt-1 leading-none">
+                      {monthSeasonStats.seasonDaysInMonth > 0
+                        ? t("timeline.month.seasonProgress", {
+                            completed: monthSeasonStats.completedInMonth,
+                            total: monthSeasonStats.seasonDaysInMonth,
+                          })
+                        : t("timeline.month.outOfSeason")}
+                    </p>
+                  </div>
                 </div>
-                <div className="flex items-center gap-1.5">
-                  <span className="font-mono text-xs font-bold text-monk-accent bg-monk-accent/15 border border-monk-accent/30 px-2.5 py-1 rounded-lg">
-                    Hari {daysPassedCount} / {season.durationDays}
-                  </span>
+
+                <div className="flex items-center gap-1.5 shrink-0">
+                  {!isViewingTodayMonth ? (
+                    <button
+                      type="button"
+                      onClick={handleTodayMonth}
+                      className="inline-flex items-center gap-1 rounded-lg border border-monk-accent/30 bg-monk-accent/10 px-2 py-1 text-[11px] font-bold text-monk-accent hover:bg-monk-accent/20 transition active:scale-95"
+                    >
+                      <RotateCcw size={11} />
+                      <span>{t("timeline.month.currentMonth")}</span>
+                    </button>
+                  ) : (
+                    <span className="font-mono text-xs font-bold text-monk-accent bg-monk-accent/15 border border-monk-accent/30 px-2.5 py-1 rounded-lg">
+                      Hari {daysPassedCount} / {season.durationDays}
+                    </span>
+                  )}
+
+                  <button
+                    type="button"
+                    onClick={handleNextMonth}
+                    className="grid h-8 w-8 place-items-center rounded-lg text-monk-muted hover:text-monk-text hover:bg-monk-soft border border-monk-border/60 transition active:scale-95"
+                    aria-label={t("timeline.month.next")}
+                    title={t("timeline.month.next")}
+                  >
+                    <ChevronRight size={16} />
+                  </button>
                 </div>
               </div>
 
@@ -855,29 +1036,32 @@ export default function TimelineScreen() {
 
               {/* Heatmap Grid with High-Contrast Stone Tiles */}
               <div className="space-y-1.5">
-                {chunks.map((week, wi) => {
+                {calendarGrid.map((week, wi) => {
                   return (
                     <div key={wi} className="grid grid-cols-7 gap-1.5 sm:gap-2">
-                      {week.map((dateStr) => {
-                        const isDateToday = dateStr === today;
-                        const isSelected = dateStr === selectedMonthDate;
-                        const dayNum = dateStr.slice(8);
-                        const tile = getStatusTileStyle(dateStr);
+                      {week.map((cell) => {
+                        const isDateToday = cell.dateStr === today;
+                        const isSelected = cell.dateStr === selectedMonthDate;
+                        const tile = getStatusTileStyle(cell);
 
                         return (
                           <button
-                            key={dateStr}
+                            key={cell.dateStr}
                             type="button"
                             onClick={() => {
-                              setSelectedMonthDate(dateStr);
+                              setSelectedMonthDate(cell.dateStr);
+                              if (!cell.isCurrentMonth) {
+                                const d = parseLocalDateKey(cell.dateStr);
+                                setViewYearMonth({ year: d.getFullYear(), month: d.getMonth() });
+                              }
                             }}
                             className={`w-full aspect-square rounded-xl border p-1 sm:p-1.5 flex flex-col items-center justify-between transition-all duration-150 relative ${tile.tileClass} ${
                               isDateToday ? "ring-2 ring-monk-accent scale-[1.02] z-10" : ""
-                            } ${isSelected && !isDateToday ? "ring-2 ring-white/70 scale-[1.02] z-10" : ""}`}
-                            title={`${dateStr}`}
+                            } ${isSelected && !isDateToday ? "ring-2 ring-white/80 scale-[1.02] z-10" : ""}`}
+                            title={cell.dateStr}
                           >
                             <span className={`text-xs font-mono tabular-nums leading-none ${tile.numClass}`}>
-                              {dayNum}
+                              {cell.dayNum}
                             </span>
                             <div className="h-3 flex items-center justify-center">
                               {tile.iconElement}
@@ -899,14 +1083,22 @@ export default function TimelineScreen() {
                 const inspectedFocusMins = Math.round(inspectedFocusSecs / 60);
                 const inspectedEligible = isRetroEligible(selectedMonthDate, inspectedStatus, today);
                 const isDateToday = selectedMonthDate === today;
+                const isFuture = selectedMonthDate > today;
+
+                const seasonEndDate = addDaysToDate(season.startDate, season.durationDays - 1);
+                const isInspectedInSeason = selectedMonthDate >= season.startDate && selectedMonthDate <= seasonEndDate;
+                const dayNumber = isInspectedInSeason
+                  ? differenceInCalendarDays(parseLocalDateKey(selectedMonthDate), parseLocalDateKey(season.startDate)) + 1
+                  : null;
 
                 let formattedDate = selectedMonthDate;
                 try {
-                  const d = new Date(selectedMonthDate);
+                  const d = parseLocalDateKey(selectedMonthDate);
                   formattedDate = d.toLocaleDateString(lang === "id" ? "id-ID" : "en-US", {
                     weekday: "long",
                     day: "numeric",
-                    month: "long"
+                    month: "long",
+                    year: "numeric"
                   });
                 } catch {
                   /* fallback */
@@ -914,7 +1106,7 @@ export default function TimelineScreen() {
 
                 return (
                   <div className="rounded-xl border border-monk-border-strong bg-monk-surface-raised/90 p-3.5 space-y-2.5 shadow-sm">
-                    <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center justify-between gap-2 flex-wrap">
                       <div className="flex items-center gap-2 min-w-0">
                         <Calendar size={14} className="text-monk-accent shrink-0" />
                         <span className="text-xs font-bold text-white capitalize truncate">
@@ -924,12 +1116,29 @@ export default function TimelineScreen() {
                           <span className="rounded-full bg-monk-accent/20 px-2 py-0.5 text-[9px] font-bold text-monk-accent border border-monk-accent/40 shrink-0">
                             {t("timeline.todayBadge")}
                           </span>
-                        ) : null}
+                        ) : isInspectedInSeason && dayNumber ? (
+                          <span className="rounded-full bg-monk-soft px-2 py-0.5 text-[9px] font-mono font-semibold text-monk-muted border border-monk-border/60 shrink-0">
+                            {t("timeline.month.seasonDayBadge", { day: dayNumber })}
+                          </span>
+                        ) : (
+                          <span className="rounded-full bg-monk-soft/50 px-2 py-0.5 text-[9px] font-semibold text-monk-muted/70 border border-monk-border/40 shrink-0">
+                            {t("timeline.month.outOfSeason")}
+                          </span>
+                        )}
                       </div>
 
                       {/* Status chip */}
                       <div className="flex items-center gap-1 shrink-0">
-                        {inspectedStatus === "completed" ? (
+                        {!isInspectedInSeason ? (
+                          <span className="rounded-md border border-monk-border/60 bg-monk-surface px-2 py-0.5 text-[10px] font-semibold text-monk-muted">
+                            {t("timeline.month.outOfSeason")}
+                          </span>
+                        ) : isFuture ? (
+                          <span className="inline-flex items-center gap-1 rounded-md border border-monk-border bg-monk-surface px-2 py-0.5 text-[10px] font-semibold text-monk-muted">
+                            <Clock size={11} />
+                            <span>Mendatang</span>
+                          </span>
+                        ) : inspectedStatus === "completed" ? (
                           <span className="inline-flex items-center gap-1 rounded-md bg-emerald-950/60 border border-emerald-500/50 px-2 py-0.5 text-[10px] font-bold text-emerald-300">
                             <Check size={11} strokeWidth={2.5} />
                             <span>Selesai</span>
@@ -944,7 +1153,7 @@ export default function TimelineScreen() {
                             <Flame size={11} />
                             <span>Sebagian</span>
                           </span>
-                        ) : inspectedStatus === "missed" ? (
+                        ) : inspectedStatus === "missed" || inspectedStatus === "relapse" ? (
                           <span className="inline-flex items-center gap-1 rounded-md bg-rose-950/60 border border-rose-500/50 px-2 py-0.5 text-[10px] font-bold text-rose-300">
                             <span>✕ Bolong</span>
                           </span>
@@ -956,27 +1165,53 @@ export default function TimelineScreen() {
                       </div>
                     </div>
 
-                    <div className="flex flex-wrap items-center justify-between gap-2 border-t border-monk-border/50 pt-2 text-xs">
-                      <p className="text-monk-muted font-medium truncate max-w-xs">
-                        {inspectedPlan?.mainAction || goal?.keystoneAction || (inspectedStatus === "rest" ? t("timeline.restDay") : t("timeline.noAction"))}
-                      </p>
-                      {inspectedFocusMins > 0 ? (
-                        <span className="font-mono text-xs font-bold text-monk-accent bg-monk-accent/15 px-2 py-0.5 rounded-md border border-monk-accent/30">
-                          {inspectedFocusMins} mnt fokus
-                        </span>
-                      ) : null}
-                    </div>
+                    {!isInspectedInSeason ? (
+                      <div className="flex items-center justify-between gap-2 border-t border-monk-border/50 pt-2 text-xs">
+                        <p className="text-monk-muted">
+                          {t("timeline.month.outsideDesc", { duration: season.durationDays })}
+                        </p>
+                        <button
+                          type="button"
+                          onClick={handleTodayMonth}
+                          className="shrink-0 text-xs font-bold text-monk-accent hover:underline"
+                        >
+                          {t("timeline.month.openTodayAction")}
+                        </button>
+                      </div>
+                    ) : (
+                      <>
+                        <div className="flex flex-wrap items-center justify-between gap-2 border-t border-monk-border/50 pt-2 text-xs">
+                          <p className="text-monk-muted font-medium truncate max-w-xs">
+                            {inspectedPlan?.mainAction || goal?.keystoneAction || (inspectedStatus === "rest" ? t("timeline.restDay") : t("timeline.noAction"))}
+                          </p>
+                          {inspectedFocusMins > 0 ? (
+                            <span className="font-mono text-xs font-bold text-monk-accent bg-monk-accent/15 px-2 py-0.5 rounded-md border border-monk-accent/30">
+                              {t("timeline.month.focusLogged", { n: inspectedFocusMins })}
+                            </span>
+                          ) : null}
+                        </div>
 
-                    {inspectedEligible ? (
-                      <button
-                        type="button"
-                        onClick={() => setRetroDate(selectedMonthDate)}
-                        className="w-full flex items-center justify-center gap-1.5 rounded-xl bg-monk-accent py-2 text-xs font-bold text-monk-bg shadow-sm active:scale-98 transition hover:bg-monk-accent-hover"
-                      >
-                        <Plus size={14} />
-                        <span>{t("timeline.retroLog")} - Catat Sesi Terlewat</span>
-                      </button>
-                    ) : null}
+                        {isDateToday ? (
+                          <button
+                            type="button"
+                            onClick={() => navigate(routes.today)}
+                            className="w-full flex items-center justify-center gap-1.5 rounded-xl bg-monk-accent py-2 text-xs font-bold text-monk-bg shadow-sm active:scale-98 transition hover:bg-monk-accent-hover"
+                          >
+                            <span>{t("timeline.month.openTodayAction")}</span>
+                            <ArrowRight size={13} />
+                          </button>
+                        ) : inspectedEligible ? (
+                          <button
+                            type="button"
+                            onClick={() => setRetroDate(selectedMonthDate)}
+                            className="w-full flex items-center justify-center gap-1.5 rounded-xl bg-monk-accent py-2 text-xs font-bold text-monk-bg shadow-sm active:scale-98 transition hover:bg-monk-accent-hover"
+                          >
+                            <Plus size={14} />
+                            <span>{t("timeline.retroLog")} - Catat Sesi Terlewat</span>
+                          </button>
+                        ) : null}
+                      </>
+                    )}
                   </div>
                 );
               })() : null}
