@@ -351,7 +351,7 @@ export function MorningPlanningModal({
           <div className="flex-1 overflow-y-auto p-5 sm:p-6 space-y-5">
             {/* Ritual Timer — available without competing with today's intention */}
             <details className="rounded-2xl border border-monk-border/70 bg-monk-soft/30">
-              <summary className="flex min-h-12 cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-sm font-semibold text-monk-muted marker:content-none [&::-webkit-details-marker]:hidden hover:text-monk-text">
+              <summary className="flex min-h-12 cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-sm font-semibold text-monk-muted marker:content-none [&::-webkit-details-marker]:hidden hover:text-monk-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-monk-accent">
                 <span className="flex items-center gap-2">
                   <Clock size={15} />
                   {t("planning.timerLabel")}
@@ -360,24 +360,21 @@ export function MorningPlanningModal({
               </summary>
               <div className="flex flex-wrap items-center justify-between gap-3 border-t border-monk-border/50 p-3">
               <div className="flex items-center gap-3">
-                <div
-                  className={`grid h-9 w-9 place-items-center rounded-xl font-mono text-xs font-bold transition ${
-                    timerRunning
-                      ? "border border-monk-warning/40 bg-monk-warning/15 text-monk-warning animate-pulse"
-                      : "border border-monk-border bg-monk-surface text-monk-muted"
-                  }`}
-                >
-                  <Clock size={15} />
+                  <div
+                    className={`grid h-9 w-9 place-items-center rounded-xl font-mono text-xs font-bold transition ${
+                      timerRunning
+                        ? "border border-monk-warning/40 bg-monk-warning/15 text-monk-warning animate-pulse"
+                        : "border border-monk-border bg-monk-surface text-monk-muted"
+                    }`}
+                  >
+                    <Clock size={15} />
+                  </div>
+                  <div>
+                    <p className="text-base font-bold font-mono text-monk-text leading-tight">
+                      {formattedTimer}
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-monk-muted">
-                    {t("planning.timerLabel")}
-                  </span>
-                  <p className="text-base font-bold font-mono text-monk-text leading-tight">
-                    {formattedTimer}
-                  </p>
-                </div>
-              </div>
 
               <div className="flex items-center gap-1.5">
                 <button
@@ -435,16 +432,13 @@ export function MorningPlanningModal({
 
             {/* Daily Highlight (Make Time Framework) */}
             <div className="rounded-monk border border-monk-accent/35 bg-monk-accent/[0.07] p-5 space-y-3.5 shadow-soft">
-              <div className="flex items-start justify-between gap-3">
-                <div className="flex items-center gap-2">
-                  <div className="grid h-8 w-8 place-items-center rounded-xl bg-monk-accent/15 text-monk-accent">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div className="flex min-w-0 items-center gap-2">
+                  <div className="grid h-8 w-8 shrink-0 place-items-center rounded-xl bg-monk-accent/15 text-monk-accent">
                     <Sparkles size={15} />
                   </div>
-                  <span className="text-sm font-semibold text-monk-text">
+                  <span className="text-sm font-semibold leading-snug text-monk-text">
                     {t("planning.dailyHighlight")}
-                  </span>
-                  <span className="rounded-full bg-monk-accent/10 px-2 py-1 text-[10px] font-semibold text-monk-accent">
-                    {t("planning.dailyHighlightBadge")}
                   </span>
                 </div>
                 {dailyHighlight.trim() && (
@@ -465,19 +459,19 @@ export function MorningPlanningModal({
               </p>
 
               <div className="relative">
-                <input
-                  type="text"
+                <textarea
+                  rows={2}
                   value={dailyHighlight}
                   onChange={(e) => setDailyHighlight(e.target.value)}
                   placeholder={t("planning.dailyHighlightPlaceholder")}
-                  className="w-full rounded-xl border border-monk-accent/30 bg-monk-surface px-4 py-3.5 text-base font-medium text-monk-text placeholder:text-monk-muted/60 focus:border-monk-accent focus:ring-1 focus:ring-monk-accent/40 focus:outline-none transition shadow-2xs"
+                  className="w-full resize-y rounded-xl border border-monk-accent/30 bg-monk-surface px-4 py-3.5 text-base font-medium leading-relaxed text-monk-text placeholder:text-monk-muted/60 focus:border-monk-accent focus:ring-1 focus:ring-monk-accent/40 focus:outline-none transition shadow-2xs"
                 />
               </div>
             </div>
 
             {/* Custom Block Input Form (Direct & Fully Customizable) */}
             <details className="rounded-2xl border border-monk-border/70 bg-monk-soft/30">
-              <summary className="flex min-h-12 cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-sm font-semibold text-monk-muted marker:content-none [&::-webkit-details-marker]:hidden hover:text-monk-text">
+              <summary className="flex min-h-12 cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-sm font-semibold text-monk-muted marker:content-none [&::-webkit-details-marker]:hidden hover:text-monk-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-monk-accent">
                 <span className="flex items-center gap-2">
                   <Plus size={15} />
                   {t("planning.addBlock")}
@@ -488,16 +482,7 @@ export function MorningPlanningModal({
                 onSubmit={handleAddCustomBlock}
                 className="space-y-3.5 border-t border-monk-border/50 p-4"
               >
-              <div className="flex items-center justify-between gap-2">
-                <span className="text-xs font-bold uppercase tracking-wider text-monk-muted">
-                  + {t("planning.addBlock")}
-                </span>
-                <span className="text-[11px] text-monk-muted">
-                  {t("planning.customUnlimited")}
-                </span>
-              </div>
-
-              {/* Activity Title Input */}
+                {/* Activity Title Input */}
               <div>
                 <input
                   type="text"
@@ -682,15 +667,7 @@ export function MorningPlanningModal({
           </div>
 
           {/* Footer Actions */}
-          <div className="sticky bottom-0 z-10 flex shrink-0 flex-col-reverse gap-2 border-t border-monk-border/60 bg-monk-surface/95 px-4 py-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] backdrop-blur sm:flex-row sm:items-center sm:justify-between sm:px-5">
-            <SecondaryButton
-              onClick={handleExportIcs}
-              className="min-h-11 w-full text-xs sm:w-auto py-2 px-3 inline-flex items-center justify-center gap-1.5"
-            >
-              <Download size={14} />
-              <span>{t("planning.exportIcs")}</span>
-            </SecondaryButton>
-
+          <div className="sticky bottom-0 z-10 flex shrink-0 flex-col gap-2 border-t border-monk-border/60 bg-monk-surface/95 px-4 py-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] backdrop-blur sm:flex-row-reverse sm:items-center sm:justify-between sm:px-5">
             <PrimaryButton
               onClick={handleCommitPlan}
               className="min-h-11 w-full text-sm sm:w-auto py-2.5 px-5 inline-flex items-center justify-center gap-1.5 font-bold shadow-md"
@@ -698,6 +675,13 @@ export function MorningPlanningModal({
               <Check size={15} strokeWidth={2.5} />
               <span>{t("planning.commitButton")}</span>
             </PrimaryButton>
+            <SecondaryButton
+              onClick={handleExportIcs}
+              className="min-h-11 w-full text-xs sm:w-auto py-2 px-3 inline-flex items-center justify-center gap-1.5"
+            >
+              <Download size={14} />
+              <span>{t("planning.exportIcs")}</span>
+            </SecondaryButton>
           </div>
         </motion.div>
       </div>
