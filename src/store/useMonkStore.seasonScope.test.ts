@@ -63,12 +63,12 @@ describe("goal desiredOutcome (optional)", () => {
   });
 });
 
-describe("season cap (max 3)", () => {
+describe("startNewSeason preserves full history", () => {
   beforeEach(() => {
     useMonkStore.setState(baseState(), false);
   });
 
-  it("keeps at most 3 total seasons across repeated new-season creation", () => {
+  it("retains every archived season without dropping history", () => {
     startSeasonWithGoal("Goal one");
     useMonkStore.getState().startNewSeason();
     startSeasonWithGoal("Goal two");
@@ -79,8 +79,8 @@ describe("season cap (max 3)", () => {
 
     const { activeSeason, pastSeasons } = useMonkStore.getState();
     expect(activeSeason).toBeDefined();
-    expect(pastSeasons.length + 1).toBeLessThanOrEqual(3);
-    // Newest history retained, oldest dropped.
-    expect(pastSeasons.length).toBe(2);
+    // All history preserved: 3 archived + 1 active.
+    expect(pastSeasons.length).toBe(3);
+    expect(pastSeasons.length + 1).toBe(4);
   });
 });

@@ -1923,16 +1923,13 @@ export const useMonkStore = create<MonkStore>()(
   startNewSeason: () => {
     const state = get();
     const timestamp = nowIso();
-    // Defensive: cap total seasons at 3 (active + archived) so local history
-    // stays bounded. Oldest past season drops when full; active data preserved.
-    const MAX_SEASONS = 3;
+    // Preserve full season history — no cap (the max-3 plan constraint is for goal tracks, not seasons).
     const nextPast = state.activeSeason ? archiveIntoPastSeasons(state, { ...state.activeSeason, status: "archived", updatedAt: timestamp }) : state.pastSeasons;
-    const trimmedPast = nextPast.length > MAX_SEASONS - 1 ? nextPast.slice(nextPast.length - (MAX_SEASONS - 1)) : nextPast;
     set({
       activeSeason: state.activeSeason
         ? { ...state.activeSeason, status: "archived", updatedAt: timestamp }
         : null,
-      pastSeasons: trimmedPast,
+      pastSeasons: nextPast,
       userProfile: state.userProfile
         ? { ...state.userProfile, onboardingCompleted: false, activeSeasonId: undefined }
         : null,

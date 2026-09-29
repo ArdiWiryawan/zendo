@@ -872,7 +872,6 @@ export const en = {
   "seasonEnd.archive": "Archive Season",
   "seasonEnd.resume": "Continue season · {n} day left",
   "seasonEnd.resumePlural": "Continue season · {n} days left",
-  "seasonEnd.seasonCap": "Season history keeps the last 3. Older seasons drop off.",
 
   "seasons.title": "Past seasons",
   "seasons.subtitle": "What each one carried, and what you carried forward.",
@@ -1164,7 +1163,7 @@ export const en = {
   "today.identityBecoming": "Becoming: {why}",
   "today.outcomeLine": "To get: {outcome}",
   "today.actionHeading": "Main Action",
-  "today.highlightHeading": "Today Focus",
+  "today.highlightHeading": "Highlight",
   "today.agendaHeading": "Agenda",
   "today.planTomorrow.title": "Plan Tomorrow",
   "today.planTomorrow.subtitle": "Decide your focus theme one day before.",

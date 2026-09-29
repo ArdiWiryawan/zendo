@@ -577,6 +577,11 @@ export function KeystoneSetup({ onNext }: { onNext: () => void }) {
                     goalDesiredOutcomes: { ...onboarding.goalDesiredOutcomes, [goal.id]: event.target.value }
                   })
                 }
+                onBlur={(event) =>
+                  updateOnboarding({
+                    goalDesiredOutcomes: { ...onboarding.goalDesiredOutcomes, [goal.id]: event.target.value.trim() }
+                  })
+                }
                 className="mt-3"
               />
               <div className="mt-5 rounded-xl border border-monk-border/70 bg-monk-soft/40 p-3">

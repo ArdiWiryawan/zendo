@@ -874,7 +874,6 @@ export const id: Record<MessageKey, string> = {
   "seasonEnd.archive": "Arsipkan Season",
   "seasonEnd.resume": "Lanjutkan season · {n} hari lagi",
   "seasonEnd.resumePlural": "Lanjutkan season · {n} hari lagi",
-  "seasonEnd.seasonCap": "Riwayat menyimpan 3 season terakhir. Season lama terhapus.",
 
   "seasons.title": "Season yang lalu",
   "seasons.subtitle": "Apa yang dibawa setiap season, dan yang kamu bawa maju.",
@@ -1166,7 +1165,7 @@ export const id: Record<MessageKey, string> = {
   "today.identityBecoming": "Menjadi: {why}",
   "today.outcomeLine": "Agar: {outcome}",
   "today.actionHeading": "Aksi Utama",
-  "today.highlightHeading": "Fokus Hari Ini",
+  "today.highlightHeading": "Highlight",
   "today.agendaHeading": "Agenda",
   "today.planTomorrow.title": "Rencanakan Besok",
   "today.planTomorrow.subtitle": "Tentukan tema fokusmu sehari sebelumnya.",

@@ -247,12 +247,16 @@ export function GoalBlueprintModal({ goalId, isOpen, onClose }: GoalBlueprintMod
                   className="bg-monk-surface text-sm font-semibold"
                 />
                 <p className="text-[11px] text-monk-muted">{t("blueprint.pillar1Desc")}</p>
+                <label htmlFor="blueprint-outcome" className="text-xs font-bold uppercase tracking-wider text-monk-muted block">
+                  {t("blueprint.outcomeLabel")}
+                </label>
                 <TextInput
+                  id="blueprint-outcome"
                   value={desiredOutcome}
                   onChange={(e) => setDesiredOutcome(e.target.value)}
                   placeholder={t("blueprint.outcomePlaceholder")}
                   className="bg-monk-surface text-sm"
-                  aria-label={t("blueprint.outcomeLabel")}
+                  onBlur={(e) => setDesiredOutcome(e.target.value.trim())}
                 />
               </div>
 
