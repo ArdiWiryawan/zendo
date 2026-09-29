@@ -5,10 +5,10 @@ import { PrimaryButton, SecondaryButton, GhostButton, CalmDialog, useCalmToast }
 import { createId } from "../lib/ids";
 import { nowIso, getTodayDateString, addDaysToDate } from "../lib/date";
 import type { NotebookCategory, NotebookEntry, ParaType } from "../types/app";
-import { Search, Plus, Pin, PinOff, Trash2, ArrowLeft, X, BookOpen, ImagePlus, Camera, MoreVertical, Pencil, Maximize2, Minimize2, ListTodo, List, ListOrdered, Heading, Bold, Italic, Quote, Crown, Sparkles, Copy, Link2, ArrowRight, FileText, Sun, Moon, Target, PenLine, SlidersHorizontal } from "lucide-react";
+import { Search, Plus, Pin, PinOff, Trash2, ArrowLeft, X, BookOpen, ImagePlus, Camera, MoreVertical, Pencil, Maximize2, Minimize2, ListTodo, List, ListOrdered, Heading, Bold, Italic, Quote, Crown, Sparkles, Copy, Link2, ArrowRight, FileText, Sun, Moon, Target, PenLine, SlidersHorizontal, Archive, RotateCcw } from "lucide-react";
 import { useT, useLanguage, type MessageKey } from "../i18n";
 import { hapticPress } from "../lib/haptics";
-import { autolistMarker, groupPhotoRuns, renderBodyMarkdown } from "../lib/notebookMarkdown";
+import { autolistMarker, groupPhotoRuns, renderBodyMarkdown, toPlainExcerpt } from "../lib/notebookMarkdown";
 import { deletePageAtIndex, joinPages, removePhotoMarker, trimTrailingBlankPages } from "../lib/notebookPages";
 import { IMG_MARKER, compressImage, putImage, deleteImage, matchImageMarkers } from "../lib/imageStore";
 import { InlinePhoto, PhotoLightbox, photoIdsInBody, useObjectUrl } from "../components/NotebookImages";
@@ -131,6 +131,92 @@ export const ZEN_NOTEBOOK_TEMPLATES: ZenTemplate[] = [
 - `
     ],
     defaultPara: "project"
+  },
+  {
+    id: "project",
+    titleKey: "notebook.templateProjectTitle",
+    iconName: "target",
+    descId: "Hasil yang jelas, konteks, dan langkah berikutnya",
+    descEn: "Clear outcome, context, and the next action",
+    defaultTitle: (lang) => (lang === "id" ? "Proyek Baru" : "New Project"),
+    defaultPages: (lang) => [
+      lang === "id"
+        ? `## Hasil
+-
+
+## Konteks
+-
+
+## Tugas
+- [ ]
+
+## Catatan
+-
+
+## Keputusan
+-
+
+## Aksi Berikutnya
+- `
+        : `## Outcome
+-
+
+## Context
+-
+
+## Tasks
+- [ ]
+
+## Notes
+-
+
+## Decisions
+-
+
+## Next Action
+- `
+    ],
+    defaultPara: "project"
+  },
+  {
+    id: "area",
+    titleKey: "notebook.templateAreaTitle",
+    iconName: "pen",
+    descId: "Tanggung jawab berkelanjutan yang perlu dijaga",
+    descEn: "Ongoing responsibilities worth maintaining",
+    defaultTitle: (lang) => (lang === "id" ? "Area Baru" : "New Area"),
+    defaultPages: (lang) => [
+      lang === "id"
+        ? `## Tujuan
+-
+
+## Kondisi Saat Ini
+-
+
+## Catatan Penting
+-
+
+## Sumber Daya
+-
+
+## Aksi Berkelanjutan
+- `
+        : `## Purpose
+-
+
+## Current State
+-
+
+## Important Notes
+-
+
+## Resources
+-
+
+## Ongoing Actions
+- `
+    ],
+    defaultPara: "area"
   },
   {
     id: "blank",
@@ -361,7 +447,15 @@ export default function JournalNotebook({ onEditingChange, initialEntryId }: { o
 
   const sorted = useMemo(() => {
     let list = [...entries];
-    if (filterPara) list = list.filter((e) => e.paraType === filterPara);
+    // Archive tab = soft-hide bucket: archivedAt set, plus legacy notes that
+    // used the "archive" PARA value before archivedAt existed.
+    if (filterPara === "archive") {
+      list = list.filter((e) => Boolean(e.archivedAt) || e.paraType === "archive");
+    } else {
+      // Every other tab (including "All") hides soft-hidden notes.
+      list = list.filter((e) => !e.archivedAt);
+      if (filterPara) list = list.filter((e) => e.paraType === filterPara);
+    }
     if (filterCat) list = list.filter((e) => e.categoryId === filterCat);
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
@@ -580,10 +674,10 @@ export default function JournalNotebook({ onEditingChange, initialEntryId }: { o
               <div
                 className="flex items-center rounded-full border py-1.5 pl-3 pr-1.5 text-xs font-semibold transition duration-200"
                 style={{
-                  borderColor: isActive ? `rgb(var(${token}))` : "var(--color-border)",
+                  borderColor: isActive ? `rgb(var(${token}))` : "rgb(var(--color-border))",
                   backgroundColor: isActive
                     ? `rgb(var(${token}) / 0.09)`
-                    : "var(--color-surface)"
+                    : "rgb(var(--color-surface))"
                 }}
               >
                 <button
@@ -592,7 +686,7 @@ export default function JournalNotebook({ onEditingChange, initialEntryId }: { o
                   onClick={() => setFilterCat(isActive ? null : cat.id)}
                   className="flex items-center gap-1.5 text-xs font-semibold active:scale-[0.97]"
                   style={{
-                    color: isActive ? `rgb(var(${token}))` : "var(--color-text-muted)"
+                    color: isActive ? `rgb(var(${token}))` : "rgb(var(--color-text-muted))"
                   }}
                 >
                   <span
@@ -695,9 +789,7 @@ export default function JournalNotebook({ onEditingChange, initialEntryId }: { o
                   </div>
                   <div className="flex items-start gap-3">
                     <div className="notebook-card-body min-h-[1.5rem] flex-1 line-clamp-2">
-                      {entry.body.trim()
-                        ? entry.body.replace(/\{\{img:[^}]+\}\}/g, "").trim().split("\n").find(l => l.trim()) ?? t("notebook.noBody")
-                        : t("notebook.noBody")}
+                      {toPlainExcerpt(entry.body, 160) || t("notebook.noBody")}
                     </div>
                     {(() => {
                       const pid = firstPhotoId(entry.body);
@@ -711,6 +803,12 @@ export default function JournalNotebook({ onEditingChange, initialEntryId }: { o
                     </p>
                   ) : null}
                   <div className="mt-3 flex flex-wrap items-center gap-1.5 text-[11px] text-monk-text-soft">
+                    {entry.archivedAt ? (
+                      <span className="inline-flex items-center gap-1 rounded-full bg-monk-soft px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-monk-muted border border-monk-border/50">
+                        <Archive size={10} strokeWidth={2} className="shrink-0" />
+                        {t("notebook.archivedBadge")}
+                      </span>
+                    ) : null}
                     {entry.paraType ? (
                       <span className="inline-flex items-center gap-1 rounded-full bg-monk-soft px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-monk-muted border border-monk-border/50">
                         {entry.paraType === "project" ? t("notebook.paraProjects") :
@@ -769,6 +867,18 @@ export default function JournalNotebook({ onEditingChange, initialEntryId }: { o
                     className="grid min-h-10 min-w-10 place-items-center rounded-full text-monk-muted transition duration-150 active:scale-95 hover:bg-monk-soft hover:text-monk-accent"
                   >
                     {entry.isPinned ? <PinOff size={15} /> : <Pin size={15} />}
+                  </button>
+                  <button
+                    type="button"
+                    aria-label={entry.archivedAt ? t("notebook.restoreAction") : t("notebook.archiveAction")}
+                    onClick={() =>
+                      entry.archivedAt
+                        ? store.restoreNotebookEntry(entry.id)
+                        : store.archiveNotebookEntry(entry.id)
+                    }
+                    className="grid min-h-10 min-w-10 place-items-center rounded-full text-monk-muted transition duration-150 active:scale-95 hover:bg-monk-soft hover:text-monk-accent"
+                  >
+                    {entry.archivedAt ? <RotateCcw size={15} /> : <Archive size={15} />}
                   </button>
                   <button
                     type="button"
@@ -996,6 +1106,12 @@ export function NotebookEntryDetail({
           {t("notebook.back")}
         </button>
         <div className="flex min-w-0 items-center gap-2">
+          {liveEntry.archivedAt ? (
+            <span className="inline-flex items-center gap-1 rounded-full bg-monk-soft px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-monk-muted border border-monk-border/50">
+              <Archive size={10} strokeWidth={2} className="shrink-0" />
+              {t("notebook.archivedBadge")}
+            </span>
+          ) : null}
           {liveEntry.paraType ? (
             <span className="inline-flex items-center gap-1 rounded-full bg-monk-soft px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-monk-muted border border-monk-border/50">
               {liveEntry.paraType === "project" ? t("notebook.paraProjects") :
@@ -1213,8 +1329,8 @@ export function NotebookEntryDetail({
                               "{r.note.takeaway}"
                             </p>
                           ) : (
-                            <p className="text-[10px] font-mono text-monk-muted/80 mt-0.5 truncate">
-                              {r.note.body ? r.note.body.replace(/\{\{img:[^}]+\}\}/g, "").slice(0, 50).trim() : t("notebook.noBody")}
+                            <p className="text-[11px] text-monk-muted/80 mt-0.5 truncate">
+                              {toPlainExcerpt(r.note.body, 50) || t("notebook.noBody")}
                             </p>
                           )}
                         </div>
@@ -1239,6 +1355,18 @@ export function NotebookEntryDetail({
           >
             <Trash2 size={13} strokeWidth={2} />
             <span>{t("notebook.delete")}</span>
+          </button>
+          <button
+            type="button"
+            onClick={() =>
+              liveEntry.archivedAt
+                ? store.restoreNotebookEntry(liveEntry.id)
+                : store.archiveNotebookEntry(liveEntry.id)
+            }
+            className="flex items-center gap-1.5 rounded-xl border border-monk-border bg-monk-surface px-3 py-2 text-xs font-semibold text-monk-text hover:border-monk-accent hover:text-monk-accent active:scale-95 transition shadow-xs"
+          >
+            {liveEntry.archivedAt ? <RotateCcw size={13} strokeWidth={2} /> : <Archive size={13} strokeWidth={2} />}
+            <span>{liveEntry.archivedAt ? t("notebook.restoreAction") : t("notebook.archiveAction")}</span>
           </button>
           <div className="flex items-center gap-2">
             {onDuplicate ? (
@@ -2034,11 +2162,11 @@ export function NotebookEditor({
                     <div
                       className="flex h-7 items-center rounded-full border pl-2.5 pr-1 text-xs font-medium transition-all"
                       style={{
-                        borderColor: active ? `rgb(var(${token}) / 0.53)` : "var(--color-border)",
+                        borderColor: active ? `rgb(var(${token}) / 0.53)` : "rgb(var(--color-border))",
                         backgroundColor: active
                           ? `rgb(var(${token}) / 0.09)`
-                          : "var(--color-surface)",
-                        color: active ? `rgb(var(${token}))` : "var(--color-text-muted)"
+                          : "rgb(var(--color-surface))",
+                        color: active ? `rgb(var(${token}))` : "rgb(var(--color-text-muted))"
                       }}
                     >
                       <button
@@ -2055,7 +2183,7 @@ export function NotebookEditor({
                           style={{
                             backgroundColor: active
                               ? `rgb(var(${token}))`
-                              : "var(--color-text-soft)"
+                              : "rgb(var(--color-text-soft))"
                           }}
                         />
                         <span className="whitespace-nowrap">{cat.name}</span>

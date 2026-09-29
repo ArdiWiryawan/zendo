@@ -36,26 +36,26 @@
 }
 
 :root {
-  --color-bg: #080908;
-  --color-bg-deep: #040504;
-  --color-surface: #111211;
-  --color-surface-soft: #171917;
-  --color-surface-raised: #1F221F;
-  --color-text: #E5E2DA;
-  --color-text-muted: #908C83;
-  --color-text-soft: #868279;
-  --color-border: #1B1D1B;
-  --color-border-strong: #252825;
-  --color-accent: #A48B5E;
-  --color-accent-soft: #1C1914;
-  --color-success: #647B5E;
-  --color-success-soft: #171E15;
-  --color-warning: #B08A54;
-  --color-warning-soft: #201A12;
-  --color-danger: #B5736A;
-  --color-danger-soft: #221412;
-  --color-rest: #5A6772;
-  --color-rest-soft: #14171A;
+  --color-bg: 8 9 8;
+  --color-bg-deep: 4 5 4;
+  --color-surface: 17 18 17;
+  --color-surface-soft: 23 25 23;
+  --color-surface-raised: 31 34 31;
+  --color-text: 229 226 218;
+  --color-text-muted: 144 140 131;
+  --color-text-soft: 134 130 121;
+  --color-border: 27 29 27;
+  --color-border-strong: 37 40 37;
+  --color-accent: 164 139 94;
+  --color-accent-soft: 28 25 20;
+  --color-success: 100 123 94;
+  --color-success-soft: 23 30 21;
+  --color-warning: 176 138 84;
+  --color-warning-soft: 32 26 18;
+  --color-danger: 181 115 106;
+  --color-danger-soft: 34 20 18;
+  --color-rest: 90 103 114;
+  --color-rest-soft: 20 23 26;
   --notebook-bg: #1a1814;
   --notebook-line: #25221c;
   --notebook-card-bg: #1f1c17;
@@ -81,26 +81,26 @@
   --color-cat-learning: 150 148 196;
   --color-cat-rest: 110 172 138;
   --color-cat-personal: 186 138 178;
-  --color-bg: #0D1117;
-  --color-bg-deep: #070A0E;
-  --color-surface: #151B23;
-  --color-surface-soft: #1D242E;
-  --color-surface-raised: #262F3C;
-  --color-text: #E6EDF3;
-  --color-text-muted: #8D96A0;
-  --color-text-soft: #7D8590;
-  --color-border: #212830;
-  --color-border-strong: #30363D;
-  --color-accent: #7D9BB2;
-  --color-accent-soft: #121E2A;
-  --color-success: #568F68;
-  --color-success-soft: #112217;
-  --color-warning: #B39B58;
-  --color-warning-soft: #211E13;
-  --color-danger: #B56B62;
-  --color-danger-soft: #241413;
-  --color-rest: #627A8C;
-  --color-rest-soft: #141D24;
+  --color-bg: 13 17 23;
+  --color-bg-deep: 7 10 14;
+  --color-surface: 21 27 35;
+  --color-surface-soft: 29 36 46;
+  --color-surface-raised: 38 47 60;
+  --color-text: 230 237 243;
+  --color-text-muted: 141 150 160;
+  --color-text-soft: 125 133 144;
+  --color-border: 33 40 48;
+  --color-border-strong: 48 54 61;
+  --color-accent: 125 155 178;
+  --color-accent-soft: 18 30 42;
+  --color-success: 86 143 104;
+  --color-success-soft: 17 34 23;
+  --color-warning: 179 155 88;
+  --color-warning-soft: 33 30 19;
+  --color-danger: 181 107 98;
+  --color-danger-soft: 36 20 19;
+  --color-rest: 98 122 140;
+  --color-rest-soft: 20 29 36;
   --notebook-bg: #10141A;
   --notebook-line: #1C232D;
   --notebook-card-bg: #151B23;
@@ -116,26 +116,26 @@
   --color-cat-learning: 142 148 190;
   --color-cat-rest: 110 168 132;
   --color-cat-personal: 182 140 172;
-  --color-bg: #090D0A;
-  --color-bg-deep: #050806;
-  --color-surface: #111713;
-  --color-surface-soft: #18221B;
-  --color-surface-raised: #202D24;
-  --color-text: #E0E8E2;
-  --color-text-muted: #85998B;
-  --color-text-soft: #708577;
-  --color-border: #1B261F;
-  --color-border-strong: #28392E;
-  --color-accent: #6E9B7B;
-  --color-accent-soft: #121F17;
-  --color-success: #6E9B7B;
-  --color-success-soft: #132418;
-  --color-warning: #B39B58;
-  --color-warning-soft: #211E13;
-  --color-danger: #B56B62;
-  --color-danger-soft: #241413;
-  --color-rest: #587080;
-  --color-rest-soft: #131A1F;
+  --color-bg: 9 13 10;
+  --color-bg-deep: 5 8 6;
+  --color-surface: 17 23 19;
+  --color-surface-soft: 24 34 27;
+  --color-surface-raised: 32 45 36;
+  --color-text: 224 232 226;
+  --color-text-muted: 133 153 139;
+  --color-text-soft: 112 133 119;
+  --color-border: 27 38 31;
+  --color-border-strong: 40 57 46;
+  --color-accent: 110 155 123;
+  --color-accent-soft: 18 31 23;
+  --color-success: 110 155 123;
+  --color-success-soft: 19 36 24;
+  --color-warning: 179 155 88;
+  --color-warning-soft: 33 30 19;
+  --color-danger: 181 107 98;
+  --color-danger-soft: 36 20 19;
+  --color-rest: 88 112 128;
+  --color-rest-soft: 19 26 31;
   --notebook-bg: #101712;
   --notebook-line: #1C271F;
   --notebook-card-bg: #151F18;
@@ -151,26 +151,26 @@
   --color-cat-learning: 148 146 192;
   --color-cat-rest: 116 170 134;
   --color-cat-personal: 186 142 174;
-  --color-bg: #14110E;
-  --color-bg-deep: #0D0A08;
-  --color-surface: #1C1814;
-  --color-surface-soft: #241F1A;
-  --color-surface-raised: #302A24;
-  --color-text: #E8E0D5;
-  --color-text-muted: #9C8E7E;
-  --color-text-soft: #877A6C;
-  --color-border: #2B231B;
-  --color-border-strong: #3D3227;
-  --color-accent: #C29B68;
-  --color-accent-soft: #261D13;
-  --color-success: #788A6E;
-  --color-success-soft: #1C2219;
-  --color-warning: #C29B68;
-  --color-warning-soft: #261D13;
-  --color-danger: #B86B60;
-  --color-danger-soft: #261513;
-  --color-rest: #68737D;
-  --color-rest-soft: #181B1E;
+  --color-bg: 20 17 14;
+  --color-bg-deep: 13 10 8;
+  --color-surface: 28 24 20;
+  --color-surface-soft: 36 31 26;
+  --color-surface-raised: 48 42 36;
+  --color-text: 232 224 213;
+  --color-text-muted: 156 142 126;
+  --color-text-soft: 135 122 108;
+  --color-border: 43 35 27;
+  --color-border-strong: 61 50 39;
+  --color-accent: 194 155 104;
+  --color-accent-soft: 38 29 19;
+  --color-success: 120 138 110;
+  --color-success-soft: 28 34 25;
+  --color-warning: 194 155 104;
+  --color-warning-soft: 38 29 19;
+  --color-danger: 184 107 96;
+  --color-danger-soft: 38 21 19;
+  --color-rest: 104 115 125;
+  --color-rest-soft: 24 27 30;
   --notebook-bg: #1A1511;
   --notebook-line: #29211A;
   --notebook-card-bg: #211B15;
@@ -186,26 +186,26 @@
   --color-cat-learning: 146 148 186;
   --color-cat-rest: 112 164 130;
   --color-cat-personal: 180 138 170;
-  --color-bg: #000000;
-  --color-bg-deep: #000000;
-  --color-surface: #0A0A0A;
-  --color-surface-soft: #121212;
-  --color-surface-raised: #1A1A1A;
-  --color-text: #F0F0F0;
-  --color-text-muted: #888888;
-  --color-text-soft: #707070;
-  --color-border: #181818;
-  --color-border-strong: #262626;
-  --color-accent: #B0B0B0;
-  --color-accent-soft: #181818;
-  --color-success: #6E886E;
-  --color-success-soft: #141B14;
-  --color-warning: #A89060;
-  --color-warning-soft: #1F1B12;
-  --color-danger: #A86058;
-  --color-danger-soft: #1F1210;
-  --color-rest: #55606E;
-  --color-rest-soft: #12151A;
+  --color-bg: 0 0 0;
+  --color-bg-deep: 0 0 0;
+  --color-surface: 10 10 10;
+  --color-surface-soft: 18 18 18;
+  --color-surface-raised: 26 26 26;
+  --color-text: 240 240 240;
+  --color-text-muted: 136 136 136;
+  --color-text-soft: 112 112 112;
+  --color-border: 24 24 24;
+  --color-border-strong: 38 38 38;
+  --color-accent: 176 176 176;
+  --color-accent-soft: 24 24 24;
+  --color-success: 110 136 110;
+  --color-success-soft: 20 27 20;
+  --color-warning: 168 144 96;
+  --color-warning-soft: 31 27 18;
+  --color-danger: 168 96 88;
+  --color-danger-soft: 31 18 16;
+  --color-rest: 85 96 110;
+  --color-rest-soft: 18 21 26;
   --notebook-bg: #080808;
   --notebook-line: #161616;
   --notebook-card-bg: #0F0F0F;
@@ -221,26 +221,26 @@
   --color-cat-learning: 150 148 190;
   --color-cat-rest: 118 168 136;
   --color-cat-personal: 188 144 176;
-  --color-bg: #0C0A06;
-  --color-bg-deep: #060503;
-  --color-surface: #17130B;
-  --color-surface-soft: #211B0F;
-  --color-surface-raised: #2D2515;
-  --color-text: #F0EAD6;
-  --color-text-muted: #A39678;
-  --color-text-soft: #8A7E62;
-  --color-border: #292112;
-  --color-border-strong: #3D311A;
-  --color-accent: #D4AF37;
-  --color-accent-soft: #2B230A;
-  --color-success: #788A58;
-  --color-success-soft: #1C2114;
-  --color-warning: #D4AF37;
-  --color-warning-soft: #2B230A;
-  --color-danger: #B85848;
-  --color-danger-soft: #26120E;
-  --color-rest: #626D78;
-  --color-rest-soft: #16191D;
+  --color-bg: 12 10 6;
+  --color-bg-deep: 6 5 3;
+  --color-surface: 23 19 11;
+  --color-surface-soft: 33 27 15;
+  --color-surface-raised: 45 37 21;
+  --color-text: 240 234 214;
+  --color-text-muted: 163 150 120;
+  --color-text-soft: 138 126 98;
+  --color-border: 41 33 18;
+  --color-border-strong: 61 49 26;
+  --color-accent: 212 175 55;
+  --color-accent-soft: 43 35 10;
+  --color-success: 120 138 88;
+  --color-success-soft: 28 33 20;
+  --color-warning: 212 175 55;
+  --color-warning-soft: 43 35 10;
+  --color-danger: 184 88 72;
+  --color-danger-soft: 38 18 14;
+  --color-rest: 98 109 120;
+  --color-rest-soft: 22 25 29;
   --notebook-bg: #140F08;
   --notebook-line: #261D0F;
   --notebook-card-bg: #1B150B;
@@ -262,7 +262,7 @@ body,
 
 body {
   margin: 0;
-  color: var(--color-text);
+  color: rgb(var(--color-text));
   font-family: Outfit, ui-sans-serif, system-ui, sans-serif;
   overscroll-behavior: none;
   -webkit-font-smoothing: antialiased;
@@ -270,13 +270,13 @@ body {
   background:
     radial-gradient(ellipse 95% 42% at 50% -6%, rgba(164, 139, 94, 0.08), transparent 60%),
     radial-gradient(ellipse 120% 60% at 50% 108%, rgba(90, 103, 114, 0.05), transparent 62%),
-    var(--color-bg);
+    rgb(var(--color-bg));
   background-attachment: fixed;
 }
 
 ::selection {
   background: rgba(164, 139, 94, 0.35);
-  color: var(--color-text);
+  color: rgb(var(--color-text));
 }
 
 /* Mobile-safe content area */
@@ -306,7 +306,7 @@ button {
 
 @layer base {
   *:focus-visible {
-    outline: 2px solid var(--color-accent);
+    outline: 2px solid rgb(var(--color-accent));
     outline-offset: 3px;
   }
 
@@ -325,7 +325,7 @@ button {
   summary:focus-visible:focus-visible,
   [role="button"]:focus-visible:focus-visible,
   [tabindex]:focus-visible:focus-visible {
-    outline: 2px solid var(--color-accent);
+    outline: 2px solid rgb(var(--color-accent));
     outline-offset: 2px;
   }
 }
@@ -365,7 +365,7 @@ button {
 
 /* Glass surface for floating chrome (nav, overlays) */
 .monk-glass {
-  background-color: color-mix(in srgb, var(--color-surface) 82%, transparent);
+  background-color: color-mix(in srgb, rgb(var(--color-surface)) 82%, transparent);
   backdrop-filter: blur(16px) saturate(1.1);
   -webkit-backdrop-filter: blur(16px) saturate(1.1);
   box-shadow:
@@ -394,7 +394,7 @@ button {
 
 /* Primary action — subtle vertical sheen + grounded accent glow. */
 .monk-btn-primary {
-  background-image: linear-gradient(180deg, color-mix(in srgb, var(--color-accent) 100%, white 10%), var(--color-accent));
+  background-image: linear-gradient(180deg, color-mix(in srgb, rgb(var(--color-accent)) 100%, white 10%), rgb(var(--color-accent)));
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.22),
     0 6px 18px -6px rgba(164, 139, 94, 0.45);
@@ -462,7 +462,7 @@ button {
 
 .notebook-card:hover {
   box-shadow: 0 4px 16px rgba(0,0,0,0.3), 0 0 1px 1px rgba(164, 139, 94, 0.15);
-  border-color: var(--color-border-strong);
+  border-color: rgb(var(--color-border-strong));
 }
 
 .notebook-card.pinned {
@@ -489,7 +489,7 @@ button {
 }
 
 .notebook-card-title:hover {
-  color: var(--color-accent);
+  color: rgb(var(--color-accent));
 }
 
 .notebook-card-body {
@@ -508,7 +508,7 @@ button {
 
 /* Markdown-lite rendered notebook body — aligned to 24px rule lines */
 .md-list { margin: 0; padding-left: 1.25em; line-height: 24px; }
-.md-list li::marker { color: var(--color-accent); }
+.md-list li::marker { color: rgb(var(--color-accent)); }
 .md-task-list { list-style: none; padding-left: 0; }
 .md-task-item { min-height: 24px; line-height: 24px; }
 .md-task-box {
@@ -519,39 +519,39 @@ button {
   height: 15px;
   margin-top: 4px;
   margin-right: 0.45em;
-  border: 1.5px solid var(--color-accent);
+  border: 1.5px solid rgb(var(--color-accent));
   border-radius: 3.5px;
-  background: var(--color-surface);
+  background: rgb(var(--color-surface));
   transition: all 0.15s ease;
   cursor: pointer;
   flex-shrink: 0;
   padding: 0;
 }
 .md-task-box:hover {
-  border-color: var(--color-accent);
+  border-color: rgb(var(--color-accent));
   transform: scale(1.06);
 }
 .md-task-box.checked {
-  background: var(--color-accent);
-  border-color: var(--color-accent);
+  background: rgb(var(--color-accent));
+  border-color: rgb(var(--color-accent));
 }
 .md-task-text { transition: all 0.15s ease; }
 .md-task-done .md-task-text {
   text-decoration: line-through;
   opacity: 0.55;
-  color: var(--color-text-muted);
+  color: rgb(var(--color-text-muted));
 }
 .md-para { margin: 0; line-height: 24px; }
 .md-heading { font-family: 'Caveat', cursive; font-size: 1.25rem; color: var(--notebook-text-title); margin: 0; line-height: 24px; }
 
-.md-quote { margin: 0; padding: 2px 0 2px 0.9em; border-left: 3px solid var(--color-accent); color: var(--notebook-text-body); line-height: 24px; }
+.md-quote { margin: 0; padding: 2px 0 2px 0.9em; border-left: 3px solid rgb(var(--color-accent)); color: var(--notebook-text-body); line-height: 24px; }
 .md-quote .md-para { margin: 0; }
 .md-code { margin: 0; line-height: 1.5; padding: 0.6em 0.8em; background: rgba(0,0,0,0.06); border-radius: 8px; overflow-x: auto; font: 0.8125rem/1.5 ui-monospace, monospace; }
 .md-code code { font: inherit; background: none; padding: 0; }
 .md-code-inline { font: 0.875em ui-monospace, monospace; background: rgba(0,0,0,0.06); padding: 0.1em 0.35em; border-radius: 4px; }
-.md-hr { margin: 12px 0; border: none; border-top: 1px dashed var(--color-accent); }
+.md-hr { margin: 12px 0; border: none; border-top: 1px dashed rgb(var(--color-accent)); }
 .md-table { width: 100%; border-collapse: collapse; font-size: 0.8125rem; margin: 6px 0; line-height: 1.6; }
-.md-table th, .md-table td { padding: 4px 8px; border: 1px solid var(--color-border); text-align: left; }
+.md-table th, .md-table td { padding: 4px 8px; border: 1px solid rgb(var(--color-border)); text-align: left; }
 .md-table th { background: rgba(0,0,0,0.04); font-weight: 700; }
 h1.md-heading { font-size: 1.6rem; }
 h2.md-heading { font-size: 1.4rem; }
@@ -746,7 +746,7 @@ h5.md-heading, h6.md-heading { font-size: 1rem; }
 
 /* Keyboard focus: visible ring so tabbing through cards is clear */
 .nb-sheet button:focus-visible {
-  outline: 2px solid var(--color-accent);
+  outline: 2px solid rgb(var(--color-accent));
   outline-offset: 2px;
   border-radius: 4px;
 }
@@ -822,7 +822,7 @@ h5.md-heading, h6.md-heading { font-size: 1rem; }
 /* Caret tinted with the category color so the writing point is visible */
 .nb-page-title,
 .nb-page-body {
-  caret-color: var(--nb-cat, var(--color-accent));
+  caret-color: var(--nb-cat, rgb(var(--color-accent)));
 }
 
 /* Suppress heavy focus ring on zen stationery textareas so page stays calm */
@@ -931,7 +931,7 @@ h5.md-heading, h6.md-heading { font-size: 1rem; }
   border-radius: 8px;
   overflow: hidden;
   border: 1px solid var(--notebook-card-line);
-  background: var(--color-surface-soft);
+  background: rgb(var(--color-surface-soft));
 }
 .nb-thumb img {
   width: 100%;
@@ -1033,8 +1033,8 @@ h5.md-heading, h6.md-heading { font-size: 1rem; }
 }
 
 .nb-photo-btn:hover {
-  border-color: var(--nb-cat, var(--color-accent));
-  color: var(--nb-cat, var(--color-accent));
+  border-color: var(--nb-cat, rgb(var(--color-accent)));
+  color: var(--nb-cat, rgb(var(--color-accent)));
   background: rgba(0, 0, 0, 0.04);
 }
 

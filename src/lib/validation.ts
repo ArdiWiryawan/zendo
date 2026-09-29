@@ -1,5 +1,13 @@
 import type { GoalAllocation, GoalDraft, ValidationResult } from "../types/app";
 
+/**
+ * Intentional constraint: a Season holds at most this many Goal Tracks.
+ * Exceeding it is what makes a season unrealistic, so the limit is enforced in
+ * onboarding, in the store guard, and surfaced to the user rather than silently
+ * dropping the click.
+ */
+export const MAX_SEASON_GOALS = 3;
+
 export function valid(message?: string): ValidationResult {
   return { valid: true, message };
 }
@@ -23,7 +31,7 @@ export function validateGoalBrainDump(goals: GoalDraft[]) {
 
 export function validateNarrowGoals(selectedCount: number) {
   if (selectedCount < 1) return invalid("Choose at least 1 goal to continue.");
-  if (selectedCount > 3) return invalid("Keep only 1–3 goals for this season.");
+  if (selectedCount > MAX_SEASON_GOALS) return invalid("Keep only 1–3 goals for this season.");
   return valid();
 }
 

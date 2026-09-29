@@ -34,9 +34,11 @@ import {
   nowIso
 } from "../lib/date";
 import { createId } from "../lib/ids";
+import { MAX_SEASON_GOALS } from "../lib/validation";
 import { parseIntention } from "../lib/implementationIntention";
 import { loadState } from "../lib/storage";
 import { stopMusic } from "../lib/focusMusic";
+import { syncFocusNotifications } from "../lib/focusNotifications";
 import { resolveLinkedNoteIds } from "../lib/notebookLinks";
 import { t } from "../i18n";
 import type {
@@ -129,6 +131,7 @@ type MonkActions = {
   clearDayPlan: (dateString: string) => void;
   toggleTodayCompletion: () => void;
   setTodayHighlight: (highlight: string) => void;
+  setDayAgenda: (dateString: string, agenda: string[]) => void;
   updateTodayEnergy: (energyLevel: EnergyLevel) => void;
   completeTodayMainAction: () => void;
   startFocusSession: (preset?: FocusSessionPreset, customMinutes?: number) => FocusSession | undefined;
@@ -207,6 +210,9 @@ type MonkActions = {
     copyText?: { copySuffix?: string; untitledCopyTitle?: string }
   ) => NotebookEntry | undefined;
   togglePinNotebookEntry: (id: string) => void;
+  /** Soft-hide: set archivedAt only. paraType stays, so restore is lossless. */
+  archiveNotebookEntry: (id: string) => void;
+  restoreNotebookEntry: (id: string) => void;
 
   // Energy tracking
   logEnergy: (level: EnergyLevel) => void;
@@ -868,7 +874,10 @@ export const useMonkStore = create<MonkStore>()(
   toggleFocusGoal: (id) => {
     const state = get();
     const selected = state.onboarding.selectedFocusGoalIds.includes(id);
-    if (!selected && state.onboarding.selectedFocusGoalIds.length >= 3) return;
+    // Season holds at most MAX_SEASON_GOALS Goal Tracks (intentional constraint).
+    // Unselecting is always allowed; only adding past the cap is refused. The UI
+    // reads the same constant to explain why, so this is no longer a silent no-op.
+    if (!selected && state.onboarding.selectedFocusGoalIds.length >= MAX_SEASON_GOALS) return;
     const selectedFocusGoalIds = selected
       ? state.onboarding.selectedFocusGoalIds.filter((goalId) => goalId !== id)
       : [...state.onboarding.selectedFocusGoalIds, id];
@@ -1154,8 +1163,7 @@ export const useMonkStore = create<MonkStore>()(
         dayType: "goal",
         timeBlocks,
         planningCompleted,
-        highlight: trimmedHighlight,
-        mainAction: trimmedHighlight || undefined
+        highlight: trimmedHighlight
       });
       return;
     }
@@ -1164,7 +1172,6 @@ export const useMonkStore = create<MonkStore>()(
       ...existing,
       timeBlocks,
       highlight: trimmedHighlight !== undefined ? (trimmedHighlight || undefined) : existing.highlight,
-      mainAction: trimmedHighlight ? trimmedHighlight : existing.mainAction,
       planningCompleted: planningCompleted !== undefined ? planningCompleted : (existing.planningCompleted ?? false),
       updatedAt: timestamp
     };
@@ -1246,6 +1253,18 @@ export const useMonkStore = create<MonkStore>()(
     const plan = findTodayPlan(state);
     if (!plan) return;
     const dayPlan = { ...plan, highlight: highlight.trim() || undefined, updatedAt: nowIso() };
+    set({
+      dayPlans: state.dayPlans.map((day) => (day.id === dayPlan.id ? dayPlan : day))
+    });
+  },
+
+  setDayAgenda: (dateString, agenda) => {
+    const state = get();
+    const season = state.activeSeason;
+    if (!season) return;
+    const existing = state.dayPlans.find((day) => day.seasonId === season.id && day.date === dateString);
+    if (!existing) return;
+    const dayPlan = { ...existing, agenda, updatedAt: nowIso() };
     set({
       dayPlans: state.dayPlans.map((day) => (day.id === dayPlan.id ? dayPlan : day))
     });
@@ -1357,6 +1376,10 @@ export const useMonkStore = create<MonkStore>()(
       focusSessions: [...state.focusSessions, session],
       dayPlans: allDayPlans.map((day) => (day.id === dayPlan.id ? dayPlan : day))
     });
+    // TRANSITION ONLY (never the 1 Hz tick): reconcile OS phase-boundary triggers.
+    // The helper is a pure recompute + cancel-stale/dedupe, so re-invoking it per
+    // transition is safe and idempotent.
+    void syncFocusNotifications(get().focusSessions.find((s) => s.id === session.id));
     return session;
   },
 
@@ -1414,6 +1437,8 @@ export const useMonkStore = create<MonkStore>()(
           : item
       )
     });
+    // Reset rewinds to a fresh clock → reschedule the full boundary set.
+    void syncFocusNotifications(get().focusSessions.find((s) => s.id === sessionId));
   },
 
   advanceFocusPhase: (sessionId) => {
@@ -1457,6 +1482,8 @@ export const useMonkStore = create<MonkStore>()(
           : session
       )
     });
+    // Phase advanced → startTime moved; reschedule the new future boundaries.
+    void syncFocusNotifications(get().focusSessions.find((s) => s.id === sessionId));
   },
 
   pauseFocusSession: (sessionId) => {
@@ -1472,10 +1499,12 @@ export const useMonkStore = create<MonkStore>()(
     set({
       focusSessions: state.focusSessions.map((s) =>
         s.id === sessionId
-          ? { ...s, status: "paused", elapsedSeconds: elapsed, updatedAt: nowIso() }
+          ? { ...s, status: "paused", elapsedSeconds: elapsed, pausedAt: nowIso(), updatedAt: nowIso() }
           : s
       )
     });
+    // Paused → status !== "running" → empty expected set → cancel all pending.
+    void syncFocusNotifications(get().focusSessions.find((s) => s.id === sessionId));
   },
 
   resumeFocusSession: (sessionId) => {
@@ -1488,10 +1517,12 @@ export const useMonkStore = create<MonkStore>()(
     set({
       focusSessions: state.focusSessions.map((s) =>
         s.id === sessionId
-          ? { ...s, status: "running" as const, startTime: adjustedStart, elapsedSeconds: phaseElapsed, updatedAt: nowIso() }
+          ? { ...s, status: "running" as const, startTime: adjustedStart, elapsedSeconds: phaseElapsed, pausedAt: undefined, updatedAt: nowIso() }
           : s
       )
     });
+    // Resumed → recompute from the adjusted startTime.
+    void syncFocusNotifications(get().focusSessions.find((s) => s.id === sessionId));
   },
 
   completeFocusSession: (sessionId, completeMainAction = false) => {
@@ -1581,6 +1612,8 @@ export const useMonkStore = create<MonkStore>()(
         focusSessions,
         timelineEvents: [...state.timelineEvents, event]
       });
+      // Session ended → clear every pending trigger (undefined = request to clear).
+      void syncFocusNotifications(undefined);
       return;
     }
     const provisionalBase: MonkMVPState = {
@@ -1604,6 +1637,8 @@ export const useMonkStore = create<MonkStore>()(
       timelineDays: updatedTimelineDays(base, dayPlan),
       timelineEvents: [...state.timelineEvents, event]
     });
+    // Session ended → clear every pending trigger (undefined = request to clear).
+    void syncFocusNotifications(undefined);
   },
 
   abandonFocusSession: (sessionId) => {
@@ -1614,10 +1649,23 @@ export const useMonkStore = create<MonkStore>()(
     if (!session || (session.status !== "running" && session.status !== "paused")) return;
 
     const currentPhase = getCurrentFocusPhase(session);
-    const elapsedSeconds = Math.min(
-      currentPhase.plannedMinutes * 60,
-      session.elapsedSeconds || Math.floor((Date.now() - new Date(session.startTime).getTime()) / 1000)
-    );
+    // While paused, `startTime` is stale: pausing does not advance it, so raw
+    // wall-clock math would count the whole paused duration as focus time.
+    // `elapsedSeconds` is the trustworthy frozen cache — use it outright and never
+    // reach for `startTime` on this path.
+    // While running, mirror completeFocusSession: take the max of the tick cache and
+    // wall-clock. `??` (not `||`) so a stale-but-real 0 is not silently discarded,
+    // and Math.max keeps the true elapsed when a ticker has not fired yet.
+    const elapsedSeconds =
+      session.status === "paused"
+        ? Math.min(currentPhase.plannedMinutes * 60, session.elapsedSeconds ?? 0)
+        : Math.min(
+            currentPhase.plannedMinutes * 60,
+            Math.max(
+              session.elapsedSeconds ?? 0,
+              Math.floor((Date.now() - new Date(session.startTime).getTime()) / 1000)
+            )
+          );
     const endTimestamp = nowIso();
     const summary = summarizeFocusSession(session, endTimestamp, "ended_early", elapsedSeconds);
     stopMusic();
@@ -1670,6 +1718,8 @@ export const useMonkStore = create<MonkStore>()(
         focusSessions,
         timelineEvents: [...state.timelineEvents, event]
       });
+      // Ended early → clear every pending trigger.
+      void syncFocusNotifications(undefined);
       return;
     }
     const provisionalBase: MonkMVPState = {
@@ -1693,6 +1743,8 @@ export const useMonkStore = create<MonkStore>()(
       timelineDays: updatedTimelineDays(base, dayPlan),
       timelineEvents: [...state.timelineEvents, event]
     });
+    // Ended early → clear every pending trigger.
+    void syncFocusNotifications(undefined);
   },
 
   bumpFocusDistraction: (sessionId) => {
@@ -2327,6 +2379,10 @@ export const useMonkStore = create<MonkStore>()(
       id: createId("nb_entry"),
       title: entry.title ? `${entry.title}${copySuffix}` : untitledCopyTitle,
       isPinned: false,
+      // A copy of an archived note must NOT inherit archivedAt: it would be
+      // created already-hidden (absent from All and its PARA tab), reading as
+      // data loss. Duplicating is an intent to use the note now.
+      archivedAt: undefined,
       createdAt: timestamp,
       updatedAt: timestamp,
       pages: entry.pages && entry.pages.length > 0 ? [...entry.pages] : (entry.body ? [entry.body] : [""]),
@@ -2357,6 +2413,25 @@ export const useMonkStore = create<MonkStore>()(
     set({
       notebookEntries: state.notebookEntries.map((e) =>
         e.id === id ? { ...e, isPinned: !e.isPinned, updatedAt: nowIso() } : e
+      )
+    });
+  },
+
+  archiveNotebookEntry: (id) => {
+    const state = get();
+    const timestamp = nowIso();
+    set({
+      notebookEntries: state.notebookEntries.map((e) =>
+        e.id === id ? { ...e, archivedAt: timestamp, updatedAt: timestamp } : e
+      )
+    });
+  },
+
+  restoreNotebookEntry: (id) => {
+    const state = get();
+    set({
+      notebookEntries: state.notebookEntries.map((e) =>
+        e.id === id ? { ...e, archivedAt: undefined, updatedAt: nowIso() } : e
       )
     });
   },

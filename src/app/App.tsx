@@ -133,6 +133,9 @@ export default function App() {
   // clock keeps advancing while the tab/PWA is backgrounded.
   const tickerWorkerRef = useRef<Worker | null>(null);
   const lastBellRef = useRef(0);
+  /** The in-tab focus notification, if one is showing. Closed on the next
+   *  phase and when the session ends, so nothing is left in the OS centre. */
+  const focusNotifRef = useRef<Notification | null>(null);
 
   useEffect(() => {
     if (!ready) return;
@@ -141,9 +144,15 @@ export default function App() {
       if (typeof Notification === "undefined" || Notification.permission !== "granted") return;
       const isHidden = typeof document !== "undefined" && document.visibilityState === "hidden";
       try {
-        new Notification(title, {
+        // Replace rather than stack: without a stable tag (and without closing
+        // the previous one) every phase boundary leaves an alert in the OS
+        // notification centre, and it is still sitting there after the session
+        // is ended early.
+        focusNotifRef.current?.close();
+        focusNotifRef.current = new Notification(title, {
           body,
           icon: "/apple-touch-icon.png",
+          tag: "zendo-focus",
           // When hidden/backgrounded on desktop, silent MUST be false so OS plays audio chime!
           // When visible in tab, in-app Web Audio plays Zen bell, so silent is true to prevent double audio.
           silent: !isHidden,
@@ -163,7 +172,13 @@ export default function App() {
       // The active session id is also read fresh (not from the effect closure) so
       // the worker's onmessage can never tick a stale session after a re-run.
       const active = useMonkStore.getState().focusSessions.find((s) => ["running", "paused"].includes(s.status));
-      if (!active || active.status !== "running") return;
+      if (!active || active.status !== "running") {
+        // Session gone or paused — clear any in-tab alert so an ended-early
+        // session leaves nothing behind in the notification centre.
+        focusNotifRef.current?.close();
+        focusNotifRef.current = null;
+        return;
+      }
       const fresh = active;
       const { actions, bell } = planFocusTick(fresh, Date.now());
       let transitioned = false;

@@ -49,7 +49,7 @@ export default function SignupScreen() {
     <div className="relative flex min-h-dvh flex-col items-center justify-center px-6 py-10">
       <div
         aria-hidden
-        className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top,var(--color-accent-soft),transparent_55%)]"
+        className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgb(var(--color-accent-soft)),transparent_55%)]"
       />
       <div className="relative z-10 w-full max-w-sm space-y-6">
         <div className="space-y-2 text-center">

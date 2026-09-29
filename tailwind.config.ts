@@ -6,31 +6,36 @@ export default {
     extend: {
       colors: {
         monk: {
-          bg: "var(--color-bg)",
-          surface: "var(--color-surface)",
-          soft: "var(--color-surface-soft)",
-          text: "var(--color-text)",
-          muted: "var(--color-text-muted)",
-          "text-soft": "var(--color-text-soft)",
-          border: "var(--color-border)",
-          "border-strong": "var(--color-border-strong)",
-          accent: "var(--color-accent)",
-          "accent-soft": "var(--color-accent-soft)",
-          success: "var(--color-success)",
-          "success-soft": "var(--color-success-soft)",
-          warning: "var(--color-warning)",
-          "warning-soft": "var(--color-warning-soft)",
-          danger: "var(--color-danger)",
-          "danger-soft": "var(--color-danger-soft)",
-          rest: "var(--color-rest)",
-          "rest-soft": "var(--color-rest-soft)",
+          // `rgb(var(--x) / <alpha-value>)` is REQUIRED here: the CSS vars are
+          // space-separated RGB triplets, and an opacity modifier (`/80`) on a
+          // plain `var()` color fails to resolve, silently emitting a default
+          // palette color instead — e.g. `bg-monk-surface/80` became solid white.
+          // Every token below is triplet-valued in globals.css (all 6 themes).
+          bg: "rgb(var(--color-bg) / <alpha-value>)",
+          surface: "rgb(var(--color-surface) / <alpha-value>)",
+          soft: "rgb(var(--color-surface-soft) / <alpha-value>)",
+          text: "rgb(var(--color-text) / <alpha-value>)",
+          muted: "rgb(var(--color-text-muted) / <alpha-value>)",
+          "text-soft": "rgb(var(--color-text-soft) / <alpha-value>)",
+          border: "rgb(var(--color-border) / <alpha-value>)",
+          "border-strong": "rgb(var(--color-border-strong) / <alpha-value>)",
+          accent: "rgb(var(--color-accent) / <alpha-value>)",
+          "accent-soft": "rgb(var(--color-accent-soft) / <alpha-value>)",
+          success: "rgb(var(--color-success) / <alpha-value>)",
+          "success-soft": "rgb(var(--color-success-soft) / <alpha-value>)",
+          warning: "rgb(var(--color-warning) / <alpha-value>)",
+          "warning-soft": "rgb(var(--color-warning-soft) / <alpha-value>)",
+          danger: "rgb(var(--color-danger) / <alpha-value>)",
+          "danger-soft": "rgb(var(--color-danger-soft) / <alpha-value>)",
+          rest: "rgb(var(--color-rest) / <alpha-value>)",
+          "rest-soft": "rgb(var(--color-rest-soft) / <alpha-value>)",
           "cat-deep": "rgb(var(--color-cat-deep) / <alpha-value>)",
           "cat-shallow": "rgb(var(--color-cat-shallow) / <alpha-value>)",
           "cat-learning": "rgb(var(--color-cat-learning) / <alpha-value>)",
           "cat-rest": "rgb(var(--color-cat-rest) / <alpha-value>)",
           "cat-personal": "rgb(var(--color-cat-personal) / <alpha-value>)",
-          deep: "var(--color-bg-deep)",
-          raised: "var(--color-surface-raised)"
+          deep: "rgb(var(--color-bg-deep) / <alpha-value>)",
+          raised: "rgb(var(--color-surface-raised) / <alpha-value>)"
         }
       },
       borderRadius: {

@@ -4,6 +4,7 @@ import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import { Check, Moon, Plus, Minus, FastForward, Calendar, Mountain, Sliders, ListTodo, ShieldCheck, BookOpen, Coffee } from "lucide-react";
 import { useMonkStore } from "../store/useMonkStore";
 import { useT } from "../i18n";
+import type { MessageKey } from "../i18n";
 import { routes } from "../constants/routes";
 import { habitOptions, defaultWeeklyTargets } from "../constants/defaultData";
 import { getTodayDateString, addDaysToDate, formatHumanDate } from "../lib/date";
@@ -12,6 +13,7 @@ import { capacityCheck, planStrengthLabel, scorePlan } from "../lib/planScoring"
 import {
   validateGoalBrainDump,
   validateHabitAudit,
+  MAX_SEASON_GOALS,
   validateKeystoneActions,
   validateNarrowGoals,
   validateSeasonDuration,
@@ -219,6 +221,7 @@ export function GoalBrainDump({ onNext }: { onNext: () => void }) {
   const draftGoals = onboarding.goalDrafts.filter((goal) => goal.title.trim());
   const selectedCount = onboarding.selectedFocusGoalIds.length;
   const narrowResult = validateNarrowGoals(selectedCount);
+  const atGoalCap = selectedCount >= MAX_SEASON_GOALS;
   const showNarrow = dumpResult.valid && draftGoals.length > 0;
   // Continue requires ≥3 valid drafts and ≥1 selected goal
   const canContinue = dumpResult.valid && narrowResult.valid;
@@ -283,6 +286,9 @@ export function GoalBrainDump({ onNext }: { onNext: () => void }) {
             <AnimatePresence>
               {draftGoals.map((goal) => {
                 const isSelected = onboarding.selectedFocusGoalIds.includes(goal.id);
+                // At the cap, unselected goals are shown as unavailable rather than
+                // silently ignoring the click.
+                const capped = atGoalCap && !isSelected;
                 return (
                   <motion.div
                     key={goal.id}
@@ -295,6 +301,7 @@ export function GoalBrainDump({ onNext }: { onNext: () => void }) {
                     <ChoiceCard
                       title={goal.title}
                       selected={isSelected}
+                      disabled={capped}
                       onClick={() => toggleFocusGoal(goal.id)}
                     />
                   </motion.div>
@@ -306,6 +313,7 @@ export function GoalBrainDump({ onNext }: { onNext: () => void }) {
       ) : null}
       <div className="mt-auto shrink-0 space-y-3 pt-5 sm:pt-8 pb-1">
         {dumpResult.valid && !narrowResult.valid ? <CalmAlert type="warning" title={t("onboarding.goals.needOne")} /> : null}
+        {dumpResult.valid && atGoalCap ? <CalmAlert type="info" title={t("onboarding.goals.cap")} /> : null}
         {!dumpResult.valid ? (
           <CalmAlert
             type="warning"
@@ -332,8 +340,16 @@ export function SeasonSetup({ onNext }: { onNext: () => void }) {
   const result = validateSeasonDuration(onboarding.seasonDurationDays);
   const weeklyTargetSum = onboarding.weeklyAllocations.reduce((sum, a) => sum + a.targetCount, 0);
   const capacity = capacityCheck(onboarding.timeAudit.freeHoursPerDay, weeklyTargetSum);
-  const capacityNote = capacity.message
-    ? t(capacity.ok ? "onboarding.season.capacityTight" : "onboarding.season.capacityOver", {
+  // `unknown` means the time audit was never answered — say nothing rather than
+  // imply the plan is fine. Otherwise localize from `status`.
+  const capacityKey: MessageKey | null =
+    capacity.status === "unknown" || capacity.status === "ok"
+      ? null
+      : capacity.status === "tight"
+        ? "onboarding.season.capacityTight"
+        : "onboarding.season.capacityOver";
+  const capacityNote = capacityKey
+    ? t(capacityKey, {
         load: capacity.loadHours.toFixed(0),
         available: capacity.availableHours.toFixed(0)
       })

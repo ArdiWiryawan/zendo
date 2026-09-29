@@ -147,7 +147,14 @@ export default function FocusScreen() {
     } else {
       releaseWakeLock();
     }
+    const handleVisibilityChange = () => {
+      // Browsers auto-release the wake lock when the tab is hidden; nothing
+      // re-requests it on return. Re-acquire when we come back to a live session.
+      if (document.visibilityState === "visible") requestWakeLock();
+    };
+    document.addEventListener("visibilitychange", handleVisibilityChange);
     return () => {
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
       releaseWakeLock();
     };
   }, [activeSession?.status]);

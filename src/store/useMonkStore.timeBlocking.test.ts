@@ -154,8 +154,31 @@ describe("time blocking and daily planning store actions", () => {
 
     expect(plan).toBeDefined();
     expect(plan?.highlight).toBe("Ship v2 release");
-    expect(plan?.mainAction).toBe("Ship v2 release");
     expect(plan?.timeBlocks?.[0].customCategory).toBe("Fitness");
+
+    // Regression: saveDayTimeBlocks must NOT touch mainAction. mainAction is owned
+    // by createOrUpdateDayPlan (seeded from the season goal's keystoneAction) and by
+    // WeeklyReviewModal via updateGoalKeystoneAction. Previously this action wrote
+    // `mainAction: trimmedHighlight`, so committing the planning modal silently
+    // replaced the season goal's keystone action with the Today Focus text.
+    expect(plan?.mainAction).toBeUndefined();
+  });
+
+  it("saveDayTimeBlocks preserves an existing mainAction", () => {
+    const date = "2026-09-05";
+    useMonkStore.getState().createOrUpdateDayPlan(date, {
+      dayType: "goal",
+      mainAction: "Write 3 possible hooks"
+    });
+
+    useMonkStore.getState().saveDayTimeBlocks(date, [], true, "Copywriting");
+
+    const plan = useMonkStore
+      .getState()
+      .dayPlans.find((d) => d.date === date);
+
+    expect(plan?.highlight).toBe("Copywriting");
+    expect(plan?.mainAction).toBe("Write 3 possible hooks");
   });
 });
 

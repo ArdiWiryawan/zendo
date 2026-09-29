@@ -36,6 +36,43 @@ export function autolistMarker(line: string): string | null {
   return null;
 }
 
+const ATX_HEADING = /^#{1,6}\s+/;
+const BLOCKQUOTE_PREFIX = /^>\s?/;
+const LIST_PREFIX = /^(?:[-*+]|\d+[.)])\s+/;
+const TASK_PREFIX = /^(?:[-*+]\s+)?\[[ xX]\]\s*/;
+const EMPHASIS_MARKERS = /(\*\*|__|~~|`|\*)/g;
+const LINK_SYNTAX = /\[([^\]\n]*)\]\([^)\s]*\)/g;
+
+/**
+ * Flatten markdown-lite source into a single natural-language excerpt for the
+ * card / related-note previews, which are clamped to 1–2 lines and so cannot
+ * host block rendering. `renderBodyMarkdown` stays the renderer for full
+ * reading surfaces; this is the short-form twin. Never shows raw syntax
+ * ("## Research" reads as "Research").
+ */
+export function toPlainExcerpt(body: string, maxChars = 160): string {
+  const plain = body
+    .split("\n")
+    // Drop only WHOLE-LINE image markers, matching IMG/renderBodyMarkdown. A
+    // marker embedded in prose is left as literal text rather than silently
+    // deleting the words around it.
+    .filter((line) => !IMG.test(line.trim()))
+    .map((line) =>
+      line
+        .replace(ATX_HEADING, "")
+        .replace(BLOCKQUOTE_PREFIX, "")
+        .replace(TASK_PREFIX, "")
+        .replace(LIST_PREFIX, "")
+        .replace(LINK_SYNTAX, "$1")
+        .replace(EMPHASIS_MARKERS, "")
+    )
+    .join(" ")
+    .replace(/\s+/g, " ")
+    .trim();
+  if (plain.length <= maxChars) return plain;
+  return `${plain.slice(0, maxChars).trimEnd()}…`;
+}
+
 type ListKind = "ul" | "ol" | "task";
 
 const HEADING = /^(#{1,6})\s+(.*)$/;

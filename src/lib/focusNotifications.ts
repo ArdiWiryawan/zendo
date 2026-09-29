@@ -71,7 +71,10 @@ function supportsTimestampTrigger(): boolean {
  */
 export async function syncFocusNotifications(session: FocusSession | undefined): Promise<void> {
   if (typeof window === "undefined") return;
-  if (!session) return;
+  // `undefined` is a REQUEST TO CLEAR (session completed / ended), not a no-op:
+  // it flows through to the cancel-stale loop below with an empty expected set.
+  // An early `return` here would leave every pending trigger armed after the
+  // session already finished, so the OS would still fire phase alerts later.
   // Master toggle (same guard reminderScheduler uses); denied = silent skip.
   if (!useMonkStore.getState().appSettings.notificationEnabled) return;
   if (Notification.permission !== "granted") return;
@@ -80,7 +83,7 @@ export async function syncFocusNotifications(session: FocusSession | undefined):
 
   const reg = await navigator.serviceWorker.ready;
   const existing = await reg.getNotifications({ tag: NOTIFICATION_TAG });
-  const expected = computeFocusNotificationSchedule(session);
+  const expected = session ? computeFocusNotificationSchedule(session) : [];
   const expectedTimes = new Set(expected.map((n) => n.triggerTime));
 
   // Cancel stale (paused / ended / boundary already rescheduled / moved).

@@ -110,10 +110,10 @@ describe("planStrengthLabel", () => {
 });
 
 describe("capacityCheck", () => {
-  it("freeHoursPerDay <= 0 always ok", () => {
+  it("freeHoursPerDay <= 0 is unknown, not ok", () => {
     const result = capacityCheck(0, 10);
-    expect(result.ok).toBe(true);
-    expect(result.message).toBeUndefined();
+    expect(result.status).toBe("unknown");
+    expect(result.unknown).toBe(true);
     expect(result.loadHours).toBe(15);
     expect(result.availableHours).toBe(0);
   });
@@ -122,20 +122,27 @@ describe("capacityCheck", () => {
     // free 1h/day * 6 = 6h; weeklyTargetSum 5 * 1.5 = 7.5h
     const result = capacityCheck(1, 5);
     expect(result.ok).toBe(false);
-    expect(result.message).toMatch(/Trim a day/);
+    expect(result.status).toBe("over");
+    expect(result.unknown).toBe(false);
   });
 
   it("tight when load > 85% available", () => {
     // free 2h/day * 6 = 12h; weeklyTargetSum 7 * 1.5 = 10.5h (87.5%)
     const result = capacityCheck(2, 7);
     expect(result.ok).toBe(true);
-    expect(result.message).toMatch(/Tight fit/);
+    expect(result.status).toBe("tight");
   });
 
   it("ok with buffer", () => {
     // free 3h/day * 6 = 18h; weeklyTargetSum 4 * 1.5 = 6h
     const result = capacityCheck(3, 4);
     expect(result.ok).toBe(true);
-    expect(result.message).toBeUndefined();
+    expect(result.status).toBe("ok");
+  });
+
+  it("carries no user-facing prose (caller localizes from status)", () => {
+    for (const [free, target] of [[0, 10], [1, 5], [2, 7], [3, 4]] as const) {
+      expect(capacityCheck(free, target).message).toBeUndefined();
+    }
   });
 });

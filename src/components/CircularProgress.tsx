@@ -14,8 +14,8 @@ export function CircularProgress({
   progress,
   size = 180,
   strokeWidth = 6,
-  color = "var(--color-accent)",
-  bgColor = "var(--color-border)",
+  color = "rgb(var(--color-accent))",
+  bgColor = "rgb(var(--color-border))",
   label,
   children
 }: CircularProgressProps) {

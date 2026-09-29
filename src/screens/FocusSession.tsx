@@ -174,7 +174,7 @@ export function FocusSessionPanel({
   const distractionMatch = /^distractions:(\d+)/.exec(session.note ?? "");
   const distractionCount = distractionMatch ? Number(distractionMatch[1]) : 0;
   const ringSize = compact ? 148 : 196;
-  const ringColor = isBreak ? "var(--color-rest)" : isPaused ? "var(--color-warning)" : "var(--color-accent)";
+  const ringColor = isBreak ? "rgb(var(--color-rest))" : isPaused ? "rgb(var(--color-warning))" : "rgb(var(--color-accent))";
 
   return (
     <Card
@@ -215,7 +215,7 @@ export function FocusSessionPanel({
           size={ringSize}
           strokeWidth={compact ? 7 : 8}
           color={ringColor}
-          bgColor="var(--color-border)"
+          bgColor="rgb(var(--color-border))"
         >
           <p className={`${compact ? "text-3xl" : "text-[44px]"} font-mono font-bold leading-none tracking-tight tabular-nums text-monk-text`}>
             {formatTimer(remaining)}

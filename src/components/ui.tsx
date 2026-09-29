@@ -81,7 +81,7 @@ export function AppShell({ children, showBottomNav = true }: { children: ReactNo
             className="pointer-events-none absolute inset-x-0 bottom-0 h-[186px] pb-[calc(env(safe-area-inset-bottom)+12px)]"
             style={{
               background:
-                "linear-gradient(to top, var(--color-bg) 0%, var(--color-bg) calc(env(safe-area-inset-bottom) + 90px), transparent calc(env(safe-area-inset-bottom) + 186px))"
+                "linear-gradient(to top, rgb(var(--color-bg)) 0%, rgb(var(--color-bg)) calc(env(safe-area-inset-bottom) + 90px), transparent calc(env(safe-area-inset-bottom) + 186px))"
             }}
           />
           <div className="relative px-6 pb-[calc(env(safe-area-inset-bottom)+12px)]">
@@ -376,22 +376,36 @@ export function ChoiceCard({
   title,
   description,
   selected,
+  disabled = false,
   onClick
 }: {
   title: string;
   description?: string;
   selected: boolean;
+  /** Unavailable option — rendered muted and inert. Still focusable for screen readers. */
+  disabled?: boolean;
   onClick: () => void;
 }) {
   return (
     <button
       type="button"
       aria-pressed={selected}
-      onClick={() => { hapticPress("light"); onClick(); }}
-      className={`relative w-full rounded-monk border p-4 min-h-14 text-left transition duration-150 ease-monk active:scale-[0.98] ${
+      aria-disabled={disabled || undefined}
+      onClick={() => {
+        if (disabled) return;
+        hapticPress("light");
+        onClick();
+      }}
+      className={`relative w-full rounded-monk border p-4 min-h-14 text-left transition duration-150 ease-monk ${
+        disabled
+          ? "cursor-not-allowed border-monk-border/50 bg-monk-surface/40 opacity-55"
+          : "active:scale-[0.98]"
+      } ${
         selected
           ? "border-monk-accent bg-monk-accent-soft shadow-[inset_0_1px_0_rgba(255,255,255,0.05),0_10px_24px_-14px_rgba(164,139,94,0.55)]"
-          : "border-monk-border bg-monk-surface shadow-[inset_0_1px_0_rgba(255,255,255,0.03)] hover:border-monk-border-strong"
+          : disabled
+            ? ""
+            : "border-monk-border bg-monk-surface shadow-[inset_0_1px_0_rgba(255,255,255,0.03)] hover:border-monk-border-strong"
       }`}
     >
       <div className="flex items-start gap-3 pr-1">

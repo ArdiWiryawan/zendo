@@ -5,7 +5,6 @@ import {
   Play,
   Pause,
   RotateCcw,
-  Sparkles,
   Clock,
   Calendar,
   Plus,
@@ -36,6 +35,8 @@ interface MorningPlanningModalProps {
   date?: string;
   onCompleted?: () => void;
 }
+
+const AGENDA_MAX = 12;
 
 const CATEGORY_CONFIG: Record<
   TimeBlockCategory,
@@ -153,6 +154,10 @@ export function MorningPlanningModal({
   // Daily Highlight state (Make Time framework)
   const [dailyHighlight, setDailyHighlight] = useState<string>("");
 
+  // Agenda (unscheduled intents)
+  const [agenda, setAgenda] = useState<string[]>([]);
+  const [newAgendaItem, setNewAgendaItem] = useState("");
+
   // Time blocks local draft
   const [timeBlocks, setTimeBlocks] = useState<TimeBlock[]>([]);
   const [newTitle, setNewTitle] = useState("");
@@ -167,6 +172,8 @@ export function MorningPlanningModal({
       const initialHighlight =
         todayPlan?.highlight || todayPlan?.mainAction || goal?.keystoneAction || "";
       setDailyHighlight(initialHighlight);
+      setAgenda(todayPlan?.agenda ?? []);
+      setNewAgendaItem("");
 
       if (todayPlan?.timeBlocks && todayPlan.timeBlocks.length > 0) {
         setTimeBlocks(todayPlan.timeBlocks);
@@ -186,6 +193,7 @@ export function MorningPlanningModal({
     todayPlan?.timeBlocks,
     todayPlan?.highlight,
     todayPlan?.mainAction,
+    todayPlan?.agenda,
     goal?.keystoneAction,
     targetDuration
   ]);
@@ -289,6 +297,19 @@ export function MorningPlanningModal({
     setNewEndTime("10:30");
   };
 
+  const handleAddAgendaItem = () => {
+    const value = newAgendaItem.trim();
+    if (!value || agenda.length >= AGENDA_MAX) return;
+    hapticPress("light");
+    setAgenda((prev) => (prev.length >= AGENDA_MAX ? prev : [...prev, value]));
+    setNewAgendaItem("");
+  };
+
+  const handleRemoveAgendaItem = (index: number) => {
+    hapticPress("light");
+    setAgenda((prev) => prev.filter((_, i) => i !== index));
+  };
+
   const handleExportIcs = () => {
     hapticPress("medium");
     downloadIcsFile(activeDate, timeBlocks, activeSeason?.name || "Zendo");
@@ -300,6 +321,9 @@ export function MorningPlanningModal({
     playCompletionChime();
     const finalHighlight = dailyHighlight.trim();
     store.saveDayTimeBlocks(activeDate, timeBlocks, true, finalHighlight);
+    if (agenda.length > 0) {
+      store.setDayAgenda(activeDate, agenda);
+    }
     if (finalHighlight) {
       store.setTodayHighlight(finalHighlight);
     }
@@ -341,7 +365,7 @@ export function MorningPlanningModal({
               type="button"
               onClick={onClose}
               className="grid h-8 w-8 place-items-center rounded-xl text-monk-muted hover:bg-monk-soft hover:text-monk-text transition"
-              aria-label="Close"
+              aria-label={t("planning.modalClose")}
             >
               <X size={18} />
             </button>
@@ -359,21 +383,17 @@ export function MorningPlanningModal({
                 <span className="font-mono text-xs text-monk-text-soft">{formattedTimer}</span>
               </summary>
               <div className="flex flex-wrap items-center justify-between gap-3 border-t border-monk-border/50 p-3">
-              <div className="flex items-center gap-3">
-                  <div
-                    className={`grid h-9 w-9 place-items-center rounded-xl font-mono text-xs font-bold transition ${
-                      timerRunning
-                        ? "border border-monk-warning/40 bg-monk-warning/15 text-monk-warning animate-pulse"
-                        : "border border-monk-border bg-monk-surface text-monk-muted"
+                {/* Single calm state dot — no duplicate timer readout (it is already in the summary) */}
+                <div className="flex items-center gap-2.5">
+                  <span
+                    aria-hidden="true"
+                    className={`h-1.5 w-1.5 shrink-0 rounded-full transition ${
+                      timerRunning ? "bg-monk-warning" : "bg-monk-border"
                     }`}
-                  >
-                    <Clock size={15} />
-                  </div>
-                  <div>
-                    <p className="text-base font-bold font-mono text-monk-text leading-tight">
-                      {formattedTimer}
-                    </p>
-                  </div>
+                  />
+                  <span className="text-xs text-monk-muted">
+                    {timerRunning ? t("planning.timerRunning") : t("planning.timerReady")}
+                  </span>
                 </div>
 
               <div className="flex items-center gap-1.5">
@@ -383,7 +403,7 @@ export function MorningPlanningModal({
                   className="flex items-center gap-1.5 rounded-xl border border-monk-border bg-monk-surface px-2.5 py-1 text-xs font-semibold text-monk-text hover:border-monk-accent hover:text-monk-accent transition"
                 >
                   {timerRunning ? <Pause size={12} /> : <Play size={12} />}
-                  <span>{timerRunning ? "Pause" : "Start"}</span>
+                  <span>{timerRunning ? t("focus.pause") : t("planning.timerStart")}</span>
                 </button>
                 <button
                   type="button"
@@ -432,13 +452,10 @@ export function MorningPlanningModal({
 
             {/* Daily Highlight (Make Time Framework) */}
             <div className="rounded-monk border border-monk-accent/35 bg-monk-accent/[0.07] p-5 space-y-3.5 shadow-soft">
-              <div className="flex flex-wrap items-start justify-between gap-3">
-                <div className="flex min-w-0 items-center gap-2">
-                  <div className="grid h-8 w-8 shrink-0 place-items-center rounded-xl bg-monk-accent/15 text-monk-accent">
-                    <Sparkles size={15} />
-                  </div>
-                  <span className="text-sm font-semibold leading-snug text-monk-text">
-                    {t("planning.dailyHighlight")}
+              <div className="flex flex-wrap items-baseline justify-between gap-3">
+                <div className="flex min-w-0 items-baseline gap-2">
+                  <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-monk-accent/80">
+                    {t("planning.todayFocus")}
                   </span>
                 </div>
                 {dailyHighlight.trim() && (
@@ -454,8 +471,8 @@ export function MorningPlanningModal({
                 )}
               </div>
 
-              <p className="text-xs text-monk-muted leading-relaxed">
-                {t("planning.dailyHighlightPrompt")}
+              <p className="text-xs text-monk-muted/90 leading-relaxed">
+                {t("planning.todayFocusPrompt")}
               </p>
 
               <div className="relative">
@@ -464,10 +481,79 @@ export function MorningPlanningModal({
                   value={dailyHighlight}
                   onChange={(e) => setDailyHighlight(e.target.value)}
                   placeholder={t("planning.dailyHighlightPlaceholder")}
-                  className="w-full resize-y rounded-xl border border-monk-accent/30 bg-monk-surface px-4 py-3.5 text-base font-medium leading-relaxed text-monk-text placeholder:text-monk-muted/60 focus:border-monk-accent focus:ring-1 focus:ring-monk-accent/40 focus:outline-none transition shadow-2xs"
+                  className="w-full resize-y rounded-xl border border-monk-accent/25 bg-monk-surface/80 px-4 py-3.5 font-serif text-lg leading-relaxed text-monk-text placeholder:text-monk-muted/50 placeholder:italic focus:border-monk-accent focus:ring-1 focus:ring-monk-accent/30 focus:outline-none transition"
                 />
               </div>
             </div>
+
+            {/* Agenda (unscheduled intents) */}
+            <details className="rounded-2xl border border-monk-border/70 bg-monk-soft/30">
+              <summary className="flex min-h-12 cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-sm font-semibold text-monk-muted marker:content-none [&::-webkit-details-marker]:hidden hover:text-monk-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-monk-accent">
+                <span className="flex items-center gap-2">
+                  <Tag size={15} />
+                  {t("planning.agendaTitle")}
+                </span>
+                <span className="font-mono text-xs text-monk-text-soft">
+                  {agenda.length}/{AGENDA_MAX}
+                </span>
+              </summary>
+              <div className="border-t border-monk-border/50 p-3 space-y-2">
+                {agenda.length === 0 ? (
+                  <p className="text-xs text-monk-muted">{t("planning.agendaEmpty")}</p>
+                ) : (
+                  <ul className="space-y-1.5">
+                    {agenda.map((item, index) => (
+                      <li
+                        key={`${item}-${index}`}
+                        className="flex min-h-11 items-center justify-between gap-2 rounded-xl border border-monk-border bg-monk-surface px-3 py-2"
+                      >
+                        <span className="min-w-0 flex-1 truncate text-xs text-monk-text">
+                          {item}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveAgendaItem(index)}
+                          aria-label={`${t("planning.agendaRemove")} ${item}`}
+                          className="grid h-11 w-11 shrink-0 place-items-center rounded-xl text-monk-muted hover:bg-monk-surface hover:text-monk-accent transition"
+                        >
+                          <X size={13} />
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+
+                <form
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    handleAddAgendaItem();
+                  }}
+                  className="flex items-center gap-2"
+                >
+                  <input
+                    type="text"
+                    value={newAgendaItem}
+                    onChange={(e) => setNewAgendaItem(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        handleAddAgendaItem();
+                      }
+                    }}
+                    placeholder={t("planning.agendaPlaceholder")}
+                    className="min-h-11 w-full rounded-xl border border-monk-border bg-monk-surface px-3.5 text-xs text-monk-text focus:border-monk-accent focus:outline-none shadow-2xs"
+                  />
+                  <button
+                    type="submit"
+                    disabled={!newAgendaItem.trim() || agenda.length >= AGENDA_MAX}
+                    className="inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-xl border border-monk-accent/30 bg-monk-accent/10 px-3 py-2 text-xs font-semibold text-monk-accent hover:bg-monk-accent/15 transition active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    <Plus size={12} />
+                    <span>{t("planning.agendaAdd")}</span>
+                  </button>
+                </form>
+              </div>
+            </details>
 
             {/* Custom Block Input Form (Direct & Fully Customizable) */}
             <details className="rounded-2xl border border-monk-border/70 bg-monk-soft/30">
@@ -607,7 +693,13 @@ export function MorningPlanningModal({
                   )}
                 </div>
                 <span className="text-xs font-semibold text-monk-accent">
-                  {totalHours.toFixed(1)}j total ({deepWorkHours.toFixed(1)}j Deep Work)
+                  {t("planning.totalHours", { hours: totalHours.toFixed(1) })}
+                  {deepWorkHours > 0 && (
+                    <span className="text-monk-muted font-normal">
+                      {" · "}
+                      {t("planning.deepWorkHours", { hours: deepWorkHours.toFixed(1) })}
+                    </span>
+                  )}
                 </span>
               </div>
 
@@ -653,8 +745,8 @@ export function MorningPlanningModal({
                           type="button"
                           onClick={() => handleDeleteBlock(block.id)}
                           className="grid h-7 w-7 shrink-0 place-items-center rounded-lg text-monk-muted hover:text-monk-danger hover:bg-monk-surface/80 transition"
-                          title={isId ? "Hapus blok" : "Delete block"}
-                          aria-label={isId ? "Hapus blok" : "Delete block"}
+                          title={t("planning.deleteBlock")}
+                          aria-label={t("planning.deleteBlock")}
                         >
                           <Trash2 size={13} />
                         </button>

@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import type { MonkMVPState } from "../types/app";
 import { createInitialState } from "../constants/defaultData";
 import { getTodayDateString } from "../lib/date";
@@ -259,6 +259,127 @@ describe("focus session state machine guards", () => {
     // 3. Selectors match day 1
     expect(selectTotalLearningSecondsForDate(currentStore, day1)).toBe(3600);
     expect(selectTotalLearningSecondsForDate(currentStore, day2)).toBe(0);
+  });
+});
+
+describe("abandonFocusSession elapsed accounting (regression: paused sessions credit wall-clock)", () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  function startSession(preset: "deep_work" | "custom", minutes?: number) {
+    useMonkStore.setState(baseState(), false);
+    const state = useMonkStore.getState();
+    state.setSeasonDuration(30);
+    state.createSeasonFromOnboarding();
+    state.createOrUpdateDayPlan(getTodayDateString(), { dayType: "goal" });
+    return useMonkStore.getState().startFocusSession(preset, minutes)!;
+  }
+
+  function sessionById(id: string) {
+    return useMonkStore.getState().focusSessions.find((s) => s.id === id)!;
+  }
+
+  it("pause at 0 elapsed -> long pause -> abandon credits ~0, not the paused duration", () => {
+    vi.useFakeTimers();
+    const base = new Date("2026-09-30T09:00:00.000Z").getTime();
+    vi.setSystemTime(base);
+
+    const session = startSession("custom", 25);
+    // Pause at a true 0 elapsed: no tick has credited any focus yet.
+    useMonkStore.getState().pauseFocusSession(session.id);
+    expect(sessionById(session.id).elapsedSeconds).toBe(0);
+    expect(sessionById(session.id).pausedAt).toBeDefined();
+
+    // Ten minutes of paused wall-clock pass. startTime is NOT advanced by pause,
+    // so raw `Date.now() - startTime` would wrongly credit the whole pause.
+    vi.setSystemTime(base + 10 * 60 * 1000);
+    useMonkStore.getState().abandonFocusSession(session.id);
+
+    const finished = sessionById(session.id);
+    expect(finished.status).toBe("ended_early");
+    // Regression: `elapsedSeconds || wallClock` treated 0 as falsy -> 600s credited.
+    expect(finished.focusDurationSeconds).toBe(0);
+    expect(finished.actualDurationSeconds).toBe(0);
+    expect(finished.completedDurationMinutes).toBe(0);
+  });
+
+  it("pause mid-phase -> abandon while paused credits the frozen elapsed, not wall-clock", () => {
+    vi.useFakeTimers();
+    const base = new Date("2026-09-30T09:00:00.000Z").getTime();
+    vi.setSystemTime(base);
+
+    const session = startSession("custom", 25);
+    // Credit 90s through the real tick path so the frozen cache is derived, not assumed.
+    vi.setSystemTime(base + 90 * 1000);
+    useMonkStore.getState().tickFocusSession(session.id, 90);
+    useMonkStore.getState().pauseFocusSession(session.id);
+    expect(sessionById(session.id).elapsedSeconds).toBe(90);
+
+    // Sit paused for 20 minutes, then abandon.
+    vi.setSystemTime(base + 90 * 1000 + 20 * 60 * 1000);
+    useMonkStore.getState().abandonFocusSession(session.id);
+
+    const finished = sessionById(session.id);
+    expect(finished.status).toBe("ended_early");
+    // Not 90 + 1200: the paused span must never be counted.
+    expect(finished.focusDurationSeconds).toBe(60);
+    expect(finished.completedDurationMinutes).toBe(1);
+  });
+
+  it("sets pausedAt on pause and clears it on resume", () => {
+    vi.useFakeTimers();
+    const base = new Date("2026-09-30T09:00:00.000Z").getTime();
+    vi.setSystemTime(base);
+
+    const session = startSession("custom", 25);
+    expect(sessionById(session.id).pausedAt).toBeUndefined();
+
+    vi.setSystemTime(base + 60 * 1000);
+    useMonkStore.getState().pauseFocusSession(session.id);
+    const paused = sessionById(session.id);
+    expect(paused.status).toBe("paused");
+    expect(paused.pausedAt).toBe(new Date(base + 60 * 1000).toISOString());
+
+    vi.setSystemTime(base + 120 * 1000);
+    useMonkStore.getState().resumeFocusSession(session.id);
+    const resumed = sessionById(session.id);
+    expect(resumed.status).toBe("running");
+    expect(resumed.pausedAt).toBeUndefined();
+  });
+
+  it("running abandon still uses wall-clock elapsed", () => {
+    vi.useFakeTimers();
+    const base = new Date("2026-09-30T09:00:00.000Z").getTime();
+    vi.setSystemTime(base);
+
+    const session = startSession("custom", 25);
+    vi.setSystemTime(base + 3 * 60 * 1000);
+    useMonkStore.getState().abandonFocusSession(session.id);
+
+    const finished = sessionById(session.id);
+    expect(finished.status).toBe("ended_early");
+    // Running sessions are unchanged by the paused-path fix.
+    expect(finished.focusDurationSeconds).toBe(180);
+  });
+
+  it("completeFocusSession still works and is unaffected by the abandon fix", () => {
+    vi.useFakeTimers();
+    const base = new Date("2026-09-30T09:00:00.000Z").getTime();
+    vi.setSystemTime(base);
+
+    const session = startSession("custom", 25);
+    vi.setSystemTime(base + 60 * 1000);
+    useMonkStore.getState().tickFocusSession(session.id, 60);
+    useMonkStore.getState().pauseFocusSession(session.id);
+    useMonkStore.getState().resumeFocusSession(session.id);
+    vi.setSystemTime(base + 90 * 1000);
+    useMonkStore.getState().completeFocusSession(session.id);
+
+    const finished = sessionById(session.id);
+    expect(finished.status).toBe("completed");
+    expect(finished.focusDurationSeconds).toBe(60);
+    expect(finished.pausedAt).toBeUndefined();
   });
 });
 

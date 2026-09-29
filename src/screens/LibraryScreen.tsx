@@ -21,7 +21,7 @@ import {
 import JournalNotebook, { NotebookEditor } from "./JournalNotebook";
 import JournalPacks from "./JournalPacks";
 import { ZendoProModal } from "../components/ZendoProModal";
-import { groupPhotoRuns, renderBodyMarkdown } from "../lib/notebookMarkdown";
+import { groupPhotoRuns, renderBodyMarkdown, toPlainExcerpt } from "../lib/notebookMarkdown";
 import type { AppLanguage, TimelineStatus } from "../types/app";
 
 export function CalendarCell({
@@ -386,7 +386,7 @@ export function JournalLibraryScreen() {
                     <span className="text-sm font-semibold text-monk-text truncate mr-2">{entry.title || t("library.untitled")}</span>
                     <span className="text-xs font-bold uppercase tracking-wider text-monk-accent bg-monk-accent-soft px-2 py-0.5 rounded-full shrink-0">{catName(entry.categoryId)}</span>
                   </div>
-                  <p className="text-xs text-monk-muted mt-1 line-clamp-2">{entry.body.replace(/\n/g, " ").slice(0, 200)}</p>
+                  <p className="text-xs text-monk-muted mt-1 line-clamp-2">{toPlainExcerpt(entry.body, 200)}</p>
                   <p className="text-xs text-monk-text-soft mt-1">{new Date(entry.updatedAt).toLocaleDateString(dateLocale, { day: "numeric", month: "short", year: "numeric" })}</p>
                 </button>
               ))

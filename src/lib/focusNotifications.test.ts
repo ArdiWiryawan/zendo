@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import type { FocusSession } from "../types/app";
 import { computeFocusNotificationSchedule } from "./focusNotifications";
 
@@ -73,5 +73,50 @@ describe("computeFocusNotificationSchedule", () => {
     });
     const out = computeFocusNotificationSchedule(custom, T0);
     expect(out).toEqual([{ triggerTime: T0 + 50 * MIN, title: "Session complete", body: "You did the work. Rest well." }]);
+  });
+
+  it("running session boundaries are strictly ascending and never in the past", () => {
+    // Ordering contract the sync layer relies on: it dedupes by triggerTime and
+    // cancels anything not in the expected set, so an out-of-order or past
+    // boundary would make the schedule churn.
+    const now = T0 + 5 * MIN;
+    const out = computeFocusNotificationSchedule(session(), now);
+    const times = out.map((n) => n.triggerTime);
+    expect(times.every((t) => t > now)).toBe(true);
+    expect([...times].sort((a, b) => a - b)).toEqual(times);
+  });
+
+  it("provided phases take precedence over preset-derived ones", () => {
+    // 2-phase session: the schedule must follow session.phases, not deep_work's
+    // default 4 phases (createFocusPhases fallback).
+    const twoPhase = session({
+      phases: [
+        { type: "focus", label: "Sprint", plannedMinutes: 25, completedMinutes: 0, status: "running" },
+        { type: "break", label: "Short break", plannedMinutes: 5, completedMinutes: 0, status: "pending" }
+      ]
+    });
+    const out = computeFocusNotificationSchedule(twoPhase, T0);
+    expect(out.map((n) => n.triggerTime)).toEqual([T0 + 25 * MIN, T0 + 30 * MIN]);
+  });
+
+  describe("with a mocked clock", () => {
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
+    it("paused mid-session yields [] so the sync layer closes pending triggers", () => {
+      vi.useFakeTimers();
+      vi.setSystemTime(T0 + 30 * MIN);
+      // 30 min into a 50 min first phase; if paused were not guarded, the
+      // remaining focus/break boundaries would still be scheduled and fire.
+      const out = computeFocusNotificationSchedule(session({ status: "paused" }));
+      expect(out).toEqual([]);
+    });
+
+    it("completed after the last boundary yields []", () => {
+      vi.useFakeTimers();
+      vi.setSystemTime(T0 + 130 * MIN);
+      expect(computeFocusNotificationSchedule(session({ status: "completed" }))).toEqual([]);
+    });
   });
 });

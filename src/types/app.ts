@@ -198,6 +198,7 @@ export type DayPlan = {
   goalId?: string;
   mainAction?: string;
   highlight?: string;
+  agenda?: string[];
   energyLevel?: EnergyLevel;
   status: DayStatus;
   planningCompleted?: boolean;
@@ -220,6 +221,7 @@ export type FocusSession = {
   timerMode?: FocusSessionPreset;
   timerState?: "work" | "break";
   elapsedSeconds?: number;
+  pausedAt?: ISODateString;
   createdAt: ISODateString;
   updatedAt: ISODateString;
 
@@ -611,6 +613,10 @@ export type NotebookEntry = {
   // search/render/GC keep working on a single string. Absent = single-page
   // legacy note (body canonical). Editor writes both on save.
   pages?: string[];
+  // Soft-hide marker. Present = hidden from "All" and its PARA tab, shown in the
+  // archive tab. Additive and lossless: paraType is never touched, so restoring
+  // (clearing this) returns the note to exactly its previous tab.
+  archivedAt?: ISODateString;
   createdAt: ISODateString;
   updatedAt: ISODateString;
 };
