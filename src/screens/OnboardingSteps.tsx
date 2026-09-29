@@ -66,6 +66,7 @@ export function ScreenIntro({ title, subtitle }: { title: string; subtitle: stri
 }
 
 export function HabitAudit({ onNext }: { onNext: () => void }) {
+  const t = useT();
   const { onboarding, toggleHabit } = useMonkStore();
   const result = validateHabitAudit(onboarding.selectedHabits.length);
   const selectedCount = onboarding.selectedHabits.length;
@@ -75,11 +76,13 @@ export function HabitAudit({ onNext }: { onNext: () => void }) {
   const canContinue = isEmpty || (result.valid && !otherNeedsName);
   return (
     <>
-      <ScreenIntro title="What usually pulls you away?" subtitle="Notice the patterns that make focus harder." />
+      <ScreenIntro title={t("onboarding.habit.title")} subtitle={t("onboarding.habit.subtitle")} />
       <div className="mb-3 flex items-center justify-between">
-        <p className="text-sm font-semibold">Patterns</p>
+        <p className="text-sm font-semibold">{t("onboarding.habit.patterns")}</p>
         <span className="rounded-full bg-monk-soft px-2.5 py-1 text-xs font-bold text-monk-muted">
-          {selectedCount === 0 ? "1+ required" : `${selectedCount} selected`}
+          {selectedCount === 0
+            ? t("onboarding.habit.minRequired")
+            : t("onboarding.habit.selectedCount", { count: selectedCount })}
         </span>
       </div>
       <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
@@ -95,7 +98,7 @@ export function HabitAudit({ onNext }: { onNext: () => void }) {
       </div>
       {otherHabit ? (
         <TextInput
-          label="Name the pattern"
+          label={t("onboarding.habit.namePattern")}
           className="mt-5"
           value={otherHabit.customName ?? ""}
           onChange={(event) => useMonkStore.getState().setCustomHabitName(event.target.value)}
@@ -105,11 +108,15 @@ export function HabitAudit({ onNext }: { onNext: () => void }) {
         {!canContinue ? (
           <CalmAlert
             type="warning"
-            title={otherNeedsName ? "Name your custom pattern to continue." : result.message || "Select at least 1 habit"}
+            title={
+              otherNeedsName
+                ? t("onboarding.habit.nameToContinue")
+                : t("onboarding.habit.selectOne")
+            }
           />
         ) : null}
         <PrimaryButton disabled={!canContinue} onClick={onNext}>
-          {isEmpty ? "Skip for now" : "Continue"}
+          {isEmpty ? t("onboarding.habit.skip") : t("onboarding.habit.continue")}
         </PrimaryButton>
       </div>
     </>
@@ -129,22 +136,22 @@ export function FrictionSetup({ onNext }: { onNext: () => void }) {
     return (
       <>
         <ScreenIntro
-          title="Make distractions harder to reach"
-          subtitle="You didn't select specific habits, but designing your environment protects focus for every season."
+          title={t("onboarding.friction.title")}
+          subtitle={t("onboarding.friction.subtitleNone")}
         />
         <Card className="my-auto space-y-3 p-5">
           <div className="flex items-center gap-3 text-monk-accent">
             <ShieldCheck size={24} />
-            <p className="font-semibold text-monk-text">General Focus Guardrails</p>
+            <p className="font-semibold text-monk-text">{t("onboarding.friction.guardrails")}</p>
           </div>
-          <p className="text-sm leading-relaxed text-monk-muted">
-            • Keep your phone in another room during deep focus sessions.<br />
-            • Put reading or workspace essentials within arm's reach.<br />
-            • Turn off non-urgent app notifications before starting.
-          </p>
+          <ul className="list-disc space-y-1 pl-4 text-sm leading-relaxed text-monk-muted">
+            <li>{t("onboarding.friction.guardrail1")}</li>
+            <li>{t("onboarding.friction.guardrail2")}</li>
+            <li>{t("onboarding.friction.guardrail3")}</li>
+          </ul>
         </Card>
         <div className="mt-auto shrink-0 space-y-3 pt-5 sm:pt-8 pb-1">
-          <PrimaryButton onClick={onNext}>Continue</PrimaryButton>
+          <PrimaryButton onClick={onNext}>{t("onboarding.friction.continue")}</PrimaryButton>
         </div>
       </>
     );
@@ -153,13 +160,15 @@ export function FrictionSetup({ onNext }: { onNext: () => void }) {
   return (
     <>
       <ScreenIntro
-        title="Make distractions harder to reach"
-        subtitle="You do not need willpower. Add friction to your environment so habits cannot start on autopilot."
+        title={t("onboarding.friction.title")}
+        subtitle={t("onboarding.friction.subtitle")}
       />
       <div className="mb-3 flex items-center justify-between">
         <p className="text-xs text-monk-muted">{t("onboarding.friction.hint")}</p>
         <span className="rounded-full bg-monk-soft px-2.5 py-1 text-xs font-bold text-monk-muted">
-          {checkedCount > 0 ? `${checkedCount} active` : "Recommended"}
+          {checkedCount > 0
+            ? t("onboarding.friction.activeCount", { count: checkedCount })
+            : t("onboarding.friction.recommended")}
         </span>
       </div>
 
@@ -201,12 +210,12 @@ export function FrictionSetup({ onNext }: { onNext: () => void }) {
       </div>
 
       <p className="mt-3 text-center text-xs text-monk-text-soft">
-        You do not need perfection. Just make the habit harder.
+        {t("onboarding.friction.reassurance")}
       </p>
 
       <div className="mt-auto shrink-0 space-y-3 pt-5 sm:pt-8 pb-1">
         <PrimaryButton onClick={onNext}>
-          {checkedCount === 0 ? "Skip for now" : "Continue"}
+          {checkedCount === 0 ? t("onboarding.friction.skip") : t("onboarding.friction.continue")}
         </PrimaryButton>
       </div>
     </>
@@ -429,7 +438,9 @@ export function SeasonSetup({ onNext }: { onNext: () => void }) {
       </div>
       <div className="mt-auto shrink-0 space-y-3 pt-5 sm:pt-8 pb-1">
         {capacityNote ? <CalmAlert type="info" title={capacityNote} /> : null}
-        {!result.valid ? <CalmAlert type="warning" title={result.message!} /> : null}
+        {!result.valid ? (
+          <CalmAlert type="warning" title={t("onboarding.keystone.needAction")} />
+        ) : null}
         <PrimaryButton disabled={!result.valid} onClick={onNext}>{t("onboarding.continue")}</PrimaryButton>
       </div>
     </>
@@ -442,26 +453,13 @@ export function KeystoneSetup({ onNext }: { onNext: () => void }) {
   const goals = onboarding.goalDrafts.filter((goal) => onboarding.selectedFocusGoalIds.includes(goal.id));
   const result = validateKeystoneActions(onboarding.selectedFocusGoalIds, onboarding.keystoneActions);
 
-  const actionPlaceholders = [
-    "Study for 25 minutes",
-    "Write 300 words",
-    "Record one practice video",
-    "Walk for 20 minutes",
-    "Read 10 pages",
-    "Practice one lesson"
-  ];
-  const whenPlaceholders = [
-    "after morning pages",
-    "right after lunch",
-    "before dinner",
-    "first thing after coffee"
-  ];
-  const obstaclePlaceholders = [
-    "I feel too tired after work",
-    "I open my phone instead",
-    "The task feels too big to start",
-    "I skip when the day gets busy"
-  ];
+  // Placeholder variety is per-goal (index cycles the list), so the lists live
+  // in i18n as one "|"-joined key and are split here rather than hardcoding
+  // English in the component.
+  const splitPh = (key: MessageKey) => t(key).split("|");
+  const actionPlaceholders = splitPh("onboarding.keystone.actionPlaceholders");
+  const whenPlaceholders = splitPh("onboarding.keystone.whenPlaceholders");
+  const obstaclePlaceholders = splitPh("onboarding.keystone.obstaclePlaceholders");
 
   const [drafts, setDrafts] = useState<Record<string, { time: string; when: string; action: string }>>(() => {
     const initial: Record<string, { time: string; when: string; action: string }> = {};
@@ -539,12 +537,12 @@ export function KeystoneSetup({ onNext }: { onNext: () => void }) {
           return (
             <Card key={goal.id}>
               <p className="mb-1 text-xs font-bold uppercase tracking-wider text-monk-muted">
-                Goal {index + 1}
+                {t("onboarding.keystone.goalN", { n: index + 1 })}
               </p>
               <p className="mb-3 font-semibold text-monk-text">{goal.title}</p>
               <div className="mb-4">
                 <label htmlFor={`keystone-time-${goal.id}`} className="mb-2 block text-sm font-medium text-monk-muted">
-                  Time (optional)
+                  {t("onboarding.keystone.timeLabel")}
                 </label>
                 <input
                   type="time"
@@ -556,14 +554,14 @@ export function KeystoneSetup({ onNext }: { onNext: () => void }) {
               </div>
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                 <TextInput
-                  label="When"
+                  label={t("onboarding.keystone.whenLabel")}
                   id={`keystone-when-${goal.id}`}
                   placeholder={whenPh}
                   value={d.when}
                   onChange={(event) => updateDraft(goal.id, "when", event.target.value)}
                 />
                 <TextInput
-                  label="I will"
+                  label={t("onboarding.keystone.actionLabel")}
                   id={`keystone-action-${goal.id}`}
                   placeholder={actionPh}
                   value={d.action}
