@@ -28,6 +28,27 @@ const keys = [
   "onboarding.goals.duplicate",
   "onboarding.goals.max",
   "onboarding.continue",
+  "onboarding.keystone.title",
+  "onboarding.keystone.subtitle",
+  "onboarding.keystone.why",
+  "onboarding.keystone.whyPlaceholder",
+  "onboarding.keystone.obstacleTitle",
+  "onboarding.keystone.obstacleBody",
+  "onboarding.keystone.obstacleLabel",
+  "onboarding.keystone.mitigationLabel",
+  "onboarding.keystone.mitigationPlaceholder",
+  "onboarding.keystone.needAction",
+  "onboarding.season.title",
+  "onboarding.season.subtitle",
+  "onboarding.season.capacityOver",
+  "onboarding.season.capacityTight",
+  "onboarding.season.d7Title",
+  "onboarding.season.d30Title",
+  "onboarding.season.d90Title",
+  "onboarding.season.customTitle",
+  "onboarding.season.customLabel",
+  "onboarding.season.durationLabel",
+  "onboarding.preview.highlight",
 ] as const;
 
 describe("Today, rest, and streak translations", () => {
@@ -50,6 +71,10 @@ describe("Today, rest, and streak translations", () => {
         ["season.streakPlural", { n: 5 }],
         ["season.bestStreak", { n: 7 }],
         ["onboarding.goals.keepLabel", { n: 2 }],
+        ["onboarding.season.capacityOver", { load: 12, available: 8 }],
+        ["onboarding.season.capacityTight", { load: 9, available: 10 }],
+        ["onboarding.season.startLabel", { date: "Sep 29" }],
+        ["onboarding.season.durationLabel", { n: 30 }],
       ] as const) {
         const output = t(lang, key, vars);
         for (const value of Object.values(vars)) expect(output).toContain(String(value));

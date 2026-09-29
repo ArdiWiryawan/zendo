@@ -325,10 +325,19 @@ export function GoalBrainDump({ onNext }: { onNext: () => void }) {
 }
 
 export function SeasonSetup({ onNext }: { onNext: () => void }) {
+  const t = useT();
   const { onboarding, setSeasonDuration, updateOnboarding } = useMonkStore();
   const [custom, setCustom] = useState(onboarding.customDurationDays?.toString() ?? "");
   const preset = onboarding.durationPreset;
   const result = validateSeasonDuration(onboarding.seasonDurationDays);
+  const weeklyTargetSum = onboarding.weeklyAllocations.reduce((sum, a) => sum + a.targetCount, 0);
+  const capacity = capacityCheck(onboarding.timeAudit.freeHoursPerDay, weeklyTargetSum);
+  const capacityNote = capacity.message
+    ? t(capacity.ok ? "onboarding.season.capacityTight" : "onboarding.season.capacityOver", {
+        load: capacity.loadHours.toFixed(0),
+        available: capacity.availableHours.toFixed(0)
+      })
+    : null;
 
   const selectPreset = (p: SeasonDurationPreset, days: number) => {
     updateOnboarding({ durationPreset: p });
@@ -338,38 +347,38 @@ export function SeasonSetup({ onNext }: { onNext: () => void }) {
   return (
     <>
       <ScreenIntro
-        title="Choose your season length"
-        subtitle="Your focus goals stay fixed until this season ends. Pick a time container that feels realistic."
+        title={t("onboarding.season.title")}
+        subtitle={t("onboarding.season.subtitle")}
       />
       <div className="space-y-3">
         <DurationCard
-          title="7 Days"
-          badge="Quick reset"
-          description="Best for restarting, testing a routine, or getting back on track."
+          title={t("onboarding.season.d7Title")}
+          badge={t("onboarding.season.d7Badge")}
+          description={t("onboarding.season.d7Body")}
           icon={FastForward}
           selected={preset === "7_days"}
           onClick={() => selectPreset("7_days", 7)}
         />
         <DurationCard
-          title="30 Days"
-          badge="Recommended"
-          description="Best for building consistency and daily momentum."
+          title={t("onboarding.season.d30Title")}
+          badge={t("onboarding.season.d30Badge")}
+          description={t("onboarding.season.d30Body")}
           icon={Calendar}
           selected={preset === "30_days"}
           onClick={() => selectPreset("30_days", 30)}
         />
         <DurationCard
-          title="90 Days"
-          badge="Deep season"
-          description="Best for meaningful progress on bigger life goals."
+          title={t("onboarding.season.d90Title")}
+          badge={t("onboarding.season.d90Badge")}
+          description={t("onboarding.season.d90Body")}
           icon={Mountain}
           selected={preset === "90_days"}
           onClick={() => selectPreset("90_days", 90)}
         />
         <DurationCard
-          title="Custom"
-          badge="Set your own length"
-          description="Choose the number of days that fits your season."
+          title={t("onboarding.season.customTitle")}
+          badge={t("onboarding.season.customBadge")}
+          description={t("onboarding.season.customBody")}
           icon={Sliders}
           selected={preset === "custom"}
           onClick={() => {
@@ -380,12 +389,12 @@ export function SeasonSetup({ onNext }: { onNext: () => void }) {
       </div>
       <div className={`mt-4 ${preset !== "custom" ? "opacity-50 pointer-events-none" : ""}`}>
         <label htmlFor="custom-season-days" className="mb-2 block text-xs font-bold uppercase tracking-wider text-monk-muted">
-          Custom days (min 7)
+          {t("onboarding.season.customLabel")}
         </label>
         <TextInput
           id="custom-season-days"
           inputMode="numeric"
-          placeholder="Custom days"
+          placeholder={t("onboarding.season.customPlaceholder")}
           value={custom}
           disabled={preset !== "custom"}
           onChange={(event) => {
@@ -397,14 +406,15 @@ export function SeasonSetup({ onNext }: { onNext: () => void }) {
       </div>
       <div className="mt-5">
         <SeasonPreviewCard
-          startLabel={`Today · ${formatHumanDate(onboarding.seasonStartDate)}`}
+          startLabel={t("onboarding.season.startLabel", { date: formatHumanDate(onboarding.seasonStartDate) })}
           endLabel={formatHumanDate(onboarding.seasonEndDate)}
-          durationLabel={`${onboarding.seasonDurationDays} days of focused progress`}
+          durationLabel={t("onboarding.season.durationLabel", { n: onboarding.seasonDurationDays })}
         />
       </div>
       <div className="mt-auto shrink-0 space-y-3 pt-5 sm:pt-8 pb-1">
+        {capacityNote ? <CalmAlert type="info" title={capacityNote} /> : null}
         {!result.valid ? <CalmAlert type="warning" title={result.message!} /> : null}
-        <PrimaryButton disabled={!result.valid} onClick={onNext}>Continue</PrimaryButton>
+        <PrimaryButton disabled={!result.valid} onClick={onNext}>{t("onboarding.continue")}</PrimaryButton>
       </div>
     </>
   );
@@ -430,6 +440,12 @@ export function KeystoneSetup({ onNext }: { onNext: () => void }) {
     "before dinner",
     "first thing after coffee"
   ];
+  const obstaclePlaceholders = [
+    "I feel too tired after work",
+    "I open my phone instead",
+    "The task feels too big to start",
+    "I skip when the day gets busy"
+  ];
 
   const [drafts, setDrafts] = useState<Record<string, { time: string; when: string; action: string }>>(() => {
     const initial: Record<string, { time: string; when: string; action: string }> = {};
@@ -439,6 +455,39 @@ export function KeystoneSetup({ onNext }: { onNext: () => void }) {
     });
     return initial;
   });
+
+  // WOOP: obstacle + if-then plan B, stored as an intention so createSeason can parse it back.
+  const [obstacleDrafts, setObstacleDrafts] = useState<Record<string, { whenDraft: string; actionDraft: string }>>(() => {
+    const initial: Record<string, { whenDraft: string; actionDraft: string }> = {};
+    goals.forEach((goal) => {
+      const parsed = parseIntention(onboarding.obstacleMitigations[goal.id] ?? "");
+      initial[goal.id] = { whenDraft: parsed.when || "", actionDraft: parsed.action || "" };
+    });
+    return initial;
+  });
+
+  useEffect(() => {
+    goals.forEach((goal) => {
+      setObstacleDrafts((prev) => {
+        if (prev[goal.id] !== undefined) return prev;
+        const parsed = parseIntention(onboarding.obstacleMitigations[goal.id] ?? "");
+        return { ...prev, [goal.id]: { whenDraft: parsed.when || "", actionDraft: parsed.action || "" } };
+      });
+    });
+  }, [goals, onboarding.obstacleMitigations]);
+
+  const updateObstacle = (goalId: string, field: "whenDraft" | "actionDraft", value: string) => {
+    setObstacleDrafts((prev) => {
+      const next = { ...prev, [goalId]: { ...prev[goalId], [field]: value } };
+      updateOnboarding({
+        obstacleMitigations: {
+          ...onboarding.obstacleMitigations,
+          [goalId]: formatIntention(next[goalId].whenDraft, next[goalId].actionDraft)
+        }
+      });
+      return next;
+    });
+  };
 
   useEffect(() => {
     goals.forEach((goal) => {
@@ -459,14 +508,16 @@ export function KeystoneSetup({ onNext }: { onNext: () => void }) {
   return (
     <>
       <ScreenIntro
-        title="What action moves each goal forward?"
-        subtitle="Set a time and cue for each action. Time for scheduling, cue for triggering."
+        title={t("onboarding.keystone.title")}
+        subtitle={t("onboarding.keystone.subtitle")}
       />
       <div className="space-y-4">
         {goals.map((goal, index) => {
           const d = drafts[goal.id] ?? { time: "", when: "", action: "" };
+          const od = obstacleDrafts[goal.id] ?? { whenDraft: "", actionDraft: "" };
           const actionPh = actionPlaceholders[index % actionPlaceholders.length];
           const whenPh = whenPlaceholders[index % whenPlaceholders.length];
+          const obstaclePh = obstaclePlaceholders[index % obstaclePlaceholders.length];
           const goalWhy = onboarding.goalWhys[goal.id] ?? "";
           return (
             <Card key={goal.id}>
@@ -504,9 +555,9 @@ export function KeystoneSetup({ onNext }: { onNext: () => void }) {
               </div>
               <p className="mt-2 text-xs text-monk-muted">{t("onboarding.keystone.hint")}</p>
               <TextInput
-                label="Why this goal (optional)"
+                label={t("onboarding.keystone.why")}
                 id={`goal-why-${goal.id}`}
-                placeholder="Because…"
+                placeholder={t("onboarding.keystone.whyPlaceholder")}
                 value={goalWhy}
                 onChange={(event) =>
                   updateOnboarding({
@@ -515,13 +566,37 @@ export function KeystoneSetup({ onNext }: { onNext: () => void }) {
                 }
                 className="mt-4"
               />
+              <div className="mt-5 rounded-xl border border-monk-border/70 bg-monk-soft/40 p-3">
+                <p className="text-xs font-bold uppercase tracking-wider text-monk-muted">
+                  {t("onboarding.keystone.obstacleTitle")}
+                </p>
+                <p className="mt-1 text-xs leading-5 text-monk-muted/90">
+                  {t("onboarding.keystone.obstacleBody")}
+                </p>
+                <TextInput
+                  label={t("onboarding.keystone.obstacleLabel")}
+                  id={`goal-obstacle-${goal.id}`}
+                  placeholder={obstaclePh}
+                  value={od.whenDraft}
+                  onChange={(event) => updateObstacle(goal.id, "whenDraft", event.target.value)}
+                  className="mt-3"
+                />
+                <TextInput
+                  label={t("onboarding.keystone.mitigationLabel")}
+                  id={`goal-mitigation-${goal.id}`}
+                  placeholder={t("onboarding.keystone.mitigationPlaceholder")}
+                  value={od.actionDraft}
+                  onChange={(event) => updateObstacle(goal.id, "actionDraft", event.target.value)}
+                  className="mt-3"
+                />
+              </div>
             </Card>
           );
         })}
       </div>
       <div className="mt-auto shrink-0 space-y-3 pt-5 sm:pt-8 pb-1">
-        {!result.valid ? <CalmAlert type="warning" title={result.message!} /> : null}
-        <PrimaryButton disabled={!result.valid} onClick={onNext}>Continue</PrimaryButton>
+        {!result.valid ? <CalmAlert type="warning" title={t("onboarding.keystone.needAction")} /> : null}
+        <PrimaryButton disabled={!result.valid} onClick={onNext}>{t("onboarding.continue")}</PrimaryButton>
       </div>
     </>
   );
@@ -553,6 +628,9 @@ export function TodayPreviewStep() {
           </div>
         ))}
       </Card>
+      <p className="mt-4 text-center text-xs leading-5 text-monk-muted">
+        {t("onboarding.preview.highlight")}
+      </p>
       <div className="mt-auto shrink-0 space-y-3 pt-5 sm:pt-8 pb-1">
         <PrimaryButton
           onClick={() => {
