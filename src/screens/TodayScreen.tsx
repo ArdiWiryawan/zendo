@@ -467,14 +467,14 @@ export function TodayScreen() {
   const preferCloseDay =
     !!todayPlan &&
     !dayClosed &&
-    (isDone || focusMinutes > 0 || (dayPart === "evening" && isRest));
+    (isDone || focusMinutes > 0);
 
   type TodayPrimaryKind =
     | "pick"
     | "resume"
+    | "rest"
     | "held"
     | "close"
-    | "rest"
     | "morning"
     | "intention"
     | "focus";
@@ -483,12 +483,12 @@ export function TodayScreen() {
     ? "pick"
     : activeSession
     ? "resume"
-    : dayClosed && (isDone || isRest)
+    : isRest
+    ? "rest"
+    : dayClosed && isDone
     ? "held"
     : !dayClosed && preferCloseDay
     ? "close"
-    : isRest
-    ? "rest"
     : !hasIntention
     ? "intention"
     : showMorningNudge
@@ -910,9 +910,18 @@ export function TodayScreen() {
                     </div>
                   </div>
                 ) : isRest ? (
-                  <p className="text-sm font-semibold leading-relaxed text-monk-text">
-                    {t("today.rechargeNote")}
-                  </p>
+                  todayPlan.highlight ? (
+                    <div className="space-y-1">
+                      <p className="text-xs font-medium text-monk-muted">{t("today.restRenewal.chosenRest")}</p>
+                      <p className="text-sm sm:text-base font-bold leading-relaxed text-monk-text">
+                        {todayPlan.highlight}
+                      </p>
+                    </div>
+                  ) : (
+                    <p className="text-sm font-semibold leading-relaxed text-monk-text">
+                      {t("today.rechargeNote")}
+                    </p>
+                  )
                 ) : (() => {
                   const shown = parseIntention(todayPlan.mainAction || "");
                   if (shown.when && shown.action) {
@@ -1098,18 +1107,7 @@ export function TodayScreen() {
               ) : null}
 
               {primaryKind === "held" ? (
-                isRest ? (
-                  closeDaySkipped && !hasReflection ? (
-                    <Card className="border-monk-border bg-monk-soft/50 p-5 text-center">
-                      <p className="font-semibold text-monk-text">{t("today.closeDay.skippedTitle")}</p>
-                      <p className="mt-1 text-sm text-monk-muted">{t("today.closeDay.skippedBody")}</p>
-                    </Card>
-                  ) : (
-                    <div className="rounded-2xl border border-monk-success bg-monk-success-soft px-4 py-2.5 text-center text-xs font-medium text-monk-success">
-                      {t("today.restHeldLogged")}
-                    </div>
-                  )
-                ) : closeDaySkipped && !hasReflection ? (
+                closeDaySkipped && !hasReflection ? (
                   <Card className="border-monk-border bg-monk-soft/50 p-5 text-center">
                     <p className="font-semibold text-monk-text">{t("today.closeDay.skippedTitle")}</p>
                     <p className="mt-1 text-sm text-monk-muted">{t("today.closeDay.skippedBody")}</p>
@@ -1131,26 +1129,12 @@ export function TodayScreen() {
               {primaryKind === "close" ? (
                 <>
                   <CloseDayCard onSkip={() => setCloseDaySkipped(true)} />
-                  {!isDone && !isRest ? (
+                  {!isDone ? (
                     <div className="flex justify-center">
                       <GhostButton onClick={() => navigate(routes.focus)}>
                         {t("today.primary.continueFocus")}
                       </GhostButton>
                     </div>
-                  ) : isRest ? (
-                    <Card className="border-monk-rest/25 bg-monk-rest-soft/30 p-5">
-                      <div className="flex items-start gap-3">
-                        <div className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-monk-surface text-monk-rest">
-                          <Moon size={18} strokeWidth={1.5} />
-                        </div>
-                        <div>
-                          <p className="font-semibold">{t("today.restPathTitle")}</p>
-                          <p className="mt-1 text-sm leading-6 text-monk-muted">
-                            {t("today.restPathBody")}
-                          </p>
-                        </div>
-                      </div>
-                    </Card>
                   ) : null}
                 </>
               ) : null}
@@ -1158,9 +1142,20 @@ export function TodayScreen() {
               {primaryKind === "rest" ? (
                 <>
                   <FeelGoodRestCanvas onOpenWeeklyReview={() => setWeeklyReviewModalOpen(true)} />
-                  {!dayClosed ? (
+                  {dayClosed ? (
+                    closeDaySkipped && !hasReflection ? (
+                      <Card className="border-monk-border bg-monk-soft/50 p-5 text-center">
+                        <p className="font-semibold text-monk-text">{t("today.closeDay.skippedTitle")}</p>
+                        <p className="mt-1 text-sm text-monk-muted">{t("today.closeDay.skippedBody")}</p>
+                      </Card>
+                    ) : (
+                      <div className="rounded-2xl border border-monk-success bg-monk-success-soft px-4 py-2.5 text-center text-xs font-medium text-monk-success">
+                        {t("today.restHeldLogged")}
+                      </div>
+                    )
+                  ) : (
                     <CloseDayCard onSkip={() => setCloseDaySkipped(true)} />
-                  ) : null}
+                  )}
                 </>
               ) : null}
 
