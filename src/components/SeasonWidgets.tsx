@@ -8,7 +8,7 @@ import {
 } from "./ui";
 import { CORE_VALUES } from "../constants/whyValues";
 import {
-  formatHumanDate,
+  parseLocalDateKey,
   getDaysLeft,
   getDaysPassed,
   getSeasonProgress,
@@ -22,6 +22,7 @@ import type { SeasonWhy } from "../types/app";
 export function SeasonProgressCard({ compact = false }: { compact?: boolean }) {
   const store = useMonkStore();
   const t = useT();
+  const lang = useLanguage();
   const { activeSeason } = store;
   if (!activeSeason) return null;
   const daysPassed = getDaysPassed(activeSeason.startDate);
@@ -33,15 +34,15 @@ export function SeasonProgressCard({ compact = false }: { compact?: boolean }) {
     <Card className="bg-monk-surface p-4">
       <div className="flex items-center justify-between gap-3">
         <p className="font-semibold truncate">{activeSeason.name}</p>
-        <p className="shrink-0 font-mono text-xs text-monk-accent">{daysLeft}d left</p>
+        <p className="shrink-0 font-mono text-xs text-monk-accent">{t("season.daysLeft", { n: daysLeft })}</p>
       </div>
       <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-monk-border">
         <div className="h-full rounded-full bg-monk-accent transition-all" style={{ width: `${progress}%` }} />
       </div>
       <p className="mt-3 text-sm text-monk-muted">
         {compact
-          ? `Day ${daysPassed} · ${daysLeft}d left`
-          : `Day ${daysPassed} of ${activeSeason.durationDays} · ends ${formatHumanDate(activeSeason.endDate)}`}
+          ? `${t("season.dayNumber", { n: daysPassed })} · ${t("season.daysLeft", { n: daysLeft })}`
+          : `${t("season.dayOf", { day: daysPassed, total: activeSeason.durationDays })} · ${t("season.ends", { date: parseLocalDateKey(activeSeason.endDate).toLocaleDateString(lang === "id" ? "id-ID" : "en-US", { month: "short", day: "numeric" }) })}`}
       </p>
       <p className="mt-2 flex items-center gap-1.5 text-xs text-monk-muted">
         <span className="font-medium text-monk-text-soft">
@@ -72,6 +73,7 @@ export function SeasonProgressCard({ compact = false }: { compact?: boolean }) {
 
 /** One-line why for friction moments (focus start, relapse). */
 export function FrictionWhy({ className = "" }: { className?: string }) {
+  const t = useT();
   const why = useMonkStore((s) => s.activeSeason?.why);
   const intrinsicWhy = why?.why || why?.identity;
   const antiWhy = why?.antiWhy || why?.consequenceOfInaction;
@@ -80,7 +82,7 @@ export function FrictionWhy({ className = "" }: { className?: string }) {
     <div className={`rounded-xl border border-monk-accent/20 bg-monk-accent-soft/30 px-3.5 py-3 ${className}`}>
       <div className="flex items-center gap-1.5">
         <span className="h-1.5 w-1.5 rounded-full bg-monk-accent animate-pulse" />
-        <p className="text-[10px] font-bold uppercase tracking-widest text-monk-accent">Remember why</p>
+        <p className="text-[10px] font-bold uppercase tracking-widest text-monk-accent">{t("season.rememberWhy")}</p>
       </div>
       {intrinsicWhy ? (
         <p className="mt-1 text-sm font-semibold leading-5 text-monk-text line-clamp-2">{intrinsicWhy}</p>

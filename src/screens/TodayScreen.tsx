@@ -6,7 +6,7 @@ import { hapticPress } from "../lib/haptics";
 import { useMonkStore } from "../store/useMonkStore";
 import { useT } from "../i18n";
 import { useCalmToast } from "../components/ui";
-import { getTodayDateString, addDaysToDate, getSeasonDayLabel, getDaysLeft } from "../lib/date";
+import { getTodayDateString, addDaysToDate, getDaysPassed, getDaysLeft } from "../lib/date";
 import { CORE_VALUES } from "../constants/whyValues";
 import { routes } from "../constants/routes";
 import { FOCUS_PRESETS, getPresetLabel } from "../constants/focusPresets";
@@ -575,7 +575,7 @@ export function TodayScreen() {
     <>
       <PageHeader
         title={t("today.title")}
-        subtitle={`${getSeasonDayLabel(season)} · ${t("today.daysLeft", { n: daysLeft })}`}
+        subtitle={`${t("today.seasonDay", { day: Math.min(season.durationDays, getDaysPassed(season.startDate, today)), total: season.durationDays })} · ${t("today.daysLeft", { n: daysLeft })}`}
         rightSlot={<SettingsLink onOpenPro={() => setProModalOpen(true)} />}
       />
       <div className="space-y-5">

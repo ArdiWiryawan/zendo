@@ -183,7 +183,7 @@ function StreakConsistencyCard() {
                 {streak.count}
               </span>
               <span className="text-base font-bold text-white tracking-tight">
-                {lang === "id" ? "Hari Streak" : "Days Streak"}
+                {t("timeline.streak.dayUnit")}
               </span>
             </div>
             {streak.best > streak.count ? (
