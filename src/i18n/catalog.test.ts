@@ -15,6 +15,19 @@ const keys = [
   "season.streak",
   "season.streakPlural",
   "season.bestStreak",
+  "onboarding.goals.hint",
+  "onboarding.goals.dump.title",
+  "onboarding.goals.dump.subtitle",
+  "onboarding.goals.pick.title",
+  "onboarding.goals.pick.subtitle",
+  "onboarding.goals.add",
+  "onboarding.goals.placeholder",
+  "onboarding.goals.keepLabel",
+  "onboarding.goals.needMin",
+  "onboarding.goals.needOne",
+  "onboarding.goals.duplicate",
+  "onboarding.goals.max",
+  "onboarding.continue",
 ] as const;
 
 describe("Today, rest, and streak translations", () => {
@@ -36,6 +49,7 @@ describe("Today, rest, and streak translations", () => {
         ["rest.questionOf", { current: 2, total: 4 }],
         ["season.streakPlural", { n: 5 }],
         ["season.bestStreak", { n: 7 }],
+        ["onboarding.goals.keepLabel", { n: 2 }],
       ] as const) {
         const output = t(lang, key, vars);
         for (const value of Object.values(vars)) expect(output).toContain(String(value));

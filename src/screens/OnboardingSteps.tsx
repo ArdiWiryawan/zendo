@@ -224,7 +224,7 @@ export function GoalBrainDump({ onNext }: { onNext: () => void }) {
   const canContinue = dumpResult.valid && narrowResult.valid;
   return (
     <>
-      <ScreenIntro title="What feels important in this season?" subtitle="Write 3–10 possible goals first, then keep the 1–3 that deserve this season's energy." />
+      <ScreenIntro title={t("onboarding.goals.dump.title")} subtitle={t("onboarding.goals.dump.subtitle")} />
       <div className="mb-3 flex items-center justify-between">
         <p className="text-xs text-monk-muted">{t("onboarding.goals.hint")}</p>
         <span className="rounded-full bg-monk-soft px-2.5 py-1 text-xs font-bold text-monk-muted">
@@ -245,7 +245,7 @@ export function GoalBrainDump({ onNext }: { onNext: () => void }) {
             >
               <TextInput
                 aria-label={`Goal ${index + 1}`}
-                placeholder="Example: Build a study routine, finish a course…"
+                placeholder={t("onboarding.goals.placeholder")}
                 value={goal.title}
                 maxLength={100}
                 onChange={(event) => updateGoalDraft(goal.id, event.target.value.slice(0, 100))}
@@ -266,18 +266,18 @@ export function GoalBrainDump({ onNext }: { onNext: () => void }) {
       </div>
       {onboarding.goalDrafts.length < 10 ? (
         <GhostButton className="mt-4" onClick={addGoalDraft}>
-          <span className="inline-flex items-center gap-2"><Plus size={16} /> Add goal</span>
+          <span className="inline-flex items-center gap-2"><Plus size={16} /> {t("onboarding.goals.add")}</span>
         </GhostButton>
       ) : null}
 
       {showNarrow ? (
         <div className="mt-8">
           <ScreenIntro
-            title="What deserves your energy this season?"
-            subtitle="Pick 1–3 goals to keep. Unselected goals stay saved for later seasons."
+            title={t("onboarding.goals.pick.title")}
+            subtitle={t("onboarding.goals.pick.subtitle")}
           />
           <p className="mb-4 text-xs font-bold uppercase tracking-wider text-monk-muted">
-            Keep this season · {selectedCount}/3 selected
+            {t("onboarding.goals.keepLabel", { n: selectedCount })}
           </p>
           <div className="space-y-3">
             <AnimatePresence>
@@ -305,9 +305,20 @@ export function GoalBrainDump({ onNext }: { onNext: () => void }) {
         </div>
       ) : null}
       <div className="mt-auto shrink-0 space-y-3 pt-5 sm:pt-8 pb-1">
-        {dumpResult.valid && !narrowResult.valid ? <CalmAlert type="warning" title={narrowResult.message!} /> : null}
-        {!dumpResult.valid ? <CalmAlert type="warning" title={dumpResult.message!} /> : null}
-        <PrimaryButton disabled={!canContinue} onClick={onNext}>Continue</PrimaryButton>
+        {dumpResult.valid && !narrowResult.valid ? <CalmAlert type="warning" title={t("onboarding.goals.needOne")} /> : null}
+        {!dumpResult.valid ? (
+          <CalmAlert
+            type="warning"
+            title={
+              dumpResult.message?.includes("already exists")
+                ? t("onboarding.goals.duplicate")
+                : dumpResult.message?.includes("maximum")
+                  ? t("onboarding.goals.max")
+                  : t("onboarding.goals.needMin")
+            }
+          />
+        ) : null}
+        <PrimaryButton disabled={!canContinue} onClick={onNext}>{t("onboarding.continue")}</PrimaryButton>
       </div>
     </>
   );
