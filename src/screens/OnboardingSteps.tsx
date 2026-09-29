@@ -519,6 +519,7 @@ export function KeystoneSetup({ onNext }: { onNext: () => void }) {
           const whenPh = whenPlaceholders[index % whenPlaceholders.length];
           const obstaclePh = obstaclePlaceholders[index % obstaclePlaceholders.length];
           const goalWhy = onboarding.goalWhys[goal.id] ?? "";
+          const goalOutcome = onboarding.goalDesiredOutcomes?.[goal.id] ?? "";
           return (
             <Card key={goal.id}>
               <p className="mb-1 text-xs font-bold uppercase tracking-wider text-monk-muted">
@@ -565,6 +566,18 @@ export function KeystoneSetup({ onNext }: { onNext: () => void }) {
                   })
                 }
                 className="mt-4"
+              />
+              <TextInput
+                label={t("onboarding.keystone.outcome")}
+                id={`goal-outcome-${goal.id}`}
+                placeholder={t("onboarding.keystone.outcomePlaceholder")}
+                value={goalOutcome}
+                onChange={(event) =>
+                  updateOnboarding({
+                    goalDesiredOutcomes: { ...onboarding.goalDesiredOutcomes, [goal.id]: event.target.value }
+                  })
+                }
+                className="mt-3"
               />
               <div className="mt-5 rounded-xl border border-monk-border/70 bg-monk-soft/40 p-3">
                 <p className="text-xs font-bold uppercase tracking-wider text-monk-muted">

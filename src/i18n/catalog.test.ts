@@ -32,6 +32,8 @@ const keys = [
   "onboarding.keystone.subtitle",
   "onboarding.keystone.why",
   "onboarding.keystone.whyPlaceholder",
+  "onboarding.keystone.outcome",
+  "onboarding.keystone.outcomePlaceholder",
   "onboarding.keystone.obstacleTitle",
   "onboarding.keystone.obstacleBody",
   "onboarding.keystone.obstacleLabel",

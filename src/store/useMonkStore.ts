@@ -159,6 +159,7 @@ type MonkActions = {
       keystoneAction?: string;
       weeklyTargetCount?: number;
       why?: string;
+      desiredOutcome?: string;
       track?: string;
       tasks?: GoalTask[];
       whenWhere?: string;
@@ -696,7 +697,9 @@ export const useMonkStore = create<MonkStore>()(
         },
         onboarding: {
           ...createDefaultOnboarding(),
-          ...stored.onboarding
+          ...stored.onboarding,
+          // Backfill for persisted states predating goalDesiredOutcomes.
+          goalDesiredOutcomes: stored.onboarding?.goalDesiredOutcomes ?? {}
         },
         // Seed habit cues on first run / legacy states (empty array → defaults).
         // Deduplicate by type and enforce deterministic IDs so duplicates never persist.
@@ -959,6 +962,7 @@ export const useMonkStore = create<MonkStore>()(
       title: draft.title.trim(),
       keystoneAction: onboarding.keystoneActions[draft.id]?.trim() || "Stay with one thing",
       why: onboarding.goalWhys[draft.id]?.trim() || undefined,
+      desiredOutcome: onboarding.goalDesiredOutcomes?.[draft.id]?.trim() || undefined,
       obstacle: parseIntention(onboarding.obstacleMitigations[draft.id] ?? "")?.when || undefined,
       obstacleMitigation: parseIntention(onboarding.obstacleMitigations[draft.id] ?? "")?.action || undefined,
       priority: (index + 1) as 1 | 2 | 3,
@@ -1919,11 +1923,16 @@ export const useMonkStore = create<MonkStore>()(
   startNewSeason: () => {
     const state = get();
     const timestamp = nowIso();
+    // Defensive: cap total seasons at 3 (active + archived) so local history
+    // stays bounded. Oldest past season drops when full; active data preserved.
+    const MAX_SEASONS = 3;
+    const nextPast = state.activeSeason ? archiveIntoPastSeasons(state, { ...state.activeSeason, status: "archived", updatedAt: timestamp }) : state.pastSeasons;
+    const trimmedPast = nextPast.length > MAX_SEASONS - 1 ? nextPast.slice(nextPast.length - (MAX_SEASONS - 1)) : nextPast;
     set({
       activeSeason: state.activeSeason
         ? { ...state.activeSeason, status: "archived", updatedAt: timestamp }
         : null,
-      pastSeasons: state.activeSeason ? archiveIntoPastSeasons(state, state.activeSeason) : state.pastSeasons,
+      pastSeasons: trimmedPast,
       userProfile: state.userProfile
         ? { ...state.userProfile, onboardingCompleted: false, activeSeasonId: undefined }
         : null,
@@ -2003,6 +2012,7 @@ export const useMonkStore = create<MonkStore>()(
         keystoneAction: blueprint.keystoneAction !== undefined ? (blueprint.keystoneAction.trim() || g.keystoneAction) : g.keystoneAction,
         weeklyTargetCount: blueprint.weeklyTargetCount !== undefined ? Math.max(1, Math.min(7, blueprint.weeklyTargetCount)) : g.weeklyTargetCount,
         why: blueprint.why !== undefined ? (blueprint.why.trim() || undefined) : g.why,
+        desiredOutcome: blueprint.desiredOutcome !== undefined ? (blueprint.desiredOutcome.trim() || undefined) : g.desiredOutcome,
         track: blueprint.track !== undefined ? (blueprint.track.trim() || undefined) : g.track,
         tasks: blueprint.tasks !== undefined ? blueprint.tasks : g.tasks,
         whenWhere: blueprint.whenWhere !== undefined ? (blueprint.whenWhere.trim() || undefined) : g.whenWhere,

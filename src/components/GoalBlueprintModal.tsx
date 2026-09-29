@@ -44,6 +44,7 @@ export function GoalBlueprintModal({ goalId, isOpen, onClose }: GoalBlueprintMod
   // Additional settings
   const [track, setTrack] = useState("");
   const [why, setWhy] = useState("");
+  const [desiredOutcome, setDesiredOutcome] = useState("");
   const [weeklyTargetCount, setWeeklyTargetCount] = useState(4);
   const [obstacleMitigation, setObstacleMitigation] = useState("");
   const [error, setError] = useState("");
@@ -58,6 +59,7 @@ export function GoalBlueprintModal({ goalId, isOpen, onClose }: GoalBlueprintMod
       setDefinitionOfDone(goal.definitionOfDone || "");
       setTrack(goal.track || "");
       setWhy(goal.why || "");
+      setDesiredOutcome(goal.desiredOutcome || "");
       setWeeklyTargetCount(goal.weeklyTargetCount || 4);
       setObstacleMitigation(goal.obstacleMitigation || "");
       setShowTemplates(false);
@@ -110,6 +112,7 @@ export function GoalBlueprintModal({ goalId, isOpen, onClose }: GoalBlueprintMod
       definitionOfDone: definitionOfDone.trim() || undefined,
       weeklyTargetCount,
       why: why.trim() || undefined,
+      desiredOutcome: desiredOutcome.trim() || undefined,
       obstacleMitigation: obstacleMitigation.trim() || undefined
     });
 
@@ -244,6 +247,13 @@ export function GoalBlueprintModal({ goalId, isOpen, onClose }: GoalBlueprintMod
                   className="bg-monk-surface text-sm font-semibold"
                 />
                 <p className="text-[11px] text-monk-muted">{t("blueprint.pillar1Desc")}</p>
+                <TextInput
+                  value={desiredOutcome}
+                  onChange={(e) => setDesiredOutcome(e.target.value)}
+                  placeholder={t("blueprint.outcomePlaceholder")}
+                  className="bg-monk-surface text-sm"
+                  aria-label={t("blueprint.outcomeLabel")}
+                />
               </div>
 
               {/* Goal Track / Focus Area */}

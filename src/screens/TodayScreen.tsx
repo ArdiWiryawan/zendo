@@ -787,6 +787,11 @@ export function TodayScreen() {
                       {t("today.identityBecoming", { why: goal.why })}
                     </p>
                   ) : null}
+                  {!isRest && goal?.desiredOutcome ? (
+                    <p className="mt-1 text-xs sm:text-sm text-monk-muted line-clamp-2">
+                      {t("today.outcomeLine", { outcome: goal.desiredOutcome })}
+                    </p>
+                  ) : null}
                 </div>
 
                 {/* Big Tactile Completion Button */}
@@ -1379,7 +1384,7 @@ export function TodayScreen() {
                 <summary className="flex cursor-pointer list-none items-center justify-between p-4 text-sm font-semibold text-monk-muted hover:text-monk-text marker:content-none [&::-webkit-details-marker]:hidden">
                   <span className="flex items-center gap-2">
                     <Clock size={15} className="text-monk-accent" />
-                    <span>{t("planning.modalTitle")}</span>
+                    <span>{t("today.agendaHeading")}</span>
                     {todayPlan.timeBlocks && todayPlan.timeBlocks.length > 0 ? (
                       <span className="rounded-full bg-monk-soft px-2 py-0.5 font-mono text-[11px] text-monk-accent">
                         {todayPlan.timeBlocks.length}

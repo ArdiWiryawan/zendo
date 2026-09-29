@@ -99,6 +99,8 @@ export type Goal = {
   tasks?: GoalTask[];
   /** Why this goal matters — short personal reason. */
   why?: string;
+  /** Desired outcome: what gets better if this goal is finished. */
+  desiredOutcome?: string;
   /** Implementation intention context (When & Where: e.g. "Tomorrow 08:30 at work desk") */
   whenWhere?: string;
   /** Definition of done / clear completion criteria */
@@ -490,6 +492,7 @@ export type OnboardingState = {
   energyMap: string;
   pastObstacles: string[];
   goalWhys: Record<string, string>;
+  goalDesiredOutcomes: Record<string, string>;
   goalValueMapping: Record<string, string[]>;
   obstacleMitigations: Record<string, string>;
 };

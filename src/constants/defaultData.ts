@@ -87,6 +87,7 @@ export function createDefaultOnboarding(): OnboardingState {
     energyMap: "",
     pastObstacles: [],
     goalWhys: {},
+    goalDesiredOutcomes: {},
     goalValueMapping: {},
     obstacleMitigations: {}
   };

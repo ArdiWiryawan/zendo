@@ -72,6 +72,7 @@ export function SeasonEndScreen() {
         }}>
           {t("seasonEnd.startNew")}
         </PrimaryButton>
+        <p className="text-center text-xs text-monk-muted">{t("seasonEnd.seasonCap")}</p>
         <SecondaryButton onClick={() => {
           store.archiveSeason();
           navigate(routes.onboardingWelcome);
