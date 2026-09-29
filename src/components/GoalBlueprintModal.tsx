@@ -249,12 +249,12 @@ export function GoalBlueprintModal({ goalId, isOpen, onClose }: GoalBlueprintMod
               {/* Goal Track / Focus Area */}
               <div className="rounded-2xl border border-monk-border bg-monk-soft/30 p-3.5 space-y-2">
                 <label className="text-xs font-bold uppercase tracking-wider text-monk-muted block">
-                  Jalur Fokus / Track (Opsional)
+                  {t("blueprint.trackLabel")}
                 </label>
                 <TextInput
                   value={track}
                   onChange={(e) => setTrack(e.target.value)}
-                  placeholder="Misal: 🎓 Magang, ▶️ YouTube, 🚀 Bisnis, 🌿 Personal..."
+                  placeholder={t("blueprint.trackPlaceholder")}
                   className="bg-monk-surface text-sm"
                 />
                 <div className="flex flex-wrap gap-1.5 pt-0.5">

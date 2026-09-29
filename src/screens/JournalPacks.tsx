@@ -63,7 +63,6 @@ function PackList({
 }) {
   const store = useMonkStore();
   const t = useT();
-  const lang = useLanguage();
   const purchased = store.purchasedPackIds;
   const isPro = store.isPro;
 
@@ -115,12 +114,10 @@ function PackList({
             </div>
             <div>
               <p className="text-xs font-bold text-monk-text">
-                {lang === "id" ? "Buka Semua 6+ Guided Reflection Packs" : "Unlock All 6+ Guided Reflection Packs"}
+                {t("packs.proUpsellTitle")}
               </p>
               <p className="text-[11px] text-monk-muted">
-                {lang === "id"
-                  ? "Akses tak terbatas dengan Zendo Pro Lifetime (Mulai Rp 99.000 sekali bayar)"
-                  : "Unlimited access with Zendo Pro Lifetime (From Rp 99.000 once)"}
+                {t("packs.proUpsellDesc")}
               </p>
             </div>
           </div>
@@ -130,7 +127,7 @@ function PackList({
             className="shrink-0 rounded-monk bg-monk-accent px-3.5 py-1.5 text-xs font-bold text-monk-bg shadow-sm transition active:scale-95 hover:opacity-90 flex items-center gap-1"
           >
             <Sparkles size={12} />
-            {lang === "id" ? "Buka Zendo Pro" : "Get Zendo Pro"}
+            {t("packs.proUpsellCta")}
           </button>
         </div>
       )}
@@ -467,7 +464,6 @@ function PurchaseModal({
 }) {
   const store = useMonkStore();
   const t = useT();
-  const lang = useLanguage();
   const pack = store.journalPacks.find((p) => p.id === packId);
   const [processing, setProcessing] = useState(false);
   const [demo, setDemo] = useState(false);
@@ -566,9 +562,7 @@ function PurchaseModal({
                 className="w-full mb-4 rounded-monk border border-monk-accent/40 bg-monk-accent-soft/40 p-2.5 text-center text-xs font-bold text-monk-accent hover:bg-monk-accent-soft transition flex items-center justify-center gap-1.5"
               >
                 <Crown size={14} />
-                {lang === "id"
-                  ? "Atau Buka Semua Pack via Zendo Pro (Rp 99.000)"
-                  : "Or Unlock All Packs via Zendo Pro (Rp 99.000)"}
+                {t("packs.proUnlockAll")}
               </button>
             )}
 

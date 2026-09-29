@@ -23,6 +23,7 @@ import {
 } from "../components/ui";
 import { ZendoProModal } from "../components/ZendoProModal";
 import { WeeklyReviewModal } from "../components/WeeklyReviewModal";
+import { RestGlyph } from "../components/RestGlyph";
 import type { EnergyLevel, TimelineStatus } from "../types/app";
 
 export function WeekScreen() {
@@ -561,7 +562,7 @@ function WeekReviewCard({
             <div className="rounded-xl border border-monk-border/50 bg-monk-soft/30 p-3">
               <p className="text-[11px] font-semibold text-monk-muted">{t("today.restRenewal.chosenRest")}</p>
               <p className="mt-1 text-xs font-bold text-monk-text flex items-center gap-1.5">
-                <span>{savedReview.restActivity.icon || "🌿"}</span>
+                <RestGlyph name={savedReview.restActivity.icon || "Trees"} size={14} className="text-monk-rest" />
                 <span>{savedReview.restActivity.title}</span>
               </p>
             </div>

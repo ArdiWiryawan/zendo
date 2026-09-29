@@ -18,7 +18,7 @@ import {
 import { useMonkStore } from "../store/useMonkStore";
 import { PrimaryButton, SecondaryButton, GhostButton, useCalmToast, useModalA11y } from "./ui";
 import { playZenBell } from "../lib/audio";
-import { useLanguage } from "../i18n";
+import { useLanguage, useT } from "../i18n";
 import {
   DEFAULT_STATIC_QRIS,
   getSavedMerchantWhatsApp,
@@ -74,6 +74,7 @@ export function ZendoProModal({ isOpen, onClose }: ZendoProModalProps) {
   const store = useMonkStore();
   const toast = useCalmToast();
   const lang = useLanguage();
+  const t = useT();
   const isId = lang === "id";
 
   const [selectedTier, setSelectedTier] = useState<string>("tea");
@@ -89,7 +90,7 @@ export function ZendoProModal({ isOpen, onClose }: ZendoProModalProps) {
     : SUPPORT_TIERS.find((t) => t.id === selectedTier)?.amount || 25000;
 
   const currentTierTitle = isCustom
-    ? `Donasi Kustom (Rp ${currentAmount.toLocaleString("id-ID")})`
+    ? t("pro.customAmount", { amount: currentAmount.toLocaleString("id-ID") })
     : (isId
         ? SUPPORT_TIERS.find((t) => t.id === selectedTier)?.titleId
         : SUPPORT_TIERS.find((t) => t.id === selectedTier)?.titleEn) || "Dukungan Zendo";

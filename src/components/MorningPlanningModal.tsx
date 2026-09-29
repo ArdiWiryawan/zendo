@@ -21,7 +21,7 @@ import {
   RotateCw
 } from "lucide-react";
 import { useMonkStore } from "../store/useMonkStore";
-import { useT, useLanguage } from "../i18n";
+import { useT, useLanguage, type MessageKey } from "../i18n";
 import { selectTodayPlan } from "../store/selectors";
 import { getTodayDateString } from "../lib/date";
 import { hapticPress } from "../lib/haptics";
@@ -39,7 +39,7 @@ interface MorningPlanningModalProps {
 
 const CATEGORY_CONFIG: Record<
   TimeBlockCategory,
-  { labelKey: string; icon: typeof Zap; colorClass: string; bgClass: string; borderClass: string }
+  { labelKey: MessageKey; icon: typeof Zap; colorClass: string; bgClass: string; borderClass: string }
 > = {
   deep_work: {
     labelKey: "planning.catDeep",
@@ -387,7 +387,7 @@ export function MorningPlanningModal({
                     setTimerRunning(false);
                   }}
                   className="grid h-7 w-7 place-items-center rounded-xl border border-monk-border bg-monk-surface text-monk-muted hover:text-monk-text transition"
-                  title="Reset timer"
+                  title={t("planning.resetTimer")}
                 >
                   <RotateCcw size={12} />
                 </button>
@@ -476,7 +476,7 @@ export function MorningPlanningModal({
                   + {t("planning.addBlock")}
                 </span>
                 <span className="text-[11px] text-monk-muted">
-                  Kustom penuh tanpa batasan preset
+                  {t("planning.customUnlimited")}
                 </span>
               </div>
 
@@ -558,7 +558,7 @@ export function MorningPlanningModal({
                         }`}
                       >
                         <Icon size={12} />
-                        <span>{t(cfg.labelKey as any)}</span>
+                        <span>{t(cfg.labelKey)}</span>
                       </button>
                     );
                   })}
@@ -637,7 +637,7 @@ export function MorningPlanningModal({
                                 ({durationText})
                               </span>
                               <span className={`rounded-md px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider ${cfg.bgClass} ${cfg.colorClass}`}>
-                                {block.customCategory || t(cfg.labelKey as any)}
+                                {block.customCategory || t(cfg.labelKey)}
                               </span>
                             </div>
                             <p className="text-xs font-semibold text-monk-text truncate mt-0.5">

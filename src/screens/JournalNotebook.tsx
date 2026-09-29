@@ -1,11 +1,11 @@
 import { useState, useMemo, useRef, useEffect, useCallback } from "react";
-import { useSearchParams, useBlocker, useNavigate } from "react-router-dom";
+import { useSearchParams, useBlocker } from "react-router-dom";
 import { useMonkStore } from "../store/useMonkStore";
 import { PrimaryButton, SecondaryButton, GhostButton, CalmDialog, useCalmToast } from "../components/ui";
 import { createId } from "../lib/ids";
 import { nowIso, getTodayDateString, addDaysToDate } from "../lib/date";
 import type { NotebookCategory, NotebookEntry, ParaType } from "../types/app";
-import { Search, Plus, Pin, PinOff, Trash2, ArrowLeft, X, BookOpen, ImagePlus, Camera, MoreVertical, Pencil, Maximize2, Minimize2, ListTodo, List, ListOrdered, Heading, Bold, Italic, Quote, Crown, Sparkles, Copy, Link2, ArrowRight, Check, FileText, Sun, Moon, Target, PenLine, SlidersHorizontal } from "lucide-react";
+import { Search, Plus, Pin, PinOff, Trash2, ArrowLeft, X, BookOpen, ImagePlus, Camera, MoreVertical, Pencil, Maximize2, Minimize2, ListTodo, List, ListOrdered, Heading, Bold, Italic, Quote, Crown, Sparkles, Copy, Link2, ArrowRight, FileText, Sun, Moon, Target, PenLine, SlidersHorizontal } from "lucide-react";
 import { useT, useLanguage, type MessageKey } from "../i18n";
 import { hapticPress } from "../lib/haptics";
 import { autolistMarker, groupPhotoRuns, renderBodyMarkdown } from "../lib/notebookMarkdown";
@@ -14,8 +14,7 @@ import { IMG_MARKER, compressImage, putImage, deleteImage, matchImageMarkers } f
 import { InlinePhoto, PhotoLightbox, photoIdsInBody, useObjectUrl } from "../components/NotebookImages";
 import { ZendoProModal } from "../components/ZendoProModal";
 import { findBacklinks, findRelatedNotes } from "../lib/notebookLinks";
-import { selectJournalEntryForToday, selectActiveGoals } from "../store/selectors";
-import { routes } from "../constants/routes";
+import { selectActiveGoals } from "../store/selectors";
 import {
   NOTEBOOK_DRAFT_KEY,
   clearNotebookDraft,
@@ -328,7 +327,6 @@ export default function JournalNotebook({ onEditingChange, initialEntryId }: { o
   const store = useMonkStore();
   const t = useT();
   const lang = useLanguage();
-  const navigate = useNavigate();
   const dateLocale = lang === "id" ? "id-ID" : "en-US";
   const entries = store.notebookEntries;
   const categories = store.notebookCategories;
@@ -426,7 +424,10 @@ export default function JournalNotebook({ onEditingChange, initialEntryId }: { o
 
   const handleDuplicate = (entry: NotebookEntry, e?: React.MouseEvent) => {
     e?.stopPropagation();
-    const duplicated = store.duplicateNotebookEntry(entry.id);
+    const duplicated = store.duplicateNotebookEntry(entry.id, {
+      copySuffix: t("notebook.copySuffix"),
+      untitledCopyTitle: t("notebook.untitledCopy")
+    });
     if (duplicated) {
       toast.show(t("notebook.duplicateSuccess"));
       hapticPress("light");
@@ -453,7 +454,10 @@ export default function JournalNotebook({ onEditingChange, initialEntryId }: { o
         onEdit={() => openEdit(liveEntry)}
         onOpenNote={(target) => setReadEntry(target)}
         onDuplicate={(entryToDup) => {
-          const duplicated = store.duplicateNotebookEntry(entryToDup.id);
+          const duplicated = store.duplicateNotebookEntry(entryToDup.id, {
+            copySuffix: t("notebook.copySuffix"),
+            untitledCopyTitle: t("notebook.untitledCopy")
+          });
           if (duplicated) {
             toast.show(t("notebook.duplicateSuccess"));
             hapticPress("light");
@@ -500,52 +504,6 @@ export default function JournalNotebook({ onEditingChange, initialEntryId }: { o
         </div>
 
         <div className="nb-sheets">
-          {/* Daily Reflection & Journaling Status Banner */}
-          {(() => {
-            const todayEntry = selectJournalEntryForToday(store);
-            const hasCompletedJournal = Boolean(
-              todayEntry?.answers?.whatMovedToday ||
-              todayEntry?.answers?.whatDidILearn ||
-              todayEntry?.answers?.whatDistractedMe ||
-              todayEntry?.answers?.morningPages
-            );
-
-            return (
-              <div className="mb-4 rounded-2xl border border-monk-border/60 bg-gradient-to-r from-monk-surface via-monk-surface to-monk-soft/50 p-3.5 shadow-sm">
-                <div className="flex items-center justify-between gap-3">
-                  <div className="flex items-center gap-2.5 min-w-0">
-                    <div className={`grid h-8 w-8 place-items-center rounded-xl border shrink-0 ${
-                      hasCompletedJournal
-                        ? "bg-emerald-950/60 border-emerald-500/40 text-emerald-400"
-                        : "bg-monk-accent/15 border-monk-accent/30 text-monk-accent"
-                    }`}>
-                      {hasCompletedJournal ? <Check size={15} strokeWidth={2.5} /> : <Sparkles size={15} strokeWidth={2} />}
-                    </div>
-                    <div className="min-w-0">
-                      <p className="text-xs font-bold text-monk-text truncate">
-                        {hasCompletedJournal ? t("notebook.dailyJournalSaved") : t("notebook.dailyJournalPending")}
-                      </p>
-                      <p className="text-[10px] text-monk-muted truncate">
-                        {hasCompletedJournal ? (lang === "id" ? "Tersambung dengan ritme harian Zendo" : "Connected to Zendo daily rhythm") : (lang === "id" ? "Refleksi 3 menit: Menang, Hambatan, Intisari" : "3-minute reflection: Wins, Obstacle, Takeaway")}
-                      </p>
-                    </div>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => navigate(routes.journal)}
-                    className={`shrink-0 rounded-xl px-3 py-1.5 text-xs font-bold transition active:scale-95 flex items-center gap-1 ${
-                      hasCompletedJournal
-                        ? "border border-monk-border/80 bg-monk-surface text-monk-text-soft hover:text-monk-text"
-                        : "bg-monk-accent text-monk-bg hover:bg-monk-accent-hover shadow-xs"
-                    }`}
-                  >
-                    <span>{hasCompletedJournal ? t("notebook.viewDailyJournal") : t("notebook.openDailyJournal")}</span>
-                  </button>
-                </div>
-              </div>
-            );
-          })()}
-
           <div className="relative mb-5">
         <Search
           size={14}
@@ -784,7 +742,6 @@ export default function JournalNotebook({ onEditingChange, initialEntryId }: { o
                       {cat?.name ?? t("notebook.other")}
                     </span>
                     <span className="font-mono">{formatRelative(entry.updatedAt, t, dateLocale)}</span>
-                    <span className="font-mono opacity-70">{t("notebook.words", { n: wordCount(entry.body) })}</span>
                   </div>
                 </button>
 
@@ -1855,7 +1812,6 @@ export function NotebookEditor({
   }, [handleSave]);
 
   const activeCatToken = catToken(catId);
-  const words = pages.reduce((n, p) => n + wordCount(p), 0);
   // Save gate must consider ALL pages, not just the page in view: a note whose
   // content lives on another page but whose current page is empty would
   // otherwise be permanently unsaveable.
@@ -2437,11 +2393,7 @@ export function NotebookEditor({
                     }`}
                   />
                   <span className="font-semibold text-monk-text text-[11px]">
-                    {lang === "id" ? `Lembar #${i + 1}` : `Sheet #${i + 1}`}
-                  </span>
-                  <span className="text-monk-text-soft">·</span>
-                  <span className="text-[10px] text-monk-muted">
-                    {t("notebook.words", { n: wordCount(pg) })}
+                  {t("notebook.sheetNumber", { n: i + 1 })}
                   </span>
                 </div>
                 <button
@@ -2452,7 +2404,7 @@ export function NotebookEditor({
                   className="flex items-center gap-1 rounded-md px-2 py-0.5 text-[11px] font-semibold text-monk-danger/80 transition hover:bg-monk-danger/10 hover:text-monk-danger active:scale-95"
                 >
                   <Trash2 size={11} strokeWidth={2} />
-                  <span>{lang === "id" ? "Hapus Lembar" : "Delete Sheet"}</span>
+                  <span>{t("notebook.deleteSheet")}</span>
                 </button>
               </div>
             ) : null}
@@ -2498,10 +2450,8 @@ export function NotebookEditor({
             <div className="nb-folio flex items-center justify-between">
               <div className="flex items-center gap-1.5 text-monk-muted text-[11px]">
                 <span>
-                  {i + 1} / {pages.length}
+                  {t("notebook.pageOf", { current: i + 1, total: pages.length })}
                 </span>
-                <span>·</span>
-                <span>{pg.length} {lang === "id" ? "karakter" : "chars"}</span>
               </div>
               {pages.some((p) => p.trim().length === 0) && pages.length > 1 && i === pages.length - 1 ? (
                 <button

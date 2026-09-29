@@ -8,6 +8,7 @@ import { getTodayDateString } from "../lib/date";
 import { hapticPress } from "../lib/haptics";
 import { useCalmToast, PrimaryButton, GhostButton, TextInput, Textarea, useModalA11y } from "./ui";
 import { REST_ACTIVITIES, REST_CATEGORIES, RestActivityCategory, RestActivityDef } from "../constants/restActivities";
+import { RestGlyph } from "./RestGlyph";
 import type { WeeklyReviewDecision, WeeklyReflectionAnswers, RestActivityItem } from "../types/app";
 
 interface WeeklyReviewModalProps {
@@ -153,7 +154,7 @@ export function WeeklyReviewModal({ isOpen, onClose, weeklyPlanId }: WeeklyRevie
       id: "custom",
       title: customTitle.trim() || t("weeklyReviewModal.customOption"),
       category: "custom",
-      icon: "✨"
+      icon: "PenLine"
     });
   };
 
@@ -164,7 +165,7 @@ export function WeeklyReviewModal({ isOpen, onClose, weeklyPlanId }: WeeklyRevie
           id: "custom",
           title: customTitle.trim() || t("weeklyReviewModal.customOption"),
           category: "custom" as const,
-          icon: "✨"
+          icon: "PenLine"
         }
       : selectedActivity ?? undefined;
 
@@ -584,7 +585,7 @@ export function WeeklyReviewModal({ isOpen, onClose, weeklyPlanId }: WeeklyRevie
                           : "bg-monk-soft text-monk-muted hover:text-monk-text"
                       }`}
                     >
-                      <span>{cat.icon}</span>
+                      <RestGlyph name={cat.icon} size={13} strokeWidth={2} />
                       <span>{cat.name[lang]}</span>
                     </button>
                   ))}
@@ -606,7 +607,7 @@ export function WeeklyReviewModal({ isOpen, onClose, weeklyPlanId }: WeeklyRevie
                         }`}
                       >
                         <div className="flex w-full items-center justify-between">
-                          <span className="text-xl">{act.icon}</span>
+                          <RestGlyph name={act.icon} size={18} className="text-monk-rest" />
                           {isSelected ? (
                             <span className="grid h-5 w-5 place-items-center rounded-full bg-monk-accent text-monk-bg">
                               <Check size={12} strokeWidth={3} />
@@ -640,7 +641,7 @@ export function WeeklyReviewModal({ isOpen, onClose, weeklyPlanId }: WeeklyRevie
                       onClick={handleCustomSelect}
                       className="flex items-center gap-1.5 text-xs font-bold text-monk-text hover:text-monk-accent transition"
                     >
-                      <span>✨</span>
+                      <RestGlyph name="PenLine" size={13} strokeWidth={2} />
                       <span>{t("weeklyReviewModal.customOption")}</span>
                     </button>
                     {isCustomMode && (
@@ -658,7 +659,7 @@ export function WeeklyReviewModal({ isOpen, onClose, weeklyPlanId }: WeeklyRevie
                         id: "custom",
                         title: e.target.value.trim() || t("weeklyReviewModal.customOption"),
                         category: "custom",
-                        icon: "✨"
+                        icon: "PenLine"
                       });
                     }}
                     placeholder={t("weeklyReviewModal.customPlaceholder")}

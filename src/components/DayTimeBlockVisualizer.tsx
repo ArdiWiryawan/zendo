@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useMemo } from "react";
 import { Clock, Calendar, Download, Edit3, Check, Zap, Coffee, BookOpen, Briefcase, User, List, BarChart2 } from "lucide-react";
 import { useMonkStore } from "../store/useMonkStore";
-import { useT, useLanguage } from "../i18n";
+import { useT, useLanguage, type MessageKey } from "../i18n";
 import { getTodayDateString, formatHumanDate } from "../lib/date";
 import { hapticPress } from "../lib/haptics";
 import { downloadIcsFile } from "../lib/ical";
@@ -23,7 +23,7 @@ const CATEGORY_STYLES: Record<
   TimeBlockCategory,
   {
     icon: typeof Zap;
-    labelKey: string;
+    labelKey: MessageKey;
     border: string;
     borderL: string;
     bg: string;
@@ -309,7 +309,7 @@ export function DayTimeBlockVisualizer({
                     <div className="flex items-center gap-2 flex-wrap">
                       <span className={`inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider ${style.chipBg}`}>
                         <Icon size={11} strokeWidth={2.5} />
-                        <span>{t(style.labelKey as any)}</span>
+                        <span>{t(style.labelKey)}</span>
                       </span>
 
                       <span className="font-mono text-xs font-bold text-monk-accent">
@@ -420,7 +420,7 @@ export function DayTimeBlockVisualizer({
                     {height > 44 ? (
                       <div className="flex items-center gap-2 text-[10px] text-monk-muted">
                         <span className={`font-semibold uppercase tracking-wider ${style.text}`}>
-                          {t(style.labelKey as any)}
+                          {t(style.labelKey)}
                         </span>
                         <span>·</span>
                         <span>{((endM - startM) / 60).toFixed(1)} jam</span>

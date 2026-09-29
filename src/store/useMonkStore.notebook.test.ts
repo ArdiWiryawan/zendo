@@ -174,6 +174,7 @@ describe("notebook store actions", () => {
     const dup = duplicateNotebookEntry("nb_orig");
     expect(dup).toBeDefined();
     expect(dup?.id).not.toBe("nb_orig");
+    // Default (no copyText passed) keeps the ID strings — UI supplies t() values.
     expect(dup?.title).toBe("Rencana Usaha (Salinan)");
     expect(dup?.categoryId).toBe("cat_karier");
     expect(dup?.isPinned).toBe(false);

@@ -100,6 +100,8 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 
 const renderer = (s: string) => groupPhotoRuns(renderBodyMarkdown(s, undefined, true));
 
+type LibraryFilterType = "all" | "note" | "reflection" | "learning";
+
 export function JournalLibraryScreen() {
   const store = useMonkStore();
   const navigate = useNavigate();
@@ -116,7 +118,8 @@ export function JournalLibraryScreen() {
 
   const [libTab, setLibTab] = useState<"all" | "reflections" | "notebook" | "packs" | "learning">("all");
   const [searchQuery, setSearchQuery] = useState("");
-  const [filterType, setFilterType] = useState<"all" | "note" | "reflection" | "learning">("all");
+  const [filterType, setFilterType] = useState<LibraryFilterType>("all");
+  const [filterOpen, setFilterOpen] = useState(false);
   const [openPackSessionId, setOpenPackSessionId] = useState<string | null>(null);
   const [openLearningId, setOpenLearningId] = useState<string | null>(null);
   const learningSessions = [...store.learningSessions].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
@@ -154,11 +157,11 @@ export function JournalLibraryScreen() {
       const moved = j.answers.whatMovedToday || "";
       const learned = j.answers.whatDidILearn || "";
       const morning = j.answers.morningPages || "";
-      const snippet = moved || learned || morning || "Refleksi harian tersimpan.";
+      const snippet = moved || learned || morning || t("library.snippetFallback");
       items.push({
         id: `journal_${j.id}`,
         type: "reflection",
-        title: `Refleksi · ${formatHumanDate(j.date)}`,
+        title: t("library.reflectionPrefix", { date: formatHumanDate(j.date) }),
         snippet: snippet.replace(/\n/g, " ").slice(0, 180),
         date: j.createdAt || j.date,
         raw: j
@@ -194,9 +197,17 @@ export function JournalLibraryScreen() {
     });
   }, [unifiedItems, filterType, searchQuery]);
 
+  const filterChips: { id: LibraryFilterType; label: string; count: number }[] = [
+    { id: "all", label: t("library.filter.all"), count: unifiedItems.length },
+    { id: "note", label: t("library.filter.note"), count: notebookEntries.length },
+    { id: "reflection", label: t("library.filter.reflection"), count: journalEntries.length },
+    { id: "learning", label: t("library.filter.learning"), count: learningSessions.length }
+  ];
+  const activeChip = filterType === "all" ? null : filterChips.find((chip) => chip.id === filterType);
+
   const subtitle =
     libTab === "all"
-      ? `${unifiedItems.length} total rekaman pengetahuan`
+      ? t("library.subtitleAll", { n: unifiedItems.length })
       : libTab === "reflections"
       ? t("library.reflectionsCount", { n: journalEntries.length })
       : libTab === "notebook"
@@ -213,7 +224,7 @@ export function JournalLibraryScreen() {
         rightSlot={<SettingsLink />}
       />
       <div className="flex rounded-xl bg-monk-soft p-1 mb-5 border border-monk-border/40 overflow-x-auto">
-        <button type="button" className={`flex-1 rounded-lg py-2 text-xs font-semibold tracking-wide transition whitespace-nowrap px-2.5 ${libTab === "all" ? "bg-monk-surface text-monk-text border border-monk-border-strong shadow-sm font-bold" : "text-monk-muted hover:text-monk-text"}`} onClick={() => setLibTab("all")}>Semua</button>
+        <button type="button" className={`flex-1 rounded-lg py-2 text-xs font-semibold tracking-wide transition whitespace-nowrap px-2.5 ${libTab === "all" ? "bg-monk-surface text-monk-text border border-monk-border-strong shadow-sm font-bold" : "text-monk-muted hover:text-monk-text"}`} onClick={() => setLibTab("all")}>{t("library.tab.all")}</button>
         <button type="button" className={`flex-1 rounded-lg py-2 text-xs font-semibold tracking-wide transition whitespace-nowrap px-2.5 ${libTab === "reflections" ? "bg-monk-surface text-monk-text border border-monk-border-strong shadow-sm font-bold" : "text-monk-muted hover:text-monk-text"}`} onClick={() => setLibTab("reflections")}>{t("library.tab.reflections")}</button>
         <button type="button" className={`flex-1 rounded-lg py-2 text-xs font-semibold tracking-wide transition whitespace-nowrap px-2.5 ${libTab === "notebook" ? "bg-monk-surface text-monk-text border border-monk-border-strong shadow-sm font-bold" : "text-monk-muted hover:text-monk-text"}`} onClick={() => setLibTab("notebook")}>{t("library.tab.notebook")}</button>
         <button type="button" className={`flex-1 rounded-lg py-2 text-xs font-semibold tracking-wide transition whitespace-nowrap px-2.5 ${libTab === "learning" ? "bg-monk-surface text-monk-text border border-monk-border-strong shadow-sm font-bold" : "text-monk-muted hover:text-monk-text"}`} onClick={() => setLibTab("learning")}>{t("library.tab.learning")}</button>
@@ -230,23 +241,44 @@ export function JournalLibraryScreen() {
                   type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Cari ide, catatan, refleksi, ringkasan belajar..."
+                  placeholder={t("library.searchPlaceholder")}
                   className="w-full rounded-xl border border-monk-border bg-monk-surface pl-10 pr-3.5 py-2 text-xs text-monk-text placeholder:text-monk-muted focus:border-monk-accent focus:outline-none"
                 />
               </div>
 
+              {/* Filter toggle — chips stay hidden until requested, so the default view stays quiet */}
+              <div className="flex justify-end">
+                <button
+                  type="button"
+                  onClick={() => setFilterOpen((open) => !open)}
+                  aria-expanded={filterOpen}
+                  aria-controls="library-filter-chips"
+                  aria-label={activeChip
+                    ? `${t("library.filterButton")}: ${activeChip.label} (${activeChip.count})`
+                    : t("library.filterButton")}
+                  className={`flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-[11px] font-semibold transition active:scale-95 border ${
+                    filterType !== "all"
+                      ? "border-monk-accent bg-monk-accent/15 text-monk-accent font-bold"
+                      : "border-monk-border/60 bg-monk-soft/50 text-monk-muted hover:text-monk-text"
+                  }`}
+                >
+                  <Filter size={12} />
+                  <span>{filterType === "all" ? t("library.filterButton") : activeChip?.label}</span>
+                  {activeChip && <span className="font-mono text-[10px] text-monk-muted/80">({activeChip.count})</span>}
+                </button>
+              </div>
+
               {/* Quick filter chips */}
-              <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
-                {[
-                  { id: "all", label: "Semua", count: unifiedItems.length },
-                  { id: "note", label: "Catatan", count: notebookEntries.length },
-                  { id: "reflection", label: "Refleksi", count: journalEntries.length },
-                  { id: "learning", label: "Belajar", count: learningSessions.length }
-                ].map((chip) => (
+              <div
+                id="library-filter-chips"
+                className={`${filterOpen ? "flex" : "hidden"} flex-wrap items-center gap-1.5 pt-0.5`}
+              >
+                {filterChips.map((chip) => (
                   <button
                     key={chip.id}
                     type="button"
-                    onClick={() => setFilterType(chip.id as any)}
+                    aria-pressed={filterType === chip.id}
+                    onClick={() => setFilterType(chip.id)}
                     className={`flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-[11px] font-semibold transition active:scale-95 border ${
                       filterType === chip.id
                         ? "border-monk-accent bg-monk-accent/15 text-monk-accent font-bold"
@@ -263,9 +295,9 @@ export function JournalLibraryScreen() {
             {/* List */}
             {filteredUnified.length === 0 ? (
               <EmptyState
-                title="Tidak Ada Rekaman"
-                description={searchQuery ? "Tidak ada hasil yang cocok dengan pencarianmu." : "Mulai catat ide, renungan harian, atau sesi belajar untuk mengisi Second Brain kamu."}
-                actionLabel={searchQuery ? "Reset Pencarian" : "Tulis Catatan"}
+                title={searchQuery ? t("library.empty.searchTitle") : t("library.empty.allTitle")}
+                description={searchQuery ? t("library.empty.searchDesc") : t("library.empty.allDesc")}
+                actionLabel={searchQuery ? t("library.empty.searchAction") : t("library.empty.allAction")}
                 onAction={() => (searchQuery ? setSearchQuery("") : navigate(routes.notebook))}
               />
             ) : (
@@ -299,7 +331,7 @@ export function JournalLibraryScreen() {
                                 : "bg-sky-500/15 text-sky-400 border border-sky-500/30"
                             }`}
                           >
-                            {isNote ? "Catatan" : isReflection ? "Refleksi" : "Belajar"}
+                            {isNote ? t("library.type.note") : isReflection ? t("library.type.reflection") : t("library.type.learning")}
                           </span>
                           {item.category ? (
                             <span className="text-[10px] text-monk-muted truncate font-medium">
@@ -868,10 +900,10 @@ export function LibraryScreen() {
           />
 
           <div className="flex gap-2">
-            {[
+            {([
               { id: "focus", label: t("library.focusSessionsCount", { n: filteredFocus.length }) },
               { id: "drifts", label: t("library.driftLogsCount", { n: filteredDrifts.length }) }
-            ].map((tab) => (
+            ] as const).map((tab) => (
               <button
                 key={tab.id}
                 type="button"
@@ -880,7 +912,7 @@ export function LibraryScreen() {
                     ? "border-monk-accent bg-monk-accent-soft text-monk-accent"
                     : "border-monk-border bg-monk-surface text-monk-muted"
                 }`}
-                onClick={() => setActiveTab(tab.id as any)}
+                onClick={() => setActiveTab(tab.id)}
               >
                 {tab.label}
               </button>

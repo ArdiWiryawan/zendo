@@ -385,7 +385,9 @@ export function FocusSessionSummary({
     const now = new Date().toISOString();
     store.saveNotebookEntry({
       id: `nb_${Date.now()}`,
-      title: mainAction ? `Insight: ${mainAction}` : `Catatan Sesi Fokus`,
+      title: mainAction
+        ? t("focus.insightNotePrefix", { action: mainAction })
+        : t("focus.insightNoteUntitled"),
       body: noteText.trim(),
       pages: [noteText.trim()],
       categoryId: catId,
@@ -447,11 +449,11 @@ export function FocusSessionSummary({
       <div className="mt-4 rounded-2xl border border-monk-border/70 bg-monk-bg p-3 text-left space-y-2">
         <div className="flex items-center justify-between">
           <p className="text-[10px] font-bold uppercase tracking-wider text-monk-muted flex items-center gap-1.5">
-            <span>💡</span> Catat Insight Sesi (Opsional)
+            <span>💡</span> {t("focus.insightLabel")}
           </p>
           {noteSaved ? (
             <span className="flex items-center gap-1 text-[11px] font-bold text-emerald-400">
-              <Check size={12} strokeWidth={2.5} /> Tersimpan
+              <Check size={12} strokeWidth={2.5} /> {t("notebook.saved")}
             </span>
           ) : null}
         </div>
@@ -461,7 +463,7 @@ export function FocusSessionSummary({
               type="text"
               value={noteText}
               onChange={(e) => setNoteText(e.target.value)}
-              placeholder="Ide atau pelajaran yang didapat..."
+              placeholder={t("focus.insightPlaceholder")}
               className="flex-1 rounded-xl border border-monk-border bg-monk-surface px-3 py-2 text-xs text-monk-text placeholder:text-monk-muted focus:border-monk-accent focus:outline-none"
               onKeyDown={(e) => {
                 if (e.key === "Enter" && noteText.trim()) {
@@ -475,7 +477,7 @@ export function FocusSessionSummary({
                 onClick={saveInsight}
                 className="shrink-0 rounded-xl bg-monk-accent px-3 py-2 text-xs font-bold text-monk-bg transition active:scale-95 hover:bg-monk-accent-hover"
               >
-                Simpan
+                {t("focus.save")}
               </button>
             ) : null}
           </div>

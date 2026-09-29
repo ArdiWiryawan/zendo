@@ -196,7 +196,15 @@ type MonkActions = {
   deleteNotebookCategory: (id: string) => void;
   saveNotebookEntry: (entry: NotebookEntry) => void;
   deleteNotebookEntry: (id: string) => void;
-  duplicateNotebookEntry: (id: string) => NotebookEntry | undefined;
+  duplicateNotebookEntry: (
+    id: string,
+    /**
+     * Localized copy strings. The store has no access to t(), so the UI layer
+     * supplies these. Defaults match the app's default language (id), which
+     * also keeps existing non-UI callers and tests working unchanged.
+     */
+    copyText?: { copySuffix?: string; untitledCopyTitle?: string }
+  ) => NotebookEntry | undefined;
   togglePinNotebookEntry: (id: string) => void;
 
   // Energy tracking
@@ -2297,16 +2305,20 @@ export const useMonkStore = create<MonkStore>()(
     });
   },
 
-  duplicateNotebookEntry: (id) => {
+  duplicateNotebookEntry: (id, copyText) => {
     const state = get();
     const entry = state.notebookEntries.find((e) => e.id === id);
     if (!entry) return undefined;
     const timestamp = nowIso();
-    const copySuffix = " (Salinan)";
+    // Localized by the caller (the store has no access to t()). Defaults are
+    // the app's default-language (id) strings, so callers that don't pass
+    // copyText behave exactly as before.
+    const copySuffix = copyText?.copySuffix ?? " (Salinan)";
+    const untitledCopyTitle = copyText?.untitledCopyTitle ?? "Salinan Catatan";
     const newEntry: NotebookEntry = {
       ...entry,
       id: createId("nb_entry"),
-      title: entry.title ? `${entry.title}${copySuffix}` : "Salinan Catatan",
+      title: entry.title ? `${entry.title}${copySuffix}` : untitledCopyTitle,
       isPinned: false,
       createdAt: timestamp,
       updatedAt: timestamp,

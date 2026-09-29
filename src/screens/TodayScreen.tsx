@@ -1581,7 +1581,7 @@ function FlowPickToday({
         <p className="font-semibold">{t("today.pickHeading")}</p>
         {tracks.length > 0 ? (
           <span className="text-[10px] font-medium text-monk-muted">
-            {tracks.length} Jalur Fokus (Tracks)
+            {t("today.trackCount", { n: tracks.length })}
           </span>
         ) : null}
       </div>
@@ -1599,7 +1599,7 @@ function FlowPickToday({
                 : "border-monk-border/60 bg-monk-soft/40 text-monk-muted hover:text-monk-text"
             }`}
           >
-            Semua
+            {t("today.trackAll")}
           </button>
           {tracks.map((trk) => (
             <button

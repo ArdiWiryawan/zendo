@@ -10,6 +10,7 @@ import { onboardingOrder, routes } from "../constants/routes";
 import { useMonkStore } from "../store/useMonkStore";
 import { playBreakChime, playFocusChime, playZenBell } from "../lib/audio";
 import { planFocusTick } from "../lib/focusTicker.worker";
+import { t as translate } from "../i18n";
 
 // ponytail: TodayScreen + FocusScreen loaded eagerly (primary screens); others lazy-split
 const FocusScreen = lazy(() => import("../screens/FocusScreen"));
@@ -87,11 +88,7 @@ export default function App() {
       } else if (purchased) {
         purchasePack(purchased);
         playZenBell();
-        reminderToastRef.current.show(
-          lang === "id"
-            ? "✦ Paket Refleksi berhasil dibuka!"
-            : "✦ Reflection Pack unlocked!"
-        );
+        reminderToastRef.current.show(translate(lang, "app.packUnlockedToast"));
         params.delete("purchased");
         const nextQuery = params.toString();
         const nextUrl = window.location.pathname + (nextQuery ? `?${nextQuery}` : "") + window.location.hash;

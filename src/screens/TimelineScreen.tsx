@@ -325,11 +325,11 @@ function TimelineEventRow({ event }: { event: TimelineEvent }) {
             {event.type === "focus_session" || event.type === "learning_session" ? (
               <button
                 type="button"
-                aria-label="Hapus aktivitas"
-                title="Hapus dari timeline"
+                aria-label={t("timeline.deleteAria")}
+                title={t("timeline.deleteTitle")}
                 className="text-monk-muted/50 hover:text-monk-danger hover:bg-monk-danger/10 p-1 rounded-md transition active:scale-90 shrink-0"
                 onClick={() => {
-                  if (window.confirm("Hapus sesi ini dari timeline dan riwayat?")) {
+                  if (window.confirm(t("timeline.deleteConfirm"))) {
                     store.removeTimelineEvent(event.id);
                   }
                 }}
@@ -829,7 +829,7 @@ export default function TimelineScreen() {
                   disabled={selectedWeek <= 1}
                   onClick={() => setSelectedWeek((w) => Math.max(1, w - 1))}
                   className="grid h-8 w-8 place-items-center rounded-lg text-monk-muted hover:text-monk-text hover:bg-monk-soft disabled:opacity-30 transition active:scale-95 border border-monk-border/60"
-                  aria-label="Minggu sebelumnya"
+                  aria-label={t("timeline.month.prevWeek")}
                 >
                   <ChevronLeft size={16} />
                 </button>
@@ -855,7 +855,7 @@ export default function TimelineScreen() {
                   disabled={selectedWeek >= Math.ceil(season.durationDays / 7)}
                   onClick={() => setSelectedWeek((w) => w + 1)}
                   className="grid h-8 w-8 place-items-center rounded-lg text-monk-muted hover:text-monk-text hover:bg-monk-soft disabled:opacity-30 transition active:scale-95 border border-monk-border/60"
-                  aria-label="Minggu berikutnya"
+                  aria-label={t("timeline.month.nextWeek")}
                 >
                   <ChevronRight size={16} />
                 </button>
@@ -1040,7 +1040,7 @@ export default function TimelineScreen() {
                     </button>
                   ) : (
                     <span className="font-mono text-xs font-bold text-monk-accent bg-monk-accent/15 border border-monk-accent/30 px-2.5 py-1 rounded-lg">
-                      Hari {daysPassedCount} / {season.durationDays}
+                      {t("timeline.month.dayCounter", { day: daysPassedCount, total: season.durationDays })}
                     </span>
                   )}
 
@@ -1228,19 +1228,19 @@ export default function TimelineScreen() {
                         {/* Productivity Framework Insight */}
                         {inspectedStatus === "completed" ? (
                           <div className="rounded-lg bg-emerald-950/30 border border-emerald-500/20 px-2.5 py-1.5 text-[11px] text-emerald-300/90 leading-relaxed">
-                            💡 <span className="font-semibold text-emerald-300">Deep Work:</span> Sesi fokus selesai. Kualitas atensi mengalahkan kuantitas waktu.
+                            💡 <span className="font-semibold text-emerald-300">{t("timeline.insight.deepWorkTitle")}</span> {t("timeline.insight.deepWorkBody")}
                           </div>
                         ) : inspectedStatus === "rest" ? (
                           <div className="rounded-lg bg-slate-900/40 border border-slate-700/40 px-2.5 py-1.5 text-[11px] text-slate-300/90 leading-relaxed">
-                            🌱 <span className="font-semibold text-slate-300">Sharpen the Saw:</span> Istirahat sadar melindungi energi dan menjaga streak tetap aman.
+                            🌱 <span className="font-semibold text-slate-300">{t("timeline.insight.restTitle")}</span> {t("timeline.insight.restBody")}
                           </div>
                         ) : inspectedStatus === "partial" ? (
                           <div className="rounded-lg bg-amber-950/30 border border-amber-600/20 px-2.5 py-1.5 text-[11px] text-amber-300/90 leading-relaxed">
-                            ⚡ <span className="font-semibold text-amber-300">Never Miss Twice:</span> Sesi parsial tetap berharga daripada nol. Momentum tetap terjaga.
+                            ⚡ <span className="font-semibold text-amber-300">{t("timeline.insight.partialTitle")}</span> {t("timeline.insight.partialBody")}
                           </div>
                         ) : inspectedStatus === "missed" && !isFuture && !isDateToday ? (
                           <div className="rounded-lg bg-rose-950/30 border border-rose-500/20 px-2.5 py-1.5 text-[11px] text-rose-300/90 leading-relaxed">
-                            🧭 <span className="font-semibold text-rose-300">Data, Bukan Vonis:</span> Hari terlewat adalah kompas belajar. Sambung kembali hari ini.
+                            🧭 <span className="font-semibold text-rose-300">{t("timeline.insight.missedTitle")}</span> {t("timeline.insight.missedBody")}
                           </div>
                         ) : null}
 
