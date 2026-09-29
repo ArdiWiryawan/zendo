@@ -537,7 +537,7 @@ export default function TimelineScreen() {
             relatedGoalId: s.goalId || null,
             sourceId: s.id,
             title: `${FOCUS_PRESETS[preset]?.shortLabel ?? "Focus"} ${s.status === "completed" ? t("timeline.focusCompleted") : ""}`,
-            description: `${mins} min focus`,
+            description: t("timeline.month.focusLogged", { n: mins }),
             occurredAt: raw,
             createdAt: raw,
             focusSession: s as unknown as any
@@ -553,7 +553,10 @@ export default function TimelineScreen() {
       }));
   }, [store.timelineEvents, store.focusSessions, season.id, t]);
 
-  const DOW = ["Sen", "Sel", "Rab", "Kam", "Jum", "Sab", "Min"];
+  const DOW =
+    lang === "id"
+      ? ["Sen", "Sel", "Rab", "Kam", "Jum", "Sab", "Min"]
+      : ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
   // High-contrast, tactile calendar tile styles
   function getStatusTileStyle(cell: {
@@ -922,27 +925,27 @@ export default function TimelineScreen() {
                           <div className="flex items-center gap-1.5 flex-wrap">
                             {isFuture ? (
                               <span className="rounded-md border border-monk-border bg-monk-surface px-1.5 py-0.5 text-[10px] font-semibold text-monk-muted">
-                                Mendatang
+                                {t("week.upcoming")}
                               </span>
                             ) : isCompleted ? (
                               <span className="inline-flex items-center gap-1 rounded-md border border-emerald-500/40 bg-emerald-950/60 px-1.5 py-0.5 text-[10px] font-bold text-emerald-300">
                                 <Check size={11} strokeWidth={2.5} />
-                                <span>Selesai</span>
+                                <span>{t("timeline.streak.completed")}</span>
                               </span>
                             ) : isRest ? (
                               <span className="inline-flex items-center gap-1 rounded-md border border-slate-600/40 bg-slate-900/60 px-1.5 py-0.5 text-[10px] font-bold text-slate-300">
                                 <Moon size={11} />
-                                <span>Istirahat</span>
+                                <span>{t("timeline.streak.rest")}</span>
                               </span>
                             ) : isPartial ? (
                               <span className="inline-flex items-center gap-1 rounded-md border border-amber-600/40 bg-amber-950/60 px-1.5 py-0.5 text-[10px] font-bold text-amber-300">
                                 <Flame size={11} />
-                                <span>Sebagian</span>
+                                <span>{t("timeline.streak.partial")}</span>
                               </span>
                             ) : isMissed ? (
                               <span className="inline-flex items-center gap-1 rounded-md border border-rose-500/40 bg-rose-950/60 px-1.5 py-0.5 text-[10px] font-bold text-rose-300">
                                 <AlertTriangle size={11} />
-                                <span>Bolong</span>
+                                <span>{t("timeline.streak.missed")}</span>
                               </span>
                             ) : (
                               <span className="rounded-md border border-monk-border bg-monk-surface px-1.5 py-0.5 text-[10px] font-semibold text-monk-muted">
@@ -1170,26 +1173,26 @@ export default function TimelineScreen() {
                         ) : isFuture ? (
                           <span className="inline-flex items-center gap-1 rounded-md border border-monk-border bg-monk-surface px-2 py-0.5 text-[10px] font-semibold text-monk-muted">
                             <Clock size={11} />
-                            <span>Mendatang</span>
+                            <span>{t("week.upcoming")}</span>
                           </span>
                         ) : inspectedStatus === "completed" ? (
                           <span className="inline-flex items-center gap-1 rounded-md bg-emerald-950/60 border border-emerald-500/50 px-2 py-0.5 text-[10px] font-bold text-emerald-300">
                             <Check size={11} strokeWidth={2.5} />
-                            <span>Selesai</span>
+                            <span>{t("timeline.streak.completed")}</span>
                           </span>
                         ) : inspectedStatus === "rest" ? (
                           <span className="inline-flex items-center gap-1 rounded-md bg-slate-900/60 border border-slate-600/50 px-2 py-0.5 text-[10px] font-bold text-slate-300">
                             <Moon size={11} />
-                            <span>Istirahat</span>
+                            <span>{t("timeline.streak.rest")}</span>
                           </span>
                         ) : inspectedStatus === "partial" ? (
                           <span className="inline-flex items-center gap-1 rounded-md bg-amber-950/60 border border-amber-600/50 px-2 py-0.5 text-[10px] font-bold text-amber-300">
                             <Flame size={11} />
-                            <span>Sebagian</span>
+                            <span>{t("timeline.streak.partial")}</span>
                           </span>
                         ) : inspectedStatus === "missed" || inspectedStatus === "relapse" ? (
                           <span className="inline-flex items-center gap-1 rounded-md bg-rose-950/60 border border-rose-500/50 px-2 py-0.5 text-[10px] font-bold text-rose-300">
-                            <span>✕ Bolong</span>
+                            <span>✕ {t("timeline.streak.missed")}</span>
                           </span>
                         ) : (
                           <span className="rounded-md border border-monk-border bg-monk-surface px-2 py-0.5 text-[10px] font-semibold text-monk-muted">
@@ -1273,21 +1276,21 @@ export default function TimelineScreen() {
               <div className="flex flex-wrap items-center justify-between gap-1.5 border-t border-monk-border/50 pt-3 text-[11px]">
                 <span className="inline-flex items-center gap-1 rounded-md bg-emerald-950/40 border border-emerald-700/50 px-2 py-0.5 font-semibold text-emerald-300">
                   <Check size={10} strokeWidth={3} />
-                  <span>Selesai</span>
+                  <span>{t("timeline.streak.completed")}</span>
                 </span>
                 <span className="inline-flex items-center gap-1 rounded-md bg-slate-900/60 border border-slate-700/50 px-2 py-0.5 font-semibold text-slate-300">
                   <Moon size={10} strokeWidth={2} />
-                  <span>Istirahat</span>
+                  <span>{t("timeline.streak.rest")}</span>
                 </span>
                 <span className="inline-flex items-center gap-1 rounded-md bg-amber-950/40 border border-amber-700/50 px-2 py-0.5 font-semibold text-amber-300">
                   <Flame size={10} strokeWidth={2} />
-                  <span>Sebagian</span>
+                  <span>{t("timeline.streak.partial")}</span>
                 </span>
                 <span className="inline-flex items-center gap-1 rounded-md bg-rose-950/40 border border-rose-700/50 px-2 py-0.5 font-semibold text-rose-300">
-                  <span>✕ Bolong</span>
+                  <span>✕ {t("timeline.streak.missed")}</span>
                 </span>
                 <span className="inline-flex items-center gap-1 rounded-md bg-monk-surface/40 border border-monk-border/50 px-2 py-0.5 font-semibold text-monk-muted">
-                  <span>Mendatang</span>
+                  <span>{t("week.upcoming")}</span>
                 </span>
               </div>
             </Card>
