@@ -1539,6 +1539,40 @@ function FlowPickToday({
     (day) => day.weeklyPlanId === weeklyPlan?.id && day.dayType === "rest" && day.status !== "missed"
   );
   const t = useT();
+
+  // Hooks must run unconditionally, before any early return — see the
+  // `!weeklyPlan` bail-out below. Moving these past it changes the hook count
+  // between renders and throws React error #310.
+  const [selectedTrack, setSelectedTrack] = useState<string | "all">("all");
+  const tracks = useMemo(() => {
+    return Array.from(new Set(goals.map((g) => g.track).filter(Boolean))) as string[];
+  }, [goals]);
+
+  // Integrity fallback: if the weekly plan lost its allocations (legacy/orphan
+  // data) but goals exist, render the goals directly so the user can always pick.
+  const allocations = weeklyPlan && weeklyPlan.goalAllocations.length > 0
+    ? weeklyPlan.goalAllocations
+    : goals.map((goal) => ({ goalId: goal.id, targetCount: 1, completedCount: 0 }));
+
+  const ranked = useMemo(
+    () =>
+      allocations
+        .map((allocation) => {
+          const remaining = Math.max(0, allocation.targetCount - allocation.completedCount);
+          return { allocation, remaining };
+        })
+        .sort((a, b) => b.remaining - a.remaining),
+    [allocations]
+  );
+
+  const filteredRanked = useMemo(() => {
+    if (selectedTrack === "all") return ranked;
+    return ranked.filter(({ allocation }) => {
+      const g = goals.find((item) => item.id === allocation.goalId);
+      return g?.track === selectedTrack;
+    });
+  }, [ranked, goals, selectedTrack]);
+
   if (!weeklyPlan) {
     return (
       <EmptyState
@@ -1548,32 +1582,7 @@ function FlowPickToday({
     );
   }
 
-  // Integrity fallback: if the weekly plan lost its allocations (legacy/orphan
-  // data) but goals exist, render the goals directly so the user can always pick.
-  const allocations = weeklyPlan.goalAllocations.length > 0
-    ? weeklyPlan.goalAllocations
-    : goals.map((goal) => ({ goalId: goal.id, targetCount: 1, completedCount: 0 }));
-
-  const ranked = allocations
-    .map((allocation) => {
-      const remaining = Math.max(0, allocation.targetCount - allocation.completedCount);
-      return { allocation, remaining };
-    })
-    .sort((a, b) => b.remaining - a.remaining);
   const maxRemaining = ranked[0]?.remaining ?? 0;
-
-  const [selectedTrack, setSelectedTrack] = useState<string | "all">("all");
-  const tracks = useMemo(() => {
-    return Array.from(new Set(goals.map((g) => g.track).filter(Boolean))) as string[];
-  }, [goals]);
-
-  const filteredRanked = useMemo(() => {
-    if (selectedTrack === "all") return ranked;
-    return ranked.filter(({ allocation }) => {
-      const g = goals.find((item) => item.id === allocation.goalId);
-      return g?.track === selectedTrack;
-    });
-  }, [ranked, goals, selectedTrack]);
 
   return (
     <Card important>
