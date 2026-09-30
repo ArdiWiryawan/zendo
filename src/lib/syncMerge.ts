@@ -54,6 +54,7 @@ const ARRAY_KEYS: (keyof MonkMVPState)[] = [
   "badHabits",
   "practices",
   "practiceLogs",
+  "projects",
   "weeklyPlans",
   "dayPlans",
   "focusSessions",

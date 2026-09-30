@@ -67,6 +67,7 @@ import type {
   NotificationReminder,
   Practice,
   PracticeLog,
+  Project,
   TimelineEvent,
   TimelineEventType,
   FocusSessionPreset,
@@ -143,6 +144,12 @@ type MonkActions = {
   removePractice: (id: string) => void;
   /** Mark a practice done on a date. Idempotent per (practice, date). */
   togglePracticeLog: (practiceId: string, date: string) => void;
+  /** §16: open a finite unit of work under a goal. */
+  addProject: (input: { goalId: string; title: string }) => Project | undefined;
+  updateProject: (id: string, patch: Partial<Pick<Project, "title" | "status">>) => void;
+  removeProject: (id: string) => void;
+  /** §16: attach a step to a project, or detach it with `undefined`. */
+  setGoalTaskProject: (goalId: string, taskId: string, projectId: string | undefined) => void;
   updateTodayEnergy: (energyLevel: EnergyLevel) => void;
   completeTodayMainAction: () => void;
   startFocusSession: (preset?: FocusSessionPreset, customMinutes?: number) => FocusSession | undefined;
@@ -274,6 +281,7 @@ function snapshot(state: MonkStore | MonkMVPState): MonkMVPState {  return {
     badHabits: state.badHabits,
     practices: state.practices ?? [],
     practiceLogs: state.practiceLogs ?? [],
+    projects: state.projects ?? [],
     weeklyPlans: state.weeklyPlans,
     dayPlans: state.dayPlans,
     focusSessions: state.focusSessions,
@@ -728,6 +736,8 @@ export const useMonkStore = create<MonkStore>()(
         // had a positive practice to lose.
         practices: stored.practices ?? [],
         practiceLogs: stored.practiceLogs ?? [],
+        // §16: nobody had a project before the layer existed.
+        projects: stored.projects ?? [],
         // Backfill the goal type/frequency split (§12-13). Goals written before
         // the split carry only `weeklyTargetCount`, which has always meant
         // "days per week" — i.e. practice rhythm. So leave it as the rhythm and
@@ -1396,6 +1406,79 @@ export const useMonkStore = create<MonkStore>()(
           updatedAt: now
         }
       ]
+    });
+  },
+
+  addProject: (input) => {
+    const state = get();
+    const season = state.activeSeason;
+    const title = input.title.trim();
+    if (!season || !title) return undefined;
+    // A project must hang off a goal it belongs to. Accepting one without a
+    // parent would create work nothing can report progress against.
+    if (!state.goals.some((g) => g.id === input.goalId)) return undefined;
+    const now = nowIso();
+    const project: Project = {
+      id: createId("project"),
+      seasonId: season.id,
+      goalId: input.goalId,
+      title,
+      status: "active",
+      createdAt: now,
+      updatedAt: now
+    };
+    set({ projects: [...state.projects, project] });
+    return project;
+  },
+
+  updateProject: (id, patch) => {
+    const state = get();
+    const title = patch.title !== undefined ? patch.title.trim() : undefined;
+    set({
+      projects: state.projects.map((p) =>
+        p.id === id
+          ? {
+              ...p,
+              // A blank rename is a mis-click, not an intent to have no name.
+              title: title !== undefined && title ? title : p.title,
+              status: patch.status ?? p.status,
+              updatedAt: nowIso()
+            }
+          : p
+      )
+    });
+  },
+
+  removeProject: (id) => {
+    const state = get();
+    // Its steps survive — they were real work; they just stop being grouped.
+    set({
+      projects: state.projects.filter((p) => p.id !== id),
+      goals: state.goals.map((g) =>
+        (g.tasks ?? []).some((t) => t.projectId === id)
+          ? {
+              ...g,
+              tasks: (g.tasks ?? []).map((t) =>
+                t.projectId === id ? { ...t, projectId: undefined } : t
+              )
+            }
+          : g
+      )
+    });
+  },
+
+  setGoalTaskProject: (goalId, taskId, projectId) => {
+    const state = get();
+    set({
+      goals: state.goals.map((g) =>
+        g.id === goalId
+          ? {
+              ...g,
+              tasks: (g.tasks ?? []).map((t) => (t.id === taskId ? { ...t, projectId } : t)),
+              updatedAt: nowIso()
+            }
+          : g
+      )
     });
   },
 
@@ -2682,6 +2765,7 @@ export const useMonkStore = create<MonkStore>()(
       badHabits: data.badHabits !== undefined ? data.badHabits : state.badHabits,
       practices: data.practices !== undefined ? data.practices : state.practices,
       practiceLogs: data.practiceLogs !== undefined ? data.practiceLogs : state.practiceLogs,
+      projects: data.projects !== undefined ? data.projects : state.projects,
       weeklyPlans: data.weeklyPlans !== undefined ? data.weeklyPlans : state.weeklyPlans,
       dayPlans: data.dayPlans !== undefined ? data.dayPlans : state.dayPlans,
       focusSessions: data.focusSessions !== undefined ? data.focusSessions : state.focusSessions,

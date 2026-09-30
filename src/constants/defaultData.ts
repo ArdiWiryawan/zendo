@@ -103,6 +103,7 @@ export function createInitialState(): MonkMVPState {
     badHabits: [],
     practices: [],
     practiceLogs: [],
+    projects: [],
     weeklyPlans: [],
     dayPlans: [],
     focusSessions: [],

@@ -93,6 +93,27 @@ export type GoalTask = {
   title: string;
   completed: boolean;
   createdAt: ISODateString;
+  /** §16 — the finite unit of work this step belongs to, when it has one. */
+  projectId?: string;
+};
+
+export type ProjectStatus = "active" | "done" | "dropped";
+
+/**
+ * PROJECT (§16) — a finite, nameable unit of work under a goal. "Publish video
+ * #27", not "publish 1 video/week": without this a recurring goal's tasks are a
+ * flat checklist with no way to tell one run from the next. Deliberately thin —
+ * a title, a parent, and a lifecycle. No dates, no estimates; a project is not a
+ * schedule, and adding one here would duplicate the day plan's job.
+ */
+export type Project = {
+  id: string;
+  seasonId: string;
+  goalId: string;
+  title: string;
+  status: ProjectStatus;
+  createdAt: ISODateString;
+  updatedAt: ISODateString;
 };
 
 export type Goal = {
@@ -634,6 +655,8 @@ export type MonkMVPState = {
   /** §23 positive practices — the "do this" layer, separate from badHabits. */
   practices: Practice[];
   practiceLogs: PracticeLog[];
+  /** §16 finite units of work, grouped under a goal. */
+  projects: Project[];
   weeklyPlans: WeeklyPlan[];
   dayPlans: DayPlan[];
   focusSessions: FocusSession[];

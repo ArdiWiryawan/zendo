@@ -6,7 +6,7 @@ import { WhyEditor } from "../components/SeasonWidgets";
 import { ChevronRight } from "lucide-react";
 import { CORE_VALUES } from "../constants/whyValues";
 import { useT, useLanguage } from "../i18n";
-import type { EnergyLevel, Goal } from "../types/app";
+import type { EnergyLevel, Goal, GoalTask } from "../types/app";
 
 export function EnergyCheck({ value, onChange, compact = false }: { value?: EnergyLevel; onChange: (value: EnergyLevel) => void; compact?: boolean }) {
   const t = useT();
@@ -271,18 +271,43 @@ export function WhyStrip({ compact = false }: { compact?: boolean }) {
 
 export function GoalTasksCard({ goal, todayMainAction }: { goal: Goal; todayMainAction?: string }) {
   const store = useMonkStore();
+  const t = useT();
   const lang = useLanguage();
   const isId = lang === "id";
   const today = getTodayDateString();
   const [newTitle, setNewTitle] = useState("");
+  const [newProjectTitle, setNewProjectTitle] = useState("");
   const [isAdding, setIsAdding] = useState(false);
+  const [isAddingProject, setIsAddingProject] = useState(false);
   const tasks = goal.tasks || [];
+  // §16 — a finite unit of work under this goal ("Video #27"). Steps may point
+  // at one; steps without one are simply ungrouped, not invalid.
+  const projects = store.projects.filter((p) => p.goalId === goal.id);
+
+  type ProjectGroup = { project?: (typeof projects)[number]; tasks: GoalTask[] };
+
+  const projectGroups: ProjectGroup[] = [
+    { tasks: tasks.filter((t) => !t.projectId || !projects.some((p) => p.id === t.projectId)) },
+    ...projects.map(
+      (project): ProjectGroup => ({
+        project,
+        tasks: tasks.filter((t) => t.projectId === project.id)
+      })
+    )
+  ].filter((group) => group.project || group.tasks.length > 0);
 
   const handleAdd = () => {
     if (!newTitle.trim()) return;
     store.addGoalTask(goal.id, newTitle.trim());
     setNewTitle("");
     setIsAdding(false);
+  };
+
+  const handleAddProject = () => {
+    const project = store.addProject({ goalId: goal.id, title: newProjectTitle });
+    if (!project) return;
+    setNewProjectTitle("");
+    setIsAddingProject(false);
   };
 
   const handlePromoteToAction = (taskTitle: string) => {
@@ -304,78 +329,175 @@ export function GoalTasksCard({ goal, todayMainAction }: { goal: Goal; todayMain
             </span>
           ) : null}
         </p>
-        {!isAdding && (
-          <button
-            type="button"
-            onClick={() => setIsAdding(true)}
-            className="text-[11px] font-semibold text-monk-accent hover:underline active:scale-95"
-          >
-            {isId ? "+ Tambah" : "+ Add"}
-          </button>
-        )}
+        <div className="flex items-center gap-2">
+          {!isAddingProject && (
+            <button
+              type="button"
+              onClick={() => setIsAddingProject(true)}
+              className="text-[11px] font-semibold text-monk-muted hover:text-monk-accent hover:underline active:scale-95"
+            >
+              {t("project.addNew")}
+            </button>
+          )}
+          {!isAdding && (
+            <button
+              type="button"
+              onClick={() => setIsAdding(true)}
+              className="text-[11px] font-semibold text-monk-accent hover:underline active:scale-95"
+            >
+              {isId ? "+ Tambah" : "+ Add"}
+            </button>
+          )}
+        </div>
       </div>
 
-      {tasks.length > 0 ? (
-        <div className="space-y-1.5 pt-1">
-          {tasks.map((task) => {
-            const isCurrentMain = todayMainAction?.trim() === task.title.trim();
-            return (
-              <div
-                key={task.id}
-                className={`flex items-center justify-between gap-2 rounded-lg border px-2.5 py-1.5 text-xs transition ${
-                  isCurrentMain
-                    ? "border-monk-accent/50 bg-monk-accent/10"
-                    : "border-monk-border/40 bg-monk-surface/60 hover:bg-monk-surface"
-                }`}
-              >
-                <div className="flex min-w-0 flex-1 items-center gap-2">
-                  <input
-                    type="checkbox"
-                    checked={task.completed}
-                    onChange={() => store.toggleGoalTask(goal.id, task.id)}
-                    className="h-3.5 w-3.5 rounded border-monk-border text-monk-accent focus:ring-0 cursor-pointer"
-                  />
-                  <span
-                    className={`min-w-0 truncate text-xs ${
-                      task.completed
-                        ? "line-through text-monk-muted"
-                        : isCurrentMain
-                        ? "font-semibold text-monk-accent"
-                        : "text-monk-text"
-                    }`}
-                  >
-                    {task.title}
-                  </span>
-                  {isCurrentMain && (
-                    <span className="shrink-0 rounded-full bg-monk-accent/20 px-1.5 py-0.2 text-[9px] font-bold text-monk-accent">
-                      {isId ? "Aksi Hari Ini" : "Today's Action"}
-                    </span>
-                  )}
-                </div>
+      {isAddingProject ? (
+        <div className="flex items-center gap-2 pt-1">
+          <input
+            type="text"
+            value={newProjectTitle}
+            onChange={(e) => setNewProjectTitle(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                handleAddProject();
+              }
+            }}
+            placeholder={t("project.namePlaceholder")}
+            autoFocus
+            className="flex-1 rounded-lg border border-monk-border bg-monk-surface px-2.5 py-1 text-xs text-monk-text placeholder:text-monk-muted focus:border-monk-accent focus:outline-none"
+          />
+          <button
+            type="button"
+            onClick={handleAddProject}
+            className="rounded-lg bg-monk-accent px-2.5 py-1 text-xs font-semibold text-monk-bg transition active:scale-95"
+          >
+            {isId ? "Simpan" : "Save"}
+          </button>
+          <button
+            type="button"
+            onClick={() => setIsAddingProject(false)}
+            className="text-xs text-monk-muted hover:text-monk-text px-1"
+          >
+            {isId ? "Batal" : "Cancel"}
+          </button>
+        </div>
+      ) : null}
 
-                <div className="flex items-center gap-1 shrink-0">
-                  {!task.completed && !isCurrentMain && (
+      {projectGroups.length > 0 ? (
+        <div className="space-y-2 pt-1">
+          {projectGroups.map((group) => (
+            <div key={group.project?.id ?? "ungrouped"} className="space-y-1.5">
+              {group.project ? (
+                <div className="flex items-center justify-between gap-2 border-b border-monk-border/40 pb-1">
+                  <span className="flex min-w-0 items-center gap-1.5 text-[11px] font-semibold text-monk-text">
+                    <span className="truncate">{group.project.title}</span>
+                    <span className="font-mono text-[10px] text-monk-muted">
+                      ({group.tasks.filter((t) => t.completed).length}/{group.tasks.length})
+                    </span>
+                  </span>
+                  <span className="flex shrink-0 items-center gap-1">
                     <button
                       type="button"
-                      title={isId ? "Jadikan Aksi Hari Ini" : "Set as Today's Action"}
-                      onClick={() => handlePromoteToAction(task.title)}
+                      onClick={() =>
+                        store.updateProject(group.project!.id, {
+                          status: group.project!.status === "done" ? "active" : "done"
+                        })
+                      }
                       className="rounded px-1.5 py-0.5 text-[10px] font-semibold text-monk-accent hover:bg-monk-accent/15 transition active:scale-95"
                     >
-                      {isId ? "Jadikan Aksi" : "Set Action"}
+                      {group.project.status === "done" ? t("project.reopen") : t("project.markDone")}
                     </button>
-                  )}
-                  <button
-                    type="button"
-                    title={isId ? "Hapus" : "Delete"}
-                    onClick={() => store.deleteGoalTask(goal.id, task.id)}
-                    className="text-monk-muted/60 hover:text-rose-400 p-0.5 transition"
-                  >
-                    ✕
-                  </button>
+                    <button
+                      type="button"
+                      title={isId ? "Hapus" : "Delete"}
+                      onClick={() => store.removeProject(group.project!.id)}
+                      className="text-monk-muted/60 hover:text-rose-400 p-0.5 transition"
+                    >
+                      ✕
+                    </button>
+                  </span>
                 </div>
-              </div>
-            );
-          })}
+              ) : null}
+
+              {group.tasks.map((task) => {
+                const isCurrentMain = todayMainAction?.trim() === task.title.trim();
+                return (
+                  <div
+                    key={task.id}
+                    className={`flex items-center justify-between gap-2 rounded-lg border px-2.5 py-1.5 text-xs transition ${
+                      isCurrentMain
+                        ? "border-monk-accent/50 bg-monk-accent/10"
+                        : "border-monk-border/40 bg-monk-surface/60 hover:bg-monk-surface"
+                    }`}
+                  >
+                    <div className="flex min-w-0 flex-1 items-center gap-2">
+                      <input
+                        type="checkbox"
+                        checked={task.completed}
+                        onChange={() => store.toggleGoalTask(goal.id, task.id)}
+                        className="h-3.5 w-3.5 rounded border-monk-border text-monk-accent focus:ring-0 cursor-pointer"
+                      />
+                      <span
+                        className={`min-w-0 truncate text-xs ${
+                          task.completed
+                            ? "line-through text-monk-muted"
+                            : isCurrentMain
+                            ? "font-semibold text-monk-accent"
+                            : "text-monk-text"
+                        }`}
+                      >
+                        {task.title}
+                      </span>
+                      {isCurrentMain && (
+                        <span className="shrink-0 rounded-full bg-monk-accent/20 px-1.5 py-0.2 text-[9px] font-bold text-monk-accent">
+                          {isId ? "Aksi Hari Ini" : "Today's Action"}
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="flex items-center gap-1 shrink-0">
+                      {projects.length > 0 && (
+                        <select
+                          value={task.projectId ?? ""}
+                          onChange={(e) =>
+                            store.setGoalTaskProject(goal.id, task.id, e.target.value || undefined)
+                          }
+                          aria-label={t("project.assignLabel")}
+                          className="max-w-[7rem] rounded border border-monk-border/60 bg-monk-surface px-1 py-0.5 text-[10px] text-monk-muted focus:border-monk-accent focus:outline-none"
+                        >
+                          <option value="">{t("project.none")}</option>
+                          {projects.map((p) => (
+                            <option key={p.id} value={p.id}>
+                              {p.title}
+                            </option>
+                          ))}
+                        </select>
+                      )}
+                      {!task.completed && !isCurrentMain && (
+                        <button
+                          type="button"
+                          title={isId ? "Jadikan Aksi Hari Ini" : "Set as Today's Action"}
+                          onClick={() => handlePromoteToAction(task.title)}
+                          className="rounded px-1.5 py-0.5 text-[10px] font-semibold text-monk-accent hover:bg-monk-accent/15 transition active:scale-95"
+                        >
+                          {isId ? "Jadikan Aksi" : "Set Action"}
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        title={isId ? "Hapus" : "Delete"}
+                        onClick={() => store.deleteGoalTask(goal.id, task.id)}
+                        className="text-monk-muted/60 hover:text-rose-400 p-0.5 transition"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          ))}
         </div>
       ) : null}
 
