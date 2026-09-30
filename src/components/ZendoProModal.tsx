@@ -19,11 +19,7 @@ import { useMonkStore } from "../store/useMonkStore";
 import { PrimaryButton, SecondaryButton, GhostButton, useCalmToast, useModalA11y } from "./ui";
 import { playZenBell } from "../lib/audio";
 import { useLanguage, useT } from "../i18n";
-import {
-  DEFAULT_STATIC_QRIS,
-  getSavedMerchantWhatsApp,
-  generateWhatsAppConfirmationUrl,
-} from "../lib/qris";
+import { DEFAULT_STATIC_QRIS } from "../lib/qris";
 
 interface ZendoProModalProps {
   isOpen: boolean;
@@ -332,18 +328,14 @@ export function ZendoProModal({ isOpen, onClose }: ZendoProModalProps) {
             </PrimaryButton>
 
             <a
-              href={generateWhatsAppConfirmationUrl(
-                getSavedMerchantWhatsApp(),
-                `DONASI-${Date.now().toString().slice(-6)}`,
-                currentTierTitle,
-                currentAmount
-              )}
+              href="https://ngl.link/ardiwiryawann"
               target="_blank"
               rel="noopener noreferrer"
-              className="w-full py-2.5 px-4 rounded-2xl border border-emerald-500/30 bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 text-xs font-semibold flex items-center justify-center gap-2 transition"
+              className="w-full py-2.5 px-4 rounded-2xl border border-monk-success/30 bg-monk-success/10 text-monk-success hover:bg-monk-success/20 text-xs font-semibold flex items-center justify-center gap-2 transition"
             >
               <MessageCircle size={14} />
-              <span>{isId ? "Kirim Pesan / Konfirmasi ke Mas Ardi via WhatsApp" : "Send Note to Creator via WhatsApp"}</span>
+              <span>{isId ? "Kirim Pesan / Konfirmasi ke Mas Ardi" : "Send Note to Creator"}</span>
+              <ExternalLink size={12} className="opacity-60" />
             </a>
           </div>
         </motion.div>

@@ -4,7 +4,6 @@
  */
 
 export const QRIS_MERCHANT_STORAGE_KEY = "zendo_merchant_qris_v1";
-export const QRIS_WA_STORAGE_KEY = "zendo_merchant_wa_v1";
 
 // Default Zendo Official QRIS (Ardi Wiryawan, Digital & Kreatif - NMID: ID1026507210023)
 export const DEFAULT_STATIC_QRIS =
@@ -111,49 +110,3 @@ export function saveMerchantQRIS(qrisString: string): void {
   }
 }
 
-/**
- * Get customized WhatsApp confirmation number
- */
-export function getSavedMerchantWhatsApp(): string {
-  if (typeof localStorage === "undefined") return "6281234567890";
-  try {
-    return localStorage.getItem(QRIS_WA_STORAGE_KEY) || "6281234567890";
-  } catch {
-    return "6281234567890";
-  }
-}
-
-export function saveMerchantWhatsApp(phone: string): void {
-  if (typeof localStorage === "undefined") return;
-  try {
-    const clean = phone.replace(/[^0-9]/g, "");
-    if (clean) localStorage.setItem(QRIS_WA_STORAGE_KEY, clean);
-    else localStorage.removeItem(QRIS_WA_STORAGE_KEY);
-  } catch {
-    /* ignore */
-  }
-}
-
-/**
- * Generates WhatsApp direct confirmation URL with pre-filled message
- */
-export function generateWhatsAppConfirmationUrl(
-  phone: string = getSavedMerchantWhatsApp(),
-  invoiceId: string,
-  planTitle: string,
-  amount: number
-): string {
-  const targetPhone = (phone || "6281234567890").replace(/[^0-9]/g, "");
-  const msg = [
-    "Halo Mas Ardi Wiryawan,",
-    "",
-    "Saya baru saja mengirimkan donasi/dukungan untuk pengembangan aplikasi Zendo:",
-    "- Ref ID: " + invoiceId,
-    "- Jenis Dukungan: " + planTitle,
-    "- Total Donasi: Rp " + amount.toLocaleString("id-ID"),
-    "- Tanggal: " + new Date().toLocaleDateString("id-ID"),
-    "",
-    "Semoga Zendo terus berkembang dan bermanfaat untuk fokus monk mode banyak orang. Semangat berkarya!",
-  ].join("\n");
-  return "https://wa.me/" + targetPhone + "?text=" + encodeURIComponent(msg);
-}

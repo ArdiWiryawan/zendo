@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { calculateCRC16, convertToDynamicQRIS, DEFAULT_STATIC_QRIS, generateWhatsAppConfirmationUrl } from './qris';
+import { calculateCRC16, convertToDynamicQRIS, DEFAULT_STATIC_QRIS } from './qris';
 
 describe('QRIS EMVCo Dynamic Generation Utility', () => {
   it('computes correct 4-digit uppercase hex CRC16', () => {
@@ -21,12 +21,5 @@ describe('QRIS EMVCo Dynamic Generation Utility', () => {
 
     expect(dynamic).toContain('540539000');
     expect(dynamic).match(/6304[0-9A-F]{4}$/);
-  });
-
-  it('generates pre-filled WhatsApp confirmation URL', () => {
-    const url = generateWhatsAppConfirmationUrl('08123456789', 'ZND-123456', 'Lifetime Pass', 99000);
-    expect(url).toContain('https://wa.me/08123456789?text=');
-    expect(url).toContain('ZND-123456');
-    expect(url).toContain('99.000');
   });
 });
