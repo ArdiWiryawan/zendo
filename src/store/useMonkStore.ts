@@ -222,6 +222,7 @@ type MonkActions = {
   renameNotebookCategory: (id: string, name: string) => void;
   deleteNotebookCategory: (id: string) => void;
   saveNotebookEntry: (entry: NotebookEntry) => void;
+  saveNotebookDrawing: (entryId: string, pageIndex: number, imageId: string) => void;
   deleteNotebookEntry: (id: string) => void;
   duplicateNotebookEntry: (
     id: string,
@@ -2593,6 +2594,36 @@ export const useMonkStore = create<MonkStore>()(
     });
   },
 
+  /**
+   * Attach one stored sketch to a note. A note keeps a single sketch: saving a
+   * new one retires the previous id and the caller is expected to have removed
+   * its `{{img:<id>}}` marker already. Ids are de-duplicated so a re-save of the
+   * same blob cannot list it twice.
+   */
+  saveNotebookDrawing: (entryId, pageIndex, imageId) => {
+    const state = get();
+    const entry = state.notebookEntries.find((e) => e.id === entryId);
+    if (!entry) return;
+    const timestamp = nowIso();
+    const previous = entry.drawingImageId;
+    if (previous === imageId) return;
+    set({
+      notebookEntries: state.notebookEntries.map((e) =>
+        e.id === entryId
+          ? {
+              ...e,
+              drawingImageId: imageId,
+              drawingPageIndex: pageIndex,
+              images: Array.from(new Set([...(e.images ?? []), imageId])).filter(
+                (id) => id !== previous
+              ),
+              updatedAt: timestamp
+            }
+          : e
+      )
+    });
+  },
+
   saveNotebookEntry: (entry) => {
     const state = get();
     const existing = state.notebookEntries.find((e) => e.id === entry.id);
@@ -2601,6 +2632,10 @@ export const useMonkStore = create<MonkStore>()(
     const mergedLinked = Array.from(new Set([...(entry.linkedNoteIds || []), ...extractedIds]));
     const updated: NotebookEntry = {
       ...entry,
+      // The editor owns text, but not the sketch pointer: its payload is built
+      // from an entry snapshot and would drop a drawing saved mid-session.
+      drawingImageId: entry.drawingImageId ?? existing?.drawingImageId,
+      drawingPageIndex: entry.drawingPageIndex ?? existing?.drawingPageIndex,
       linkedNoteIds: mergedLinked,
       updatedAt: timestamp
     };

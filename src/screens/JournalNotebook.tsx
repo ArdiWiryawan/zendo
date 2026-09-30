@@ -5,14 +5,15 @@ import { PrimaryButton, SecondaryButton, GhostButton, CalmDialog, useCalmToast }
 import { createId } from "../lib/ids";
 import { nowIso, getTodayDateString, addDaysToDate } from "../lib/date";
 import type { NotebookCategory, NotebookEntry, ParaType } from "../types/app";
-import { Search, Plus, Pin, PinOff, Trash2, ArrowLeft, X, BookOpen, ImagePlus, Camera, MoreVertical, Pencil, Maximize2, Minimize2, ListTodo, List, ListOrdered, Heading, Bold, Italic, Quote, Crown, Sparkles, Copy, Link2, ArrowRight, FileText, Sun, Moon, Target, PenLine, SlidersHorizontal, Archive, RotateCcw } from "lucide-react";
+import { Search, Plus, Pin, PinOff, Trash2, ArrowLeft, X, BookOpen, ImagePlus, Camera, Palette, MoreVertical, Pencil, Maximize2, Minimize2, ListTodo, List, ListOrdered, Heading, Bold, Italic, Quote, Crown, Sparkles, Copy, Link2, ArrowRight, FileText, Sun, Moon, Target, PenLine, SlidersHorizontal, Archive, RotateCcw } from "lucide-react";
 import { useT, useLanguage, type MessageKey } from "../i18n";
 import { hapticPress } from "../lib/haptics";
 import { autolistMarker, groupPhotoRuns, renderBodyMarkdown, toPlainExcerpt } from "../lib/notebookMarkdown";
 import { deletePageAtIndex, joinPages, removePhotoMarker, trimTrailingBlankPages } from "../lib/notebookPages";
-import { IMG_MARKER, compressImage, putImage, deleteImage, matchImageMarkers } from "../lib/imageStore";
+import { IMG_MARKER, compressImage, putImage, getImage, deleteImage, matchImageMarkers } from "../lib/imageStore";
 import { InlinePhoto, PhotoLightbox, photoIdsInBody, useObjectUrl } from "../components/NotebookImages";
 import { ZendoProModal } from "../components/ZendoProModal";
+import NotebookDrawingPad from "../components/NotebookDrawingPad";
 import { findBacklinks, findRelatedNotes } from "../lib/notebookLinks";
 import { selectActiveGoals } from "../store/selectors";
 import {
@@ -1553,6 +1554,26 @@ export function NotebookEditor({
     }
   }, [categories, catId]);
   const [proModalOpen, setProModalOpen] = useState(false);
+  // The page whose sketch is open in the pad, if any. Writing the exported PNG
+  // back is async, so the page index is captured here rather than re-read later.
+  const [drawingPage, setDrawingPage] = useState<number | null>(null);
+  const [drawingSeed, setDrawingSeed] = useState<string | null>(null);
+  // The note's current sketch, read live from the store rather than the `entry`
+  // prop: the editor holds an entry snapshot, so a sketch saved in this session
+  // would otherwise be invisible to a re-open.
+  //
+  // Both the id AND the page it was saved to come from here — never from the pad's
+  // target page. The store is the only place that knows where the previous marker
+  // actually landed, and the pad's target page can drift (PWA restore, cursor
+  // moved) between opening and saving. Reading the page back is what makes an
+  // overwrite strip the old marker instead of stranding it next to the new one.
+  const liveDrawing = store.notebookEntries.find((e) => e.id === entryIdRef.current);
+  const liveDrawingId = liveDrawing?.drawingImageId;
+  const drawingIdRef = useRef<{ id: string; page: number } | undefined>(
+    liveDrawingId !== undefined
+      ? { id: liveDrawingId, page: liveDrawing?.drawingPageIndex ?? 0 }
+      : undefined
+  );
 
   // Flat join of ALL pages: single surface for GC, lightbox ordering and the
   // saved `body` field — search/list/GC keep working unchanged.
@@ -1712,6 +1733,123 @@ export function NotebookEditor({
     hapticPress("light");
   }, []);
 
+
+  /**
+   * Both photos and sketches land as one `{{img:<id>}}` marker line at the
+   * cursor of the captured page. `insertImages` is the single writer so the
+   * photo upload path and the sketchpad cannot drift apart.
+   */
+  const insertImages = useCallback((blobs: Blob[], targetPage: number): Promise<string[]> => {
+    if (blobs.length === 0) return Promise.resolve([]);
+    const insertPos = bodyRefs.current[targetPage]?.selectionStart;
+    const ids: string[] = [];
+    return (async () => {
+      try {
+        for (const blob of blobs) {
+          const id = createId("img");
+          await putImage(id, blob);
+          ids.push(id);
+        }
+        // Insert each image as a marker line at the textarea cursor so text flows
+        // above and below it (Word-like placement). Recompute against the LATEST
+        // text of the captured page so edits made during the write are not lost.
+        const markers = ids.map((id) => `{{img:${id}}}`).join("\n");
+        setPages((prev) => {
+          const pageText = prev[targetPage] ?? "";
+          const pos = insertPos !== undefined ? Math.min(insertPos, pageText.length) : pageText.length;
+          const prefix = pos > 0 && pageText[pos - 1] !== "\n" ? "\n" : "";
+          const nextBody = `${pageText.slice(0, pos)}${prefix}${markers}${pos === pageText.length ? "" : "\n"}${pageText.slice(pos)}`;
+          return prev.map((p, i) => (i === targetPage ? nextBody : p));
+        });
+        setImages((prev) => [...prev, ...ids]);
+        markDirty();
+        requestAnimationFrame(() => {
+          const el = bodyRefs.current[targetPage];
+          if (el) resizeTextarea(el);
+        });
+        return ids;
+      } catch {
+        setPhotoError(t("notebook.photoError"));
+        for (const id of ids) void deleteImage(id);
+        return [];
+      }
+    })();
+  }, [markDirty, t]);
+
+  useEffect(() => {
+    // Seed from the store, and re-run after this session's own save so the pad
+    // always opens on what the note actually holds. `drawingPage === null` is a
+    // freshly mounted editor that adopted an existing sketch into its ref — the
+    // bytes are identical, so re-decoding them would only flash.
+    if (!liveDrawingId) return;
+    if (drawingIdRef.current?.id === liveDrawingId && drawingPage === null) return;
+    drawingIdRef.current = { id: liveDrawingId, page: liveDrawing?.drawingPageIndex ?? 0 };
+    let cancelled = false;
+    void getImage(liveDrawingId).then((blob) => {
+      if (!blob || cancelled) return;
+      const reader = new FileReader();
+      reader.onload = () => {
+        if (typeof reader.result === "string") setDrawingSeed(reader.result);
+      };
+      reader.readAsDataURL(blob);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [liveDrawingId, liveDrawing?.drawingPageIndex, drawingPage]);
+
+  /**
+   * Open the pad seeded from the note's saved sketch. The page the sketch is
+   * written back to is the textarea that has focus — the same target the photo
+   * path uses — so `pageIndex` here is only a fallback for a pad opened with no
+   * cursor at all.
+   */
+  const openDrawingPad = useCallback((pageIndex: number) => {
+    setDrawingPage(pageIndex);
+    hapticPress("light");
+  }, []);
+
+  /**
+   * A sketch is one per note: the pad is always seeded from the saved drawing,
+   * so saving replaces it rather than stacking.
+   *
+   * The previous marker is swept from EVERY page, not just the pad's target
+   * page. It is only guaranteed to sit on `previous.page` (the page the store
+   * recorded when it was saved); the pad's target can have drifted since, and an
+   * indexed edit there would silently no-op and strand the old marker beside the
+   * new drawing. The sweep is id-keyed, so it cannot remove an unrelated image.
+   */
+  const handleSketchSave = useCallback(
+    async (blob: Blob) => {
+      if (drawingPage === null) return;
+      const previous = drawingIdRef.current;
+      // Write back to the focused textarea when there is one — same target
+      // `insertImages` uses for photos. Opening the pad moves focus off the
+      // textarea, so the usual path is the fallback: the page the previous
+      // sketch was saved to. Only a first-ever sketch falls through to the
+      // pad's own page.
+      const focusedPage = bodyRefs.current.findIndex(
+        (el) => el !== null && el === document.activeElement
+      );
+      const targetPage = focusedPage >= 0 ? focusedPage : previous?.page ?? drawingPage;
+      setDrawingPage(null);
+      if (previous) {
+        setPages((prev) => prev.map((p) => removePhotoMarker(p, previous.id)));
+        setImages((prev) => prev.filter((id) => id !== previous.id));
+        setDrawingSeed(null);
+        void deleteImage(previous.id);
+      }
+      const ids = await insertImages([blob], targetPage);
+      const newId = ids[0];
+      if (newId) {
+        drawingIdRef.current = { id: newId, page: targetPage };
+        store.saveNotebookDrawing(entryIdRef.current, targetPage, newId);
+      }
+      markDirty();
+    },
+    [drawingPage, insertImages, markDirty, store]
+  );
+
   const handleAddImages = async (files: FileList | null) => {
     if (!files || files.length === 0) return;
     setPhotoError("");
@@ -1754,42 +1892,19 @@ export function NotebookEditor({
     // async, and re-reading activePage/selectionStart afterwards would target a
     // page the user has switched to meanwhile (or clobber keystrokes typed
     // during the upload).
-    const targetPage = activePage;
-    const insertPos = bodyRefs.current[activePage]?.selectionStart;
-
-    const next: string[] = [];
-    try {
-      for (const file of arr) {
-        const blob = await compressImage(file);
-        const id = createId("img");
-        await putImage(id, blob);
-        next.push(id);
+    void (async () => {
+      const targetPage = activePage;
+      const blobs: Blob[] = [];
+      try {
+        for (const file of arr) blobs.push(await compressImage(file));
+      } catch {
+        setPhotoError(t("notebook.photoError"));
+        resetInputs();
+        return;
       }
-      if (next.length > 0) {
-        // Insert each photo as a {{img:<id>}} marker line at the textarea cursor so
-        // text flows above and below it (Word-like placement). Recompute against
-        // the LATEST text of the captured page so no edits made during the upload
-        // are lost.
-        const markers = next.map((id) => `{{img:${id}}}`).join("\n");
-        setPages((prev) => {
-          const pageText = prev[targetPage] ?? "";
-          const pos = insertPos !== undefined ? Math.min(insertPos, pageText.length) : pageText.length;
-          const prefix = pos > 0 && pageText[pos - 1] !== "\n" ? "\n" : "";
-          const nextBody = `${pageText.slice(0, pos)}${prefix}${markers}${pos === pageText.length ? "" : "\n"}${pageText.slice(pos)}`;
-          return prev.map((p, i) => (i === targetPage ? nextBody : p));
-        });
-        setImages((prev) => [...prev, ...next]);
-        markDirty();
-        requestAnimationFrame(() => {
-          const el = bodyRefs.current[targetPage];
-          if (el) resizeTextarea(el);
-        });
-      }
-    } catch (err) {
-      setPhotoError(t("notebook.photoError"));
-      for (const id of next) void deleteImage(id);
-    }
-    resetInputs();
+      resetInputs();
+      await insertImages(blobs, targetPage);
+    })();
   };
 
   const insertFormatting = (prefix: string, suffix: string = "") => {
@@ -2468,7 +2583,37 @@ export function NotebookEditor({
           <ImagePlus size={14} className="shrink-0" />
           <span>{t("notebook.photoLabel")}</span>
         </button>
+
+        {/* Sketchpad — the Creativity & Play pack asks the reader to draw. */}
+        <button
+          type="button"
+          onClick={() => openDrawingPad(activePage)}
+          title={t("notebook.drawTitle")}
+          className="flex h-8 shrink-0 whitespace-nowrap items-center gap-1.5 rounded-lg px-2.5 text-xs font-medium text-monk-text-soft transition hover:bg-monk-soft/70 hover:text-monk-text active:scale-95"
+        >
+          <Palette size={14} className="shrink-0" />
+          <span>{t("notebook.drawLabel")}</span>
+        </button>
       </div>
+
+      {drawingPage !== null ? (
+        <div className="mb-2.5 rounded-xl border border-monk-accent/40 bg-monk-surface/95 p-3 shadow-sm animate-scale-in">
+          <div className="mb-2 flex items-center justify-between">
+            <span className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-monk-accent">
+              <Palette size={12} />
+              <span>{t("notebook.drawTitle")}</span>
+            </span>
+            <span className="text-[10px] text-monk-muted">
+              {t("notebook.drawPageNote", { n: drawingPage + 1 })}
+            </span>
+          </div>
+          <NotebookDrawingPad
+            initialDataUrl={drawingSeed}
+            onSave={handleSketchSave}
+            onCancel={() => setDrawingPage(null)}
+          />
+        </div>
+      ) : null}
 
       {/* Wiki-link autocomplete suggestions */}
       {linkSuggestions.length > 0 && (

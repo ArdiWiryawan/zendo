@@ -731,6 +731,11 @@ export type NotebookEntry = {
   // imageIds referencing blobs in IndexedDB "zendo_images" (lib/imageStore).
   // Local-only by design — never synced. Optional: older persisted entries lack it.
   images?: string[];
+  // The single sketch attached to this note (lib/imageStore blob), plus the page
+  // it belongs to. Kept separate from `images` so re-opening the pad can seed
+  // from the note's own drawing instead of guessing. Local-only, never synced.
+  drawingImageId?: string;
+  drawingPageIndex?: number;
   // Multi-page notes. Additive: `body` stays the flat join of all pages so
   // search/render/GC keep working on a single string. Absent = single-page
   // legacy note (body canonical). Editor writes both on save.
