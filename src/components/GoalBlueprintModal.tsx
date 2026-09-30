@@ -14,6 +14,8 @@ import {
 } from "lucide-react";
 import { useMonkStore } from "../store/useMonkStore";
 import { useT } from "../i18n";
+import type { MessageKey } from "../i18n";
+import type { GoalType } from "../types/app";
 import { PrimaryButton, SecondaryButton, TextInput, Textarea, useCalmToast, useModalA11y } from "./ui";
 import { hapticPress } from "../lib/haptics";
 import { GOAL_TEMPLATES, GoalBlueprintTemplate } from "../constants/goalTemplates";
@@ -46,6 +48,10 @@ export function GoalBlueprintModal({ goalId, isOpen, onClose }: GoalBlueprintMod
   const [why, setWhy] = useState("");
   const [desiredOutcome, setDesiredOutcome] = useState("");
   const [weeklyTargetCount, setWeeklyTargetCount] = useState(4);
+  // §12-13: the goal's kind, and — only for `frequency` goals — the countable
+  // outcome target, kept separate from the practice rhythm above.
+  const [goalType, setGoalType] = useState<GoalType>("achievement");
+  const [outcomeFrequency, setOutcomeFrequency] = useState(3);
   const [obstacleMitigation, setObstacleMitigation] = useState("");
   const [error, setError] = useState("");
 
@@ -61,6 +67,8 @@ export function GoalBlueprintModal({ goalId, isOpen, onClose }: GoalBlueprintMod
       setWhy(goal.why || "");
       setDesiredOutcome(goal.desiredOutcome || "");
       setWeeklyTargetCount(goal.weeklyTargetCount || 4);
+      setGoalType(goal.type ?? "achievement");
+      setOutcomeFrequency(goal.outcomeFrequencyPerWeek ?? 3);
       setObstacleMitigation(goal.obstacleMitigation || "");
       setShowTemplates(false);
       setShowAdvanced(false);
@@ -111,6 +119,8 @@ export function GoalBlueprintModal({ goalId, isOpen, onClose }: GoalBlueprintMod
       whenWhere: whenWhere.trim() || undefined,
       definitionOfDone: definitionOfDone.trim() || undefined,
       weeklyTargetCount,
+      type: goalType,
+      outcomeFrequencyPerWeek: goalType === "frequency" ? outcomeFrequency : undefined,
       why: why.trim() || undefined,
       desiredOutcome: desiredOutcome.trim() || undefined,
       obstacleMitigation: obstacleMitigation.trim() || undefined
@@ -358,6 +368,31 @@ export function GoalBlueprintModal({ goalId, isOpen, onClose }: GoalBlueprintMod
                   <div className="mt-2 space-y-3 rounded-2xl border border-monk-border/60 bg-monk-soft/20 p-3.5 text-xs">
                     <div>
                       <label className="font-semibold text-monk-text block mb-1">
+                        {t("blueprint.typeLabel")}
+                      </label>
+                      <div className="flex flex-wrap gap-1.5">
+                        {(["achievement", "frequency", "maintenance"] as const).map((type) => (
+                          <button
+                            key={type}
+                            type="button"
+                            onClick={() => setGoalType(type)}
+                            aria-pressed={goalType === type}
+                            className={`rounded-lg border px-2.5 py-1.5 transition ${
+                              goalType === type
+                                ? "border-monk-accent/50 bg-monk-accent/10 font-semibold text-monk-text"
+                                : "border-monk-border/70 bg-monk-surface/60 text-monk-muted hover:text-monk-text"
+                            }`}
+                          >
+                            {t(`blueprint.type.${type}` as MessageKey)}
+                          </button>
+                        ))}
+                      </div>
+                      <p className="mt-1.5 text-[10px] leading-4 text-monk-muted">
+                        {t(`blueprint.typeHint.${goalType}` as MessageKey)}
+                      </p>
+                    </div>
+                    <div>
+                      <label className="font-semibold text-monk-text block mb-1">
                         {t("blueprint.frequencyLabel")} ({weeklyTargetCount} {t("blueprint.daysPerWeek")})
                       </label>
                       <input
@@ -369,6 +404,25 @@ export function GoalBlueprintModal({ goalId, isOpen, onClose }: GoalBlueprintMod
                         className="w-full accent-monk-accent cursor-pointer"
                       />
                     </div>
+                    {goalType === "frequency" ? (
+                      <div>
+                        <label className="font-semibold text-monk-text block mb-1">
+                          {t("blueprint.outcomeFrequencyLabel")} ({outcomeFrequency}{" "}
+                          {t("blueprint.timesPerWeek")})
+                        </label>
+                        <input
+                          type="range"
+                          min={1}
+                          max={7}
+                          value={outcomeFrequency}
+                          onChange={(e) => setOutcomeFrequency(Number(e.target.value))}
+                          className="w-full accent-monk-accent cursor-pointer"
+                        />
+                        <p className="mt-1 text-[10px] leading-4 text-monk-muted">
+                          {t("blueprint.outcomeFrequencyHint")}
+                        </p>
+                      </div>
+                    ) : null}
                     <div>
                       <label className="font-semibold text-monk-text block mb-1">
                         {t("blueprint.planBLabel")}

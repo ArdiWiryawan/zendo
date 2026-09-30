@@ -55,6 +55,7 @@ import type {
   Goal,
   GoalAllocation,
   GoalTask,
+  GoalType,
   JournalAnswers,
   JournalPackAnswer,
   LearningSession,
@@ -161,6 +162,8 @@ type MonkActions = {
       title?: string;
       keystoneAction?: string;
       weeklyTargetCount?: number;
+      type?: GoalType;
+      outcomeFrequencyPerWeek?: number;
       why?: string;
       desiredOutcome?: string;
       track?: string;
@@ -685,6 +688,13 @@ export const useMonkStore = create<MonkStore>()(
         proTier: stored.proTier ?? "lifetime",
         weeklyReviews: stored.weeklyReviews ?? {},
         releasedSeasonGoals: stored.releasedSeasonGoals ?? [],
+        // Backfill the goal type/frequency split (§12-13). Goals written before
+        // the split carry only `weeklyTargetCount`, which has always meant
+        // "days per week" — i.e. practice rhythm. So leave it as the rhythm and
+        // default `type` to "achievement" (the historical reading: a goal with a
+        // done state). Nothing is invented: `outcomeFrequencyPerWeek` stays
+        // undefined rather than guessing a commitment the user never made.
+        goals: (stored.goals ?? []).map((g) => ({ ...g, type: g.type ?? "achievement" })),
         // Tombstone purge: drop tombstones older than 30 days along with any
         // surviving entry they shadow (a resurrect older than a month is treated
         // as a genuinely new write). Unioned with remote on merge — tombstones
@@ -2060,6 +2070,18 @@ export const useMonkStore = create<MonkStore>()(
         title: blueprint.title !== undefined ? (blueprint.title.trim() || g.title) : g.title,
         keystoneAction: blueprint.keystoneAction !== undefined ? (blueprint.keystoneAction.trim() || g.keystoneAction) : g.keystoneAction,
         weeklyTargetCount: blueprint.weeklyTargetCount !== undefined ? Math.max(1, Math.min(7, blueprint.weeklyTargetCount)) : g.weeklyTargetCount,
+        type: blueprint.type !== undefined ? blueprint.type : g.type,
+        // Only `frequency` goals carry an outcome target; clearing the type (or
+        // moving to achievement/maintenance) drops it so a stale number can't
+        // keep reading as a commitment the user no longer made.
+        outcomeFrequencyPerWeek:
+          blueprint.type !== undefined
+            ? blueprint.type === "frequency"
+              ? blueprint.outcomeFrequencyPerWeek !== undefined
+                ? Math.max(1, Math.min(7, blueprint.outcomeFrequencyPerWeek))
+                : g.outcomeFrequencyPerWeek
+              : undefined
+            : g.outcomeFrequencyPerWeek,
         why: blueprint.why !== undefined ? (blueprint.why.trim() || undefined) : g.why,
         desiredOutcome: blueprint.desiredOutcome !== undefined ? (blueprint.desiredOutcome.trim() || undefined) : g.desiredOutcome,
         track: blueprint.track !== undefined ? (blueprint.track.trim() || undefined) : g.track,

@@ -4,6 +4,14 @@ export type DateOnlyString = string;
 export type WeeklyMode = "planning" | "flow";
 export type SeasonStatus = "draft" | "active" | "ended" | "archived";
 export type GoalStatus = "active" | "paused" | "completed" | "released";
+/**
+ * What kind of goal this is — the distinction §12 asks for.
+ *  - `achievement`: a finite outcome with a completion point ("Ship the launch").
+ *  - `frequency`:   a countable outcome reached N times per week ("Run 3x/week").
+ *  - `maintenance`: an ongoing standard that is never "finished" ("Stay pain-free").
+ * Optional and additive: absent means unspecified, never invalid.
+ */
+export type GoalType = "achievement" | "frequency" | "maintenance";
 export type DayType = "goal" | "rest";
 export type DayStatus = "planned" | "active" | "completed" | "skipped" | "missed" | "partial" | "relapse" | "rest";
 export type EnergyLevel = "low" | "medium" | "high";
@@ -110,7 +118,23 @@ export type Goal = {
   /** Plan B — parsed from "When [obstacle], I will [plan B]". */
   obstacleMitigation?: string;
   priority: 1 | 2 | 3;
+  /**
+   * PRACTICE RHYTHM — how often you show up for this goal's keystone action.
+   * This is the "days per week" dial, and it is NOT the outcome target; the two
+   * were previously conflated under this one field (§13). See
+   * `outcomeFrequencyPerWeek` for the countable outcome.
+   */
   weeklyTargetCount: number;
+  /** What kind of goal this is (§12). Optional for backward compatibility. */
+  type?: GoalType;
+  /**
+   * OUTCOME FREQUENCY — how many times the desired outcome must be reached per
+   * week, for `frequency` goals ("run 3 times"). Distinct from the practice
+   * rhythm above: showing up 5 days a week and completing the outcome 3 times a
+   * week are different commitments, and conflating them made the plan dishonest.
+   * Undefined for achievement/maintenance goals.
+   */
+  outcomeFrequencyPerWeek?: number;
   status: GoalStatus;
   antiGoals?: string[];
   createdAt: ISODateString;
