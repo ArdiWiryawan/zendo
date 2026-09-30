@@ -154,6 +154,14 @@ export function MorningPlanningModal({
   // Daily Highlight state (Make Time framework)
   const [dailyHighlight, setDailyHighlight] = useState<string>("");
 
+  // Main Action — the next *controllable* step, and the text Focus mode runs on.
+  // Deliberately a separate field from the highlight above: the highlight names
+  // the day's most important activity, which is usually larger than one sitting
+  // ("Ship the redesign"), while the main action has to be startable right now
+  // ("Write the nav copy"). Focus surfaces this one, so they must not be the
+  // same input.
+  const [mainAction, setMainAction] = useState<string>("");
+
   // Agenda (unscheduled intents)
   const [agenda, setAgenda] = useState<string[]>([]);
   const [newAgendaItem, setNewAgendaItem] = useState("");
@@ -177,6 +185,7 @@ export function MorningPlanningModal({
       // placeholder instead of being copied in as data.
       const initialHighlight = todayPlan?.highlight || "";
       setDailyHighlight(initialHighlight);
+      setMainAction(todayPlan?.mainAction || "");
       setAgenda(todayPlan?.agenda ?? []);
       setNewAgendaItem("");
 
@@ -190,16 +199,27 @@ export function MorningPlanningModal({
         setNewStartTime("09:00");
         setNewEndTime("10:30");
       }
-      setSecondsRemaining(targetDuration);
-      setTimerRunning(true);
     }
   }, [
     isOpen,
     todayPlan?.timeBlocks,
     todayPlan?.highlight,
-    todayPlan?.agenda,
-    targetDuration
+    todayPlan?.mainAction,
+    todayPlan?.agenda
   ]);
+
+  // Timer reset lives in its own effect, keyed on the chosen duration.
+  //
+  // It used to sit inside the load effect above, which meant `targetDuration`
+  // had to be one of that effect's dependencies — so tapping "10m"/"15m"
+  // re-ran the whole load and re-seeded the draft from the persisted plan,
+  // silently discarding whatever the user had typed into the highlight field.
+  // Picking a duration is a timer concern and must not touch the draft.
+  useEffect(() => {
+    if (!isOpen) return;
+    setSecondsRemaining(targetDuration);
+    setTimerRunning(true);
+  }, [isOpen, targetDuration]);
 
   // Timer interval
   useEffect(() => {
@@ -330,6 +350,9 @@ export function MorningPlanningModal({
     if (finalHighlight) {
       store.setTodayHighlight(finalHighlight);
     }
+    // Blank means "leave the goal's keystone action to speak"; setDayMainAction
+    // already falls back to it, so we never blank out a real intention here.
+    store.setDayMainAction(activeDate, mainAction);
     toast.show(t("planning.commitButton"));
     onCompleted?.();
     onClose();
@@ -487,6 +510,23 @@ export function MorningPlanningModal({
                   className="w-full resize-y rounded-xl border border-monk-accent/25 bg-monk-surface/80 px-4 py-3.5 font-serif text-lg leading-relaxed text-monk-text placeholder:text-monk-muted/50 placeholder:italic focus:border-monk-accent focus:ring-1 focus:ring-monk-accent/30 focus:outline-none transition"
                 />
               </div>
+            </div>
+
+            {/* Main Action — the next controllable step, and what Focus runs on */}
+            <div className="rounded-monk border border-monk-border/80 bg-monk-soft/40 p-5 space-y-3">
+              <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-monk-muted">
+                {t("planning.mainActionTitle")}
+              </span>
+              <p className="text-xs text-monk-muted/90 leading-relaxed">
+                {t("planning.mainActionPrompt")}
+              </p>
+              <input
+                type="text"
+                value={mainAction}
+                onChange={(e) => setMainAction(e.target.value)}
+                placeholder={goal?.keystoneAction || t("planning.mainActionPlaceholder")}
+                className="w-full rounded-xl border border-monk-border bg-monk-surface px-4 py-3 text-sm font-semibold text-monk-text placeholder:font-normal placeholder:text-monk-muted/50 focus:border-monk-accent focus:ring-1 focus:ring-monk-accent/30 focus:outline-none transition"
+              />
             </div>
 
             {/* Agenda (unscheduled intents) */}

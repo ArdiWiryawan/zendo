@@ -137,6 +137,8 @@ type MonkActions = {
   clearDayPlan: (dateString: string) => void;
   toggleTodayCompletion: () => void;
   setTodayHighlight: (highlight: string) => void;
+  /** Set the day's Main Action — the step Focus mode runs on. */
+  setDayMainAction: (dateString: string, mainAction: string) => void;
   setDayAgenda: (dateString: string, agenda: string[]) => void;
   /** §23-25: create a positive practice, optionally supporting a goal. */
   addPractice: (input: { name: string; goalId?: string; weeklyTargetCount?: number; cue?: string }) => Practice | undefined;
@@ -1313,6 +1315,23 @@ export const useMonkStore = create<MonkStore>()(
     const plan = findTodayPlan(state);
     if (!plan) return;
     const dayPlan = { ...plan, highlight: highlight.trim() || undefined, updatedAt: nowIso() };
+    set({
+      dayPlans: state.dayPlans.map((day) => (day.id === dayPlan.id ? dayPlan : day))
+    });
+  },
+
+  setDayMainAction: (dateString, mainAction) => {
+    const state = get();
+    const plan = state.dayPlans.find((day) => day.date === dateString);
+    if (!plan) return;
+    // Empty clears back to the goal's keystone action rather than to nothing —
+    // a goal day with no next step is worse than one with a generic one.
+    const goal = plan.goalId ? state.goals.find((g) => g.id === plan.goalId) : undefined;
+    const next = mainAction.trim() || goal?.keystoneAction;
+    // No-op writes would bump updatedAt and make the sync merge think this
+    // record changed, which can clobber a newer edit from another device.
+    if ((plan.mainAction || "") === (next || "")) return;
+    const dayPlan = { ...plan, mainAction: next, updatedAt: nowIso() };
     set({
       dayPlans: state.dayPlans.map((day) => (day.id === dayPlan.id ? dayPlan : day))
     });
