@@ -172,7 +172,7 @@ export function ZendoProModal({ isOpen, onClose }: ZendoProModalProps) {
             {/* Merchant Badge */}
             <div className="flex items-center justify-between px-1">
               <div className="flex items-center gap-2 text-left">
-                <span className="grid h-6 w-6 place-items-center rounded-lg bg-emerald-500/15 text-emerald-400 text-[9px] font-bold">
+                <span className="grid h-6 w-6 place-items-center rounded-lg bg-monk-success text-monk-success text-[9px] font-bold">
                   ✓
                 </span>
                 <div>
@@ -180,7 +180,7 @@ export function ZendoProModal({ isOpen, onClose }: ZendoProModalProps) {
                   <p className="text-[10px] text-monk-muted font-mono">NMID: ID1026507210023 · A01</p>
                 </div>
               </div>
-              <span className="text-[10px] font-bold text-emerald-400 border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 rounded-full">
+              <span className="text-[10px] font-bold text-monk-success border border-monk-success/30 bg-monk-success px-2 py-0.5 rounded-full">
                 QRIS Resmi
               </span>
             </div>

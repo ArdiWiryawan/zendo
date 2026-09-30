@@ -412,7 +412,7 @@ export function GoalTasksCard({ goal, todayMainAction }: { goal: Goal; todayMain
                       type="button"
                       title={isId ? "Hapus" : "Delete"}
                       onClick={() => store.removeProject(group.project!.id)}
-                      className="text-monk-muted/60 hover:text-rose-400 p-0.5 transition"
+                      className="text-monk-muted/60 hover:text-monk-danger p-0.5 transition"
                     >
                       ✕
                     </button>
@@ -488,7 +488,7 @@ export function GoalTasksCard({ goal, todayMainAction }: { goal: Goal; todayMain
                         type="button"
                         title={isId ? "Hapus" : "Delete"}
                         onClick={() => store.deleteGoalTask(goal.id, task.id)}
-                        className="text-monk-muted/60 hover:text-rose-400 p-0.5 transition"
+                        className="text-monk-muted/60 hover:text-monk-danger p-0.5 transition"
                       >
                         ✕
                       </button>

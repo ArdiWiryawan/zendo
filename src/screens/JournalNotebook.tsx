@@ -1162,7 +1162,7 @@ export function NotebookEntryDetail({
           <button
             type="button"
             onClick={onEdit}
-            className="flex min-h-10 items-center gap-1.5 rounded-full bg-monk-accent px-3.5 text-xs font-bold text-monk-bg shadow-sm transition active:scale-95 hover:bg-monk-accent-hover"
+            className="flex min-h-10 items-center gap-1.5 rounded-full bg-monk-accent px-3.5 text-xs font-bold text-monk-bg shadow-sm transition active:scale-95 hover:bg-monk-accent/90"
           >
             <Pencil size={13} strokeWidth={2} />
             {t("notebook.edit")}
@@ -1219,7 +1219,7 @@ export function NotebookEntryDetail({
                     toast.show(t("notebook.tomorrowActionToast"));
                     hapticPress("success");
                   }}
-                  className="flex items-center gap-1 rounded-lg bg-monk-accent px-2.5 py-1 text-[11px] font-bold text-monk-bg transition hover:bg-monk-accent-hover active:scale-95 shadow-xs"
+                  className="flex items-center gap-1 rounded-lg bg-monk-accent px-2.5 py-1 text-[11px] font-bold text-monk-bg transition hover:bg-monk-accent/90 active:scale-95 shadow-xs"
                 >
                   <span>{t("notebook.setAsTomorrowAction")}</span>
                 </button>
@@ -1287,7 +1287,7 @@ export function NotebookEntryDetail({
                         <div className="grid h-6 w-6 place-items-center rounded-lg bg-monk-soft text-monk-muted group-hover:text-monk-accent transition shrink-0">
                           <Link2 size={12} />
                         </div>
-                        <span className="font-semibold text-monk-text group-hover:text-white truncate">
+                        <span className="font-semibold text-monk-text group-hover:text-monk-text truncate">
                           {b.title || t("notebook.untitled")}
                         </span>
                       </div>
@@ -1322,7 +1322,7 @@ export function NotebookEntryDetail({
                           <FileText size={13} strokeWidth={1.8} />
                         </div>
                         <div className="min-w-0 flex-1">
-                          <p className="font-semibold text-monk-text group-hover:text-white truncate">
+                          <p className="font-semibold text-monk-text group-hover:text-monk-text truncate">
                             {r.note.title || t("notebook.untitled")}
                           </p>
                           {r.note.takeaway ? (
@@ -1352,7 +1352,7 @@ export function NotebookEntryDetail({
           <button
             type="button"
             onClick={() => setDeleteConfirm(true)}
-            className="flex items-center gap-1.5 rounded-xl border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-xs font-semibold text-rose-300 hover:bg-rose-500/20 active:scale-95 transition"
+            className="flex items-center gap-1.5 rounded-xl border border-monk-danger/30 bg-monk-danger px-3 py-2 text-xs font-semibold text-monk-danger hover:bg-monk-danger active:scale-95 transition"
           >
             <Trash2 size={13} strokeWidth={2} />
             <span>{t("notebook.delete")}</span>
@@ -1383,7 +1383,7 @@ export function NotebookEntryDetail({
             <button
               type="button"
               onClick={onEdit}
-              className="flex items-center gap-2 rounded-xl bg-monk-accent px-5 py-2 text-xs font-bold text-monk-bg shadow-sm hover:bg-monk-accent-hover active:scale-95 transition"
+              className="flex items-center gap-2 rounded-xl bg-monk-accent px-5 py-2 text-xs font-bold text-monk-bg shadow-sm hover:bg-monk-accent/90 active:scale-95 transition"
             >
               <Pencil size={14} strokeWidth={2.2} />
               <span>{t("notebook.edit")}</span>
@@ -2801,7 +2801,7 @@ export function NotebookEditor({
             {entry ? (
               <button
                 type="button"
-                className="flex items-center gap-1.5 rounded-xl border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-xs font-semibold text-rose-300 hover:bg-rose-500/20 active:scale-95 transition"
+                className="flex items-center gap-1.5 rounded-xl border border-monk-danger/30 bg-monk-danger px-3 py-2 text-xs font-semibold text-monk-danger hover:bg-monk-danger active:scale-95 transition"
                 onClick={() => setConfirmKind("delete-editor")}
               >
                 <Trash2 size={13} strokeWidth={2} />

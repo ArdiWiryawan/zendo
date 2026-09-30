@@ -194,7 +194,7 @@ export function FrictionSetup({ onNext }: { onNext: () => void }) {
                     }`}
                   >
                     <div
-                      className={`grid h-5 w-5 shrink-0 place-items-center rounded-md border text-white transition-colors ${
+                      className={`grid h-5 w-5 shrink-0 place-items-center rounded-md border text-monk-bg transition-colors ${
                         action.completed ? "border-monk-accent bg-monk-accent" : "border-monk-border bg-monk-soft"
                       }`}
                     >

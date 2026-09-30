@@ -452,7 +452,7 @@ export function FocusSessionSummary({
             <span>💡</span> {t("focus.insightLabel")}
           </p>
           {noteSaved ? (
-            <span className="flex items-center gap-1 text-[11px] font-bold text-emerald-400">
+            <span className="flex items-center gap-1 text-[11px] font-bold text-monk-success">
               <Check size={12} strokeWidth={2.5} /> {t("notebook.saved")}
             </span>
           ) : null}
@@ -475,7 +475,7 @@ export function FocusSessionSummary({
               <button
                 type="button"
                 onClick={saveInsight}
-                className="shrink-0 rounded-xl bg-monk-accent px-3 py-2 text-xs font-bold text-monk-bg transition active:scale-95 hover:bg-monk-accent-hover"
+                className="shrink-0 rounded-xl bg-monk-accent px-3 py-2 text-xs font-bold text-monk-bg transition active:scale-95 hover:bg-monk-accent/90"
               >
                 {t("focus.save")}
               </button>

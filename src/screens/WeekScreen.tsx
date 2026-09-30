@@ -600,7 +600,7 @@ function WeekReviewCard({
             <button
               type="button"
               onClick={onOpenFullReview}
-              className="flex items-center gap-1.5 rounded-lg bg-monk-accent px-3 py-1.5 text-xs font-semibold text-monk-bg shadow-sm transition active:scale-95 hover:bg-monk-accent-hover"
+              className="flex items-center gap-1.5 rounded-lg bg-monk-accent px-3 py-1.5 text-xs font-semibold text-monk-bg shadow-sm transition active:scale-95 hover:bg-monk-accent/90"
             >
               <Sparkles size={12} />
               <span>{t("week.openReviewModal")}</span>

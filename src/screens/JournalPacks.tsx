@@ -502,7 +502,7 @@ function PackSession({ pack, onBack }: { pack: JournalPack; onBack: () => void }
                 <button
                   type="button"
                   onClick={handleBridgeAction}
-                  className="flex items-center gap-1.5 rounded-monk bg-monk-accent px-3 py-2 text-xs font-semibold text-monk-bg transition hover:bg-monk-accent-hover active:scale-95 shadow-sm"
+                  className="flex items-center gap-1.5 rounded-monk bg-monk-accent px-3 py-2 text-xs font-semibold text-monk-bg transition hover:bg-monk-accent/90 active:scale-95 shadow-sm"
                 >
                   <Sparkles size={13} />
                   <span>{t("packs.setAsTomorrowAction")}</span>

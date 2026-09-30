@@ -183,7 +183,7 @@ function StreakConsistencyCard() {
               <span className="text-xl font-mono font-bold text-monk-accent leading-none">
                 {streak.count}
               </span>
-              <span className="text-base font-bold text-white tracking-tight">
+              <span className="text-base font-bold text-monk-text tracking-tight">
                 {t("timeline.streak.dayUnit")}
               </span>
             </div>
@@ -193,7 +193,7 @@ function StreakConsistencyCard() {
               </span>
             ) : null}
             {nextMilestone ? (
-              <span className="text-[10px] font-mono font-medium text-emerald-400 bg-emerald-950/40 px-2 py-0.5 rounded-md border border-emerald-500/30">
+              <span className="text-[10px] font-mono font-medium text-monk-success bg-monk-success-soft px-2 py-0.5 rounded-md border border-monk-success/30">
                 {t("timeline.streak.nextMilestone", { target: nextMilestone, left: daysToMilestone })}
               </span>
             ) : (
@@ -209,28 +209,28 @@ function StreakConsistencyCard() {
 
         {/* Counter chips */}
         <div className="flex flex-wrap items-center gap-1.5 text-xs font-semibold">
-          <span className="inline-flex items-center gap-1 rounded-lg border border-emerald-500/40 bg-emerald-950/60 px-2 py-1 text-emerald-300">
+          <span className="inline-flex items-center gap-1 rounded-lg border border-monk-success/30 bg-monk-success-soft px-2 py-1 text-monk-success">
             <Check size={12} strokeWidth={2.5} />
             <span>{completedCount} {t("timeline.streak.completed")}</span>
           </span>
-          <span className="inline-flex items-center gap-1 rounded-lg border border-slate-600/40 bg-slate-900/60 px-2 py-1 text-slate-300">
+          <span className="inline-flex items-center gap-1 rounded-lg border border-monk-rest/30 bg-monk-rest-soft px-2 py-1 text-monk-rest">
             <Moon size={12} strokeWidth={2} />
             <span>{restCount} {t("timeline.streak.rest")}</span>
           </span>
           {partialCount > 0 ? (
-            <span className="inline-flex items-center gap-1 rounded-lg border border-amber-600/40 bg-amber-950/60 px-2 py-1 text-amber-300">
+            <span className="inline-flex items-center gap-1 rounded-lg border border-monk-warning/30 bg-monk-warning-soft px-2 py-1 text-monk-warning">
               <Flame size={12} strokeWidth={2} />
               <span>{partialCount} {t("timeline.streak.partial")}</span>
             </span>
           ) : null}
           {missedCount > 0 ? (
-            <span className="inline-flex items-center gap-1 rounded-lg border border-rose-500/40 bg-rose-950/60 px-2 py-1 text-rose-300">
-              <span className="inline-block h-1.5 w-1.5 rounded-full bg-rose-400" />
+            <span className="inline-flex items-center gap-1 rounded-lg border border-monk-danger/30 bg-monk-danger-soft px-2 py-1 text-monk-danger">
+              <span className="inline-block h-1.5 w-1.5 rounded-full bg-monk-danger" />
               <span>{missedCount} {t("timeline.streak.missed")}</span>
             </span>
           ) : (
             <span className="inline-flex items-center gap-1 rounded-lg border border-monk-border bg-monk-soft px-2 py-1 text-monk-muted">
-              <ShieldCheck size={13} className="text-emerald-400" />
+              <ShieldCheck size={13} className="text-monk-success" />
               <span>{t("timeline.streak.noMissed")}</span>
             </span>
           )}
@@ -268,33 +268,33 @@ function TimelineEventRow({ event }: { event: TimelineEvent }) {
 
   const icons: Record<TimelineEventType, JSX.Element> = {
     season_started: <Flag size={13} strokeWidth={2} className="text-monk-accent" />,
-    season_completed: <Trophy size={13} strokeWidth={2} className="text-emerald-400" />,
+    season_completed: <Trophy size={13} strokeWidth={2} className="text-monk-success" />,
     goal_created: <Target size={13} strokeWidth={2} className="text-monk-accent" />,
     focus_session: !focusCompleted && displayTitle.includes("early")
-      ? <Flame size={13} strokeWidth={2} className="text-amber-400" />
-      : <Timer size={13} strokeWidth={2} className="text-emerald-400" />,
+      ? <Flame size={13} strokeWidth={2} className="text-monk-warning" />
+      : <Timer size={13} strokeWidth={2} className="text-monk-success" />,
     learning_session: <Lightbulb size={13} strokeWidth={2} className="text-monk-accent" />,
     journal_entry: <FileText size={13} strokeWidth={2} className="text-monk-muted" />
   };
 
   const bgClasses: Record<TimelineEventType, string> = {
     season_started: "bg-monk-accent/15 border-monk-accent/40",
-    season_completed: "bg-emerald-950/60 border-emerald-500/40",
+    season_completed: "bg-monk-success-soft border-monk-success/30",
     goal_created: "bg-monk-accent/15 border-monk-accent/40",
     focus_session: !focusCompleted && displayTitle.includes("early")
-      ? "bg-amber-950/60 border-amber-500/40"
-      : "bg-emerald-950/60 border-emerald-500/40",
+      ? "bg-monk-warning-soft border-monk-warning/30"
+      : "bg-monk-success-soft border-monk-success/30",
     learning_session: "bg-monk-accent/15 border-monk-accent/40",
     journal_entry: "bg-monk-soft border-monk-border/70"
   };
 
   const accentBorder: Record<TimelineEventType, string> = {
     season_started: "border-l-monk-accent",
-    season_completed: "border-l-emerald-500",
+    season_completed: "border-l-monk-success/30",
     goal_created: "border-l-monk-accent",
     focus_session: !focusCompleted && displayTitle.includes("early")
-      ? "border-l-amber-500"
-      : "border-l-emerald-500",
+      ? "border-l-monk-warning/30"
+      : "border-l-monk-success/30",
     learning_session: "border-l-monk-accent",
     journal_entry: "border-l-monk-border-strong"
   };
@@ -319,7 +319,7 @@ function TimelineEventRow({ event }: { event: TimelineEvent }) {
 
         <div className={`rounded-xl border border-monk-border/70 border-l-[3px] ${accentBorder[event.type]} bg-monk-surface/90 p-3.5 shadow-xs transition-all duration-200 hover:border-monk-accent/30`}>
           <div className="flex items-start justify-between gap-2">
-            <h4 className="text-xs font-bold text-white leading-tight tracking-wide">
+            <h4 className="text-xs font-bold text-monk-text leading-tight tracking-wide">
               {displayTitle}
             </h4>
 
@@ -353,7 +353,7 @@ function TimelineEventRow({ event }: { event: TimelineEvent }) {
                   <p className="text-[10px] font-bold uppercase tracking-wider text-monk-text-soft">
                     {item.question}
                   </p>
-                  <p className="mt-0.5 text-xs font-medium leading-relaxed text-white">
+                  <p className="mt-0.5 text-xs font-medium leading-relaxed text-monk-text">
                     {item.answer}
                   </p>
                 </div>
@@ -586,23 +586,23 @@ export default function TimelineScreen() {
     if (!isWithinSeason) {
       if (status === "completed") {
         return {
-          tileClass: "bg-emerald-950/40 border-emerald-600/50 text-white",
-          numClass: "text-emerald-200 font-bold",
-          iconElement: <Check size={11} strokeWidth={2.5} className="text-emerald-400" />
+          tileClass: "bg-monk-success-soft border-monk-success/30 text-monk-text",
+          numClass: "text-monk-success font-bold",
+          iconElement: <Check size={11} strokeWidth={2.5} className="text-monk-success" />
         };
       }
       if (status === "rest") {
         return {
-          tileClass: "bg-slate-900/60 border-slate-600/50 text-white",
-          numClass: "text-slate-200 font-bold",
-          iconElement: <Moon size={11} strokeWidth={2} className="text-slate-300" />
+          tileClass: "bg-monk-rest-soft border-monk-rest/30 text-monk-text",
+          numClass: "text-monk-rest font-bold",
+          iconElement: <Moon size={11} strokeWidth={2} className="text-monk-rest" />
         };
       }
       if (status === "partial") {
         return {
-          tileClass: "bg-amber-950/40 border-amber-600/50 text-white",
-          numClass: "text-amber-200 font-bold",
-          iconElement: <Flame size={11} strokeWidth={2} className="text-amber-400" />
+          tileClass: "bg-monk-warning-soft border-monk-warning/30 text-monk-text",
+          numClass: "text-monk-warning font-bold",
+          iconElement: <Flame size={11} strokeWidth={2} className="text-monk-warning" />
         };
       }
       return {
@@ -625,34 +625,34 @@ export default function TimelineScreen() {
     if (isDateToday) {
       if (status === "completed") {
         return {
-          tileClass: "bg-emerald-950/80 border-emerald-500 ring-2 ring-monk-accent text-white shadow-sm",
-          numClass: "text-white font-black",
-          iconElement: <Check size={11} strokeWidth={3} className="text-emerald-400" />
+          tileClass: "bg-monk-success-soft border-monk-success/30 ring-2 ring-monk-accent text-monk-text shadow-sm",
+          numClass: "text-monk-text font-black",
+          iconElement: <Check size={11} strokeWidth={3} className="text-monk-success" />
         };
       }
       if (status === "rest") {
         return {
-          tileClass: "bg-slate-900/90 border-slate-500 ring-2 ring-monk-accent text-white shadow-sm",
-          numClass: "text-white font-black",
-          iconElement: <Moon size={11} strokeWidth={2.5} className="text-slate-200" />
+          tileClass: "bg-monk-rest-soft border-monk-rest/30 ring-2 ring-monk-accent text-monk-text shadow-sm",
+          numClass: "text-monk-text font-black",
+          iconElement: <Moon size={11} strokeWidth={2.5} className="text-monk-rest" />
         };
       }
       if (status === "partial") {
         return {
-          tileClass: "bg-amber-950/80 border-amber-500 ring-2 ring-monk-accent text-white shadow-sm",
-          numClass: "text-amber-200 font-black",
-          iconElement: <Flame size={11} strokeWidth={2.5} className="text-amber-400" />
+          tileClass: "bg-monk-warning-soft border-monk-warning/30 ring-2 ring-monk-accent text-monk-text shadow-sm",
+          numClass: "text-monk-warning font-black",
+          iconElement: <Flame size={11} strokeWidth={2.5} className="text-monk-warning" />
         };
       }
       if (status === "relapse" || status === "missed") {
         return {
-          tileClass: "bg-rose-950/80 border-rose-500 ring-2 ring-monk-accent text-white shadow-sm",
-          numClass: "text-rose-200 font-black",
-          iconElement: <span className="text-[10px] font-black text-rose-400 leading-none">✕</span>
+          tileClass: "bg-monk-danger-soft border-monk-danger/30 ring-2 ring-monk-accent text-monk-text shadow-sm",
+          numClass: "text-monk-danger font-black",
+          iconElement: <span className="text-[10px] font-black text-monk-danger leading-none">✕</span>
         };
       }
       return {
-        tileClass: "bg-monk-surface-raised border-monk-accent ring-2 ring-monk-accent text-white shadow-sm",
+        tileClass: "bg-monk-surface-raised border-monk-accent ring-2 ring-monk-accent text-monk-text shadow-sm",
         numClass: "text-monk-accent font-black",
         iconElement: <span className="h-1.5 w-1.5 rounded-full bg-monk-accent animate-pulse" />
       };
@@ -661,36 +661,36 @@ export default function TimelineScreen() {
     // 5. Current month, within season, PAST days
     if (status === "completed") {
       return {
-        tileClass: "bg-emerald-950/60 border-emerald-600/70 hover:border-emerald-400 text-white",
-        numClass: "text-white font-bold",
-        iconElement: <Check size={11} strokeWidth={3} className="text-emerald-400" />
+        tileClass: "bg-monk-success-soft border-monk-success/30 hover:border-monk-success/30 text-monk-text",
+        numClass: "text-monk-text font-bold",
+        iconElement: <Check size={11} strokeWidth={3} className="text-monk-success" />
       };
     }
     if (status === "rest") {
       return {
-        tileClass: "bg-slate-900/80 border-slate-600/70 hover:border-slate-400 text-white",
-        numClass: "text-white font-bold",
-        iconElement: <Moon size={11} strokeWidth={2.2} className="text-slate-300" />
+        tileClass: "bg-monk-rest-soft border-monk-rest/30 hover:border-monk-rest/30 text-monk-text",
+        numClass: "text-monk-text font-bold",
+        iconElement: <Moon size={11} strokeWidth={2.2} className="text-monk-rest" />
       };
     }
     if (status === "partial") {
       return {
-        tileClass: "bg-amber-950/60 border-amber-600/70 hover:border-amber-400 text-white",
-        numClass: "text-amber-200 font-bold",
-        iconElement: <Flame size={11} strokeWidth={2.5} className="text-amber-400" />
+        tileClass: "bg-monk-warning-soft border-monk-warning/30 hover:border-monk-warning/30 text-monk-text",
+        numClass: "text-monk-warning font-bold",
+        iconElement: <Flame size={11} strokeWidth={2.5} className="text-monk-warning" />
       };
     }
     if (status === "missed" || status === "relapse") {
       return {
-        tileClass: "bg-rose-950/60 border-rose-600/70 hover:border-rose-400 text-rose-300",
-        numClass: "text-rose-300 font-bold",
-        iconElement: <span className="text-[10px] font-black text-rose-400 leading-none">✕</span>
+        tileClass: "bg-monk-danger-soft border-monk-danger/30 hover:border-monk-danger/30 text-monk-danger",
+        numClass: "text-monk-danger font-bold",
+        iconElement: <span className="text-[10px] font-black text-monk-danger leading-none">✕</span>
       };
     }
 
     return {
-      tileClass: "bg-monk-soft border-monk-border/70 hover:border-monk-border-strong text-white",
-      numClass: "text-white font-bold",
+      tileClass: "bg-monk-soft border-monk-border/70 hover:border-monk-border-strong text-monk-text",
+      numClass: "text-monk-text font-bold",
       iconElement: null
     };
   }
@@ -799,7 +799,7 @@ export default function TimelineScreen() {
                       <button
                         type="button"
                         onClick={() => navigate(routes.today)}
-                        className="mt-3.5 inline-flex items-center gap-1.5 rounded-xl bg-monk-accent px-3 py-1.5 text-xs font-bold text-monk-bg transition-all hover:bg-monk-accent-hover active:scale-95 shadow-xs"
+                        className="mt-3.5 inline-flex items-center gap-1.5 rounded-xl bg-monk-accent px-3 py-1.5 text-xs font-bold text-monk-bg transition-all hover:bg-monk-accent/90 active:scale-95 shadow-xs"
                       >
                         <span>{t("timeline.emptyAction")}</span>
                         <ArrowRight size={12} />
@@ -843,7 +843,7 @@ export default function TimelineScreen() {
 
                 <div className="text-center min-w-0">
                   <div className="flex items-center justify-center gap-1.5">
-                    <p className="text-xs font-bold text-white uppercase tracking-wider">
+                    <p className="text-xs font-bold text-monk-text uppercase tracking-wider">
                       {t("timeline.weekLabel", { n: selectedWeek })}
                     </p>
                     {selectedWeek === currentWeekNum ? (
@@ -919,7 +919,7 @@ export default function TimelineScreen() {
                           <span className="text-[10px] font-bold uppercase tracking-wider block leading-none">
                             {DOW[idx]}
                           </span>
-                          <p className="text-xs font-mono font-bold text-white mt-0.5 leading-none">
+                          <p className="text-xs font-mono font-bold text-monk-text mt-0.5 leading-none">
                             {dateStr.slice(8)}
                           </p>
                         </div>
@@ -932,22 +932,22 @@ export default function TimelineScreen() {
                                 {t("week.upcoming")}
                               </span>
                             ) : isCompleted ? (
-                              <span className="inline-flex items-center gap-1 rounded-md border border-emerald-500/40 bg-emerald-950/60 px-1.5 py-0.5 text-[10px] font-bold text-emerald-300">
+                              <span className="inline-flex items-center gap-1 rounded-md border border-monk-success/30 bg-monk-success-soft px-1.5 py-0.5 text-[10px] font-bold text-monk-success">
                                 <Check size={11} strokeWidth={2.5} />
                                 <span>{t("timeline.streak.completed")}</span>
                               </span>
                             ) : isRest ? (
-                              <span className="inline-flex items-center gap-1 rounded-md border border-slate-600/40 bg-slate-900/60 px-1.5 py-0.5 text-[10px] font-bold text-slate-300">
+                              <span className="inline-flex items-center gap-1 rounded-md border border-monk-rest/30 bg-monk-rest-soft px-1.5 py-0.5 text-[10px] font-bold text-monk-rest">
                                 <Moon size={11} />
                                 <span>{t("timeline.streak.rest")}</span>
                               </span>
                             ) : isPartial ? (
-                              <span className="inline-flex items-center gap-1 rounded-md border border-amber-600/40 bg-amber-950/60 px-1.5 py-0.5 text-[10px] font-bold text-amber-300">
+                              <span className="inline-flex items-center gap-1 rounded-md border border-monk-warning/30 bg-monk-warning-soft px-1.5 py-0.5 text-[10px] font-bold text-monk-warning">
                                 <Flame size={11} />
                                 <span>{t("timeline.streak.partial")}</span>
                               </span>
                             ) : isMissed ? (
-                              <span className="inline-flex items-center gap-1 rounded-md border border-rose-500/40 bg-rose-950/60 px-1.5 py-0.5 text-[10px] font-bold text-rose-300">
+                              <span className="inline-flex items-center gap-1 rounded-md border border-monk-danger/30 bg-monk-danger-soft px-1.5 py-0.5 text-[10px] font-bold text-monk-danger">
                                 <AlertTriangle size={11} />
                                 <span>{t("timeline.streak.missed")}</span>
                               </span>
@@ -964,7 +964,7 @@ export default function TimelineScreen() {
                             ) : null}
                           </div>
 
-                          <p className="text-xs font-semibold text-white mt-1 truncate max-w-xs">
+                          <p className="text-xs font-semibold text-monk-text mt-1 truncate max-w-xs">
                             {dayPlan?.mainAction || goal?.keystoneAction || (isRest ? t("timeline.restDay") : t("timeline.noAction"))}
                           </p>
                         </div>
@@ -1021,7 +1021,7 @@ export default function TimelineScreen() {
                     <ChevronLeft size={16} />
                   </button>
                   <div className="min-w-0">
-                    <h3 className="text-sm font-bold text-white tracking-wide capitalize leading-none">
+                    <h3 className="text-sm font-bold text-monk-text tracking-wide capitalize leading-none">
                       {seasonMonthLabel}
                     </h3>
                     <p className="text-[11px] text-monk-muted mt-1 leading-none">
@@ -1150,7 +1150,7 @@ export default function TimelineScreen() {
                     <div className="flex items-center justify-between gap-2 flex-wrap">
                       <div className="flex items-center gap-2 min-w-0">
                         <Calendar size={14} className="text-monk-accent shrink-0" />
-                        <span className="text-xs font-bold text-white capitalize truncate">
+                        <span className="text-xs font-bold text-monk-text capitalize truncate">
                           {formattedDate}
                         </span>
                         {isDateToday ? (
@@ -1180,22 +1180,22 @@ export default function TimelineScreen() {
                             <span>{t("week.upcoming")}</span>
                           </span>
                         ) : inspectedStatus === "completed" ? (
-                          <span className="inline-flex items-center gap-1 rounded-md bg-emerald-950/60 border border-emerald-500/50 px-2 py-0.5 text-[10px] font-bold text-emerald-300">
+                          <span className="inline-flex items-center gap-1 rounded-md bg-monk-success-soft border border-monk-success/30 px-2 py-0.5 text-[10px] font-bold text-monk-success">
                             <Check size={11} strokeWidth={2.5} />
                             <span>{t("timeline.streak.completed")}</span>
                           </span>
                         ) : inspectedStatus === "rest" ? (
-                          <span className="inline-flex items-center gap-1 rounded-md bg-slate-900/60 border border-slate-600/50 px-2 py-0.5 text-[10px] font-bold text-slate-300">
+                          <span className="inline-flex items-center gap-1 rounded-md bg-monk-rest-soft border border-monk-rest/30 px-2 py-0.5 text-[10px] font-bold text-monk-rest">
                             <Moon size={11} />
                             <span>{t("timeline.streak.rest")}</span>
                           </span>
                         ) : inspectedStatus === "partial" ? (
-                          <span className="inline-flex items-center gap-1 rounded-md bg-amber-950/60 border border-amber-600/50 px-2 py-0.5 text-[10px] font-bold text-amber-300">
+                          <span className="inline-flex items-center gap-1 rounded-md bg-monk-warning-soft border border-monk-warning/30 px-2 py-0.5 text-[10px] font-bold text-monk-warning">
                             <Flame size={11} />
                             <span>{t("timeline.streak.partial")}</span>
                           </span>
                         ) : inspectedStatus === "missed" || inspectedStatus === "relapse" ? (
-                          <span className="inline-flex items-center gap-1 rounded-md bg-rose-950/60 border border-rose-500/50 px-2 py-0.5 text-[10px] font-bold text-rose-300">
+                          <span className="inline-flex items-center gap-1 rounded-md bg-monk-danger-soft border border-monk-danger/30 px-2 py-0.5 text-[10px] font-bold text-monk-danger">
                             <span>✕ {t("timeline.streak.missed")}</span>
                           </span>
                         ) : (
@@ -1234,20 +1234,20 @@ export default function TimelineScreen() {
 
                         {/* Productivity Framework Insight */}
                         {inspectedStatus === "completed" ? (
-                          <div className="rounded-lg bg-emerald-950/30 border border-emerald-500/20 px-2.5 py-1.5 text-[11px] text-emerald-300/90 leading-relaxed">
-                            💡 <span className="font-semibold text-emerald-300">{t("timeline.insight.deepWorkTitle")}</span> {t("timeline.insight.deepWorkBody")}
+                          <div className="rounded-lg bg-monk-success-soft border border-monk-success/30 px-2.5 py-1.5 text-[11px] text-monk-success leading-relaxed">
+                            💡 <span className="font-semibold text-monk-success">{t("timeline.insight.deepWorkTitle")}</span> {t("timeline.insight.deepWorkBody")}
                           </div>
                         ) : inspectedStatus === "rest" ? (
-                          <div className="rounded-lg bg-slate-900/40 border border-slate-700/40 px-2.5 py-1.5 text-[11px] text-slate-300/90 leading-relaxed">
-                            🌱 <span className="font-semibold text-slate-300">{t("timeline.insight.restTitle")}</span> {t("timeline.insight.restBody")}
+                          <div className="rounded-lg bg-monk-rest-soft border border-monk-rest/30 px-2.5 py-1.5 text-[11px] text-monk-rest leading-relaxed">
+                            🌱 <span className="font-semibold text-monk-rest">{t("timeline.insight.restTitle")}</span> {t("timeline.insight.restBody")}
                           </div>
                         ) : inspectedStatus === "partial" ? (
-                          <div className="rounded-lg bg-amber-950/30 border border-amber-600/20 px-2.5 py-1.5 text-[11px] text-amber-300/90 leading-relaxed">
-                            ⚡ <span className="font-semibold text-amber-300">{t("timeline.insight.partialTitle")}</span> {t("timeline.insight.partialBody")}
+                          <div className="rounded-lg bg-monk-warning-soft border border-monk-warning/30 px-2.5 py-1.5 text-[11px] text-monk-warning leading-relaxed">
+                            ⚡ <span className="font-semibold text-monk-warning">{t("timeline.insight.partialTitle")}</span> {t("timeline.insight.partialBody")}
                           </div>
                         ) : inspectedStatus === "missed" && !isFuture && !isDateToday ? (
-                          <div className="rounded-lg bg-rose-950/30 border border-rose-500/20 px-2.5 py-1.5 text-[11px] text-rose-300/90 leading-relaxed">
-                            🧭 <span className="font-semibold text-rose-300">{t("timeline.insight.missedTitle")}</span> {t("timeline.insight.missedBody")}
+                          <div className="rounded-lg bg-monk-danger-soft border border-monk-danger/30 px-2.5 py-1.5 text-[11px] text-monk-danger leading-relaxed">
+                            🧭 <span className="font-semibold text-monk-danger">{t("timeline.insight.missedTitle")}</span> {t("timeline.insight.missedBody")}
                           </div>
                         ) : null}
 
@@ -1255,7 +1255,7 @@ export default function TimelineScreen() {
                           <button
                             type="button"
                             onClick={() => navigate(routes.today)}
-                            className="w-full flex items-center justify-center gap-1.5 rounded-xl bg-monk-accent py-2 text-xs font-bold text-monk-bg shadow-sm active:scale-98 transition hover:bg-monk-accent-hover"
+                            className="w-full flex items-center justify-center gap-1.5 rounded-xl bg-monk-accent py-2 text-xs font-bold text-monk-bg shadow-sm active:scale-98 transition hover:bg-monk-accent/90"
                           >
                             <span>{t("timeline.month.openTodayAction")}</span>
                             <ArrowRight size={13} />
@@ -1264,7 +1264,7 @@ export default function TimelineScreen() {
                           <button
                             type="button"
                             onClick={() => setRetroDate(selectedMonthDate)}
-                            className="w-full flex items-center justify-center gap-1.5 rounded-xl bg-monk-accent py-2 text-xs font-bold text-monk-bg shadow-sm active:scale-98 transition hover:bg-monk-accent-hover"
+                            className="w-full flex items-center justify-center gap-1.5 rounded-xl bg-monk-accent py-2 text-xs font-bold text-monk-bg shadow-sm active:scale-98 transition hover:bg-monk-accent/90"
                           >
                             <Plus size={14} />
                             <span>{t("timeline.retroLog")} - Catat Sesi Terlewat</span>
@@ -1278,19 +1278,19 @@ export default function TimelineScreen() {
 
               {/* Legend with matching tactile chips */}
               <div className="flex flex-wrap items-center justify-between gap-1.5 border-t border-monk-border/50 pt-3 text-[11px]">
-                <span className="inline-flex items-center gap-1 rounded-md bg-emerald-950/40 border border-emerald-700/50 px-2 py-0.5 font-semibold text-emerald-300">
+                <span className="inline-flex items-center gap-1 rounded-md bg-monk-success-soft border border-monk-success/30 px-2 py-0.5 font-semibold text-monk-success">
                   <Check size={10} strokeWidth={3} />
                   <span>{t("timeline.streak.completed")}</span>
                 </span>
-                <span className="inline-flex items-center gap-1 rounded-md bg-slate-900/60 border border-slate-700/50 px-2 py-0.5 font-semibold text-slate-300">
+                <span className="inline-flex items-center gap-1 rounded-md bg-monk-rest-soft border border-monk-rest/30 px-2 py-0.5 font-semibold text-monk-rest">
                   <Moon size={10} strokeWidth={2} />
                   <span>{t("timeline.streak.rest")}</span>
                 </span>
-                <span className="inline-flex items-center gap-1 rounded-md bg-amber-950/40 border border-amber-700/50 px-2 py-0.5 font-semibold text-amber-300">
+                <span className="inline-flex items-center gap-1 rounded-md bg-monk-warning-soft border border-monk-warning/30 px-2 py-0.5 font-semibold text-monk-warning">
                   <Flame size={10} strokeWidth={2} />
                   <span>{t("timeline.streak.partial")}</span>
                 </span>
-                <span className="inline-flex items-center gap-1 rounded-md bg-rose-950/40 border border-rose-700/50 px-2 py-0.5 font-semibold text-rose-300">
+                <span className="inline-flex items-center gap-1 rounded-md bg-monk-danger-soft border border-monk-danger/30 px-2 py-0.5 font-semibold text-monk-danger">
                   <span>✕ {t("timeline.streak.missed")}</span>
                 </span>
                 <span className="inline-flex items-center gap-1 rounded-md bg-monk-surface/40 border border-monk-border/50 px-2 py-0.5 font-semibold text-monk-muted">

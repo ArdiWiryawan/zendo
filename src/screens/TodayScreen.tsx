@@ -609,7 +609,7 @@ export function TodayScreen() {
                       store.createOrUpdateDayPlan(today, { dayType: "rest" });
                       setWeeklyReviewModalOpen(true);
                     }}
-                    className="flex items-center gap-1.5 rounded-lg bg-monk-accent px-3.5 py-1.5 text-xs font-semibold text-monk-bg shadow-sm transition active:scale-95 hover:bg-monk-accent-hover"
+                    className="flex items-center gap-1.5 rounded-lg bg-monk-accent px-3.5 py-1.5 text-xs font-semibold text-monk-bg shadow-sm transition active:scale-95 hover:bg-monk-accent/90"
                   >
                     <Moon size={13} />
                     <span>{t("today.sixDaysCompleted.cta")}</span>
@@ -668,7 +668,7 @@ export function TodayScreen() {
                   <button
                     type="button"
                     onClick={() => setBlueprintGoalId(unclarifiedGoal.id)}
-                    className="flex items-center gap-1.5 rounded-lg bg-monk-accent px-3.5 py-1.5 text-xs font-semibold text-monk-bg shadow-sm transition active:scale-95 hover:bg-monk-accent-hover"
+                    className="flex items-center gap-1.5 rounded-lg bg-monk-accent px-3.5 py-1.5 text-xs font-semibold text-monk-bg shadow-sm transition active:scale-95 hover:bg-monk-accent/90"
                   >
                     <Sparkles size={13} />
                     <span>{t("blueprint.clarifyPromptCta")}</span>

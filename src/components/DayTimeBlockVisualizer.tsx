@@ -35,52 +35,52 @@ const CATEGORY_STYLES: Record<
   deep_work: {
     icon: Zap,
     labelKey: "planning.catDeep",
-    border: "border-red-900/40",
-    borderL: "border-l-red-500",
+    border: "border-monk-cat-deep/30",
+    borderL: "border-l-monk-cat-deep/30",
     bg: "bg-monk-surface-raised",
-    text: "text-red-400",
-    dot: "bg-red-400",
-    chipBg: "bg-red-950/60 text-red-300 border-red-800/50"
+    text: "text-monk-cat-deep",
+    dot: "bg-monk-cat-deep",
+    chipBg: "bg-monk-cat-deep/15 text-monk-cat-deep border-monk-cat-deep/30"
   },
   shallow: {
     icon: Briefcase,
     labelKey: "planning.catShallow",
-    border: "border-sky-900/40",
-    borderL: "border-l-sky-500",
+    border: "border-monk-cat-shallow/30",
+    borderL: "border-l-monk-cat-shallow/30",
     bg: "bg-monk-surface-raised",
-    text: "text-sky-400",
-    dot: "bg-sky-400",
-    chipBg: "bg-sky-950/60 text-sky-300 border-sky-800/50"
+    text: "text-monk-cat-shallow",
+    dot: "bg-monk-cat-shallow",
+    chipBg: "bg-monk-cat-shallow/15 text-monk-cat-shallow border-monk-cat-shallow/30"
   },
   learning: {
     icon: BookOpen,
     labelKey: "planning.catLearning",
-    border: "border-purple-900/40",
-    borderL: "border-l-purple-500",
+    border: "border-monk-cat-learning/30",
+    borderL: "border-l-monk-cat-learning/30",
     bg: "bg-monk-surface-raised",
-    text: "text-purple-400",
-    dot: "bg-purple-400",
-    chipBg: "bg-purple-950/60 text-purple-300 border-purple-800/50"
+    text: "text-monk-cat-learning",
+    dot: "bg-monk-cat-learning",
+    chipBg: "bg-monk-cat-learning/15 text-monk-cat-learning border-monk-cat-learning/30"
   },
   rest: {
     icon: Coffee,
     labelKey: "planning.catRest",
-    border: "border-emerald-900/40",
-    borderL: "border-l-emerald-500",
+    border: "border-monk-cat-rest/30",
+    borderL: "border-l-monk-cat-rest/30",
     bg: "bg-monk-surface-raised",
-    text: "text-emerald-400",
-    dot: "bg-emerald-400",
-    chipBg: "bg-emerald-950/60 text-emerald-300 border-emerald-800/50"
+    text: "text-monk-cat-rest",
+    dot: "bg-monk-cat-rest",
+    chipBg: "bg-monk-cat-rest/15 text-monk-cat-rest border-monk-cat-rest/30"
   },
   personal: {
     icon: User,
     labelKey: "planning.catPersonal",
-    border: "border-pink-900/40",
-    borderL: "border-l-pink-500",
+    border: "border-monk-cat-personal/30",
+    borderL: "border-l-monk-cat-personal/30",
     bg: "bg-monk-surface-raised",
-    text: "text-pink-400",
-    dot: "bg-pink-400",
-    chipBg: "bg-pink-950/60 text-pink-300 border-pink-800/50"
+    text: "text-monk-cat-personal",
+    dot: "bg-monk-cat-personal",
+    chipBg: "bg-monk-cat-personal/15 text-monk-cat-personal border-monk-cat-personal/30"
   }
 };
 
@@ -266,7 +266,7 @@ export function DayTimeBlockVisualizer({
                 hapticPress("light");
                 onOpenPlanning();
               }}
-              className="flex items-center gap-1 rounded-lg bg-monk-accent px-2.5 py-1 text-[11px] font-semibold text-monk-bg shadow-xs hover:bg-monk-accent-hover transition active:scale-95"
+              className="flex items-center gap-1 rounded-lg bg-monk-accent px-2.5 py-1 text-[11px] font-semibold text-monk-bg shadow-xs hover:bg-monk-accent/90 transition active:scale-95"
             >
               <Edit3 size={11} />
               <span>{timeBlocks.length > 0 ? t("timeline.daily.editPlanCta") : t("timeline.daily.planTodayCta")}</span>
@@ -322,7 +322,7 @@ export function DayTimeBlockVisualizer({
                     </div>
 
                     {/* Block Title - Full text, no truncation */}
-                    <p className={`text-xs sm:text-sm font-semibold text-white leading-snug ${block.completed ? "line-through text-monk-muted" : ""}`}>
+                    <p className={`text-xs sm:text-sm font-semibold text-monk-text leading-snug ${block.completed ? "line-through text-monk-muted" : ""}`}>
                       {block.title}
                     </p>
                   </div>
@@ -332,7 +332,7 @@ export function DayTimeBlockVisualizer({
                     <div
                       className={`grid h-6 w-6 place-items-center rounded-lg border transition ${
                         block.completed
-                          ? "border-emerald-500 bg-emerald-500 text-white shadow-xs"
+                          ? "border-monk-success/30 bg-monk-success-soft text-monk-success shadow-xs"
                           : "border-monk-border-strong bg-monk-surface text-monk-muted hover:border-monk-accent"
                       }`}
                     >
@@ -396,7 +396,7 @@ export function DayTimeBlockVisualizer({
                     <div className="flex items-start justify-between gap-2 min-w-0">
                       <div className="flex items-center gap-1.5 min-w-0">
                         <span className={`inline-block h-2 w-2 rounded-full ${style.dot} shrink-0`} />
-                        <p className={`text-xs font-bold truncate text-white ${block.completed ? "line-through text-monk-muted" : ""}`}>
+                        <p className={`text-xs font-bold truncate text-monk-text ${block.completed ? "line-through text-monk-muted" : ""}`}>
                           {block.title}
                         </p>
                       </div>
@@ -408,7 +408,7 @@ export function DayTimeBlockVisualizer({
                         <div
                           className={`grid h-4 w-4 place-items-center rounded-md border ${
                             block.completed
-                              ? "border-emerald-500 bg-emerald-500 text-white"
+                              ? "border-monk-success/30 bg-monk-success-soft text-monk-success"
                               : "border-monk-border-strong bg-monk-surface"
                           }`}
                         >
@@ -437,8 +437,8 @@ export function DayTimeBlockVisualizer({
                 className="absolute left-0 right-0 z-20 flex items-center pointer-events-none"
                 style={{ top: nowOffsetTop }}
               >
-                <div className="flex items-center gap-1 px-1 bg-monk-danger rounded text-[9px] font-bold text-white uppercase tracking-wider font-mono shadow-sm">
-                  <span className="h-1.5 w-1.5 rounded-full bg-white animate-ping" />
+                <div className="flex items-center gap-1 px-1 bg-monk-danger-soft border border-monk-danger/30 rounded text-[9px] font-bold text-monk-danger uppercase tracking-wider font-mono shadow-sm">
+                  <span className="h-1.5 w-1.5 rounded-full bg-monk-danger animate-ping" />
                   <span>{t("timeline.daily.nowMarker")}</span>
                 </div>
                 <div className="flex-1 border-b-2 border-monk-danger/80 shadow-xs" />

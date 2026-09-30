@@ -325,9 +325,9 @@ export function JournalLibraryScreen() {
                           <span
                             className={`rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider shrink-0 ${
                               isNote
-                                ? "bg-amber-500/15 text-amber-400 border border-amber-500/30"
+                                ? "bg-monk-warning text-monk-warning border border-monk-warning/30"
                                 : isReflection
-                                ? "bg-emerald-500/15 text-emerald-400 border border-emerald-500/30"
+                                ? "bg-monk-success text-monk-success border border-monk-success/30"
                                 : "bg-sky-500/15 text-sky-400 border border-sky-500/30"
                             }`}
                           >

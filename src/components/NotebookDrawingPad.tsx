@@ -414,7 +414,7 @@ export default function NotebookDrawingPad({
             }`}
             style={{ backgroundColor: c }}
           >
-            {color === c ? <Check size={12} className="text-white drop-shadow" /> : null}
+            {color === c ? <Check size={12} className="text-monk-bg drop-shadow" /> : null}
           </button>
         ))}
 

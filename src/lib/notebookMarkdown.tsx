@@ -213,7 +213,7 @@ export function renderBodyMarkdown(
               >
                 {i.checked ? (
                   <svg
-                    className="w-2.5 h-2.5 text-white stroke-current"
+                    className="w-2.5 h-2.5 text-monk-bg stroke-current"
                     viewBox="0 0 16 16"
                     fill="none"
                     strokeWidth="3"

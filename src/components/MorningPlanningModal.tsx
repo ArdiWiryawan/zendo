@@ -708,7 +708,7 @@ export function MorningPlanningModal({
                   <button
                     type="submit"
                     disabled={!newTitle.trim()}
-                    className="inline-flex items-center gap-1.5 rounded-xl bg-monk-accent px-4 py-2 text-xs font-bold text-monk-bg shadow-xs hover:bg-monk-accent-hover transition disabled:opacity-40 disabled:cursor-not-allowed active:scale-95"
+                    className="inline-flex items-center gap-1.5 rounded-xl bg-monk-accent px-4 py-2 text-xs font-bold text-monk-bg shadow-xs hover:bg-monk-accent/90 transition disabled:opacity-40 disabled:cursor-not-allowed active:scale-95"
                   >
                     <Plus size={14} strokeWidth={2.5} />
                     <span>{t("planning.addBlock")}</span>
