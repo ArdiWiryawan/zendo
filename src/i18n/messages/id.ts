@@ -165,6 +165,7 @@ export const id: Record<MessageKey, string> = {
   "today.highlightPlaceholder": "Satu hal yang paling penting",
   "today.highlightSave": "Simpan highlight",
   "today.highlightDone": "Highlight selesai · satu hal itu bergerak.",
+  "today.mainActionDone": "Aksi utama selesai · langkah terkontrol berikutnya sudah bergerak.",
   "today.oneAction": "Satu aksi",
   "today.edit": "Ubah",
   "today.cancel": "Batal",

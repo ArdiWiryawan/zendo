@@ -169,8 +169,13 @@ export function MorningPlanningModal({
   // Load existing blocks & highlight on open
   useEffect(() => {
     if (isOpen) {
-      const initialHighlight =
-        todayPlan?.highlight || todayPlan?.mainAction || goal?.keystoneAction || "";
+      // D11: this field is the DAY's highlight, a different question from the
+      // Main Action ("what is my next controllable action?"). It used to seed
+      // from mainAction and — if left untouched — commit back over the main
+      // action on save, silently rewriting it. Only the highlight's own prior
+      // value is inherited now; a goal's keystone action is offered as a
+      // placeholder instead of being copied in as data.
+      const initialHighlight = todayPlan?.highlight || "";
       setDailyHighlight(initialHighlight);
       setAgenda(todayPlan?.agenda ?? []);
       setNewAgendaItem("");
@@ -192,9 +197,7 @@ export function MorningPlanningModal({
     isOpen,
     todayPlan?.timeBlocks,
     todayPlan?.highlight,
-    todayPlan?.mainAction,
     todayPlan?.agenda,
-    goal?.keystoneAction,
     targetDuration
   ]);
 
@@ -480,7 +483,7 @@ export function MorningPlanningModal({
                   rows={2}
                   value={dailyHighlight}
                   onChange={(e) => setDailyHighlight(e.target.value)}
-                  placeholder={t("planning.dailyHighlightPlaceholder")}
+                  placeholder={goal?.keystoneAction || t("planning.dailyHighlightPlaceholder")}
                   className="w-full resize-y rounded-xl border border-monk-accent/25 bg-monk-surface/80 px-4 py-3.5 font-serif text-lg leading-relaxed text-monk-text placeholder:text-monk-muted/50 placeholder:italic focus:border-monk-accent focus:ring-1 focus:ring-monk-accent/30 focus:outline-none transition"
                 />
               </div>

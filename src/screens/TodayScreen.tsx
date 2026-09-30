@@ -810,6 +810,7 @@ export function TodayScreen() {
                       hapticPress("success");
                       playCompletionChime();
                       if (todayPlan?.highlight?.trim()) toast.show(t("today.highlightDone"));
+                      else toast.show(t("today.mainActionDone"));
                     } else {
                       hapticPress("light");
                     }

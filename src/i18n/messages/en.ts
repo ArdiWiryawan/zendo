@@ -163,6 +163,7 @@ export const en = {
   "today.highlightPlaceholder": "The one thing that matters most",
   "today.highlightSave": "Save highlight",
   "today.highlightDone": "Highlight done · the one thing moved.",
+  "today.mainActionDone": "Main action done · the next controllable step moved.",
   "today.oneAction": "One action",
   "today.edit": "Edit",
   "today.cancel": "Cancel",
