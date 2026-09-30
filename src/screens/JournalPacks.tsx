@@ -1,7 +1,38 @@
 import { useState, useMemo, useEffect, useRef } from "react";
 import { useMonkStore } from "../store/useMonkStore";
 import { Card, PrimaryButton, SecondaryButton, GhostButton, EmptyState, useModalA11y } from "../components/ui";
-import { Lock, ChevronLeft, Check, Crown, Sparkles } from "lucide-react";
+import {
+  Lock,
+  ChevronLeft,
+  Check,
+  Crown,
+  Sparkles,
+  Sunrise,
+  MoonStar,
+  Shield,
+  Compass,
+  Trophy,
+  Search,
+  Brain,
+  Heart,
+  Rocket,
+  ScrollText,
+  CloudRain,
+  Briefcase,
+  Flame,
+  Paintbrush,
+  Lightbulb,
+  TrendingUp,
+  HeartHandshake,
+  NotebookPen,
+  PenLine,
+  Users,
+  User,
+  Wallet,
+  Ellipsis,
+  Pen,
+  type LucideIcon
+} from "lucide-react";
 import type { JournalPack, JournalPackSession } from "../types/app";
 import { useT, useLanguage } from "../i18n";
 import { ZendoProModal } from "../components/ZendoProModal";
@@ -189,20 +220,21 @@ function PackCard({
   const progress = activeSession?.progress ?? 0;
   const inProgress = !!activeSession && progress < 100;
   const hasSession = !!activeSession;
+  const PackIcon = iconMap[pack.icon] ?? FallbackIcon;
   const locked = !!pack.isPremium && !purchased;
 
   return (
     <Card className={`p-4 ${locked ? "opacity-70" : ""}`}>
       <div className="flex items-start gap-3">
         <div
-          className={`grid h-11 w-11 shrink-0 place-items-center rounded-2xl border text-lg ${
+          className={`grid h-11 w-11 shrink-0 place-items-center rounded-2xl border ${
             locked
               ? "border-monk-border bg-monk-soft text-monk-muted"
               : "border-monk-accent/30 bg-monk-accent-soft text-monk-accent"
           }`}
           aria-hidden
         >
-          {iconMap[pack.icon] ?? "📓"}
+          <PackIcon size={20} strokeWidth={1.75} />
         </div>
 
         <div className="min-w-0 flex-1">
@@ -586,25 +618,48 @@ function PurchaseModal({
   );
 }
 
-const iconMap: Record<string, string> = {
-  Sun: "☀️",
-  Moon: "🌙",
-  Star: "⭐",
-  Shield: "🛡️",
-  Compass: "🧭",
-  Award: "🏆",
-  Search: "🔍",
-  Brain: "🧠",
-  Heart: "❤️",
-  Rocket: "🚀",
-  Scroll: "📜",
-  CloudRain: "🌧️",
-  Sparkles: "✨",
-  HeartHandshake: "🤝",
-  Briefcase: "💼",
-  Flame: "🔥",
-  Paintbrush: "🎨",
-  Lightbulb: "💡",
-  Target: "🎯",
-  TrendingUp: "📈",
+/**
+ * Pack icons. Keyed by the `icon` string each pack declares, so persisted packs
+ * keep working and a new glyph is a renderer-only change.
+ *
+ * Deliberately lucide rather than emoji: emoji render as full-colour OS glyphs
+ * that ignore the tile's accent colour and vary by platform, so a grid of them
+ * reads as a party of unrelated stickers. Line icons inherit `currentColor`,
+ * which is what actually ties the set to Zendo's palette.
+ *
+ * Mapped by meaning, not by literal name — "Journal" and "Star" are the two
+ * reflective packs, so they get NotebookPen and Sparkles, the marks the rest of
+ * the app already uses for writing and insight. `FallbackIcon` covers anything
+ * unmapped, so a new pack never renders an empty tile.
+ */
+const iconMap: Record<string, LucideIcon> = {
+  Sun: Sunrise,
+  Moon: MoonStar,
+  Star: Sparkles,
+  Sparkles,
+  Shield,
+  Compass,
+  Award: Trophy,
+  Search,
+  Brain,
+  Heart,
+  HeartHandshake,
+  Rocket,
+  Scroll: ScrollText,
+  CloudRain,
+  Briefcase,
+  Flame,
+  Paintbrush,
+  Lightbulb,
+  Target: NotebookPen,
+  TrendingUp,
+  Pen,
+  PenLine,
+  Users,
+  User,
+  Wallet,
+  MoreHorizontal: Ellipsis,
+  Journal: NotebookPen
 };
+
+const FallbackIcon: LucideIcon = NotebookPen;
