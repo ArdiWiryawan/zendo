@@ -1352,7 +1352,7 @@ export function NotebookEntryDetail({
           <button
             type="button"
             onClick={() => setDeleteConfirm(true)}
-            className="flex items-center gap-1.5 rounded-xl border border-monk-danger/30 bg-monk-danger px-3 py-2 text-xs font-semibold text-monk-danger hover:bg-monk-danger active:scale-95 transition"
+            className="flex items-center gap-1.5 rounded-xl border border-monk-danger/30 bg-monk-danger/10 px-3 py-2 text-xs font-semibold text-monk-danger hover:bg-monk-danger/20 active:scale-95 transition"
           >
             <Trash2 size={13} strokeWidth={2} />
             <span>{t("notebook.delete")}</span>
@@ -2446,7 +2446,7 @@ export function NotebookEditor({
       ) : null}
 
       {photoError ? (
-        <div className="mb-4 rounded-monk border border-monk-danger/30 bg-monk-danger/5 px-3 py-2 text-sm text-monk-danger">
+        <div className="mb-4 rounded-monk border border-monk-danger/30 bg-monk-danger/10 px-3 py-2 text-sm text-monk-danger">
           {photoError}
         </div>
       ) : null}
@@ -2801,7 +2801,7 @@ export function NotebookEditor({
             {entry ? (
               <button
                 type="button"
-                className="flex items-center gap-1.5 rounded-xl border border-monk-danger/30 bg-monk-danger px-3 py-2 text-xs font-semibold text-monk-danger hover:bg-monk-danger active:scale-95 transition"
+                className="flex items-center gap-1.5 rounded-xl border border-monk-danger/30 bg-monk-danger/10 px-3 py-2 text-xs font-semibold text-monk-danger hover:bg-monk-danger/20 active:scale-95 transition"
                 onClick={() => setConfirmKind("delete-editor")}
               >
                 <Trash2 size={13} strokeWidth={2} />

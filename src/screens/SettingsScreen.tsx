@@ -260,7 +260,7 @@ export default function SettingsScreen() {
                   <h3 className="font-serif text-base sm:text-lg font-bold text-monk-text tracking-tight">
                     {lang === "id" ? "Dukung Zendo" : "Support Zendo"}
                   </h3>
-                  <span className="inline-flex items-center gap-1 rounded-full bg-monk-success border border-monk-success/30 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-monk-success font-mono">
+                  <span className="inline-flex items-center gap-1 rounded-full bg-monk-success/15 border border-monk-success/30 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-monk-success font-mono">
                     <span>✓</span>
                     <span>{lang === "id" ? "100% Gratis & Bebas Iklan" : "100% Free & Ad-Free"}</span>
                   </span>
@@ -286,19 +286,19 @@ export default function SettingsScreen() {
             {/* 4 Unlocked Pillars Matrix: Sleek Zen Micro-Grid */}
             <div className="grid grid-cols-2 gap-2 pt-1 border-t border-monk-border/40 text-xs">
               <div className="flex items-center gap-2 p-2.5 rounded-xl bg-monk-soft/50 border border-monk-border/40">
-                <span className="grid h-4 w-4 shrink-0 place-items-center rounded-md bg-monk-success text-monk-success text-[9px] font-bold">✓</span>
+                <span className="grid h-4 w-4 shrink-0 place-items-center rounded-md bg-monk-success/15 text-monk-success text-[9px] font-bold">✓</span>
                 <span className="text-[11px] font-semibold text-monk-text truncate">{lang === "id" ? "10 Zen Soundscapes" : "10 Zen Soundscapes"}</span>
               </div>
               <div className="flex items-center gap-2 p-2.5 rounded-xl bg-monk-soft/50 border border-monk-border/40">
-                <span className="grid h-4 w-4 shrink-0 place-items-center rounded-md bg-monk-success text-monk-success text-[9px] font-bold">✓</span>
+                <span className="grid h-4 w-4 shrink-0 place-items-center rounded-md bg-monk-success/15 text-monk-success text-[9px] font-bold">✓</span>
                 <span className="text-[11px] font-semibold text-monk-text truncate">{lang === "id" ? "Semua 6+ Protokol" : "All 6+ Protocols"}</span>
               </div>
               <div className="flex items-center gap-2 p-2.5 rounded-xl bg-monk-soft/50 border border-monk-border/40">
-                <span className="grid h-4 w-4 shrink-0 place-items-center rounded-md bg-monk-success text-monk-success text-[9px] font-bold">✓</span>
+                <span className="grid h-4 w-4 shrink-0 place-items-center rounded-md bg-monk-success/15 text-monk-success text-[9px] font-bold">✓</span>
                 <span className="text-[11px] font-semibold text-monk-text truncate">{lang === "id" ? "6 Palet Zen & Media" : "6 Zen Themes & Media"}</span>
               </div>
               <div className="flex items-center gap-2 p-2.5 rounded-xl bg-monk-soft/50 border border-monk-border/40">
-                <span className="grid h-4 w-4 shrink-0 place-items-center rounded-md bg-monk-success text-monk-success text-[9px] font-bold">✓</span>
+                <span className="grid h-4 w-4 shrink-0 place-items-center rounded-md bg-monk-success/15 text-monk-success text-[9px] font-bold">✓</span>
                 <span className="text-[11px] font-semibold text-monk-text truncate">{lang === "id" ? "Cloud Sync Multi-Device" : "Multi-Device Sync"}</span>
               </div>
             </div>
@@ -602,7 +602,7 @@ export default function SettingsScreen() {
             <SettingsRow icon={Trash2} title={tUI("settings.reset")} description={tUI("settings.resetDesc")} danger>
               <button
                 type="button"
-                className="shrink-0 text-xs font-bold text-monk-danger border border-monk-danger/30 hover:border-monk-danger bg-monk-danger/5 px-3 py-1.5 rounded-full transition active:scale-95"
+                className="shrink-0 text-xs font-bold text-monk-danger border border-monk-danger/30 hover:border-monk-danger bg-monk-danger/10 px-3 py-1.5 rounded-full transition active:scale-95"
                 onClick={() => setConfirmKind("wipe")}
               >
                 {tUI("settings.wipe")}
@@ -686,7 +686,7 @@ function MonkToggle({ checked, "aria-label": ariaLabel, onToggle }: { checked: b
 }
 
 function SettingsRow({ icon: Icon, title, description, children, danger }: { icon?: React.ComponentType<any>; title: string; description?: string; children: React.ReactNode; danger?: boolean }) {
-  const iconBg = danger ? "bg-monk-danger/8" : "bg-monk-accent/8";
+  const iconBg = danger ? "bg-monk-danger/12" : "bg-monk-accent/12";
   const iconColor = danger ? "text-monk-danger/80" : "text-monk-accent/80";
   return (
     <div className="flex items-center justify-between gap-3 px-3 py-2">
