@@ -111,6 +111,14 @@ export type Goal = {
   desiredOutcome?: string;
   /** Implementation intention context (When & Where: e.g. "Tomorrow 08:30 at work desk") */
   whenWhere?: string;
+  /**
+   * AVAILABILITY (§14) — the days and time window this goal is realistically
+   * workable in. Optional and additive: `whenWhere` above stays the free-text
+   * implementation intention ("after morning coffee at the desk"), which carries
+   * meaning a weekday set cannot. This is the structured half, so scheduling can
+   * suggest *when* rather than only how often.
+   */
+  availability?: GoalAvailability;
   /** Definition of done / clear completion criteria */
   definitionOfDone?: string;
   /** Biggest inner obstacle expected for this goal. */
@@ -213,8 +221,27 @@ export type PracticeLog = {
   updatedAt: ISODateString;
 };
 
-export type GoalAllocation = {
-  goalId: string;
+/** Monday-first weekday index, matching how `date.ts` already computes weeks. */
+export type GoalWeekday = 0 | 1 | 2 | 3 | 4 | 5 | 6;
+
+/**
+ * §14 — when this goal can realistically be worked on.
+ *
+ * Both halves are optional and independent: a goal can have preferred days and
+ * no window ("weekends, whenever"), a window and no days ("mornings sometime"),
+ * or neither (the field is then simply absent). Absent never means "unavailable"
+ * — it means the user hasn't said, and the app should not pretend otherwise.
+ */
+export type GoalAvailability = {
+  /** Monday-first weekday indices (0 = Monday). Empty/absent = no preference. */
+  preferredDays?: GoalWeekday[];
+  /** "HH:mm" local start of the workable window, e.g. "07:00". */
+  preferredStartTime?: string;
+  /** "HH:mm" local end of the workable window, e.g. "09:00". */
+  preferredEndTime?: string;
+};
+
+export type GoalAllocation = {  goalId: string;
   targetCount: number;
   completedCount: number;
 };

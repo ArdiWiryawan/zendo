@@ -54,8 +54,10 @@ import type {
   FocusSession,
   Goal,
   GoalAllocation,
+  GoalAvailability,
   GoalTask,
   GoalType,
+  GoalWeekday,
   JournalAnswers,
   JournalPackAnswer,
   LearningSession,
@@ -177,6 +179,7 @@ type MonkActions = {
       track?: string;
       tasks?: GoalTask[];
       whenWhere?: string;
+      availability?: GoalAvailability;
       definitionOfDone?: string;
       obstacle?: string;
       obstacleMitigation?: string;
@@ -240,8 +243,30 @@ type MonkActions = {
 export type MonkStore = StoreSnapshot & MonkActions;
 
 // ponytail: snapshot kept as internal helper for state construction; persist middleware handles localStorage writes
-function snapshot(state: MonkStore | MonkMVPState): MonkMVPState {
+/**
+ * §14: keep availability honest. A window needs both ends and start < end, so a
+ * partially-filled window collapses to "no window stated" rather than being
+ * stored and later read as a real commitment. An empty day list is likewise
+ * dropped — "no preferred days" and "no days" must not look the same.
+ */
+export function normalizeAvailability(input: GoalAvailability): GoalAvailability | undefined {
+  const days = (input.preferredDays ?? [])
+    .filter((d): d is GoalWeekday => Number.isInteger(d) && d >= 0 && d <= 6)
+    .filter((d, i, all) => all.indexOf(d) === i)
+    .sort((a, b) => a - b);
+  const start = input.preferredStartTime?.trim();
+  const end = input.preferredEndTime?.trim();
+  const timeOk = Boolean(start && end && start < end);
+
+  if (days.length === 0 && !timeOk) return undefined;
   return {
+    preferredDays: days.length > 0 ? days : undefined,
+    preferredStartTime: timeOk ? start : undefined,
+    preferredEndTime: timeOk ? end : undefined
+  };
+}
+
+function snapshot(state: MonkStore | MonkMVPState): MonkMVPState {  return {
     userProfile: state.userProfile,
     appSettings: state.appSettings,
     activeSeason: state.activeSeason,
@@ -2181,6 +2206,10 @@ export const useMonkStore = create<MonkStore>()(
         track: blueprint.track !== undefined ? (blueprint.track.trim() || undefined) : g.track,
         tasks: blueprint.tasks !== undefined ? blueprint.tasks : g.tasks,
         whenWhere: blueprint.whenWhere !== undefined ? (blueprint.whenWhere.trim() || undefined) : g.whenWhere,
+        // §14: normalized on write so a half-filled window (start with no end)
+        // can never reach storage and read later as a real commitment.
+        availability:
+          blueprint.availability !== undefined ? normalizeAvailability(blueprint.availability) : g.availability,
         definitionOfDone: blueprint.definitionOfDone !== undefined ? (blueprint.definitionOfDone.trim() || undefined) : g.definitionOfDone,
         obstacle: blueprint.obstacle !== undefined ? (blueprint.obstacle.trim() || undefined) : g.obstacle,
         obstacleMitigation: blueprint.obstacleMitigation !== undefined ? (blueprint.obstacleMitigation.trim() || undefined) : g.obstacleMitigation,

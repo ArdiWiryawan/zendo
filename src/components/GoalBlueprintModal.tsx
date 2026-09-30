@@ -12,10 +12,10 @@ import {
   ShieldAlert,
   Check
 } from "lucide-react";
-import { useMonkStore } from "../store/useMonkStore";
+import { useMonkStore, normalizeAvailability } from "../store/useMonkStore";
 import { useT } from "../i18n";
 import type { MessageKey } from "../i18n";
-import type { GoalType } from "../types/app";
+import type { GoalType, GoalWeekday } from "../types/app";
 import { PrimaryButton, SecondaryButton, TextInput, Textarea, useCalmToast, useModalA11y } from "./ui";
 import { hapticPress } from "../lib/haptics";
 import { GOAL_TEMPLATES, GoalBlueprintTemplate } from "../constants/goalTemplates";
@@ -25,6 +25,17 @@ interface GoalBlueprintModalProps {
   isOpen: boolean;
   onClose: () => void;
 }
+
+// Monday-first, matching GoalWeekday's index order.
+const WEEKDAY_KEYS = [
+  "blueprint.weekday.mon",
+  "blueprint.weekday.tue",
+  "blueprint.weekday.wed",
+  "blueprint.weekday.thu",
+  "blueprint.weekday.fri",
+  "blueprint.weekday.sat",
+  "blueprint.weekday.sun"
+] as const;
 
 export function GoalBlueprintModal({ goalId, isOpen, onClose }: GoalBlueprintModalProps) {
   const t = useT();
@@ -52,6 +63,10 @@ export function GoalBlueprintModal({ goalId, isOpen, onClose }: GoalBlueprintMod
   // outcome target, kept separate from the practice rhythm above.
   const [goalType, setGoalType] = useState<GoalType>("achievement");
   const [outcomeFrequency, setOutcomeFrequency] = useState(3);
+  // §14 availability — preferred days + workable window.
+  const [preferredDays, setPreferredDays] = useState<GoalWeekday[]>([]);
+  const [availStart, setAvailStart] = useState("");
+  const [availEnd, setAvailEnd] = useState("");
   const [obstacleMitigation, setObstacleMitigation] = useState("");
   const [error, setError] = useState("");
 
@@ -69,6 +84,9 @@ export function GoalBlueprintModal({ goalId, isOpen, onClose }: GoalBlueprintMod
       setWeeklyTargetCount(goal.weeklyTargetCount || 4);
       setGoalType(goal.type ?? "achievement");
       setOutcomeFrequency(goal.outcomeFrequencyPerWeek ?? 3);
+      setPreferredDays(goal.availability?.preferredDays ?? []);
+      setAvailStart(goal.availability?.preferredStartTime ?? "");
+      setAvailEnd(goal.availability?.preferredEndTime ?? "");
       setObstacleMitigation(goal.obstacleMitigation || "");
       setShowTemplates(false);
       setShowAdvanced(false);
@@ -117,6 +135,11 @@ export function GoalBlueprintModal({ goalId, isOpen, onClose }: GoalBlueprintMod
       keystoneAction: keystoneAction.trim(),
       track: track.trim() || undefined,
       whenWhere: whenWhere.trim() || undefined,
+      availability: normalizeAvailability({
+        preferredDays,
+        preferredStartTime: availStart,
+        preferredEndTime: availEnd
+      }),
       definitionOfDone: definitionOfDone.trim() || undefined,
       weeklyTargetCount,
       type: goalType,
@@ -423,6 +446,58 @@ export function GoalBlueprintModal({ goalId, isOpen, onClose }: GoalBlueprintMod
                         </p>
                       </div>
                     ) : null}
+                    {/* §14 Availability — when this is realistically workable. */}
+                    <div>
+                      <label className="font-semibold text-monk-text block mb-1">
+                        {t("blueprint.availabilityLabel")}
+                      </label>
+                      <div className="flex flex-wrap gap-1.5">
+                        {WEEKDAY_KEYS.map((key, index) => {
+                          const on = preferredDays.includes(index as GoalWeekday);
+                          return (
+                            <button
+                              key={key}
+                              type="button"
+                              aria-pressed={on}
+                              onClick={() =>
+                                setPreferredDays((prev) =>
+                                  prev.includes(index as GoalWeekday)
+                                    ? prev.filter((d) => d !== index)
+                                    : [...prev, index as GoalWeekday].sort((a, b) => a - b)
+                                )
+                              }
+                              className={`min-h-8 rounded-lg border px-2.5 text-[11px] font-semibold transition active:scale-95 ${
+                                on
+                                  ? "border-monk-accent bg-monk-accent-soft text-monk-accent"
+                                  : "border-monk-border bg-monk-surface text-monk-muted hover:text-monk-text"
+                              }`}
+                            >
+                              {t(key)}
+                            </button>
+                          );
+                        })}
+                      </div>
+                      <div className="mt-2 flex items-center gap-2">
+                        <input
+                          type="time"
+                          aria-label={t("blueprint.availabilityStart")}
+                          value={availStart}
+                          onChange={(e) => setAvailStart(e.target.value)}
+                          className="min-h-9 flex-1 rounded-lg border border-monk-border bg-monk-surface px-2 text-xs text-monk-text focus:border-monk-accent focus:outline-none"
+                        />
+                        <span className="text-xs text-monk-muted">–</span>
+                        <input
+                          type="time"
+                          aria-label={t("blueprint.availabilityEnd")}
+                          value={availEnd}
+                          onChange={(e) => setAvailEnd(e.target.value)}
+                          className="min-h-9 flex-1 rounded-lg border border-monk-border bg-monk-surface px-2 text-xs text-monk-text focus:border-monk-accent focus:outline-none"
+                        />
+                      </div>
+                      <p className="mt-1 text-[10px] leading-4 text-monk-muted">
+                        {t("blueprint.availabilityHint")}
+                      </p>
+                    </div>
                     <div>
                       <label className="font-semibold text-monk-text block mb-1">
                         {t("blueprint.planBLabel")}
