@@ -20,127 +20,158 @@ export type SoundscapeMeta = {
   labelKey: `focus.soundscape.${SoundscapeId}`;
 };
 
-type PartialVoice = { freq: number; gain: number; pan: number; lfoHz: number };
+type PartialVoice = {
+  freq: number;
+  gain: number;
+  pan: number;
+  /** Slow amplitude drift in Hz. 0 keeps the tone rock steady. */
+  lfoHz: number;
+  /** Drift depth as a fraction of the voice gain. Above ~0.05 it reads as vibrato. */
+  lfoDepth?: number;
+  wave?: OscillatorType;
+  /** Detune of an optional second voice, in cents. 0 = single clean tone. */
+  detuneCents?: number;
+};
 
 type SoundscapePatch = {
   id: SoundscapeId;
   masterVol: number;
+  attackSec: number;
   lowpassHz: number;
   noise: { lowpassHz: number; gain: number; lfoHz: number; lfoDepth: number };
   partials: PartialVoice[];
 };
 
+// Every bed used to be the same three-sine drone at a different pitch, so they
+// all read as one sound with the notes moved around. These are grouped by
+// *texture* instead: drone-led beds (sustained partials over a quiet noise
+// floor), noise-led beds (the noise carries the timbre and the partials sit at
+// ghost level), plus two specials — a clean binaural beat and an inharmonic
+// bowl. Volumes are pulled down from the old ~0.75 toward ~0.5 so the bed sits
+// under the work rather than in front of it. What "focus" sounds like here is a
+// quiet, static bed with no pulse: periodic amplitude movement is what makes a
+// tone demand attention, so drift depths are small and lfoHz: 0 means
+// "deliberately steady".
 const PATCHES: Record<SoundscapeId, SoundscapePatch> = {
   dawn_mist: {
     id: "dawn_mist",
-    masterVol: 0.72,
-    lowpassHz: 2400,
-    noise: { lowpassHz: 1200, gain: 0.22, lfoHz: 0.05, lfoDepth: 0.08 },
+    masterVol: 0.46,
+    lowpassHz: 2000,
+    attackSec: 2.2,
+    noise: { lowpassHz: 1100, gain: 0.16, lfoHz: 0.04, lfoDepth: 0.03 },
     partials: [
-      { freq: 246.94, gain: 0.25, pan: -0.3, lfoHz: 0.04 }, // B3
-      { freq: 369.99, gain: 0.18, pan: 0.25, lfoHz: 0.055 }, // F#4
-      { freq: 493.88, gain: 0.12, pan: 0.1, lfoHz: 0.03 }, // B4
+      { freq: 246.94, gain: 0.22, pan: -0.3, lfoHz: 0.03 }, // B3
+      { freq: 369.99, gain: 0.13, pan: 0.25, lfoHz: 0.04 }, // F#4
+      { freq: 493.88, gain: 0.07, pan: 0.1, lfoHz: 0.05, wave: "triangle" }, // B4 shimmer
     ],
   },
   day_still: {
     id: "day_still",
-    masterVol: 0.75,
-    lowpassHz: 2200,
-    noise: { lowpassHz: 950, gain: 0.26, lfoHz: 0.07, lfoDepth: 0.09 },
+    masterVol: 0.48,
+    lowpassHz: 1700,
+    attackSec: 2.5,
+    noise: { lowpassHz: 850, gain: 0.2, lfoHz: 0.05, lfoDepth: 0.04 },
     partials: [
-      { freq: 220.0, gain: 0.28, pan: -0.25, lfoHz: 0.05 }, // A3
-      { freq: 329.63, gain: 0.22, pan: 0.2, lfoHz: 0.06 }, // E4
-      { freq: 440.0, gain: 0.14, pan: 0.15, lfoHz: 0.04 }, // A4
+      { freq: 220.0, gain: 0.26, pan: -0.25, lfoHz: 0.03 }, // A3
+      { freq: 329.63, gain: 0.15, pan: 0.2, lfoHz: 0.035 }, // E4
+      { freq: 440.0, gain: 0.08, pan: 0.15, lfoHz: 0.03 }, // A4
     ],
   },
   day_garden: {
     id: "day_garden",
-    masterVol: 0.72,
+    masterVol: 0.46,
     lowpassHz: 2400,
-    noise: { lowpassHz: 1100, gain: 0.24, lfoHz: 0.09, lfoDepth: 0.08 },
+    attackSec: 2.0,
+    noise: { lowpassHz: 1200, gain: 0.17, lfoHz: 0.07, lfoDepth: 0.05 },
     partials: [
-      { freq: 196.0, gain: 0.26, pan: -0.2, lfoHz: 0.045 }, // G3
-      { freq: 293.66, gain: 0.2, pan: 0.28, lfoHz: 0.07 }, // D4
-      { freq: 392.0, gain: 0.14, pan: -0.1, lfoHz: 0.05 }, // G4
-      { freq: 587.33, gain: 0.08, pan: 0.35, lfoHz: 0.08 }, // D5 soft sparkle
+      { freq: 196.0, gain: 0.24, pan: -0.2, lfoHz: 0.035 }, // G3
+      { freq: 293.66, gain: 0.15, pan: 0.28, lfoHz: 0.05 }, // D4
+      { freq: 392.0, gain: 0.1, pan: -0.1, lfoHz: 0.045, wave: "triangle" }, // G4
+      { freq: 587.33, gain: 0.05, pan: 0.35, lfoHz: 0.06, wave: "triangle" }, // D5 soft sparkle
     ],
   },
   dusk_ember: {
     id: "dusk_ember",
-    masterVol: 0.74,
-    lowpassHz: 1800,
-    noise: { lowpassHz: 750, gain: 0.28, lfoHz: 0.04, lfoDepth: 0.1 },
+    masterVol: 0.5,
+    lowpassHz: 1400,
+    attackSec: 2.6,
+    noise: { lowpassHz: 620, gain: 0.24, lfoHz: 0.03, lfoDepth: 0.05 },
     partials: [
-      { freq: 174.61, gain: 0.3, pan: -0.2, lfoHz: 0.035 }, // F3
-      { freq: 261.63, gain: 0.22, pan: 0.22, lfoHz: 0.05 }, // C4
-      { freq: 349.23, gain: 0.14, pan: 0.05, lfoHz: 0.03 }, // F4
+      { freq: 174.61, gain: 0.28, pan: -0.2, lfoHz: 0.03, wave: "triangle" }, // F3 warmth
+      { freq: 261.63, gain: 0.15, pan: 0.22, lfoHz: 0.04, detuneCents: 4 }, // C4, slight hearth shimmer
+      { freq: 349.23, gain: 0.08, pan: 0.05, lfoHz: 0.03 }, // F4
     ],
   },
   night_deep: {
     id: "night_deep",
-    masterVol: 0.78,
-    lowpassHz: 1600,
-    noise: { lowpassHz: 600, gain: 0.32, lfoHz: 0.03, lfoDepth: 0.12 },
+    masterVol: 0.52,
+    lowpassHz: 1100,
+    attackSec: 3.0,
+    noise: { lowpassHz: 420, gain: 0.26, lfoHz: 0.025, lfoDepth: 0.06 },
     partials: [
-      { freq: 146.83, gain: 0.32, pan: -0.15, lfoHz: 0.03 }, // D3
-      { freq: 220.0, gain: 0.24, pan: 0.18, lfoHz: 0.045 }, // A3
-      { freq: 293.66, gain: 0.12, pan: 0.08, lfoHz: 0.025 }, // D4
+      { freq: 73.42, gain: 0.24, pan: -0.1, lfoHz: 0.02, wave: "triangle" }, // D2 sub
+      { freq: 146.83, gain: 0.24, pan: -0.15, lfoHz: 0.03 }, // D3
+      { freq: 220.0, gain: 0.12, pan: 0.18, lfoHz: 0.035 }, // A3
+      { freq: 293.66, gain: 0.07, pan: 0.08, lfoHz: 0.03 }, // D4
     ],
   },
   night_rain: {
     id: "night_rain",
-    masterVol: 0.76,
-    lowpassHz: 2200,
-    noise: { lowpassHz: 1700, gain: 0.38, lfoHz: 0.12, lfoDepth: 0.14 },
+    masterVol: 0.5,
+    lowpassHz: 6000,
+    attackSec: 1.6,
+    noise: { lowpassHz: 3200, gain: 0.42, lfoHz: 0.1, lfoDepth: 0.08 },
     partials: [
-      { freq: 164.81, gain: 0.22, pan: -0.28, lfoHz: 0.04 }, // E3
-      { freq: 246.94, gain: 0.16, pan: 0.3, lfoHz: 0.06 }, // B3
-      { freq: 329.63, gain: 0.1, pan: 0.0, lfoHz: 0.035 }, // E4
+      { freq: 164.81, gain: 0.09, pan: -0.28, lfoHz: 0.03 }, // E3 ghost
+      { freq: 246.94, gain: 0.06, pan: 0.3, lfoHz: 0.04 }, // B3 ghost
     ],
   },
   zen_stream: {
     id: "zen_stream",
-    masterVol: 0.76,
-    lowpassHz: 2300,
-    noise: { lowpassHz: 1800, gain: 0.36, lfoHz: 0.15, lfoDepth: 0.14 },
+    masterVol: 0.48,
+    lowpassHz: 5000,
+    attackSec: 1.8,
+    noise: { lowpassHz: 2600, gain: 0.4, lfoHz: 0.13, lfoDepth: 0.1 },
     partials: [
-      { freq: 174.61, gain: 0.22, pan: -0.3, lfoHz: 0.06 }, // F3 water resonance
-      { freq: 261.63, gain: 0.16, pan: 0.3, lfoHz: 0.08 }, // C4
-      { freq: 392.0, gain: 0.1, pan: -0.1, lfoHz: 0.05 }, // G4 ripple
+      { freq: 174.61, gain: 0.08, pan: -0.3, lfoHz: 0.05 }, // F3 water resonance
+      { freq: 261.63, gain: 0.06, pan: 0.3, lfoHz: 0.06 }, // C4
     ],
   },
   forest_birds: {
     id: "forest_birds",
-    masterVol: 0.72,
-    lowpassHz: 2500,
-    noise: { lowpassHz: 1300, gain: 0.28, lfoHz: 0.08, lfoDepth: 0.1 },
+    masterVol: 0.46,
+    lowpassHz: 3000,
+    attackSec: 2.2,
+    noise: { lowpassHz: 1500, gain: 0.3, lfoHz: 0.06, lfoDepth: 0.09 },
     partials: [
-      { freq: 216.0, gain: 0.24, pan: -0.25, lfoHz: 0.04 }, // 216Hz Sub Harmonic
-      { freq: 324.0, gain: 0.18, pan: 0.25, lfoHz: 0.06 }, // 324Hz
-      { freq: 648.0, gain: 0.08, pan: 0.15, lfoHz: 0.1 }, // Gentle high canopy
+      { freq: 216.0, gain: 0.1, pan: -0.25, lfoHz: 0.04 }, // 216Hz sub harmonic
+      { freq: 324.0, gain: 0.06, pan: 0.25, lfoHz: 0.05 }, // 324Hz
+      { freq: 648.0, gain: 0.03, pan: 0.15, lfoHz: 0.07 }, // quiet high canopy
     ],
   },
   binaural_alpha: {
     id: "binaural_alpha",
-    masterVol: 0.8,
-    lowpassHz: 1800,
-    noise: { lowpassHz: 450, gain: 0.18, lfoHz: 0.02, lfoDepth: 0.05 },
+    masterVol: 0.5,
+    lowpassHz: 1500,
+    attackSec: 2.4,
+    noise: { lowpassHz: 400, gain: 0.12, lfoHz: 0.02, lfoDepth: 0.03 },
     partials: [
-      { freq: 216.0, gain: 0.3, pan: 0.0, lfoHz: 0.03 }, // 432 / 2 sub-octave
-      { freq: 432.0, gain: 0.26, pan: -0.5, lfoHz: 0.02 }, // Left 432Hz
-      { freq: 442.0, gain: 0.26, pan: 0.5, lfoHz: 0.02 }, // Right 442Hz (10Hz Alpha beat)
+      { freq: 216.0, gain: 0.2, pan: 0.0, lfoHz: 0 }, // 432 / 2 sub-octave, dead centre
+      { freq: 432.0, gain: 0.24, pan: -0.5, lfoHz: 0 }, // Left 432Hz
+      { freq: 442.0, gain: 0.24, pan: 0.5, lfoHz: 0 }, // Right 442Hz (10Hz Alpha beat)
     ],
   },
   singing_bowl: {
     id: "singing_bowl",
-    masterVol: 0.78,
-    lowpassHz: 2200,
-    noise: { lowpassHz: 650, gain: 0.2, lfoHz: 0.03, lfoDepth: 0.06 },
+    masterVol: 0.48,
+    lowpassHz: 2600,
+    attackSec: 2.8,
+    noise: { lowpassHz: 600, gain: 0.14, lfoHz: 0.03, lfoDepth: 0.04 },
     partials: [
-      { freq: 150.0, gain: 0.32, pan: 0.0, lfoHz: 0.025 }, // Base singing bowl tone
-      { freq: 300.0, gain: 0.22, pan: -0.25, lfoHz: 0.04 }, // 2nd harmonic
-      { freq: 450.0, gain: 0.15, pan: 0.25, lfoHz: 0.05 }, // 3rd harmonic
-      { freq: 750.0, gain: 0.08, pan: -0.1, lfoHz: 0.03 }, // Warm chime shimmer
+      { freq: 150.0, gain: 0.3, pan: 0.0, lfoHz: 0.02 }, // base bowl tone
+      { freq: 414.0, gain: 0.14, pan: -0.25, lfoHz: 0.03 }, // 2.76x — inharmonic
+      { freq: 810.0, gain: 0.08, pan: 0.25, lfoHz: 0.035 }, // 5.4x
+      { freq: 1335.0, gain: 0.04, pan: -0.1, lfoHz: 0.04 }, // 8.9x shimmer
     ],
   },
 };
@@ -315,7 +346,8 @@ function buildGraph(c: AudioContext, patch: SoundscapePatch, volScale: number) {
 
   const master = c.createGain();
   master.gain.setValueAtTime(0.0001, now);
-  master.gain.linearRampToValueAtTime(vol, now + 0.3);
+  // A slow fade-in. 300ms sounded like a switch being flipped.
+  master.gain.linearRampToValueAtTime(vol, now + patch.attackSec);
 
   const lowpass = c.createBiquadFilter();
   lowpass.type = "lowpass";
@@ -362,45 +394,57 @@ function buildGraph(c: AudioContext, patch: SoundscapePatch, volScale: number) {
   lfoNodes.push(noiseLfo);
   extraNodes.push(noiseFilter, noiseGain, noiseLfoG);
 
-  patch.partials.forEach(({ freq, gain, pan, lfoHz }, i) => {
-    const makeVoice = (f: number, g: number, p: number) => {
-      const osc = c.createOscillator();
-      const gNode = c.createGain();
-      osc.type = "sine";
-      osc.frequency.setValueAtTime(f, now);
-      gNode.gain.setValueAtTime(g, now);
+  patch.partials.forEach(
+    ({ freq, gain, pan, lfoHz, lfoDepth = 0.02, wave = "sine", detuneCents = 0 }, i) => {
+      const makeVoice = (f: number, g: number, p: number) => {
+        const osc = c.createOscillator();
+        const gNode = c.createGain();
+        osc.type = wave;
+        osc.frequency.setValueAtTime(f, now);
+        gNode.gain.setValueAtTime(g, now);
 
-      const lfo = c.createOscillator();
-      const lfoG = c.createGain();
-      lfo.type = "sine";
-      lfo.frequency.setValueAtTime(lfoHz + i * 0.01, now);
-      lfoG.gain.setValueAtTime(g * 0.15, now);
-      lfo.connect(lfoG);
-      lfoG.connect(gNode.gain);
-      lfo.start(now);
+        // Drift makes a sustained tone feel alive, but past a few percent it reads
+        // as vibrato and pulls attention off the page. Tiny by default, and skipped
+        // entirely when a patch asks for a rock-steady bed (lfoHz: 0).
+        if (lfoHz > 0 && lfoDepth > 0) {
+          const lfo = c.createOscillator();
+          const lfoG = c.createGain();
+          lfo.type = "sine";
+          lfo.frequency.setValueAtTime(lfoHz + i * 0.01, now);
+          lfoG.gain.setValueAtTime(g * lfoDepth, now);
+          lfo.connect(lfoG);
+          lfoG.connect(gNode.gain);
+          lfo.start(now);
+          lfoNodes.push(lfo);
+          extraNodes.push(lfoG);
+        }
 
-      const stereo = typeof c.createStereoPanner === "function" ? c.createStereoPanner() : null;
-      if (stereo) {
-        stereo.pan.setValueAtTime(p, now);
-        osc.connect(gNode);
-        gNode.connect(stereo);
-        stereo.connect(bus);
-        extraNodes.push(stereo);
-      } else {
-        osc.connect(gNode);
-        gNode.connect(bus);
+        const stereo = typeof c.createStereoPanner === "function" ? c.createStereoPanner() : null;
+        if (stereo) {
+          stereo.pan.setValueAtTime(p, now);
+          osc.connect(gNode);
+          gNode.connect(stereo);
+          stereo.connect(bus);
+          extraNodes.push(stereo);
+        } else {
+          osc.connect(gNode);
+          gNode.connect(bus);
+        }
+
+        osc.start(now);
+        oscNodes.push(osc);
+        extraNodes.push(gNode);
+      };
+
+      makeVoice(freq, gain, pan);
+
+      // A twin used to run on every voice at ~1.2 cents — a constant 0.3Hz throb
+      // across every soundscape. Only patches that want warmth ask for one now.
+      if (detuneCents > 0) {
+        makeVoice(freq * 2 ** (detuneCents / 1200), gain * 0.5, pan);
       }
-
-      osc.start(now);
-      oscNodes.push(osc);
-      lfoNodes.push(lfo);
-      extraNodes.push(gNode, lfoG);
-    };
-
-    makeVoice(freq, gain, pan);
-    const detune = freq * (i % 2 === 0 ? 1.0012 : 0.9988);
-    makeVoice(detune, gain * 0.45, pan * -0.5);
-  });
+    }
+  );
 }
 
 export type StartMusicOpts = {
