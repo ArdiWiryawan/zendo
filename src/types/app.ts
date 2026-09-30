@@ -768,6 +768,12 @@ export type JournalPackQuestion = {
   order: number;
   question: string;
   hint?: string;
+  /**
+   * The question is answered by drawing, not typing. The session screen opens
+   * the sketchpad as the primary surface and drops the textarea entirely, so
+   * the answer is the sketch and nothing else.
+   */
+  drawOnly?: boolean;
 };
 
 export type JournalPackAnswer = {

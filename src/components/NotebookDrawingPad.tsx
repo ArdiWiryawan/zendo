@@ -27,6 +27,11 @@ type Props = {
   initialDataUrl: string | null;
   onSave: (blob: Blob) => void;
   onCancel: () => void;
+  /**
+   * Drop the Cancel button. For a draw-only answer the pad is the whole
+   * answer surface, so cancelling would leave nothing behind.
+   */
+  hideCancel?: boolean;
 };
 
 /**
@@ -36,7 +41,7 @@ type Props = {
  * the same replay routine renders the export. Paper stays opaque white so the
  * PNG the notebook stores looks identical on both themes.
  */
-export default function NotebookDrawingPad({ initialDataUrl, onSave, onCancel }: Props) {
+export default function NotebookDrawingPad({ initialDataUrl, onSave, onCancel, hideCancel }: Props) {
   const t = useT();
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const wrapRef = useRef<HTMLDivElement | null>(null);
@@ -295,9 +300,11 @@ export default function NotebookDrawingPad({ initialDataUrl, onSave, onCancel }:
       </div>
 
       <div className="flex items-center gap-2">
-        <GhostButton className="flex-1" onClick={onCancel}>
-          {t("draw.cancel")}
-        </GhostButton>
+        {hideCancel ? null : (
+          <GhostButton className="flex-1" onClick={onCancel}>
+            {t("draw.cancel")}
+          </GhostButton>
+        )}
         <PrimaryButton className="flex-1" onClick={handleSave} disabled={!hasContent || saving}>
           {saving ? t("draw.saving") : t("draw.save")}
         </PrimaryButton>

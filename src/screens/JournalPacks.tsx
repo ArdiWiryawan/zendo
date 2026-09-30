@@ -356,6 +356,9 @@ function PackSession({ pack, onBack }: { pack: JournalPack; onBack: () => void }
   const currentQ = pack.questions[currentIndex];
   const total = pack.questions.length;
   const isLast = currentIndex === total - 1;
+  // Draw-only questions answer with the pad, so the textarea never renders and
+  // the sketch — not typed text — is what completes them.
+  const drawOnly = currentQ?.drawOnly === true;
 
   useEffect(() => {
     if (!session) return;
@@ -388,6 +391,15 @@ function PackSession({ pack, onBack }: { pack: JournalPack; onBack: () => void }
   }, [drawingId]);
 
   const drawingUrl = useObjectUrl(drawingId ?? null);
+
+  // Sketch for the last question, shown on the closing screen. A draw-only pack
+  // ends on a drawing, so this is the only record of what was made — resolved
+  // here with the other hooks rather than inside the `done` branch, which would
+  // change the hook order the moment the pack completes.
+  const completedDrawingId = session?.answers.find(
+    (a) => a.questionId === pack.questions[pack.questions.length - 1]?.id
+  )?.drawingImageId;
+  const completionUrl = useObjectUrl(completedDrawingId ?? null);
 
   const handleSave = () => {    if (!session || !currentQ) return;
     store.savePackAnswer(session.id, currentQ.id, input, drawingId);
@@ -435,6 +447,8 @@ function PackSession({ pack, onBack }: { pack: JournalPack; onBack: () => void }
   if (done) {
     const lastQ = pack.questions[pack.questions.length - 1];
     const lastAnswer = session?.answers.find((a) => a.questionId === lastQ?.id)?.answer?.trim();
+    // A draw-only question answers with a sketch, so its closing card shows the
+    // drawing instead of bridging an empty string into tomorrow's main action.
 
     const handleBridgeAction = () => {
       if (!lastAnswer) return;
@@ -484,6 +498,22 @@ function PackSession({ pack, onBack }: { pack: JournalPack; onBack: () => void }
           </div>
         ) : null}
 
+        {!lastAnswer && completedDrawingId ? (
+          <div className="mt-6 flex justify-center">
+            <div className="overflow-hidden rounded-2xl border border-monk-accent/30 bg-monk-surface p-3 shadow-sm">
+              <div className="mb-2 flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-monk-accent">
+                <Palette size={14} />
+                <span>{t("notebook.drawTitle")}</span>
+              </div>
+              <img
+                src={completionUrl ?? undefined}
+                alt=""
+                className="max-h-72 w-auto rounded-monk border border-monk-border"
+              />
+            </div>
+          </div>
+        ) : null}
+
         <div className="mt-6 flex justify-center gap-3">
           <PrimaryButton onClick={onBack}>{t("packs.backToPacks")}</PrimaryButton>
         </div>
@@ -517,59 +547,73 @@ function PackSession({ pack, onBack }: { pack: JournalPack; onBack: () => void }
       </div>
 
       <div className="space-y-2">
-        <textarea
-          value={input}
-          onChange={(e) => {
-            setInput(e.target.value);
-            setSaved(false);
-          }}
-          placeholder={t("packs.answerPlaceholder")}
-          rows={6}
-          className="w-full resize-none rounded-monk border border-monk-border bg-monk-surface p-3 text-sm text-monk-text outline-none transition focus:border-monk-accent"
-        />
-        <div className="flex items-center justify-between">
-          <button
-            type="button"
-            onClick={() => setDrawingOpen((v) => !v)}
-            title={t("notebook.drawTitle")}
-            className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium text-monk-text-soft transition hover:bg-monk-soft/70 hover:text-monk-text active:scale-95"
-          >
-            <Palette size={14} className="shrink-0" />
-            <span>{drawingId ? t("packs.redraw") : t("notebook.drawLabel")}</span>
-          </button>
-          {saved ? (
-            <p className="text-[11px] font-medium text-monk-muted">{t("packs.saved")}</p>
-          ) : null}
-        </div>
-        {drawingOpen ? (
-          <div className="rounded-xl border border-monk-accent/40 bg-monk-surface/95 p-3 shadow-sm animate-scale-in">
-            <div className="mb-2 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-monk-accent">
-              <Palette size={12} />
-              <span>{t("notebook.drawTitle")}</span>
-            </div>
-            <NotebookDrawingPad
-              initialDataUrl={drawingSeed}
-              onSave={handleSketchSave}
-              onCancel={() => setDrawingOpen(false)}
-            />
-          </div>
-        ) : drawingId ? (
-          // The answer is plain text, so unlike a notebook page there is no marker
-          // to render inline — this thumbnail is the only proof the sketch stuck.
-          <img
-            src={drawingUrl ?? undefined}
-            alt=""
-            className="max-h-64 w-auto cursor-pointer rounded-monk border border-monk-border"
-            onClick={() => setDrawingOpen(true)}
+        {drawOnly ? (
+          // Draw-only answer: the pad *is* the answer, so it replaces the
+          // textarea rather than sitting behind a toggle, and there is no
+          // Cancel (cancelling would leave the answer empty with no way back).
+          <NotebookDrawingPad
+            initialDataUrl={drawingSeed}
+            onSave={handleSketchSave}
+            onCancel={() => setDrawingOpen(false)}
+            hideCancel
           />
-        ) : null}
+        ) : (
+          <>
+            <textarea
+              value={input}
+              onChange={(e) => {
+                setInput(e.target.value);
+                setSaved(false);
+              }}
+              placeholder={t("packs.answerPlaceholder")}
+              rows={6}
+              className="w-full resize-none rounded-monk border border-monk-border bg-monk-surface p-3 text-sm text-monk-text outline-none transition focus:border-monk-accent"
+            />
+            <div className="flex items-center justify-between">
+              <button
+                type="button"
+                onClick={() => setDrawingOpen((v) => !v)}
+                title={t("notebook.drawTitle")}
+                className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium text-monk-text-soft transition hover:bg-monk-soft/70 hover:text-monk-text active:scale-95"
+              >
+                <Palette size={14} className="shrink-0" />
+                <span>{drawingId ? t("packs.redraw") : t("notebook.drawLabel")}</span>
+              </button>
+              {saved ? (
+                <p className="text-[11px] font-medium text-monk-muted">{t("packs.saved")}</p>
+              ) : null}
+            </div>
+            {drawingOpen ? (
+              <div className="rounded-xl border border-monk-accent/40 bg-monk-surface/95 p-3 shadow-sm animate-scale-in">
+                <div className="mb-2 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-monk-accent">
+                  <Palette size={12} />
+                  <span>{t("notebook.drawTitle")}</span>
+                </div>
+                <NotebookDrawingPad
+                  initialDataUrl={drawingSeed}
+                  onSave={handleSketchSave}
+                  onCancel={() => setDrawingOpen(false)}
+                />
+              </div>
+            ) : drawingId ? (
+              // The answer is plain text, so unlike a notebook page there is no marker
+              // to render inline — this thumbnail is the only proof the sketch stuck.
+              <img
+                src={drawingUrl ?? undefined}
+                alt=""
+                className="max-h-64 w-auto cursor-pointer rounded-monk border border-monk-border"
+                onClick={() => setDrawingOpen(true)}
+              />
+            ) : null}
+          </>
+        )}
       </div>
 
       <div className="flex items-center justify-between pt-2">
         <SecondaryButton onClick={handlePrev} disabled={currentIndex === 0}>
           {t("packs.back")}
         </SecondaryButton>
-        <PrimaryButton onClick={handleNext}>
+        <PrimaryButton onClick={handleNext} disabled={drawOnly && !drawingId}>
           {isLast ? t("packs.complete") : t("packs.next")}
         </PrimaryButton>
       </div>
