@@ -19,106 +19,38 @@ import { isMusicOn, toggleMusic, startMusic, stopMusic, getActiveSoundscape, get
 import { requestWakeLock, releaseWakeLock } from "../lib/wakeLock";
 import { selectTodayPlan, selectTotalFocusSecondsForDate } from "../store/selectors";
 import { useMonkStore } from "../store/useMonkStore";
-import { useT, useLanguage } from "../i18n";
+import { useT, type MessageKey } from "../i18n";
 import { ZendoProModal } from "../components/ZendoProModal";
 import type { FocusSession } from "../types/app";
+
+/**
+ * Soundscape labels live in i18n (focus.soundscape.<id> / <id>Desc) so the
+ * picker and the auto-pick share one source of truth. Only the id and the
+ * glyph stay here.
+ */
+const soundNameKey = (id: SoundscapeId) => `focus.soundscape.${id}` as MessageKey;
+const soundDescKey = (id: SoundscapeId) => `focus.soundscape.${id}Desc` as MessageKey;
 
 const SOUNDSCAPES: {
   id: SoundscapeId;
   icon: string;
-  nameId: string;
-  nameEn: string;
-  descId: string;
-  descEn: string;
 }[] = [
-  {
-    id: "day_still",
-    icon: "🍃",
-    nameId: "Udara Tenang",
-    nameEn: "Still Air",
-    descId: "Angin sepoi hening & drone harmonis menenangkan",
-    descEn: "Gentle breeze & soft harmonic drone",
-  },
-  {
-    id: "dawn_mist",
-    icon: "🌫️",
-    nameId: "Kabut Pagi",
-    nameEn: "Dawn Mist",
-    descId: "Embun pagi & getaran akustik fajar yang tenang",
-    descEn: "Morning mist & peaceful acoustic shimmer",
-  },
-  {
-    id: "zen_stream",
-    icon: "🌊",
-    nameId: "Aliran Air Zen",
-    nameEn: "Mountain Stream",
-    descId: "Gemericik air pegunungan alami yang jernih",
-    descEn: "Crystal-clear babbling mountain brook",
-  },
-  {
-    id: "forest_birds",
-    icon: "🌲",
-    nameId: "Hutan Hening",
-    nameEn: "Forest Serenity",
-    descId: "Kanopi hutan hijau & kedamaian alam yang dalam",
-    descEn: "Deep canopy atmosphere & organic peace",
-  },
-  {
-    id: "binaural_alpha",
-    icon: "🧘",
-    nameId: "Gelombang 432Hz",
-    nameEn: "432Hz Alpha Drone",
-    descId: "Frekuensi fokus murni 432Hz untuk deep flow state",
-    descEn: "Pure 432Hz harmonic drone for deep flow",
-  },
-  {
-    id: "singing_bowl",
-    icon: "🔔",
-    nameId: "Mangkuk Tibet",
-    nameEn: "Tibetan Bowl",
-    descId: "Resonansi mangkuk meditasi & getaran overton hening",
-    descEn: "Singing bowl resonance & meditative overtones",
-  },
-  {
-    id: "night_rain",
-    icon: "🌧️",
-    nameId: "Hujan Lembut",
-    nameEn: "Soft Rain",
-    descId: "Rintik hujan menenangkan & gemuruh lembut malam",
-    descEn: "Soothing rain showers & gentle undertones",
-  },
-  {
-    id: "day_garden",
-    icon: "🌸",
-    nameId: "Taman Sunyi",
-    nameEn: "Quiet Garden",
-    descId: "Taman zen yang damai dengan resonansi cerah",
-    descEn: "Peaceful zen garden with bright overtones",
-  },
-  {
-    id: "dusk_ember",
-    icon: "🪵",
-    nameId: "Senja Hangat",
-    nameEn: "Dusk Ember",
-    descId: "Kehangatan api unggun & dengung senja meditatif",
-    descEn: "Warm hearth embers & meditative dusk drone",
-  },
-  {
-    id: "night_deep",
-    icon: "🌌",
-    nameId: "Malam Dalam",
-    nameEn: "Deep Night",
-    descId: "Gelombang kosmik hening & sub-bass malam pekat",
-    descEn: "Cosmic night waves & deep sub-bass calm",
-  },
+  { id: "day_still", icon: "🍃" },
+  { id: "dawn_mist", icon: "🌫️" },
+  { id: "zen_stream", icon: "🌊" },
+  { id: "forest_birds", icon: "🌲" },
+  { id: "binaural_alpha", icon: "🧘" },
+  { id: "singing_bowl", icon: "🔔" },
+  { id: "night_rain", icon: "🌧️" },
+  { id: "day_garden", icon: "🌸" },
+  { id: "dusk_ember", icon: "🪵" },
+  { id: "night_deep", icon: "🌌" },
 ];
 
 export default function FocusScreen() {
   const navigate = useNavigate();
   const store = useMonkStore();
   const t = useT();
-  const lang = useLanguage();
-  const isId = lang === "id";
   const plan = selectTodayPlan(store);
   const goal = plan?.goalId ? store.goals.find((item) => item.id === plan.goalId) : undefined;
   const [musicOn, setMusicOn] = useState(isMusicOn);
@@ -280,7 +212,7 @@ export default function FocusScreen() {
             <div className="min-w-0">
               <div className="flex items-center gap-2">
                 <span className="text-xs font-bold text-monk-text truncate">
-                  {isId ? currentSoundMeta.nameId : currentSoundMeta.nameEn}
+                  {t(soundNameKey(currentSoundMeta.id))}
                 </span>
                 {musicOn && (
                   <span className="inline-flex items-center gap-1 text-[10px] text-monk-accent font-semibold px-2 py-0.5 rounded-full bg-monk-accent-soft border border-monk-accent/30">
@@ -289,12 +221,12 @@ export default function FocusScreen() {
                       <span className="w-0.5 h-3 bg-monk-accent rounded-full animate-pulse delay-75" />
                       <span className="w-0.5 h-1.5 bg-monk-accent rounded-full animate-pulse delay-150" />
                     </span>
-                    <span>{isId ? "Sedang Diputar" : "Playing"}</span>
+                    <span>{t("focus.audioPlaying")}</span>
                   </span>
                 )}
               </div>
               <p className="text-[11px] text-monk-muted truncate">
-                {isId ? currentSoundMeta.descId : currentSoundMeta.descEn}
+                {t(soundDescKey(currentSoundMeta.id))}
               </p>
             </div>
           </div>
@@ -307,10 +239,10 @@ export default function FocusScreen() {
                   ? "border-monk-accent bg-monk-accent-soft text-monk-accent shadow-xs"
                   : "border-monk-border bg-monk-soft text-monk-muted hover:text-monk-text"
               }`}
-              aria-label={musicOn ? "Pause audio preview" : "Play audio preview"}
+              aria-label={musicOn ? t("focus.audioPauseAria") : t("focus.audioPlayAria")}
             >
               {musicOn ? <Pause size={13} /> : <Play size={13} />}
-              <span>{musicOn ? (isId ? "Jeda" : "Pause") : (isId ? "Putar" : "Play")}</span>
+              <span>{musicOn ? t("focus.pause") : t("focus.audioPlay")}</span>
             </button>
             <button
               type="button"
@@ -318,7 +250,7 @@ export default function FocusScreen() {
               className="text-xs font-semibold text-monk-accent hover:underline flex items-center gap-1 px-2 py-1"
             >
               <Music size={13} />
-              {soundscapePickerOpen ? (isId ? "Tutup" : "Close") : (isId ? "Pilih Suara" : "Choose Sound")}
+              {soundscapePickerOpen ? t("focus.audioClose") : t("focus.audioChooseSound")}
             </button>
           </div>
         </div>
@@ -327,7 +259,7 @@ export default function FocusScreen() {
         <div className="flex items-center gap-2 pt-2 border-t border-monk-border/40">
           <span className="text-[11px] font-semibold text-monk-muted flex items-center gap-1.5 shrink-0">
             {volume === 0 ? <VolumeX size={13} /> : volume < 50 ? <Volume1 size={13} /> : <Volume2 size={13} />}
-            <span>{isId ? "Volume Suara:" : "Sound Volume:"}</span>
+            <span>{t("focus.audioSoundVolume")}</span>
           </span>
           <input
             type="range"
@@ -337,7 +269,7 @@ export default function FocusScreen() {
             value={volume}
             onChange={(e) => handleVolumeChange(Number(e.target.value))}
             className="w-full h-1.5 bg-monk-border rounded-lg appearance-none cursor-pointer accent-monk-accent"
-            aria-label="Volume ambient"
+            aria-label={t("focus.audioVolumeAria")}
           />
           <span className="text-[11px] font-bold text-monk-text tabular-nums shrink-0 w-8 text-right">
             {volume}%
@@ -348,12 +280,10 @@ export default function FocusScreen() {
           <div className="space-y-2 pt-2 border-t border-monk-border/60">
             <div className="flex items-center justify-between">
               <p className="text-[11px] font-semibold text-monk-muted">
-                {isId
-                  ? "Klik untuk langsung mendengar suaranya:"
-                  : "Tap any soundscape below for instant live audio preview:"}
+                {t("focus.audioTapToPreview")}
               </p>
               <span className="text-[10px] text-monk-muted/80">
-                {isId ? "✨ Blend dengan musik lain" : "✨ Blends with music"}
+                {t("focus.audioBlendNote")}
               </span>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-[300px] overflow-y-auto pr-1">
@@ -378,11 +308,11 @@ export default function FocusScreen() {
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-1.5">
                           <p className="text-xs font-bold text-monk-text truncate">
-                            {isId ? sound.nameId : sound.nameEn}
+                            {t(soundNameKey(sound.id))}
                           </p>
                         </div>
                         <p className="text-[10px] text-monk-muted leading-tight mt-0.5 line-clamp-1">
-                          {isId ? sound.descId : sound.descEn}
+                          {t(soundDescKey(sound.id))}
                         </p>
                       </div>
                     </div>
@@ -396,7 +326,7 @@ export default function FocusScreen() {
                       ) : (
                         <span className="text-[10px] text-monk-muted/70 flex items-center gap-0.5">
                           <Play size={10} />
-                          <span>Preview</span>
+                          <span>{t("focus.audioPreview")}</span>
                         </span>
                       )}
                     </div>
@@ -405,9 +335,7 @@ export default function FocusScreen() {
               })}
             </div>
             <p className="text-[10px] text-monk-muted/80 pt-1 text-center">
-              {isId
-                ? "💡 Suara ambient dirancang lembut dan dapat nge-blend harmonis dengan Spotify / Lo-Fi / Apple Music."
-                : "💡 Ambient beds are softly filtered to blend harmoniously behind your external music or Spotify."}
+              {t("focus.audioBlendFootnote")}
             </p>
           </div>
         )}

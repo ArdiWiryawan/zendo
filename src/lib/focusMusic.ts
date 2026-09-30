@@ -14,12 +14,6 @@ export type SoundscapeId =
   | "binaural_alpha"
   | "singing_bowl";
 
-export type SoundscapeMeta = {
-  id: SoundscapeId;
-  /** i18n key under focus.soundscape.* */
-  labelKey: `focus.soundscape.${SoundscapeId}`;
-};
-
 type PartialVoice = {
   freq: number;
   gain: number;
@@ -33,7 +27,7 @@ type PartialVoice = {
   detuneCents?: number;
 };
 
-type SoundscapePatch = {
+export type SoundscapePatch = {
   id: SoundscapeId;
   masterVol: number;
   attackSec: number;
@@ -52,7 +46,7 @@ type SoundscapePatch = {
 // quiet, static bed with no pulse: periodic amplitude movement is what makes a
 // tone demand attention, so drift depths are small and lfoHz: 0 means
 // "deliberately steady".
-const PATCHES: Record<SoundscapeId, SoundscapePatch> = {
+export const PATCHES: Record<SoundscapeId, SoundscapePatch> = {
   dawn_mist: {
     id: "dawn_mist",
     masterVol: 0.46,
@@ -202,10 +196,6 @@ export function pickSoundscape(now = new Date()): SoundscapeId {
             : LATE;
   const seed = dayOfYear(now) + now.getDay() * 3 + Math.floor(hour / 3);
   return pool[seed % pool.length];
-}
-
-export function getSoundscapeMeta(id: SoundscapeId): SoundscapeMeta {
-  return { id, labelKey: `focus.soundscape.${id}` };
 }
 
 let playing = false;
@@ -564,10 +554,5 @@ export function isMusicOn(): boolean {
 
 export function getActiveSoundscape(): SoundscapeId | null {
   return activeId;
-}
-
-/** Upcoming auto pick (for UI before start). */
-export function peekAutoSoundscape(now = new Date()): SoundscapeMeta {
-  return getSoundscapeMeta(pickSoundscape(now));
 }
 

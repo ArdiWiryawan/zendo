@@ -1,18 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { pickSoundscape, getSoundscapeMeta, type SoundscapeId } from "./focusMusic";
-
-const ALL: SoundscapeId[] = [
-  "dawn_mist",
-  "day_still",
-  "day_garden",
-  "dusk_ember",
-  "night_deep",
-  "night_rain",
-  "zen_stream",
-  "forest_birds",
-  "binaural_alpha",
-  "singing_bowl",
-];
+import { pickSoundscape } from "./focusMusic";
 
 describe("pickSoundscape", () => {
   it("morning band stays in morning pool", () => {
@@ -44,11 +31,5 @@ describe("pickSoundscape", () => {
     );
     expect(picks.size).toBeGreaterThanOrEqual(1);
     for (const p of picks) expect(["day_still", "day_garden", "zen_stream", "binaural_alpha"]).toContain(p);
-  });
-
-  it("meta label keys cover all ids", () => {
-    for (const id of ALL) {
-      expect(getSoundscapeMeta(id).labelKey).toBe(`focus.soundscape.${id}`);
-    }
   });
 });
