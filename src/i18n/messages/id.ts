@@ -765,6 +765,7 @@ export const id: Record<MessageKey, string> = {
   "packs.progressAria": "Progres {done} dari {total}",
   "packs.answerPlaceholder": "Tulis jawabanmu…",
   "packs.saved": "Tersimpan ✓",
+  "packs.redraw": "Gambar ulang",
   "packs.save": "Simpan",
   "packs.next": "Lanjut",
   "packs.complete": "Selesai",

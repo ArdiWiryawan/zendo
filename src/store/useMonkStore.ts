@@ -243,7 +243,7 @@ type MonkActions = {
 
   // Journal Pack actions
   startJournalPack: (packId: string) => string | undefined;
-  savePackAnswer: (sessionId: string, questionId: string, answer: string) => void;
+  savePackAnswer: (sessionId: string, questionId: string, answer: string, drawingImageId?: string) => void;
   completeJournalPack: (sessionId: string) => void;
   purchasePack: (packId: string) => void;
   unlockPro: (tier?: "lifetime" | "season") => void;
@@ -2741,14 +2741,22 @@ export const useMonkStore = create<MonkStore>()(
     return session.id;
   },
 
-  savePackAnswer: (sessionId, questionId, answer) => {
+  savePackAnswer: (sessionId, questionId, answer, drawingImageId) => {
     const state = get();
     const session = state.journalPackSessions.find((s) => s.id === sessionId);
     if (!session) return;
     const existingIdx = session.answers.findIndex((a) => a.questionId === questionId);
+    // The sketch pointer comes from the pad, which owns it; a plain text save
+    // passes nothing and must not drop a sketch attached to the same answer.
+    const previous = existingIdx >= 0 ? session.answers[existingIdx] : undefined;
+    const nextAnswer: JournalPackAnswer = {
+      questionId,
+      answer,
+      drawingImageId: drawingImageId ?? previous?.drawingImageId
+    };
     const answers = existingIdx >= 0
-      ? session.answers.map((a) => a.questionId === questionId ? { ...a, answer } : a)
-      : [...session.answers, { questionId, answer }];
+      ? session.answers.map((a) => a.questionId === questionId ? nextAnswer : a)
+      : [...session.answers, nextAnswer];
     // Find pack for progress calc
     const pack = state.journalPacks.find((p) => p.id === session.packId);
     const progress = pack ? Math.round((answers.filter((a) => a.answer.trim()).length / pack.questions.length) * 100) : 0;

@@ -763,6 +763,7 @@ export const en = {
   "packs.progressAria": "Progress {done} of {total}",
   "packs.answerPlaceholder": "Write your answer…",
   "packs.saved": "Saved ✓",
+  "packs.redraw": "Redraw",
   "packs.save": "Save",
   "packs.next": "Next",
   "packs.complete": "Complete",

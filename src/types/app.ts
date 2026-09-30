@@ -773,6 +773,9 @@ export type JournalPackQuestion = {
 export type JournalPackAnswer = {
   questionId: string;
   answer: string;
+  // Sketch for this answer (lib/imageStore blob id). Local-only, never synced —
+  // same contract as the notebook's `drawingImageId`.
+  drawingImageId?: string;
 };
 
 export type JournalPackSession = {

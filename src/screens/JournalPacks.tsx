@@ -1,4 +1,9 @@
 import { useState, useMemo, useEffect, useRef } from "react";
+import { Palette } from "lucide-react";
+import { deleteImage, getImage, putImage } from "../lib/imageStore";
+import { createId } from "../lib/ids";
+import NotebookDrawingPad from "../components/NotebookDrawingPad";
+import { useObjectUrl } from "../components/NotebookImages";
 import { useMonkStore } from "../store/useMonkStore";
 import { Card, PrimaryButton, SecondaryButton, GhostButton, EmptyState, useModalA11y } from "../components/ui";
 import {
@@ -340,6 +345,13 @@ function PackSession({ pack, onBack }: { pack: JournalPack; onBack: () => void }
   const [saved, setSaved] = useState(false);
   const [done, setDone] = useState(false);
   const [bridgeCommitted, setBridgeCommitted] = useState(false);
+  // Sketch for the answer on screen. Seeded from the saved answer, written back
+  // through `savePackAnswer` so it lives and dies with the answer it belongs to.
+  const [drawingOpen, setDrawingOpen] = useState(false);
+  const [drawingSeed, setDrawingSeed] = useState<string | null>(null);
+  const [drawingId, setDrawingId] = useState<string | undefined>(
+    () => session?.answers.find((a) => a.questionId === pack.questions[currentIndex]?.id)?.drawingImageId
+  );
 
   const currentQ = pack.questions[currentIndex];
   const total = pack.questions.length;
@@ -349,12 +361,59 @@ function PackSession({ pack, onBack }: { pack: JournalPack; onBack: () => void }
     if (!session) return;
     const existing = session.answers.find((a) => a.questionId === currentQ?.id);
     setInput(existing?.answer ?? "");
+    setDrawingId(existing?.drawingImageId);
     setSaved(false);
   }, [currentIndex, currentQ?.id, session]);
 
-  const handleSave = () => {
+  // Decode the saved sketch whenever the answer's pointer changes — including
+  // right after this session's own save, so re-opening the pad seeds from what
+  // was just drawn rather than a stale blob.
+  useEffect(() => {
+    if (!drawingId) {
+      setDrawingSeed(null);
+      return;
+    }
+    let cancelled = false;
+    void getImage(drawingId).then((blob) => {
+      if (!blob || cancelled) return;
+      const reader = new FileReader();
+      reader.onload = () => {
+        if (!cancelled && typeof reader.result === "string") setDrawingSeed(reader.result);
+      };
+      reader.readAsDataURL(blob);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [drawingId]);
+
+  const drawingUrl = useObjectUrl(drawingId ?? null);
+
+  const handleSave = () => {    if (!session || !currentQ) return;
+    store.savePackAnswer(session.id, currentQ.id, input, drawingId);
+    setSaved(true);
+  };
+
+  /**
+   * One sketch per answer: the pad is always seeded from the saved drawing, so
+   * saving replaces it. Retire the previous blob, then store the new one and
+   * point the answer at it. The answer text is saved in the same store write so
+   * the sketch cannot land without it.
+   */
+  const handleSketchSave = async (blob: Blob) => {
     if (!session || !currentQ) return;
-    store.savePackAnswer(session.id, currentQ.id, input);
+    setDrawingOpen(false);
+    const previous = drawingId;
+    if (previous) void deleteImage(previous);
+    const id = createId("img");
+    try {
+      await putImage(id, blob);
+    } catch {
+      setDrawingSeed(null);
+      return;
+    }
+    setDrawingId(id);
+    store.savePackAnswer(session.id, currentQ.id, input, id);
     setSaved(true);
   };
 
@@ -468,8 +527,41 @@ function PackSession({ pack, onBack }: { pack: JournalPack; onBack: () => void }
           rows={6}
           className="w-full resize-none rounded-monk border border-monk-border bg-monk-surface p-3 text-sm text-monk-text outline-none transition focus:border-monk-accent"
         />
-        {saved ? (
-          <p className="text-right text-[11px] font-medium text-monk-muted">{t("packs.saved")}</p>
+        <div className="flex items-center justify-between">
+          <button
+            type="button"
+            onClick={() => setDrawingOpen((v) => !v)}
+            title={t("notebook.drawTitle")}
+            className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium text-monk-text-soft transition hover:bg-monk-soft/70 hover:text-monk-text active:scale-95"
+          >
+            <Palette size={14} className="shrink-0" />
+            <span>{drawingId ? t("packs.redraw") : t("notebook.drawLabel")}</span>
+          </button>
+          {saved ? (
+            <p className="text-[11px] font-medium text-monk-muted">{t("packs.saved")}</p>
+          ) : null}
+        </div>
+        {drawingOpen ? (
+          <div className="rounded-xl border border-monk-accent/40 bg-monk-surface/95 p-3 shadow-sm animate-scale-in">
+            <div className="mb-2 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-monk-accent">
+              <Palette size={12} />
+              <span>{t("notebook.drawTitle")}</span>
+            </div>
+            <NotebookDrawingPad
+              initialDataUrl={drawingSeed}
+              onSave={handleSketchSave}
+              onCancel={() => setDrawingOpen(false)}
+            />
+          </div>
+        ) : drawingId ? (
+          // The answer is plain text, so unlike a notebook page there is no marker
+          // to render inline — this thumbnail is the only proof the sketch stuck.
+          <img
+            src={drawingUrl ?? undefined}
+            alt=""
+            className="max-h-64 w-auto cursor-pointer rounded-monk border border-monk-border"
+            onClick={() => setDrawingOpen(true)}
+          />
         ) : null}
       </div>
 
