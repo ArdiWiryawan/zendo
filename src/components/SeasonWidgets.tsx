@@ -19,7 +19,19 @@ import { useMonkStore } from "../store/useMonkStore";
 import { useT, useLanguage } from "../i18n";
 import type { SeasonWhy } from "../types/app";
 
-export function SeasonProgressCard({ compact = false }: { compact?: boolean }) {
+export function SeasonProgressCard({
+  compact = false,
+  onOpenGoal
+}: {
+  compact?: boolean;
+  /**
+   * D7: the Season view is where a user reads their goal tracks, but the chips
+   * were inert text — the goal's own blueprint was unreachable from here. When
+   * a handler is supplied the chips become buttons into the blueprint modal;
+   * without one they stay non-interactive rather than dead buttons.
+   */
+  onOpenGoal?: (goalId: string) => void;
+}) {
   const store = useMonkStore();
   const t = useT();
   const lang = useLanguage();
@@ -55,15 +67,20 @@ export function SeasonProgressCard({ compact = false }: { compact?: boolean }) {
       {!compact && goals.length ? (
         <div className="mt-4 flex flex-wrap gap-2">
           {goals.map((goal) => (
-            <span
+            <button
               key={goal.id}
-              className="inline-flex items-center gap-1.5 rounded-full border border-monk-border bg-monk-soft px-3 py-1 text-xs text-monk-text-soft"
+              type="button"
+              onClick={() => onOpenGoal?.(goal.id)}
+              disabled={!onOpenGoal}
+              aria-label={t("blueprint.openButton")}
+              title={t("blueprint.dialogTitle")}
+              className="inline-flex items-center gap-1.5 rounded-full border border-monk-border bg-monk-soft px-3 py-1 text-xs text-monk-text-soft transition enabled:hover:border-monk-accent enabled:hover:text-monk-accent enabled:active:scale-95 disabled:cursor-default"
             >
               {goal.track ? (
                 <span className="font-semibold text-monk-accent">{goal.track} ·</span>
               ) : null}
               <span>{goal.title}</span>
-            </span>
+            </button>
           ))}
         </div>
       ) : null}

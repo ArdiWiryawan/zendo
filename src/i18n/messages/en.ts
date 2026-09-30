@@ -1131,6 +1131,8 @@ export const en = {
   "focus.nextFocus": "Next: Focus {position} of {total}",
 
   "blueprint.dialogTitle": "Goal Blueprint",
+  "blueprint.pillarsSubtitle": "4 essential pillars for flawless execution",
+  "blueprint.advancedLabel": "Target days & 2-minute Plan B",
   "blueprint.dialogSubtitle": "Focus on controllable daily input & streak protection.",
   "blueprint.stepIndicator": "Step {current} of {total}",
   "blueprint.step1Badge": "1. Aspiration & Identity",

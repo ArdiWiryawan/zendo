@@ -165,7 +165,7 @@ export function GoalBlueprintModal({ goalId, isOpen, onClose }: GoalBlueprintMod
                   {t("blueprint.dialogTitle")}
                 </h2>
                 <p className="text-[11px] font-medium text-monk-muted">
-                  {showTemplates ? t("blueprint.templatesTitle") : "4 Essential Pillars for Flawless Execution"}
+                  {showTemplates ? t("blueprint.templatesTitle") : t("blueprint.pillarsSubtitle")}
                 </p>
               </div>
             </div>
@@ -360,7 +360,7 @@ export function GoalBlueprintModal({ goalId, isOpen, onClose }: GoalBlueprintMod
                   onClick={() => setShowAdvanced((v) => !v)}
                   className="flex w-full items-center justify-between rounded-xl border border-monk-border/60 bg-monk-soft/30 px-3.5 py-2.5 text-xs font-semibold text-monk-muted hover:text-monk-text transition"
                 >
-                  <span>Target Days & 2-Minute Plan B</span>
+                  <span>{t("blueprint.advancedLabel")}</span>
                   {showAdvanced ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
                 </button>
 
@@ -445,7 +445,7 @@ export function GoalBlueprintModal({ goalId, isOpen, onClose }: GoalBlueprintMod
         {/* Footer Actions */}
         <div className="border-t border-monk-border/60 bg-monk-surface px-5 py-3 sm:px-6 flex items-center justify-end gap-2.5">
           <SecondaryButton onClick={onClose} className="min-h-11 px-4">
-            Cancel
+            {t("dialog.cancel")}
           </SecondaryButton>
           <PrimaryButton onClick={handleSave} className="min-h-11 px-5 flex items-center gap-1.5">
             <Check size={15} />

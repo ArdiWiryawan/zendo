@@ -30,6 +30,7 @@ import {
   SectionHeader,
   SettingsLink
 } from "../components/ui";
+import { GoalBlueprintModal } from "../components/GoalBlueprintModal";
 import { RetroLogModal } from "../components/RetroLogModal";
 import { MorningPlanningModal } from "../components/MorningPlanningModal";
 import { DayTimeBlockVisualizer } from "../components/DayTimeBlockVisualizer";
@@ -378,6 +379,9 @@ export default function TimelineScreen() {
   const [retroDate, setRetroDate] = useState<string | null>(null);
   const [planningModalOpen, setPlanningModalOpen] = useState<boolean>(false);
   const [proModalOpen, setProModalOpen] = useState(false);
+  // D7: lets the Season view open a goal's blueprint — the goal entity was
+  // otherwise unreachable from the screen that displays goal tracks.
+  const [blueprintGoalId, setBlueprintGoalId] = useState<string | null>(null);
 
   // Week navigation state for Weekly View
   const currentWeekNum = useMemo(() => getCurrentWeekNumber(season.startDate, today), [season.startDate, today]);
@@ -1309,7 +1313,7 @@ export default function TimelineScreen() {
           >
             {/* High-level Focus Time and Returns Consistency at top */}
             <TimelineStats />
-            <SeasonProgressCard />
+            <SeasonProgressCard onOpenGoal={setBlueprintGoalId} />
             <WhyCard />
 
             {/* Timeline Activity Feed */}
@@ -1362,6 +1366,11 @@ export default function TimelineScreen() {
       <RetroLogModal open={!!retroDate} date={retroDate} onClose={() => setRetroDate(null)} />
       <MorningPlanningModal isOpen={planningModalOpen} onClose={() => setPlanningModalOpen(false)} date={today} />
       <ZendoProModal isOpen={proModalOpen} onClose={() => setProModalOpen(false)} />
+      <GoalBlueprintModal
+        goalId={blueprintGoalId}
+        isOpen={!!blueprintGoalId}
+        onClose={() => setBlueprintGoalId(null)}
+      />
     </>
   );
 }

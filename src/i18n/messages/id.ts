@@ -1133,6 +1133,8 @@ export const id: Record<MessageKey, string> = {
   "focus.nextFocus": "Berikutnya: Fokus {position} dari {total}",
 
   "blueprint.dialogTitle": "Goal Blueprint",
+  "blueprint.pillarsSubtitle": "4 pilar utama untuk eksekusi yang mulus",
+  "blueprint.advancedLabel": "Target hari & Rencana B 2 menit",
   "blueprint.dialogSubtitle": "Fokus pada input harian terkontrol & perlindungan konsistensi.",
   "blueprint.stepIndicator": "Langkah {current} dari {total}",
   "blueprint.step1Badge": "1. Aspirasi & Identitas",
