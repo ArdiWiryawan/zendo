@@ -171,6 +171,8 @@ describe("selectEnabledReminders", () => {
     pastSeasons: [],
     goals: [],
     badHabits: [],
+    practices: [],
+    practiceLogs: [],
     weeklyPlans: [],
     dayPlans: [],
     focusSessions: [],

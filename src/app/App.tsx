@@ -27,7 +27,7 @@ const PacksPageLazy = lazy(() => import("../screens/LibraryScreen").then(m => ({
 const ArchiveScreenLazy = lazy(() => import("../screens/ArchiveScreen").then(m => ({ default: m.ArchiveScreen })));
 import { TodayScreen } from "../screens/TodayScreen";
 import { WelcomeScreen } from "../screens/WelcomeScreen";
-import { HabitAudit, FrictionSetup, GoalBrainDump, SeasonSetup, KeystoneSetup, TodayPreviewStep } from "../screens/OnboardingSteps";
+import { PatternAudit, FrictionSetup, GoalBrainDump, SeasonSetup, KeystoneSetup, TodayPreviewStep } from "../screens/OnboardingSteps";
 
 export default function App() {
   const hydrate = useMonkStore((state) => state.hydrate);
@@ -414,7 +414,7 @@ function OnboardingScreen({ path }: { path: string }) {
 
   return (
     <OnboardingShell currentStep={currentStep} totalSteps={totalSteps} phaseLabel={phaseForStep(path)} onBack={goBack}>
-      {path === routes.onboardingHabits ? <HabitAudit onNext={goNext} /> : null}
+      {path === routes.onboardingHabits ? <PatternAudit onNext={goNext} /> : null}
       {path === routes.onboardingFriction ? <FrictionSetup onNext={goNext} /> : null}
       {path === routes.onboardingGoals ? <GoalBrainDump onNext={goNext} /> : null}
       {path === routes.onboardingKeystone ? <KeystoneSetup onNext={goNext} /> : null}

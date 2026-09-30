@@ -36,6 +36,7 @@ import { CoachHint } from "./OnboardingSteps";
 import { WhyEditor } from "../components/SeasonWidgets";
 import { EnergyCheck, WhyStrip, GoalTasksCard } from "./TodayScreen.components";
 import { GoalBlueprintModal } from "../components/GoalBlueprintModal";
+import { PracticesCard } from "../components/PracticesCard";
 import { WeeklyReviewModal } from "../components/WeeklyReviewModal";
 import { MorningPlanningModal } from "../components/MorningPlanningModal";
 import { DayTimeBlockVisualizer } from "../components/DayTimeBlockVisualizer";
@@ -1379,6 +1380,8 @@ export function TodayScreen() {
                 </button>
               </div>
             </details>
+
+            <PracticesCard />
 
             {!isRest ? (
               <details className="group rounded-monk border border-monk-border bg-monk-surface transition-all duration-200 ease-monk hover:border-monk-border-strong open:border-monk-border-strong">

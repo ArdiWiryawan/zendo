@@ -6,13 +6,13 @@ import { useMonkStore } from "../store/useMonkStore";
 import { useT } from "../i18n";
 import type { MessageKey } from "../i18n";
 import { routes } from "../constants/routes";
-import { habitOptions, defaultWeeklyTargets } from "../constants/defaultData";
+import { patternOptions, defaultWeeklyTargets } from "../constants/defaultData";
 import { getTodayDateString, addDaysToDate, formatHumanDate } from "../lib/date";
 import { formatIntention, parseIntention } from "../lib/implementationIntention";
 import { capacityCheck, planStrengthLabel, scorePlan } from "../lib/planScoring";
 import {
   validateGoalBrainDump,
-  validateHabitAudit,
+  validatePatternAudit,
   MAX_SEASON_GOALS,
   validateKeystoneActions,
   validateNarrowGoals,
@@ -65,10 +65,10 @@ export function ScreenIntro({ title, subtitle }: { title: string; subtitle: stri
   );
 }
 
-export function HabitAudit({ onNext }: { onNext: () => void }) {
+export function PatternAudit({ onNext }: { onNext: () => void }) {
   const t = useT();
-  const { onboarding, toggleHabit } = useMonkStore();
-  const result = validateHabitAudit(onboarding.selectedHabits.length);
+  const { onboarding, togglePattern } = useMonkStore();
+  const result = validatePatternAudit(onboarding.selectedHabits.length);
   const selectedCount = onboarding.selectedHabits.length;
   const otherHabit = onboarding.selectedHabits.find((item) => item.category === "other");
   const otherNeedsName = Boolean(otherHabit && !otherHabit.customName?.trim());
@@ -76,32 +76,32 @@ export function HabitAudit({ onNext }: { onNext: () => void }) {
   const canContinue = isEmpty || (result.valid && !otherNeedsName);
   return (
     <>
-      <ScreenIntro title={t("onboarding.habit.title")} subtitle={t("onboarding.habit.subtitle")} />
+      <ScreenIntro title={t("onboarding.patterns.title")} subtitle={t("onboarding.patterns.subtitle")} />
       <div className="mb-3 flex items-center justify-between">
-        <p className="text-sm font-semibold">{t("onboarding.habit.patterns")}</p>
+        <p className="text-sm font-semibold">{t("onboarding.patterns.patterns")}</p>
         <span className="rounded-full bg-monk-soft px-2.5 py-1 text-xs font-bold text-monk-muted">
           {selectedCount === 0
-            ? t("onboarding.habit.minRequired")
-            : t("onboarding.habit.selectedCount", { count: selectedCount })}
+            ? t("onboarding.patterns.minRequired")
+            : t("onboarding.patterns.selectedCount", { count: selectedCount })}
         </span>
       </div>
       <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
-        {habitOptions.map((habit) => (
+        {patternOptions.map((habit) => (
           <ChoiceChip
             key={habit.category}
             label={habit.label}
             icon={habit.icon}
             selected={onboarding.selectedHabits.some((item) => item.category === habit.category)}
-            onClick={() => toggleHabit(habit.category, habit.label)}
+            onClick={() => togglePattern(habit.category, habit.label)}
           />
         ))}
       </div>
       {otherHabit ? (
         <TextInput
-          label={t("onboarding.habit.namePattern")}
+          label={t("onboarding.patterns.namePattern")}
           className="mt-5"
           value={otherHabit.customName ?? ""}
-          onChange={(event) => useMonkStore.getState().setCustomHabitName(event.target.value)}
+          onChange={(event) => useMonkStore.getState().setCustomPatternName(event.target.value)}
         />
       ) : null}
       <div className="mt-auto shrink-0 space-y-3 pt-5 sm:pt-8 pb-1">
@@ -110,13 +110,13 @@ export function HabitAudit({ onNext }: { onNext: () => void }) {
             type="warning"
             title={
               otherNeedsName
-                ? t("onboarding.habit.nameToContinue")
-                : t("onboarding.habit.selectOne")
+                ? t("onboarding.patterns.nameToContinue")
+                : t("onboarding.patterns.selectOne")
             }
           />
         ) : null}
         <PrimaryButton disabled={!canContinue} onClick={onNext}>
-          {isEmpty ? t("onboarding.habit.skip") : t("onboarding.habit.continue")}
+          {isEmpty ? t("onboarding.patterns.skip") : t("onboarding.patterns.continue")}
         </PrimaryButton>
       </div>
     </>

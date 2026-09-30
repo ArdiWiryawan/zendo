@@ -52,6 +52,8 @@ function mergeScalar<T extends HasUpdatedAt | null>(local: T, remote: T): T {
 const ARRAY_KEYS: (keyof MonkMVPState)[] = [
   "goals",
   "badHabits",
+  "practices",
+  "practiceLogs",
   "weeklyPlans",
   "dayPlans",
   "focusSessions",

@@ -168,6 +168,51 @@ export type BadHabit = {
   updatedAt: ISODateString;
 };
 
+/**
+ * A POSITIVE practice (§23) — something you want to *do*, as opposed to the
+ * `BadHabit` above, which is something you want to *stop*.
+ *
+ * The two are deliberately separate record types rather than one type with a
+ * polarity flag: they have different lifecycles (a practice accumulates
+ * evidence, a bad habit accumulates relapses), different UI (strength vs
+ * friction), and different questions. Until now a positive habit like
+ * "meditate 10 min/day" had nowhere to live except as free text inside a
+ * goal's keystone action.
+ */
+export type Practice = {
+  id: string;
+  seasonId: string;
+  name: string;
+  /**
+   * OPTIONAL link to a goal (§25). A practice can support a goal ("run 3x"
+   * lives under the running goal) or stand alone ("brush teeth"). Undefined
+   * means standalone — never invalid.
+   */
+  goalId?: string;
+  /** Days per week you intend to show up. Same unit as `Goal.weeklyTargetCount`. */
+  weeklyTargetCount: number;
+  /** Free text: the cue that starts it. Implementation-intention style. */
+  cue?: string;
+  status: "active" | "paused" | "archived";
+  createdAt: ISODateString;
+  updatedAt: ISODateString;
+};
+
+/**
+ * One completed instance of a practice. Kept as its own record rather than a
+ * counter on `Practice` so multi-device merge stays last-write-wins per day
+ * (two devices ticking the same day is one fact, not two), and so un-ticking a
+ * day is a delete rather than a decrement that can drift.
+ */
+export type PracticeLog = {
+  id: string;
+  practiceId: string;
+  seasonId: string;
+  date: DateOnlyString;
+  createdAt: ISODateString;
+  updatedAt: ISODateString;
+};
+
 export type GoalAllocation = {
   goalId: string;
   targetCount: number;
@@ -559,6 +604,9 @@ export type MonkMVPState = {
   pastSeasons: Season[];
   goals: Goal[];
   badHabits: BadHabit[];
+  /** §23 positive practices — the "do this" layer, separate from badHabits. */
+  practices: Practice[];
+  practiceLogs: PracticeLog[];
   weeklyPlans: WeeklyPlan[];
   dayPlans: DayPlan[];
   focusSessions: FocusSession[];

@@ -63,6 +63,8 @@ import type {
   NotebookCategory,
   NotebookEntry,
   NotificationReminder,
+  Practice,
+  PracticeLog,
   TimelineEvent,
   TimelineEventType,
   FocusSessionPreset,
@@ -111,8 +113,8 @@ type MonkActions = {
   ensureSeasonFresh: () => void;
   updateOnboarding: (patch: Partial<OnboardingState>) => void;
   setOnboardingStep: (step: string) => void;
-  toggleHabit: (category: BadHabitCategory, label: string) => void;
-  setCustomHabitName: (name: string) => void;
+  togglePattern: (category: BadHabitCategory, label: string) => void;
+  setCustomPatternName: (name: string) => void;
   toggleFrictionAction: (habitId: string, actionId: string) => void;
   updateGoalDraft: (id: string, title: string) => void;
   addGoalDraft: () => void;
@@ -133,6 +135,12 @@ type MonkActions = {
   toggleTodayCompletion: () => void;
   setTodayHighlight: (highlight: string) => void;
   setDayAgenda: (dateString: string, agenda: string[]) => void;
+  /** §23-25: create a positive practice, optionally supporting a goal. */
+  addPractice: (input: { name: string; goalId?: string; weeklyTargetCount?: number; cue?: string }) => Practice | undefined;
+  updatePractice: (id: string, patch: Partial<Pick<Practice, "name" | "goalId" | "weeklyTargetCount" | "cue" | "status">>) => void;
+  removePractice: (id: string) => void;
+  /** Mark a practice done on a date. Idempotent per (practice, date). */
+  togglePracticeLog: (practiceId: string, date: string) => void;
   updateTodayEnergy: (energyLevel: EnergyLevel) => void;
   completeTodayMainAction: () => void;
   startFocusSession: (preset?: FocusSessionPreset, customMinutes?: number) => FocusSession | undefined;
@@ -239,6 +247,8 @@ function snapshot(state: MonkStore | MonkMVPState): MonkMVPState {
     activeSeason: state.activeSeason,
     goals: state.goals,
     badHabits: state.badHabits,
+    practices: state.practices ?? [],
+    practiceLogs: state.practiceLogs ?? [],
     weeklyPlans: state.weeklyPlans,
     dayPlans: state.dayPlans,
     focusSessions: state.focusSessions,
@@ -688,6 +698,11 @@ export const useMonkStore = create<MonkStore>()(
         proTier: stored.proTier ?? "lifetime",
         weeklyReviews: stored.weeklyReviews ?? {},
         releasedSeasonGoals: stored.releasedSeasonGoals ?? [],
+        // §23: practices arrived after `badHabits`, so any state written before
+        // them has no such arrays. Defaulting to empty is honest here — nobody
+        // had a positive practice to lose.
+        practices: stored.practices ?? [],
+        practiceLogs: stored.practiceLogs ?? [],
         // Backfill the goal type/frequency split (§12-13). Goals written before
         // the split carry only `weeklyTargetCount`, which has always meant
         // "days per week" — i.e. practice rhythm. So leave it as the rhythm and
@@ -774,14 +789,14 @@ export const useMonkStore = create<MonkStore>()(
     });
   },
 
-  toggleHabit: (category, label) => {
+  togglePattern: (category, label) => {
     const state = get();
     const existing = state.onboarding.selectedHabits.find((habit) => habit.category === category);
     const selectedHabits = existing
       ? state.onboarding.selectedHabits.filter((habit) => habit.id !== existing.id)
       : [
           ...state.onboarding.selectedHabits,
-          { id: createId("habit_draft"), category, name: label }
+          { id: createId("pattern_draft"), category, name: label }
         ];
     const frictionActions = { ...state.onboarding.frictionActions };
     if (existing) {
@@ -793,11 +808,11 @@ export const useMonkStore = create<MonkStore>()(
     set({ onboarding: { ...state.onboarding, selectedHabits, frictionActions } });
   },
 
-  setCustomHabitName: (name) => {
+  setCustomPatternName: (name) => {
     const state = get();
     let other = state.onboarding.selectedHabits.find((habit) => habit.category === "other");
     if (!other) {
-      other = { id: createId("habit_draft"), category: "other", name: "Other", customName: name };
+      other = { id: createId("pattern_draft"), category: "other", name: "Other", customName: name };
     }
     const nextHabit: BadHabitDraft = { ...other, name: name || "Other", customName: name };
     const selectedHabits = [
@@ -1268,8 +1283,7 @@ export const useMonkStore = create<MonkStore>()(
     });
   },
 
-  setDayAgenda: (dateString, agenda) => {
-    const state = get();
+  setDayAgenda: (dateString, agenda) => {    const state = get();
     const season = state.activeSeason;
     if (!season) return;
     const existing = state.dayPlans.find((day) => day.seasonId === season.id && day.date === dateString);
@@ -1277,6 +1291,86 @@ export const useMonkStore = create<MonkStore>()(
     const dayPlan = { ...existing, agenda, updatedAt: nowIso() };
     set({
       dayPlans: state.dayPlans.map((day) => (day.id === dayPlan.id ? dayPlan : day))
+    });
+  },
+
+  addPractice: (input) => {
+    const state = get();
+    const season = state.activeSeason;
+    if (!season) return undefined;
+    const name = input.name.trim();
+    if (!name) return undefined;
+    const now = nowIso();
+    const practice: Practice = {
+      id: createId("practice"),
+      seasonId: season.id,
+      name,
+      goalId: input.goalId,
+      // Clamped to a real week, same bound as a goal's practice rhythm.
+      weeklyTargetCount: Math.max(1, Math.min(7, input.weeklyTargetCount ?? 7)),
+      cue: input.cue?.trim() || undefined,
+      status: "active",
+      createdAt: now,
+      updatedAt: now
+    };
+    set({ practices: [...state.practices, practice] });
+    return practice;
+  },
+
+  updatePractice: (id, patch) => {
+    const state = get();
+    set({
+      practices: state.practices.map((p) =>
+        p.id === id
+          ? {
+              ...p,
+              ...patch,
+              name: patch.name !== undefined ? patch.name.trim() || p.name : p.name,
+              weeklyTargetCount:
+                patch.weeklyTargetCount !== undefined
+                  ? Math.max(1, Math.min(7, patch.weeklyTargetCount))
+                  : p.weeklyTargetCount,
+              updatedAt: nowIso()
+            }
+          : p
+      )
+    });
+  },
+
+  removePractice: (id) => {
+    const state = get();
+    // Logs go with the practice — an orphaned log would read as a completion
+    // of something that no longer exists.
+    set({
+      practices: state.practices.filter((p) => p.id !== id),
+      practiceLogs: state.practiceLogs.filter((l) => l.practiceId !== id)
+    });
+  },
+
+  togglePracticeLog: (practiceId, date) => {
+    const state = get();
+    const season = state.activeSeason;
+    if (!season) return;
+    const existing = state.practiceLogs.find(
+      (l) => l.practiceId === practiceId && l.date === date
+    );
+    if (existing) {
+      set({ practiceLogs: state.practiceLogs.filter((l) => l.id !== existing.id) });
+      return;
+    }
+    const now = nowIso();
+    set({
+      practiceLogs: [
+        ...state.practiceLogs,
+        {
+          id: createId("plog"),
+          practiceId,
+          seasonId: season.id,
+          date,
+          createdAt: now,
+          updatedAt: now
+        }
+      ]
     });
   },
 
@@ -2557,6 +2651,8 @@ export const useMonkStore = create<MonkStore>()(
       activeSeason: data.activeSeason !== undefined ? data.activeSeason : state.activeSeason,
       goals: data.goals !== undefined ? data.goals : state.goals,
       badHabits: data.badHabits !== undefined ? data.badHabits : state.badHabits,
+      practices: data.practices !== undefined ? data.practices : state.practices,
+      practiceLogs: data.practiceLogs !== undefined ? data.practiceLogs : state.practiceLogs,
       weeklyPlans: data.weeklyPlans !== undefined ? data.weeklyPlans : state.weeklyPlans,
       dayPlans: data.dayPlans !== undefined ? data.dayPlans : state.dayPlans,
       focusSessions: data.focusSessions !== undefined ? data.focusSessions : state.focusSessions,

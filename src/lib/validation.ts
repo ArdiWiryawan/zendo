@@ -16,7 +16,7 @@ export function invalid(message: string): ValidationResult {
   return { valid: false, message };
 }
 
-export function validateHabitAudit(selectedCount: number) {
+export function validatePatternAudit(selectedCount: number) {
   return selectedCount >= 1 ? valid() : invalid("Choose at least one pattern.");
 }
 

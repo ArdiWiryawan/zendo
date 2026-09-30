@@ -12,7 +12,7 @@ import type {
 import { EyeOff, Gamepad2, MessagesSquare, Moon, MoreHorizontal, ShoppingBag, Youtube, Zap } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
-export const habitOptions: Array<{ category: BadHabitCategory; label: string; icon: LucideIcon }> = [
+export const patternOptions: Array<{ category: BadHabitCategory; label: string; icon: LucideIcon }> = [
   { category: "doom_scrolling", label: "Doom scrolling", icon: Zap },
   { category: "gaming", label: "Gaming", icon: Gamepad2 },
   { category: "pmo", label: "PMO", icon: EyeOff },
@@ -101,6 +101,8 @@ export function createInitialState(): MonkMVPState {
     pastSeasons: [],
     goals: [],
     badHabits: [],
+    practices: [],
+    practiceLogs: [],
     weeklyPlans: [],
     dayPlans: [],
     focusSessions: [],
