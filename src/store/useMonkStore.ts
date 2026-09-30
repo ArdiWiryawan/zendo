@@ -243,7 +243,13 @@ type MonkActions = {
 
   // Journal Pack actions
   startJournalPack: (packId: string) => string | undefined;
-  savePackAnswer: (sessionId: string, questionId: string, answer: string, drawingImageId?: string) => void;
+  /** `null` clears an attached sketch; `undefined` leaves it as it is. */
+  savePackAnswer: (
+    sessionId: string,
+    questionId: string,
+    answer: string,
+    drawingImageId?: string | null
+  ) => void;
   completeJournalPack: (sessionId: string) => void;
   purchasePack: (packId: string) => void;
   unlockPro: (tier?: "lifetime" | "season") => void;
@@ -2746,13 +2752,15 @@ export const useMonkStore = create<MonkStore>()(
     const session = state.journalPackSessions.find((s) => s.id === sessionId);
     if (!session) return;
     const existingIdx = session.answers.findIndex((a) => a.questionId === questionId);
-    // The sketch pointer comes from the pad, which owns it; a plain text save
-    // passes nothing and must not drop a sketch attached to the same answer.
+    // `undefined` means "I have no opinion, keep what is there" — a plain text
+    // save must not drop a sketch attached to the same answer. `null` means
+    // "the sketch is gone", which is what the pad sends after Clear, so the
+    // answer stops pointing at a blob that no longer exists.
     const previous = existingIdx >= 0 ? session.answers[existingIdx] : undefined;
     const nextAnswer: JournalPackAnswer = {
       questionId,
       answer,
-      drawingImageId: drawingImageId ?? previous?.drawingImageId
+      drawingImageId: drawingImageId === undefined ? previous?.drawingImageId : drawingImageId ?? undefined
     };
     const answers = existingIdx >= 0
       ? session.answers.map((a) => a.questionId === questionId ? nextAnswer : a)

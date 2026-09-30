@@ -774,6 +774,11 @@ export type JournalPackQuestion = {
    * the answer is the sketch and nothing else.
    */
   drawOnly?: boolean;
+  /**
+   * Prime the sketchpad with an NxN guide grid. Only for prompts that name a
+   * grid — the cells are there to aim at, and the user can toggle them off.
+   */
+  grid?: number;
 };
 
 export type JournalPackAnswer = {

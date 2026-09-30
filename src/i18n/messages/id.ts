@@ -709,6 +709,7 @@ export const id: Record<MessageKey, string> = {
   "draw.colorLabel": "Warna tinta",
   "draw.undo": "Batalkan",
   "draw.clear": "Hapus semua",
+  "draw.grid": "Grid panduan",
   "draw.cancel": "Batal",
   "draw.save": "Tambah ke halaman",
   "draw.saving": "Menyimpan…",

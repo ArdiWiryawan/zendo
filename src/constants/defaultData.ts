@@ -597,7 +597,7 @@ export const BUILT_IN_JOURNAL_PACKS: JournalPack[] = [
     priceRp: 19000,
     estimatedMinutes: 15,
     questions: [
-      { id: "cp_1", order: 1, drawOnly: true, question: "Draw 25 circles (5x5 grid) with the sketchpad. Set a 3-minute timer and turn each into something unique." },
+      { id: "cp_1", order: 1, drawOnly: true, grid: 5, question: "Draw 25 circles (5x5 grid) with the sketchpad. Set a 3-minute timer and turn each into something unique." },
       { id: "cp_2", order: 2, drawOnly: true, question: "Scribble loosely in the sketchpad with your eyes half closed, then keep going until it becomes a real drawing." },
       { id: "cp_3", order: 3, drawOnly: true, question: "Draw the place you would go if you could stop time for two months — then name three things you would create there." },
       { id: "cp_4", order: 4, drawOnly: true, question: "What made you feel most alive when you were young? Draw that version of you, and note how they would spend today." },

@@ -707,6 +707,7 @@ export const en = {
   "draw.colorLabel": "Ink color",
   "draw.undo": "Undo",
   "draw.clear": "Clear",
+  "draw.grid": "Guide grid",
   "draw.cancel": "Cancel",
   "draw.save": "Add to page",
   "draw.saving": "Saving…",

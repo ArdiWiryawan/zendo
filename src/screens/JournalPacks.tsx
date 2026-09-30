@@ -429,8 +429,22 @@ function PackSession({ pack, onBack }: { pack: JournalPack; onBack: () => void }
     setSaved(true);
   };
 
-  const handleNext = () => {
-    handleSave();
+  /**
+   * The pad was emptied. Drop the pointer and retire the blob so the answer
+   * stops referencing a drawing that no longer exists — otherwise pressing
+   * Next re-saves the old id and the sketch comes back on the next visit.
+   */
+  const handleSketchCleared = () => {
+    if (!session || !currentQ) return;
+    const previous = drawingId;
+    setDrawingId(undefined);
+    setDrawingSeed(null);
+    setSaved(false);
+    store.savePackAnswer(session.id, currentQ.id, input, null);
+    if (previous) void deleteImage(previous);
+  };
+
+  const handleNext = () => {    handleSave();
     if (!isLast) {
       setCurrentIndex((i) => i + 1);
     } else {
@@ -556,6 +570,9 @@ function PackSession({ pack, onBack }: { pack: JournalPack; onBack: () => void }
             onSave={handleSketchSave}
             onCancel={() => setDrawingOpen(false)}
             hideCancel
+            expand
+            grid={currentQ.grid}
+            onCleared={handleSketchCleared}
           />
         ) : (
           <>
