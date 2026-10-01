@@ -1,0 +1,256 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Zendo recovery</title>
+<style>
+  :root { color-scheme: dark; }
+  body {
+    margin: 0; padding: 24px; background: #141210; color: #e5e2da;
+    font: 15px/1.6 ui-sans-serif, system-ui, sans-serif;
+  }
+  main { max-width: 780px; margin: 0 auto; }
+  h1 { font-size: 1.35rem; margin: 0 0 4px; }
+  p.sub { color: #9a9284; margin: 0 0 20px; font-size: 0.9rem; }
+  label { display: block; font-size: 0.78rem; letter-spacing: .06em;
+          text-transform: uppercase; color: #9a9284; margin: 14px 0 5px; }
+  input {
+    width: 100%; box-sizing: border-box; padding: 10px 12px; font-size: 0.95rem;
+    background: #1a1814; color: #e5e2da; border: 1px solid #2a251e;
+    border-radius: 8px; outline: none;
+  }
+  input:focus { border-color: #a48b5e; }
+  button {
+    margin-top: 16px; padding: 10px 16px; font-size: 0.92rem; font-weight: 600;
+    background: #a48b5e; color: #141210; border: none; border-radius: 8px;
+    cursor: pointer;
+  }
+  button:disabled { opacity: .5; cursor: default; }
+  button.secondary { background: transparent; color: #c8c2b4; border: 1px solid #2a251e; }
+  pre {
+    margin-top: 18px; padding: 14px; background: #1a1814; border: 1px solid #2a251e;
+    border-radius: 8px; font-size: 0.8rem; line-height: 1.5; max-height: 420px;
+    overflow: auto; white-space: pre-wrap; word-break: break-word;
+  }
+  .ok { color: #8fae8b; }
+  .warn { color: #d0a35c; }
+  .err { color: #d08c8c; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Zendo recovery</h1>
+  <p class="sub">
+    Read-only first: scans this browser's saved copies, then signs in and fetches
+    your cloud row, reporting what each contains. Nothing is written until you
+    press the restore button.
+  </p>
+
+  <p id="origin" style="color:#d0a35c;font-size:0.82rem"></p>
+
+  <div>
+    <button id="scanLocal">Scan this browser</button>
+    <button id="inspect" class="secondary">Sign in &amp; inspect cloud</button>
+  </div>
+
+  <label for="email">Email</label>
+  <input id="email" type="email" autocomplete="username" placeholder="you@example.com">
+
+  <label for="password">Password</label>
+  <input id="password" type="password" autocomplete="current-password" placeholder="password">
+
+  <div>
+    <button id="restore" class="secondary" disabled>Restore practices into this browser</button>
+  </div>
+
+  <pre id="out">Waiting.</pre>
+</main>
+
+<script type="module">
+import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
+
+const URL_BASE = "https://xhqoxkhoaooccsfaxgnb.supabase.co";
+const ANON = "sb_publishable_PQ7ae_A3i-L2mHhOh87O_g_OwgkILSI";
+const BLOB_KEY = "monk_mode_pwa_state_v1";
+
+const out = document.getElementById("out");
+const restoreBtn = document.getElementById("restore");
+const inspectBtn = document.getElementById("inspect");
+const scanBtn = document.getElementById("scanLocal");
+
+const say = (msg, cls = "") => {
+  out.textContent = msg;
+  out.className = cls;
+};
+
+// Storage is per-ORIGIN, so running this from a file:// path or localhost scans
+// an empty store and cannot see the app's data. Say which origin we are on so
+// a bare "nothing found" is never mistaken for "there is nothing to find".
+const appOrigin = location.origin === "https://zendo-focus.vercel.app";
+document.getElementById("origin").textContent =
+  "Address: " + location.origin + (appOrigin
+    ? "  (same origin as the app - local copies are visible)"
+    : "  (NOT the app's origin - local copies below will be empty; open this page at https://zendo-focus.vercel.app/recover-check.html)");
+
+const countOf = (v) => (Array.isArray(v) ? v.length : "-");
+
+// Sources of truth, ordered by how likely they still hold the practices. The
+// cloud row is the copy that got overwritten, so a local backup can be the only
+// survivor: main.tsx snapshots local state to zendo_state_backup_v1 before
+// every merge, and this page keeps its own .prerecovery copy.
+const SOURCES = [
+  { key: BLOB_KEY + ".prerecovery", label: "pre-recovery backup" },
+  { key: "zendo_state_backup_v1", label: "merge snapshot (zendo_state_backup_v1)" },
+  { key: BLOB_KEY, label: "app blob (current)" }
+];
+
+const readSource = (key) => {
+  const raw = localStorage.getItem(key);
+  if (!raw) return { raw: null, state: null };
+  try {
+    const parsed = JSON.parse(raw);
+    // zustand may wrap the blob as {state, version}; accept either shape.
+    return { raw, state: parsed?.state ?? parsed };
+  } catch {
+    return { raw, state: null };
+  }
+};
+
+const describe = (state) =>
+  ["practices", "practiceLogs", "goals", "dayPlans", "focusSessions", "journalEntries"]
+    .map((k) => "  " + k.padEnd(16) + countOf(state[k]))
+    .join("\n");
+
+const namesOf = (practices) =>
+  (practices ?? []).map((p) => "  - " + p.name).join("\n");
+
+scanBtn.addEventListener("click", () => {
+  const lines = ["THIS BROWSER - saved copies", ""];
+  let best = null;
+
+  for (const src of SOURCES) {
+    const { raw, state } = readSource(src.key);
+    if (!raw) {
+      lines.push(src.label + ": not present", "");
+      continue;
+    }
+    if (!state) {
+      lines.push(src.label + ": present but unreadable (corrupt JSON)", "");
+      continue;
+    }
+    const n = Array.isArray(state.practices) ? state.practices.length : 0;
+    lines.push(src.label + "  (" + Math.round(raw.length / 1024) + " KB)");
+    lines.push(describe(state));
+    if (n > (best?.n ?? 0)) best = { n, state, label: src.label };
+    lines.push("");
+  }
+
+  if (best) {
+    lines.push("Best local copy: " + best.label + " - " + best.n + " practice(s)");
+    lines.push(namesOf(best.state.practices));
+    lines.push("");
+    lines.push("Press \"Restore practices into this browser\" to write these in.");
+  } else {
+    lines.push("No practices in any local copy.");
+    lines.push("Next: sign in and inspect the cloud row.");
+  }
+  say(lines.join("\n"), best ? "ok" : "warn");
+});
+
+inspectBtn.addEventListener("click", async () => {
+  const email = document.getElementById("email").value.trim();
+  const password = document.getElementById("password").value;
+  if (!email || !password) return say("Email and password required.", "err");
+
+  inspectBtn.disabled = true;
+  say("Signing in...");
+  try {
+    const sb = createClient(URL_BASE, ANON);
+    const { data: auth, error: authErr } = await sb.auth.signInWithPassword({ email, password });
+    if (authErr) throw new Error(authErr.message);
+
+    const uid = auth?.user?.id;
+    if (!uid) throw new Error("no user id on session");
+
+    say("Fetching your cloud row...");
+    const { data, error } = await sb
+      .from("zendo_state")
+      .select("state_json")
+      .eq("id", uid)
+      .single();
+    if (error) throw new Error(error.message);
+
+    const cloudState = data?.state_json ? JSON.parse(data.state_json) : null;
+    if (!cloudState) return say("Cloud row is empty.", "warn");
+
+    const local = readSource(BLOB_KEY).state ?? {};
+
+    const lines = [
+      "CLOUD ROW",
+      describe(cloudState),
+      "",
+      "THIS BROWSER - app blob (current)",
+      "  practices       " + countOf(local.practices),
+      "",
+    ];
+
+    if (Array.isArray(cloudState.practices) && cloudState.practices.length > 0) {
+      lines.push("Practices found in the cloud:");
+      lines.push(namesOf(cloudState.practices));
+      lines.push("");
+      lines.push("Press \"Restore practices into this browser\" to write them in.");
+      say(lines.join("\n"), "ok");
+    } else {
+      lines.push("No practices in the cloud row - that copy was already overwritten.");
+      lines.push("Use \"Scan this browser\" instead: a local backup may still hold them.");
+      say(lines.join("\n"), "warn");
+    }
+    // Enabled either way: restore also picks up a good local copy.
+    restoreBtn.disabled = false;
+  } catch (e) {
+    say("Failed: " + e.message, "err");
+  } finally {
+    inspectBtn.disabled = false;
+  }
+});
+
+restoreBtn.addEventListener("click", () => {
+  const current = readSource(BLOB_KEY);
+
+  // Prefer whichever copy holds more practices: when the cloud row was already
+  // overwritten, a local backup is the only place they still exist.
+  let best = null;
+  for (const src of SOURCES) {
+    const { state } = readSource(src.key);
+    const n = Array.isArray(state?.practices) ? state.practices.length : 0;
+    if (n > (best?.n ?? 0)) best = { n, state, label: src.label };
+  }
+
+  if (!best) {
+    return say("No practices found in any local copy or the cloud row. Nothing to restore.", "err");
+  }
+
+  const local = current.state ?? {};
+
+  // Only practices/practiceLogs are taken from the source: the rest of this
+  // browser's state is newer and must not be rolled back. A backup of the
+  // current blob is kept first so this stays reversible.
+  localStorage.setItem(BLOB_KEY + ".prerecovery", current.raw ?? "null");
+  const merged = {
+    ...local,
+    practices: best.state.practices ?? [],
+    practiceLogs: best.state.practiceLogs ?? local.practiceLogs ?? [],
+  };
+  localStorage.setItem(BLOB_KEY, JSON.stringify(merged));
+  say(
+    "Restored " + merged.practices.length + " practices and " +
+    (merged.practiceLogs?.length ?? 0) + " logs from " + best.label + ".\n\n" +
+    "A copy of the previous blob is at " + BLOB_KEY + ".prerecovery\n\n" +
+    "Now open the app and reload. Repeat on each device that is missing them.",
+    "ok"
+  );
+});
+</script>
+</body>
+</html>
