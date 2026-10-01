@@ -254,6 +254,7 @@ export const id: Record<MessageKey, string> = {
   "today.primary.continueFocus": "Fokus lagi",
   "today.makeIntention": "Jadikan niat hari ini",
   "today.nameAction": "Sebutkan satu aksi untuk hari ini.",
+  "today.nextActionPrompt": "Apa langkah bermakna berikutnya?",
   "today.addIntention": "Tambah niat",
   "today.emptyTitle": "Bentuk minggu ini.",
   "today.emptyBody": "Enam hari fokus. Satu hari istirahat. Rencana mingguan muncul setelah season aktif.",

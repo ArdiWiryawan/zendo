@@ -252,6 +252,7 @@ export const en = {
   "today.primary.continueFocus": "More focus",
   "today.makeIntention": "Make it today's intention",
   "today.nameAction": "Name one action for today.",
+  "today.nextActionPrompt": "What's the next meaningful action?",
   "today.addIntention": "Add intention",
   "today.emptyTitle": "Shape this week.",
   "today.emptyBody": "Six focus days. One rest day. Your weekly plan appears once a season is active.",

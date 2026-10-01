@@ -866,7 +866,7 @@ export function TodayScreen() {
                       </span>
                     ) : null}
                   </div>
-                  {!editingAction && !isRest && !isDone ? (
+                  {!editingAction && !isRest ? (
                     <button
                       type="button"
                       className="text-xs font-semibold text-monk-accent hover:underline active:scale-95"
@@ -1026,6 +1026,35 @@ export function TodayScreen() {
                     </div>
                   );
                 })()}
+
+                {/* Next-action prompt (§24). Shown once the day's Main Action is
+                    completed, so the screen never goes quiet on a next step. It is
+                    an invitation only: it creates nothing, and tapping it opens the
+                    same edit form, prefilled from the day's own action (§22). */}
+                {isDone && !isRest && !editingAction ? (
+                  <div className="mt-3 rounded-xl border border-monk-border/60 bg-monk-soft/30 px-3.5 py-3">
+                    <p className="text-sm font-semibold leading-relaxed text-monk-text">
+                      {t("today.nextActionPrompt")}
+                    </p>
+                    <p className="mt-1 text-xs leading-relaxed text-monk-muted">
+                      {t("today.primary.intentionBody")}
+                    </p>
+                    <button
+                      type="button"
+                      className="mt-2 text-xs font-semibold text-monk-accent hover:underline active:scale-95"
+                      onClick={() => {
+                        hapticPress("light");
+                        const initial = parseIntention(todayPlan.mainAction || "");
+                        setEditTime(initial.time ?? "");
+                        setEditWhen(initial.when);
+                        setEditAction(initial.action);
+                        setEditingAction(true);
+                      }}
+                    >
+                      {t("today.addIntention")}
+                    </button>
+                  </div>
+                ) : null}
 
                 {/* 2-Minute Plan B Fallback Switcher (WOOP) */}
                 {!isDone && !isRest && goal?.obstacleMitigation ? (() => {
