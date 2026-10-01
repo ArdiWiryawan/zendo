@@ -1,4 +1,5 @@
 import type { MonkMVPState, NotificationReminder } from "../types/app";
+import { dedupeDayPlans } from "./dayPlans";
 
 /**
  * Merge two states last-write-wins by updatedAt.
@@ -95,6 +96,12 @@ export function mergeRemoteState(local: MonkMVPState, remote: Partial<MonkMVPSta
       out[key] = mergeById(l as HasId[], r as HasId[]);
     }
   }
+
+  // dayPlans is the one array read by a composite key (seasonId + date) rather
+  // than by id, so the id-keyed union above can leave two records for one day —
+  // one per device that created it independently. Collapse them here, keeping
+  // the newer updatedAt, so both devices resolve the same record.
+  out.dayPlans = dedupeDayPlans(out.dayPlans) ?? [];
 
   for (const key of SCALAR_KEYS) {
     const l = local[key];

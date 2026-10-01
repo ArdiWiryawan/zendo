@@ -34,6 +34,7 @@ import {
   nowIso
 } from "../lib/date";
 import { createId } from "../lib/ids";
+import { dedupeDayPlans, isNewerDayPlan } from "../lib/dayPlans";
 import { MAX_ACTIVE_GOAL_TRACKS, MAX_SEASON_GOALS } from "../lib/validation";
 import { parseIntention } from "../lib/implementationIntention";
 import { loadState } from "../lib/storage";
@@ -391,9 +392,22 @@ function getActiveGoals(state: MonkMVPState) {
 
 function findTodayPlan(state: MonkMVPState) {
   const today = getTodayDateString();
-  return state.dayPlans.find(
-    (plan) => plan.seasonId === state.activeSeason?.id && plan.date === today
-  );
+  return findDayPlan(state, state.activeSeason?.id, today);
+}
+
+/**
+ * Resolve the newest DayPlan for a (season, date), not the first one found.
+ * Two devices could each create a row for the same day before syncing (random
+ * ids, no dedupe), and array order differs per device — so a plain `find` made
+ * each device act on a different record, each with its own goalId/status.
+ */
+function findDayPlan(state: MonkMVPState, seasonId: string | undefined, date: string) {
+  return state.dayPlans
+    .filter((plan) => plan.seasonId === seasonId && plan.date === date)
+    .reduce<DayPlan | undefined>(
+      (best, plan) => (!best || isNewerDayPlan(plan, best) ? plan : best),
+      undefined
+    );
 }
 
 function getFocusSessionsForDay(state: MonkMVPState, dayPlan: DayPlan) {
@@ -1301,7 +1315,7 @@ export const useMonkStore = create<MonkStore>()(
     const weeklyPlan = createdWeek.weeklyPlan;
     if (!season || !weeklyPlan) return;
     const goal = input.goalId ? base.goals.find((item) => item.id === input.goalId) : undefined;
-    const existing = base.dayPlans.find((day) => day.seasonId === season.id && day.date === dateString);
+    const existing = findDayPlan(base, season.id, dateString);
     const timestamp = nowIso();
     const dayPlan: DayPlan = {
       id: existing?.id ?? createId("day"),
@@ -1325,6 +1339,12 @@ export const useMonkStore = create<MonkStore>()(
         ? base.dayPlans.map((day) => (day.id === existing.id ? dayPlan : day))
         : [...base.dayPlans, dayPlan]
     };
+    // Collapse any other row for this same (season, date) that a second device
+    // created independently. Without this the pair persists: both rows stay in
+    // the array, the winner is chosen by array order, and one device keeps
+    // showing its own goalId/timeBlocks/status. Only this date's rows are
+    // rebuilt from `dayPlan`, so untouched days keep their object identity.
+    next = { ...next, dayPlans: dedupeDayPlans(next.dayPlans) ?? [] };
     next = { ...next, weeklyPlans: updateAllocationCounts(next, weeklyPlan.id) };
     next = { ...next, timelineDays: updatedTimelineDays(next, dayPlan) };
     set(next);
@@ -1335,7 +1355,7 @@ export const useMonkStore = create<MonkStore>()(
     let base = snapshot(current);
     const season = base.activeSeason;
     if (!season) return;
-    const existing = base.dayPlans.find((day) => day.seasonId === season.id && day.date === dateString);
+    const existing = findDayPlan(base, season.id, dateString);
     const trimmedHighlight = highlight !== undefined ? highlight.trim() : undefined;
     if (!existing) {
       get().createOrUpdateDayPlan(dateString, {

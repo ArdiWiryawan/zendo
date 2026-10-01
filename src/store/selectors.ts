@@ -5,6 +5,7 @@ import {
   getSeasonProgress,
   getTodayDateString
 } from "../lib/date";
+import { isNewerDayPlan } from "../lib/dayPlans";
 import type { DayPlan, EnergyLevel, Goal, MonkMVPState, TimelineDay, WeeklyPlan, FocusSession, LearningSession } from "../types/app";
 
 export function selectActiveGoals(state: MonkMVPState): Goal[] {
@@ -35,7 +36,17 @@ export function selectTodayPlan(
 ): DayPlan | undefined {
   const season = state.activeSeason;
   if (!season) return undefined;
-  return state.dayPlans.find((plan) => plan.seasonId === season.id && plan.date === today);
+  // Newest match, not the first one. Two devices could historically each create
+  // a row for the same day (different ids, no dedupe), and array order differs
+  // per device — which made the phone and the laptop resolve different records,
+  // each with its own goalId/timeBlocks/status. mergeRemoteState now collapses
+  // those pairs; this tie-break covers rows already stored before that fix.
+  return state.dayPlans
+    .filter((plan) => plan.seasonId === season.id && plan.date === today)
+    .reduce<DayPlan | undefined>(
+      (best, plan) => (!best || isNewerDayPlan(plan, best) ? plan : best),
+      undefined
+    );
 }
 
 export function selectGoalById(state: MonkMVPState, goalId?: string) {
