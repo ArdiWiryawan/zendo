@@ -1316,35 +1316,15 @@ h5.md-heading, h6.md-heading { font-size: 1rem; }
   padding: 1rem;
 }
 
-/* Morning pages — open book writing surface */
-.morning-page-card {
-  background-color: #1a1814;
-  background-image: repeating-linear-gradient(
-    transparent,
-    transparent 31px,
-    #25221c 31px,
-    #25221c 32px
-  );
-  border: 1px solid #2a251e;
-  border-left: 4px solid #a48b5e;
-  border-radius: 2px 8px 8px 2px;
-  box-shadow: 2px 4px 20px rgba(0,0,0,0.4), inset 0 0 60px rgba(164,139,94,0.03);
-  padding: 2rem 1.5rem 2rem 2rem;
-  position: relative;
-  color: #d4cdc0;
-}
-
-.morning-page-card::before {
-  content: "";
-  position: absolute;
-  left: 3.2rem;
-  top: 0;
-  bottom: 0;
-  width: 1px;
-  background: rgba(158,86,73,0.25);
-  pointer-events: none;
-}
-
+/* Morning pages — an open page, not a form field.
+ *
+ * The writing surface is deliberately bare: no border, no shadow, no ruled
+ * lines, no margin rule. A visible container made the act of writing read as
+ * filling in a form, which is the opposite of what a morning page is for.
+ * The page's own typography and whitespace establish the writing context.
+ *
+ * Colours come from the theme tokens rather than literal hex so the surface
+ * follows all six themes like the rest of the app. */
 .morning-page-textarea {
   background: transparent;
   border: none;
@@ -1352,16 +1332,18 @@ h5.md-heading, h6.md-heading { font-size: 1rem; }
   resize: none;
   width: 100%;
   min-height: 320px;
-  font-size: 0.9375rem;
+  font-size: 1rem;
   line-height: 2rem;
-  color: #d4cdc0;
-  padding-left: 1.8rem;
+  letter-spacing: 0.01em;
+  color: rgb(var(--color-text));
+  padding: 0;
   font-family: inherit;
-  caret-color: #a48b5e;
+  caret-color: rgb(var(--color-accent));
 }
 
 .morning-page-textarea::placeholder {
-  color: #4a4640;
+  color: rgb(var(--color-text-soft));
+  opacity: 0.7;
 }
 
 /* Pack session wrapper */

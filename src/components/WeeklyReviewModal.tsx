@@ -1,7 +1,7 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, ChevronLeft, ChevronRight, Check, Sparkles, Moon } from "lucide-react";
-import { useMonkStore } from "../store/useMonkStore";
+import { useMonkStore, goalEvidence } from "../store/useMonkStore";
 import { useT } from "../i18n";
 import { selectActiveGoals, selectCurrentWeeklyPlan } from "../store/selectors";
 import { getTodayDateString } from "../lib/date";
@@ -111,6 +111,19 @@ export function WeeklyReviewModal({ isOpen, onClose, weeklyPlanId }: WeeklyRevie
   // Escape closes, Tab stays inside, focus returns to the opener on unmount.
   const cardRef = useRef<HTMLDivElement>(null);
   useModalA11y({ open: isOpen, ref: cardRef, onClose });
+
+  // `GoalAllocation.completedCount` is a stored field refreshed only by focus-
+  // session mutations, so it goes stale on hydration/cross-device pull. Derive
+  // it from the session records at render time, same as TodayScreen/WeekScreen.
+  const allocations = useMemo(() => {
+    if (!targetWeeklyPlan) return [];
+    const since = `${targetWeeklyPlan.startDate}T00:00:00.000Z`;
+    const until = `${targetWeeklyPlan.endDate}T23:59:59.999Z`;
+    return targetWeeklyPlan.goalAllocations.map((allocation) => ({
+      ...allocation,
+      completedCount: goalEvidence(store, allocation.goalId, { since, until }).length
+    }));
+  }, [targetWeeklyPlan, store.focusSessions]);
 
   if (!isOpen || !targetWeeklyPlan) return null;
 

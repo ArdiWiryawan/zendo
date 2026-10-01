@@ -2,7 +2,7 @@ import { useEffect, useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { Check, Moon, Pencil, Flame, Sparkles } from "lucide-react";
 import { motion } from "framer-motion";
-import { useMonkStore } from "../store/useMonkStore";
+import { useMonkStore, goalEvidence } from "../store/useMonkStore";
 import { useT } from "../i18n";
 import { getTodayDateString, datesInRange, formatHumanDate } from "../lib/date";
 import { routes } from "../constants/routes";
@@ -46,6 +46,22 @@ export function WeekScreen() {
     return weeklyPlan ? datesInRange(weeklyPlan.startDate, 7) : [];
   }, [weeklyPlan?.startDate]);
 
+  // `GoalAllocation.completedCount` is a STORED field — it is only refreshed by
+  // store actions that mutate focus sessions, so state arriving by any other
+  // path (localStorage hydration, cross-device pull) leaves it stale and the UI
+  // renders "0/N" for goals the user actually worked on. Derive it at render
+  // time from the session records instead, same as TodayScreen.
+  const allocations = useMemo(() => {
+    const base = weeklyPlan ? weeklyPlan.goalAllocations : [];
+    if (!weeklyPlan) return base;
+    const since = `${weeklyPlan.startDate}T00:00:00.000Z`;
+    const until = `${weeklyPlan.endDate}T23:59:59.999Z`;
+    return base.map((allocation) => ({
+      ...allocation,
+      completedCount: goalEvidence(store, allocation.goalId, { since, until }).length
+    }));
+  }, [weeklyPlan, store.focusSessions]);
+
   const stats = useMemo(() => {
     if (!weeklyPlan) return null;
     const seasonId = weeklyPlan.seasonId;
@@ -55,10 +71,10 @@ export function WeekScreen() {
     const rest = plans.filter((p) => p?.dayType === "rest" || p?.status === "rest").length;
     const missed = plans.filter((p) => p?.status === "missed" || p?.status === "relapse").length;
     const unhandled = plans.filter((p, i) => !p && weekDates[i] < today).length;
-    const targetFocus = weeklyPlan.goalAllocations.reduce((s, a) => s + a.targetCount, 0) || 6;
+    const targetFocus = allocations.reduce((s, a) => s + a.targetCount, 0) || 6;
     const focusDone = Math.max(
       completed,
-      weeklyPlan.goalAllocations.reduce((s, a) => s + a.completedCount, 0),
+      allocations.reduce((s, a) => s + a.completedCount, 0),
       weekDates.filter((date) => selectTotalFocusSecondsForDate(store, date) >= 15 * 60).length
     );
     const energyCounts = weekDates.reduce((acc, date) => {
@@ -388,7 +404,7 @@ export function WeekScreen() {
             <div>
               <SectionHeader title={t("week.goalsTitle")} subtitle={t("week.goalsSubtitle")} />
               <div className="space-y-3">
-                {weeklyPlan.goalAllocations.map((allocation, index) => {
+                {allocations.map((allocation, index) => {
                   const goal = goals.find((item) => item.id === allocation.goalId);
                   const progress = allocation.targetCount > 0
                     ? Math.min(100, Math.round((allocation.completedCount / allocation.targetCount) * 100))
@@ -502,6 +518,18 @@ function WeekReviewCard({
   const reviewWeek = useMonkStore((s) => s.reviewWeek);
   const skipWeekReview = useMonkStore((s) => s.skipWeekReview);
   const savedReview = useMonkStore((s) => s.weeklyReviews?.[weeklyPlan.id]);
+
+  // `GoalAllocation.completedCount` is stored and refreshed only by focus-session
+  // mutations, so it reads stale after hydration. Derive it from the sessions.
+  const store = useMonkStore();
+  const allocations = useMemo(() => {
+    const since = `${weeklyPlan.startDate}T00:00:00.000Z`;
+    const until = `${weeklyPlan.endDate}T23:59:59.999Z`;
+    return weeklyPlan.goalAllocations.map((allocation) => ({
+      ...allocation,
+      completedCount: goalEvidence(store, allocation.goalId, { since, until }).length
+    }));
+  }, [weeklyPlan, store.focusSessions]);
   const [decisions, setDecisions] = useState<Record<string, WeekReviewDecision>>({});
   const isTodayRest = useMonkStore((s) => {
     const plan = s.dayPlans.find((d) => d.date === today && d.seasonId === weeklyPlan.seasonId);
@@ -611,7 +639,7 @@ function WeekReviewCard({
         <p className="mt-1 text-xs text-monk-muted">{t("week.review.decideBody")}</p>
 
         <div className="mt-4 space-y-3">
-          {weeklyPlan.goalAllocations.map((allocation) => {
+          {allocations.map((allocation) => {
             const goal = goals.find((g) => g.id === allocation.goalId);
             const decision = decisions[allocation.goalId] ?? { action: "continue" as const };
             const adjusting = decision.action === "adjust";
@@ -777,12 +805,23 @@ function WeeklyReviewCard({
   const navigate = useNavigate();
   const t = useT();
   const why = useMonkStore((s) => s.activeSeason?.why);
+  const store = useMonkStore();
+  // Same stale-stored-field problem as the screen body: derive the count from
+  // the session records rather than trusting `GoalAllocation.completedCount`.
+  const allocations = useMemo(() => {
+    const since = `${weeklyPlan.startDate}T00:00:00.000Z`;
+    const until = `${weeklyPlan.endDate}T23:59:59.999Z`;
+    return weeklyPlan.goalAllocations.map((allocation) => ({
+      ...allocation,
+      completedCount: goalEvidence(store, allocation.goalId, { since, until }).length
+    }));
+  }, [weeklyPlan, store.focusSessions]);
   const weekEnded = remainingDays === 0 || weekDates[weekDates.length - 1] < today;
   const lateWeek = remainingDays <= 1 || weekEnded;
 
   if (!lateWeek) return null;
 
-  const starved = weeklyPlan.goalAllocations
+  const starved = allocations
     .map((a) => {
       const goal = goals.find((g) => g.id === a.goalId);
       return { goal, remaining: Math.max(0, a.targetCount - a.completedCount), done: a.completedCount, target: a.targetCount };

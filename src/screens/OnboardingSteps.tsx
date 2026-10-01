@@ -1,8 +1,8 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import { Check, Moon, Plus, Minus, FastForward, Calendar, Mountain, Sliders, ListTodo, ShieldCheck, BookOpen, Coffee } from "lucide-react";
-import { useMonkStore } from "../store/useMonkStore";
+import { useMonkStore, goalEvidence } from "../store/useMonkStore";
 import { useT } from "../i18n";
 import type { MessageKey } from "../i18n";
 import { routes } from "../constants/routes";
@@ -800,10 +800,27 @@ export function WeeklyStatusIndicators() {
   const store = useMonkStore();
   const weeklyPlan = selectCurrentWeeklyPlan(store);
   const goals = selectActiveGoals(store);
+
+  // `completedCount` on a stored allocation is only refreshed by session-mutating
+  // store actions, so it goes stale when state arrives by another path (localStorage
+  // hydration, cross-device pull) and the UI reads "0/N" despite finished sessions.
+  // Derive it from the session records at render time instead. Declared before the
+  // early return so the hook order stays unconditional.
+  const allocations = useMemo(() => {
+    const base = weeklyPlan ? weeklyPlan.goalAllocations : [];
+    if (!weeklyPlan) return base;
+    const since = `${weeklyPlan.startDate}T00:00:00.000Z`;
+    const until = `${weeklyPlan.endDate}T23:59:59.999Z`;
+    return base.map((allocation) => ({
+      ...allocation,
+      completedCount: goalEvidence(store, allocation.goalId, { since, until }).length
+    }));
+  }, [weeklyPlan, store.focusSessions]);
+
   if (!weeklyPlan) return null;
 
-  const doneDays = weeklyPlan.goalAllocations.reduce((sum, a) => sum + a.completedCount, 0);
-  const targetDays = weeklyPlan.goalAllocations.reduce((sum, a) => sum + a.targetCount, 0) || 6;
+  const doneDays = allocations.reduce((sum, a) => sum + a.completedCount, 0);
+  const targetDays = allocations.reduce((sum, a) => sum + a.targetCount, 0) || 6;
 
   return (
     <Card className="p-4">
@@ -812,7 +829,7 @@ export function WeeklyStatusIndicators() {
         <span className="text-xs font-mono text-monk-muted tabular-nums">{doneDays}/{targetDays} focus</span>
       </div>
       <div className="space-y-3">
-        {weeklyPlan.goalAllocations.map((allocation) => {
+        {allocations.map((allocation) => {
           const goal = goals.find((item) => item.id === allocation.goalId);
           const progress = allocation.targetCount > 0
             ? Math.min(100, Math.round((allocation.completedCount / allocation.targetCount) * 100))

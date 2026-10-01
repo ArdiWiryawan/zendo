@@ -3,7 +3,7 @@ import type { RelapseLog } from "../types/app";
 import { useNavigate } from "react-router-dom";
 import { Moon, BookOpen, Check, ChevronRight, MoreHorizontal, Sun, Sparkles, Zap, ShieldAlert, Flame, Timer, Clock } from "lucide-react";
 import { hapticPress } from "../lib/haptics";
-import { useMonkStore } from "../store/useMonkStore";
+import { useMonkStore, goalEvidence } from "../store/useMonkStore";
 import { useT } from "../i18n";
 import { useCalmToast } from "../components/ui";
 import { getTodayDateString, addDaysToDate, getDaysPassed, getDaysLeft } from "../lib/date";
@@ -410,12 +410,38 @@ export function TodayScreen() {
 
   const savedReview = weeklyPlan ? store.weeklyReviews?.[weeklyPlan.id] : undefined;
 
+  // Integrity fallback: if the weekly plan lost its allocations (legacy/orphan
+  // data) but goals exist, render the goals directly so the user can always pick.
+  //
+  // `completedCount` is RECOMPUTED here from the session records rather than read
+  // off the stored allocation. The stored field is only refreshed by the store
+  // actions that mutate sessions, so it goes stale the moment state arrives by any
+  // other path — hydration from localStorage, or a cross-device pull. Reading it
+  // directly is how two finished deep work sessions still showed "0/2": the number
+  // was a counter that nobody had incremented, not evidence. Deriving at render
+  // makes the displayed progress and the underlying sessions impossible to
+  // disagree, which is the whole point of the evidence model.
+  //
+  // Declared before its first reader (`sixDaysCompleted` below) — a `const` used
+  // above its declaration would be a temporal dead zone error at render.
+  const allocations = useMemo(() => {
+    const base = weeklyPlan && weeklyPlan.goalAllocations.length > 0
+      ? weeklyPlan.goalAllocations
+      : activeGoals.map((goal) => ({ goalId: goal.id, targetCount: 1, completedCount: 0 }));
+    if (!weeklyPlan) return base;
+    const since = `${weeklyPlan.startDate}T00:00:00.000Z`;
+    const until = `${weeklyPlan.endDate}T23:59:59.999Z`;
+    return base.map((allocation) => ({
+      ...allocation,
+      completedCount: goalEvidence(store, allocation.goalId, { since, until }).length
+    }));
+  }, [weeklyPlan, activeGoals, store.focusSessions]);
   const sixDaysCompleted = useMemo(() => {
     if (!weeklyPlan) return false;
-    const focusDone = weeklyPlan.goalAllocations.reduce((s, a) => s + a.completedCount, 0);
-    const targetFocus = weeklyPlan.goalAllocations.reduce((s, a) => s + a.targetCount, 0) || 6;
+    const focusDone = allocations.reduce((s, a) => s + a.completedCount, 0);
+    const targetFocus = allocations.reduce((s, a) => s + a.targetCount, 0) || 6;
     return focusDone >= targetFocus && targetFocus > 0;
-  }, [weeklyPlan]);
+  }, [weeklyPlan, allocations]);
 
   useEffect(() => {
     store.getOrCreateCurrentWeeklyPlan();
@@ -459,7 +485,7 @@ export function TodayScreen() {
     shouldOfferReentry(store, season.startDate, today);
   const dayPart = getDayPart();
   const allocation = todayPlan?.goalId && weeklyPlan
-    ? weeklyPlan.goalAllocations.find((a) => a.goalId === todayPlan.goalId)
+    ? allocations.find((a) => a.goalId === todayPlan.goalId)
     : undefined;
   const showMorningNudge =
     !isRest &&
@@ -1552,11 +1578,21 @@ function FlowPickToday({
     return Array.from(new Set(goals.map((g) => g.track).filter(Boolean))) as string[];
   }, [goals]);
 
-  // Integrity fallback: if the weekly plan lost its allocations (legacy/orphan
-  // data) but goals exist, render the goals directly so the user can always pick.
-  const allocations = weeklyPlan && weeklyPlan.goalAllocations.length > 0
-    ? weeklyPlan.goalAllocations
-    : goals.map((goal) => ({ goalId: goal.id, targetCount: 1, completedCount: 0 }));
+  // Same evidence-derived progress as TodayScreen above: `completedCount` comes
+  // from the completed sessions in this plan's window, never from the stored
+  // allocation, so the goal cards cannot report a stale zero after hydration.
+  const allocations = useMemo(() => {
+    const base = weeklyPlan && weeklyPlan.goalAllocations.length > 0
+      ? weeklyPlan.goalAllocations
+      : goals.map((goal) => ({ goalId: goal.id, targetCount: 1, completedCount: 0 }));
+    if (!weeklyPlan) return base;
+    const since = `${weeklyPlan.startDate}T00:00:00.000Z`;
+    const until = `${weeklyPlan.endDate}T23:59:59.999Z`;
+    return base.map((allocation) => ({
+      ...allocation,
+      completedCount: goalEvidence(store, allocation.goalId, { since, until }).length
+    }));
+  }, [weeklyPlan, goals, store.focusSessions]);
 
   const ranked = useMemo(
     () =>

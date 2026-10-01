@@ -555,19 +555,87 @@ function buildPlanningSequence(allocations: GoalAllocation[]) {
   return [...goalDays.slice(0, 6), "rest"];
 }
 
+/**
+ * Evidence for a goal is a focus session the user actually finished ON that
+ * goal — not merely a day the plan happened to mark completed.
+ *
+ * §13/§27: progress is DERIVED from these records every time it is asked for,
+ * never accumulated into a counter. That is what makes it self-correcting: if a
+ * session is deleted, re-linked, abandoned, or the goal's target changes, the
+ * next derivation simply reflects the new truth. A `progress += 1` counter
+ * cannot do that — it silently keeps counting work that no longer exists, which
+ * is exactly the trust bug this replaces.
+ *
+ * Only `completed` counts. A running, paused or abandoned session is not yet
+ * evidence (§8), and pausing then resuming stays one session, so it can never
+ * become two (§12) — the session id is the unit, not the number of times the
+ * session was touched.
+ */
+export function goalEvidence(
+  state: MonkMVPState,
+  goalId: string,
+  opts?: { since?: string; until?: string }
+): FocusSession[] {
+  return state.focusSessions.filter((session) => {
+    if (session.goalId !== goalId) return false;
+    if (session.status !== "completed") return false;
+    // ISO timestamps sort lexicographically, so a plain string compare is the
+    // whole range check. Undefined bounds mean "unbounded on that side".
+    const at = session.completedAt || session.endedAt || session.startTime;
+    if (!at) return false;
+    if (opts?.since && at < opts.since) return false;
+    if (opts?.until && at > opts.until) return false;
+    return true;
+  });
+}
+
+/**
+ * Progress for a goal within a period, as evidence count over target.
+ *
+ * §9: only FREQUENCY goals have a meaningful automatic target — they are the
+ * "show up N times" commitment, so completed qualifying sessions map 1:1 onto
+ * the target. Other goal types must not be given an invented number:
+ *
+ *   - `achievement` / `maintenance` have no per-period count, so they report
+ *     evidence but no target rather than a misleading "2/2".
+ *   - an OUTPUT-style goal (publish a video) is NOT completed by doing deep
+ *     work on it — the sessions are supporting evidence only. Reporting them as
+ *     the completion count would claim the goal is done when nothing shipped,
+ *     so the caller is told there is no automatic target.
+ *
+ * `count` is always real and always shown; only `target` can be undefined.
+ */
+export function goalProgress(
+  state: MonkMVPState,
+  goal: Goal,
+  opts?: { since?: string; until?: string }
+): { count: number; target?: number } {
+  const evidence = goalEvidence(state, goal.id, opts);
+  const hasTarget = goal.type === "frequency";
+  return {
+    count: evidence.length,
+    target: hasTarget ? goal.outcomeFrequencyPerWeek ?? goal.weeklyTargetCount : undefined
+  };
+}
+
 function updateAllocationCounts(state: MonkMVPState, weeklyPlanId: string): WeeklyPlan[] {
-  const dayPlans = state.dayPlans.filter((day) => day.weeklyPlanId === weeklyPlanId);
-  return state.weeklyPlans.map((plan) => {
-    if (plan.id !== weeklyPlanId) return plan;
+  const plan = state.weeklyPlans.find((item) => item.id === weeklyPlanId);
+  if (!plan) return state.weeklyPlans;
+
+  // Period bounds come from the weekly plan itself rather than being assumed,
+  // so the count always describes the week the allocation belongs to. The plan
+  // stores date-only strings; widen them to full-day ISO bounds so the
+  // lexicographic compare in goalEvidence includes the whole final day.
+  const since = `${plan.startDate}T00:00:00.000Z`;
+  const until = `${plan.endDate}T23:59:59.999Z`;
+
+  return state.weeklyPlans.map((item) => {
+    if (item.id !== weeklyPlanId) return item;
     return {
-      ...plan,
-      goalAllocations: plan.goalAllocations.map((allocation) => ({
+      ...item,
+      goalAllocations: item.goalAllocations.map((allocation) => ({
         ...allocation,
-        completedCount: dayPlans.filter(
-          (day) =>
-            day.goalId === allocation.goalId &&
-            day.status === "completed"
-        ).length
+        completedCount: goalEvidence(state, allocation.goalId, { since, until }).length
       })),
       updatedAt: nowIso()
     };

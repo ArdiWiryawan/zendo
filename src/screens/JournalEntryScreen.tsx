@@ -149,11 +149,6 @@ export function JournalEntryScreen() {
     setSearchParams(next);
   };
 
-  const wordCount = useMemo(() => {
-    const text = answers.morningPages || "";
-    return text.trim() ? text.trim().split(/\s+/).length : 0;
-  }, [answers.morningPages]);
-
   const canSave =
     currentTab === "morning"
       ? !!answers.morningPages?.trim()
@@ -240,30 +235,17 @@ export function JournalEntryScreen() {
         >
           <div className="flex items-center justify-between px-1">
             <span className="text-[10px] uppercase tracking-widest text-monk-text-soft font-mono">{t("journal.morningLabel")}</span>
-            <span className={`text-[10px] font-mono ${wordCount >= 750 ? "text-monk-success" : "text-monk-text-soft"}`}>
-              {t("journal.words", { n: wordCount })}
-            </span>
           </div>
-          {wordCount > 0 && (
-            <div className="h-1 rounded-full bg-monk-border overflow-hidden">
-              <div
-                className={`h-full rounded-full transition-all ${wordCount >= 750 ? "bg-monk-success" : "bg-monk-accent"}`}
-                style={{ width: `${Math.min((wordCount / 750) * 100, 100)}%` }}
-              />
-            </div>
-          )}
-          <div className="morning-page-card">
-            <textarea
-              id="morningPages"
-              value={answers.morningPages ?? ""}
-              placeholder={t("journal.morningPlaceholder")}
-              className="morning-page-textarea"
-              onChange={(event) => {
-                setSaved(false);
-                setAnswers((value) => ({ ...value, morningPages: event.target.value }));
-              }}
-            />
-          </div>
+          <textarea
+            id="morningPages"
+            value={answers.morningPages ?? ""}
+            placeholder={t("journal.morningPlaceholder")}
+            className="morning-page-textarea"
+            onChange={(event) => {
+              setSaved(false);
+              setAnswers((value) => ({ ...value, morningPages: event.target.value }));
+            }}
+          />
           <p className="text-[11px] text-monk-text-soft text-center leading-relaxed px-2">
             {t("journal.morningHelper")}
           </p>
