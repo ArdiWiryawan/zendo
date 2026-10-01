@@ -7,6 +7,7 @@ import {
   Crown,
   QrCode,
   Copy,
+  Check,
   CheckCircle2,
   Download,
   MessageCircle,
@@ -95,8 +96,8 @@ export function ZendoProModal({ isOpen, onClose }: ZendoProModalProps) {
     playZenBell();
     toast.show(
       isId
-        ? "✦ Terima Kasih Banyak! Donasi dan dukungan Anda sangat berarti bagi pengembangan Zendo."
-        : "✦ Thank You So Much! Your tip and support directly empower Zendo's journey."
+        ? "Terima Kasih Banyak! Donasi dan dukungan Anda sangat berarti bagi pengembangan Zendo."
+        : "Thank You So Much! Your tip and support directly empower Zendo's journey."
     );
     onClose();
   };
@@ -172,8 +173,8 @@ export function ZendoProModal({ isOpen, onClose }: ZendoProModalProps) {
             {/* Merchant Badge */}
             <div className="flex items-center justify-between px-1">
               <div className="flex items-center gap-2 text-left">
-                <span className="grid h-6 w-6 place-items-center rounded-lg bg-monk-success/15 text-monk-success text-[9px] font-bold">
-                  ✓
+                <span className="grid h-6 w-6 place-items-center rounded-lg bg-monk-success/15 text-monk-success">
+                  <Check size={13} strokeWidth={3} aria-hidden="true" />
                 </span>
                 <div>
                   <p className="text-xs font-bold text-monk-text">ARDI WIRYAWAN, DIGITAL & KREATIF</p>
@@ -280,7 +281,7 @@ export function ZendoProModal({ isOpen, onClose }: ZendoProModalProps) {
               >
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-bold text-monk-text">
-                    {isId ? "✍️ Masukkan Nominal Kustom" : "✍️ Custom Amount"}
+                    {isId ? "Masukkan Nominal Kustom" : "Custom Amount"}
                   </span>
                   <span className="text-[10px] text-monk-muted">
                     {isId ? "Min. Rp 1.000" : "Min. Rp 1,000"}

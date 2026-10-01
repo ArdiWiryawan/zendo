@@ -1685,7 +1685,6 @@ function FlowPickToday({
                   </p>
                   {totalSubtasks > 0 ? (
                     <p className="mt-1 text-[10px] font-medium text-monk-accent/80 flex items-center gap-1">
-                      <span>📋</span>
                       <span>{completedSubtasks}/{totalSubtasks} langkah selesai</span>
                     </p>
                   ) : null}

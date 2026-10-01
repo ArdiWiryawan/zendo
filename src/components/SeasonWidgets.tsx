@@ -106,7 +106,7 @@ export function FrictionWhy({ className = "" }: { className?: string }) {
       ) : null}
       {why?.desiredOutcome ? (
         <p className="mt-1 text-xs text-monk-accent line-clamp-1">
-          ✦ {why.desiredOutcome}
+          {why.desiredOutcome}
         </p>
       ) : null}
       {antiWhy ? (
@@ -283,7 +283,6 @@ export function WhyCard() {
       {outcome ? (
         <div className="rounded-xl border border-monk-accent/30 bg-monk-bg/60 p-3">
           <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-monk-accent">
-            <span>✦</span>
             <span>{t("why.badgeOutcome")}</span>
           </div>
           <p className="mt-1 text-sm leading-relaxed text-monk-text-soft">{outcome}</p>
@@ -293,7 +292,6 @@ export function WhyCard() {
       {antiWhy ? (
         <div className="rounded-xl border border-monk-warning/25 bg-monk-warning/5 p-3">
           <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-monk-warning">
-            <span>⚠</span>
             <span>{t("why.badgeAntiWhy")}</span>
           </div>
           <p className="mt-1 text-xs leading-relaxed text-monk-text-soft">{antiWhy}</p>

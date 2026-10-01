@@ -20,7 +20,8 @@ import {
   RotateCcw,
   Sparkles,
   ShieldCheck,
-  ArrowRight
+  ArrowRight,
+  X
 } from "lucide-react";
 import { motion, useReducedMotion } from "framer-motion";
 import {
@@ -178,7 +179,6 @@ function StreakConsistencyCard() {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-xl leading-none" aria-hidden="true">🔥</span>
             <div className="flex items-baseline gap-1.5">
               <span className="text-xl font-mono font-bold text-monk-accent leading-none">
                 {streak.count}
@@ -648,7 +648,7 @@ export default function TimelineScreen() {
         return {
           tileClass: "bg-monk-danger-soft border-monk-danger/30 ring-2 ring-monk-accent text-monk-text shadow-sm",
           numClass: "text-monk-danger font-black",
-          iconElement: <span className="text-[10px] font-black text-monk-danger leading-none">✕</span>
+          iconElement: <X size={10} strokeWidth={3} className="text-monk-danger" aria-hidden="true" />
         };
       }
       return {
@@ -684,7 +684,7 @@ export default function TimelineScreen() {
       return {
         tileClass: "bg-monk-danger-soft border-monk-danger/30 hover:border-monk-danger/30 text-monk-danger",
         numClass: "text-monk-danger font-bold",
-        iconElement: <span className="text-[10px] font-black text-monk-danger leading-none">✕</span>
+        iconElement: <X size={10} strokeWidth={3} className="text-monk-danger" aria-hidden="true" />
       };
     }
 
@@ -1196,7 +1196,8 @@ export default function TimelineScreen() {
                           </span>
                         ) : inspectedStatus === "missed" || inspectedStatus === "relapse" ? (
                           <span className="inline-flex items-center gap-1 rounded-md bg-monk-danger-soft border border-monk-danger/30 px-2 py-0.5 text-[10px] font-bold text-monk-danger">
-                            <span>✕ {t("timeline.streak.missed")}</span>
+                            <X size={11} strokeWidth={3} aria-hidden="true" />
+                            <span>{t("timeline.streak.missed")}</span>
                           </span>
                         ) : (
                           <span className="rounded-md border border-monk-border bg-monk-surface px-2 py-0.5 text-[10px] font-semibold text-monk-muted">
@@ -1235,19 +1236,19 @@ export default function TimelineScreen() {
                         {/* Productivity Framework Insight */}
                         {inspectedStatus === "completed" ? (
                           <div className="rounded-lg bg-monk-success-soft border border-monk-success/30 px-2.5 py-1.5 text-[11px] text-monk-success leading-relaxed">
-                            💡 <span className="font-semibold text-monk-success">{t("timeline.insight.deepWorkTitle")}</span> {t("timeline.insight.deepWorkBody")}
+                            <span className="font-semibold text-monk-success">{t("timeline.insight.deepWorkTitle")}</span> {t("timeline.insight.deepWorkBody")}
                           </div>
                         ) : inspectedStatus === "rest" ? (
                           <div className="rounded-lg bg-monk-rest-soft border border-monk-rest/30 px-2.5 py-1.5 text-[11px] text-monk-rest leading-relaxed">
-                            🌱 <span className="font-semibold text-monk-rest">{t("timeline.insight.restTitle")}</span> {t("timeline.insight.restBody")}
+                            <span className="font-semibold text-monk-rest">{t("timeline.insight.restTitle")}</span> {t("timeline.insight.restBody")}
                           </div>
                         ) : inspectedStatus === "partial" ? (
                           <div className="rounded-lg bg-monk-warning-soft border border-monk-warning/30 px-2.5 py-1.5 text-[11px] text-monk-warning leading-relaxed">
-                            ⚡ <span className="font-semibold text-monk-warning">{t("timeline.insight.partialTitle")}</span> {t("timeline.insight.partialBody")}
+                            <span className="font-semibold text-monk-warning">{t("timeline.insight.partialTitle")}</span> {t("timeline.insight.partialBody")}
                           </div>
                         ) : inspectedStatus === "missed" && !isFuture && !isDateToday ? (
                           <div className="rounded-lg bg-monk-danger-soft border border-monk-danger/30 px-2.5 py-1.5 text-[11px] text-monk-danger leading-relaxed">
-                            🧭 <span className="font-semibold text-monk-danger">{t("timeline.insight.missedTitle")}</span> {t("timeline.insight.missedBody")}
+                            <span className="font-semibold text-monk-danger">{t("timeline.insight.missedTitle")}</span> {t("timeline.insight.missedBody")}
                           </div>
                         ) : null}
 
@@ -1291,7 +1292,8 @@ export default function TimelineScreen() {
                   <span>{t("timeline.streak.partial")}</span>
                 </span>
                 <span className="inline-flex items-center gap-1 rounded-md bg-monk-danger-soft border border-monk-danger/30 px-2 py-0.5 font-semibold text-monk-danger">
-                  <span>✕ {t("timeline.streak.missed")}</span>
+                  <X size={10} strokeWidth={2.5} aria-hidden="true" />
+                  <span>{t("timeline.streak.missed")}</span>
                 </span>
                 <span className="inline-flex items-center gap-1 rounded-md bg-monk-surface/40 border border-monk-border/50 px-2 py-0.5 font-semibold text-monk-muted">
                   <span>{t("week.upcoming")}</span>

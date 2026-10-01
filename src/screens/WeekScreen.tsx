@@ -570,7 +570,7 @@ function WeekReviewCard({
 
           {savedReview.reflection?.wins ? (
             <div className="rounded-xl border border-monk-border/50 bg-monk-soft/20 p-3 text-xs text-monk-muted line-clamp-2">
-              <span className="font-semibold text-monk-text">🎯 Wins: </span>
+              <span className="font-semibold text-monk-text">Wins: </span>
               {savedReview.reflection.wins}
             </div>
           ) : null}

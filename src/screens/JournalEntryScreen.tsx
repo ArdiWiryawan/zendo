@@ -241,7 +241,7 @@ export function JournalEntryScreen() {
           <div className="flex items-center justify-between px-1">
             <span className="text-[10px] uppercase tracking-widest text-monk-text-soft font-mono">{t("journal.morningLabel")}</span>
             <span className={`text-[10px] font-mono ${wordCount >= 750 ? "text-monk-success" : "text-monk-text-soft"}`}>
-              {t("journal.words", { n: wordCount })}{wordCount >= 750 ? " ✦" : ""}
+              {t("journal.words", { n: wordCount })}
             </span>
           </div>
           {wordCount > 0 && (

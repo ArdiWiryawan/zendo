@@ -78,8 +78,8 @@ export default function App() {
         playZenBell();
         reminderToastRef.current.show(
           lang === "id"
-            ? "✦ Selamat! Zendo Pro berhasil diaktifkan."
-            : "✦ Congratulations! Zendo Pro successfully unlocked."
+            ? "Selamat! Zendo Pro berhasil diaktifkan."
+            : "Congratulations! Zendo Pro successfully unlocked."
         );
         params.delete("pro_unlocked");
         const nextQuery = params.toString();

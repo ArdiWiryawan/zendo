@@ -3,7 +3,7 @@ import { useMonkStore } from "../store/useMonkStore";
 import { getTodayDateString } from "../lib/date";
 import { Card } from "../components/ui";
 import { WhyEditor } from "../components/SeasonWidgets";
-import { ChevronRight } from "lucide-react";
+import { ChevronRight, X } from "lucide-react";
 import { CORE_VALUES } from "../constants/whyValues";
 import { useT, useLanguage } from "../i18n";
 import type { EnergyLevel, Goal, GoalTask } from "../types/app";
@@ -199,10 +199,10 @@ export function WhyStrip({ compact = false }: { compact?: boolean }) {
             {!open && (outcome || antiWhy) ? (
               <div className="mt-1.5 flex flex-wrap items-center gap-2 text-[11px] text-monk-muted">
                 {outcome ? (
-                  <span className="truncate text-monk-accent">✦ {outcome}</span>
+                  <span className="truncate text-monk-accent">{outcome}</span>
                 ) : null}
                 {antiWhy && !outcome ? (
-                  <span className="truncate text-monk-warning/90">⚠ {antiWhy}</span>
+                  <span className="truncate text-monk-warning/90">{antiWhy}</span>
                 ) : null}
               </div>
             ) : null}
@@ -213,7 +213,7 @@ export function WhyStrip({ compact = false }: { compact?: boolean }) {
                 {outcome ? (
                   <div className="rounded-xl border border-monk-accent/30 bg-monk-bg/60 p-2.5">
                     <p className="text-[9px] font-bold uppercase tracking-wider text-monk-accent">
-                      ✦ {t("why.badgeOutcome")}
+                      {t("why.badgeOutcome")}
                     </p>
                     <p className="mt-0.5 text-xs text-monk-text-soft leading-relaxed">{outcome}</p>
                   </div>
@@ -222,7 +222,7 @@ export function WhyStrip({ compact = false }: { compact?: boolean }) {
                 {antiWhy ? (
                   <div className="rounded-xl border border-monk-warning/25 bg-monk-warning/5 p-2.5">
                     <p className="text-[9px] font-bold uppercase tracking-wider text-monk-warning">
-                      ⚠ {t("why.badgeAntiWhy")}
+                      {t("why.badgeAntiWhy")}
                     </p>
                     <p className="mt-0.5 text-xs text-monk-text-soft leading-relaxed">{antiWhy}</p>
                   </div>
@@ -322,7 +322,7 @@ export function GoalTasksCard({ goal, todayMainAction }: { goal: Goal; todayMain
     <div className="mt-3.5 space-y-2 rounded-xl border border-monk-border/70 bg-monk-soft/30 p-3.5">
       <div className="flex items-center justify-between gap-2">
         <p className="text-[11px] font-bold uppercase tracking-wider text-monk-muted flex items-center gap-1.5">
-          <span>{isId ? "📋 Langkah / Subtask" : "📋 Steps / Subtasks"}</span>
+          <span>{isId ? "Langkah / Subtask" : "Steps / Subtasks"}</span>
           {tasks.length > 0 ? (
             <span className="font-mono text-[10px] text-monk-accent">
               ({tasks.filter((t) => t.completed).length}/{tasks.length})
@@ -414,7 +414,7 @@ export function GoalTasksCard({ goal, todayMainAction }: { goal: Goal; todayMain
                       onClick={() => store.removeProject(group.project!.id)}
                       className="text-monk-muted/60 hover:text-monk-danger p-0.5 transition"
                     >
-                      ✕
+                      <X size={12} strokeWidth={2.5} aria-hidden="true" />
                     </button>
                   </span>
                 </div>
@@ -490,7 +490,7 @@ export function GoalTasksCard({ goal, todayMainAction }: { goal: Goal; todayMain
                         onClick={() => store.deleteGoalTask(goal.id, task.id)}
                         className="text-monk-muted/60 hover:text-monk-danger p-0.5 transition"
                       >
-                        ✕
+                        <X size={12} strokeWidth={2.5} aria-hidden="true" />
                       </button>
                     </div>
                   </div>

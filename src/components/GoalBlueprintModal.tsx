@@ -10,13 +10,14 @@ import {
   ChevronDown,
   ChevronUp,
   ShieldAlert,
-  Check
+  Check,
+  Repeat
 } from "lucide-react";
 import { useMonkStore, normalizeAvailability } from "../store/useMonkStore";
 import { useT } from "../i18n";
 import type { MessageKey } from "../i18n";
 import type { GoalType, GoalWeekday } from "../types/app";
-import { PrimaryButton, SecondaryButton, TextInput, Textarea, useCalmToast, useModalA11y } from "./ui";
+import { PrimaryButton, SecondaryButton, GhostButton, TextInput, Textarea, CalmAlert, useCalmToast, useModalA11y } from "./ui";
 import { hapticPress } from "../lib/haptics";
 import { GOAL_TEMPLATES, GoalBlueprintTemplate } from "../constants/goalTemplates";
 
@@ -70,7 +71,20 @@ export function GoalBlueprintModal({ goalId, isOpen, onClose }: GoalBlueprintMod
   const [obstacleMitigation, setObstacleMitigation] = useState("");
   const [error, setError] = useState("");
 
+  // §23-25 — Goal → Practice reclassification. Not a separate screen: the same
+  // modal swaps its body for a confirmation before anything is written.
+  const [showConvert, setShowConvert] = useState(false);
+  const [convertNewGoal, setConvertNewGoal] = useState(false);
+  const [convertGoalTitle, setConvertGoalTitle] = useState("");
+
   const modalRef = useRef<HTMLDivElement>(null);
+  const convertRef = useRef<HTMLDivElement>(null);
+
+  // The confirmation renders at the end of a long scroll body; bring it into
+  // view so the action never looks like it did nothing.
+  useEffect(() => {
+    if (showConvert) convertRef.current?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+  }, [showConvert]);
 
   useEffect(() => {
     if (goal && isOpen) {
@@ -90,9 +104,18 @@ export function GoalBlueprintModal({ goalId, isOpen, onClose }: GoalBlueprintMod
       setObstacleMitigation(goal.obstacleMitigation || "");
       setShowTemplates(false);
       setShowAdvanced(false);
+      setShowConvert(false);
+      setConvertNewGoal(false);
+      setConvertGoalTitle(goal.desiredOutcome || "");
       setError("");
     }
   }, [goal, isOpen]);
+
+  useEffect(() => {
+    if (goal && isOpen) {
+      setConvertGoalTitle(goal.desiredOutcome || "");
+    }
+  }, [goal?.desiredOutcome, isOpen]);
 
   // Escape closes (backing out of the template picker first), Tab stays inside,
   // focus returns to the opener on unmount.
@@ -101,6 +124,7 @@ export function GoalBlueprintModal({ goalId, isOpen, onClose }: GoalBlueprintMod
     ref: modalRef,
     onClose: () => {
       if (showTemplates) setShowTemplates(false);
+      else if (showConvert) setShowConvert(false);
       else onClose();
     }
   });
@@ -150,6 +174,30 @@ export function GoalBlueprintModal({ goalId, isOpen, onClose }: GoalBlueprintMod
     });
 
     toast.show(t("blueprint.saved"));
+    onClose();
+  };
+
+  const handleConvert = () => {
+    hapticPress("medium");
+    const newGoalTitle = convertGoalTitle.trim();
+    if (convertNewGoal && !newGoalTitle) {
+      setError(
+        lang === "en"
+          ? "Give the new goal a title."
+          : "Beri judul untuk goal baru ini."
+      );
+      return;
+    }
+    store.convertGoalToPractice(goal.id, {
+      practiceName: title.trim() || goal.title,
+      weeklyTargetCount,
+      newGoal: convertNewGoal ? { title: newGoalTitle, why: why.trim() || undefined } : undefined
+    });
+    toast.show(
+      lang === "en"
+        ? "Moved to practices. Past sessions stay in this goal's history."
+        : "Dipindah ke praktik. Sesi lama tetap tersimpan di riwayat goal ini."
+    );
     onClose();
   };
 
@@ -251,7 +299,7 @@ export function GoalBlueprintModal({ goalId, isOpen, onClose }: GoalBlueprintMod
                       </span>
                     </div>
                     <p className="text-[11px] text-monk-muted leading-relaxed">
-                      ⚡ <span className="font-semibold text-monk-text-soft">{tpl.keystoneAction}</span>
+                      <span className="font-semibold text-monk-text-soft">{tpl.keystoneAction}</span>
                     </p>
                     <p className="text-[10px] text-monk-muted/80 line-clamp-1 italic">
                       &quot;{tpl.why}&quot;
@@ -305,7 +353,7 @@ export function GoalBlueprintModal({ goalId, isOpen, onClose }: GoalBlueprintMod
                   className="bg-monk-surface text-sm"
                 />
                 <div className="flex flex-wrap gap-1.5 pt-0.5">
-                  {["🎓 Magang", "▶️ YouTube", "🚀 Bisnis", "🌿 Personal", "📚 Studi"].map((chip) => (
+                  {["Magang", "YouTube", "Bisnis", "Personal", "Studi"].map((chip) => (
                     <button
                       key={chip}
                       type="button"
@@ -515,17 +563,106 @@ export function GoalBlueprintModal({ goalId, isOpen, onClose }: GoalBlueprintMod
               </div>
             </div>
           )}
+
+          {/* §23-25 — Goal → Practice conversion confirmation. */}
+          {showConvert ? (
+            <div ref={convertRef} className="space-y-3.5 rounded-xl border border-monk-border bg-monk-soft/60 p-4">
+              <CalmAlert
+                type="info"
+                title={
+                  lang === "en"
+                    ? "Turn this goal into a practice?"
+                    : "Ubah goal ini jadi praktik?"
+                }
+                description={
+                  lang === "en"
+                    ? "Your recorded sessions stay attached to this goal's history. Only what you're doing from now on changes."
+                    : "Sesi yang sudah tercatat tetap menempel di riwayat goal ini. Yang berubah hanya cara kamu menjalaninya mulai sekarang."
+                }
+              />
+
+              <div>
+                <label htmlFor="convert-practice-name" className="mb-1 block text-[11px] font-semibold text-monk-muted">
+                  {lang === "en" ? "Practice name" : "Nama praktik"}
+                </label>
+                <TextInput
+                  id="convert-practice-name"
+                  value={title}
+                  onChange={(e) => { setTitle(e.target.value); setError(""); }}
+                  placeholder={goal.title}
+                  className="bg-monk-surface text-sm"
+                />
+                <p className="mt-1 text-[10px] text-monk-muted">
+                  {lang === "en"
+                    ? `${weeklyTargetCount} days a week — the same rhythm this goal had.`
+                    : `${weeklyTargetCount} hari per minggu — ritme yang sama seperti goal ini.`}
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => { hapticPress("light"); setConvertNewGoal((prev) => !prev); }}
+                aria-pressed={convertNewGoal}
+                className="flex w-full items-center justify-between gap-3 rounded-lg border border-monk-border bg-monk-surface px-3 py-2.5 text-left"
+              >
+                <span className="text-xs font-semibold text-monk-text">
+                  {lang === "en" ? "Also create a new goal for it" : "Sekaligus buat goal baru untuknya"}
+                </span>
+                <span
+                  className={`grid h-5 w-5 shrink-0 place-items-center rounded-md border ${
+                    convertNewGoal ? "border-monk-accent bg-monk-accent text-monk-bg" : "border-monk-border-strong"
+                  }`}
+                >
+                  {convertNewGoal ? <Check size={13} /> : null}
+                </span>
+              </button>
+
+              {convertNewGoal ? (
+                <div>
+                  <label htmlFor="convert-goal-title" className="mb-1 block text-[11px] font-semibold text-monk-muted">
+                    {lang === "en" ? "New goal title" : "Judul goal baru"}
+                  </label>
+                  <TextInput
+                    id="convert-goal-title"
+                    value={convertGoalTitle}
+                    onChange={(e) => { setConvertGoalTitle(e.target.value); setError(""); }}
+                    placeholder={lang === "en" ? "e.g. Build a body of work" : "mis. Bangun karya yang nyata"}
+                    className="bg-monk-surface text-sm"
+                  />
+                </div>
+              ) : null}
+
+              <div className="flex items-center justify-end gap-2.5">
+                <SecondaryButton onClick={() => setShowConvert(false)} className="min-h-10 px-4">
+                  {t("dialog.cancel")}
+                </SecondaryButton>
+                <PrimaryButton onClick={handleConvert} className="min-h-10 px-5">
+                  {lang === "en" ? "Convert" : "Ubah"}
+                </PrimaryButton>
+              </div>
+            </div>
+          ) : null}
         </div>
 
         {/* Footer Actions */}
-        <div className="border-t border-monk-border/60 bg-monk-surface px-5 py-3 sm:px-6 flex items-center justify-end gap-2.5">
-          <SecondaryButton onClick={onClose} className="min-h-11 px-4">
-            {t("dialog.cancel")}
-          </SecondaryButton>
-          <PrimaryButton onClick={handleSave} className="min-h-11 px-5 flex items-center gap-1.5">
-            <Check size={15} />
-            <span>{t("blueprint.save")}</span>
-          </PrimaryButton>
+        <div className="border-t border-monk-border/60 bg-monk-surface px-5 py-3 sm:px-6 flex items-center justify-between gap-2.5">
+          <GhostButton
+            onClick={() => { hapticPress("light"); setShowConvert((prev) => !prev); setError(""); }}
+            aria-expanded={showConvert}
+            className="flex min-h-11 items-center gap-1.5 px-2 text-xs"
+          >
+            <Repeat size={14} />
+            <span>{lang === "en" ? "Convert to practice" : "Ubah jadi praktik"}</span>
+          </GhostButton>
+          <div className="flex items-center gap-2.5">
+            <SecondaryButton onClick={onClose} className="min-h-11 px-4">
+              {t("dialog.cancel")}
+            </SecondaryButton>
+            <PrimaryButton onClick={handleSave} className="min-h-11 px-5 flex items-center gap-1.5">
+              <Check size={15} />
+              <span>{t("blueprint.save")}</span>
+            </PrimaryButton>
+          </div>
         </div>
       </div>
     </div>

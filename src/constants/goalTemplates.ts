@@ -1,6 +1,5 @@
 export interface GoalBlueprintTemplate {
   id: string;
-  icon: string;
   category: string;
   title: string;
   why: string;
@@ -13,7 +12,6 @@ export const GOAL_TEMPLATES: Record<"id" | "en", GoalBlueprintTemplate[]> = {
   id: [
     {
       id: "content_creator",
-      icon: "🎬",
       category: "Content Creator & Brand (Ali Abdaal)",
       title: "Rilis 12 Konten Edukasi & Validasi Niche Audiens",
       why: "Saya adalah Creator yang konsisten mendistribusikan ide berharga tanpa terjebak perfeksionisme over-editing.",
@@ -23,7 +21,6 @@ export const GOAL_TEMPLATES: Record<"id" | "en", GoalBlueprintTemplate[]> = {
     },
     {
       id: "solopreneur_business",
-      icon: "💼",
       category: "Bisnis & Solopreneur (Pareto 80/20)",
       title: "Dapatkan 3 Klien Berbayar Pertama & Validasi Penawaran Produk",
       why: "Saya adalah Solopreneur yang berani menawarkan solusi nyata dan fokus berbicara langsung dengan calon pembeli.",
@@ -33,7 +30,6 @@ export const GOAL_TEMPLATES: Record<"id" | "en", GoalBlueprintTemplate[]> = {
     },
     {
       id: "tech_builder",
-      icon: "💻",
       category: "Tech Builder (Ship-Fast MVP)",
       title: "Selesaikan & Launch Alur Utama MVP ke 10 Pengguna Aktif",
       why: "Saya adalah Software Builder yang mengukur kemajuan dari fitur yang live di tangan pengguna, bukan over-engineering.",
@@ -43,7 +39,6 @@ export const GOAL_TEMPLATES: Record<"id" | "en", GoalBlueprintTemplate[]> = {
     },
     {
       id: "writer_thought_leader",
-      icon: "✍️",
       category: "Penulis & Thought Leader (Raw Draft)",
       title: "Terbitkan 12 Artikel / Selesaikan 30.000 Kata Draf Kasar",
       why: "Saya adalah Penulis yang mendahulukan volume draf ketimbang ilusi kesempurnaan kata.",
@@ -53,7 +48,6 @@ export const GOAL_TEMPLATES: Record<"id" | "en", GoalBlueprintTemplate[]> = {
     },
     {
       id: "deep_learning",
-      icon: "📚",
       category: "Skill Mastery (Active Recall & Feynman)",
       title: "Kuasai 1 Skill Kritis & Bangun 1 Proyek Portofolio Riil",
       why: "Saya adalah Pembelajar Aktif yang menguji pemahaman lewat praktek nyata, bukan konsumsi video pasif.",
@@ -63,7 +57,6 @@ export const GOAL_TEMPLATES: Record<"id" | "en", GoalBlueprintTemplate[]> = {
     },
     {
       id: "health_energy",
-      icon: "🏃",
       category: "Stamina & Energi Fisik (Minimum Effective Dose)",
       title: "Bangun Stamina Prima Harian & Pikiran Bebas Brain Fog",
       why: "Saya adalah pribadi berenergi tinggi yang merawat tubuh sebagai fondasi fokus produktivitas terbaik.",
@@ -75,7 +68,6 @@ export const GOAL_TEMPLATES: Record<"id" | "en", GoalBlueprintTemplate[]> = {
   en: [
     {
       id: "content_creator",
-      icon: "🎬",
       category: "Content Creator & Brand (Ali Abdaal)",
       title: "Publish 12 Educational Pieces & Validate Core Niche",
       why: "I am a consistent Creator who distributes valuable ideas without falling into the over-editing trap.",
@@ -85,7 +77,6 @@ export const GOAL_TEMPLATES: Record<"id" | "en", GoalBlueprintTemplate[]> = {
     },
     {
       id: "solopreneur_business",
-      icon: "💼",
       category: "Business & Solopreneur (Pareto 80/20)",
       title: "Close 3 Paying Clients & Validate Flagship Offer",
       why: "I am an action-oriented Solopreneur focused on real customer conversations and direct value delivery.",
@@ -95,7 +86,6 @@ export const GOAL_TEMPLATES: Record<"id" | "en", GoalBlueprintTemplate[]> = {
     },
     {
       id: "tech_builder",
-      icon: "💻",
       category: "Tech Builder (Ship-Fast MVP)",
       title: "Complete & Launch Core User Flow to 10 Live Users",
       why: "I am a Software Builder who measures progress by working features shipped to users, not over-architecture.",
@@ -105,7 +95,6 @@ export const GOAL_TEMPLATES: Record<"id" | "en", GoalBlueprintTemplate[]> = {
     },
     {
       id: "writer_thought_leader",
-      icon: "✍️",
       category: "Writing & Thought Leadership (Raw Draft)",
       title: "Publish 12 Articles / Complete 30,000-Word Raw Draft",
       why: "I am a dedicated Writer who prioritizes raw draft volume over the illusion of perfection.",
@@ -115,7 +104,6 @@ export const GOAL_TEMPLATES: Record<"id" | "en", GoalBlueprintTemplate[]> = {
     },
     {
       id: "deep_learning",
-      icon: "📚",
       category: "Skill Mastery (Active Recall & Feynman)",
       title: "Master 1 Core Competency & Build 1 Portfolio Piece",
       why: "I am an Active Learner who validates knowledge through hands-on creation, not passive watching.",
@@ -125,7 +113,6 @@ export const GOAL_TEMPLATES: Record<"id" | "en", GoalBlueprintTemplate[]> = {
     },
     {
       id: "health_energy",
-      icon: "🏃",
       category: "Vitality & Peak Energy (Minimum Effective Dose)",
       title: "Build Peak Daily Stamina & Clear Mind Free of Brain Fog",
       why: "I am a high-energy individual who values physical vitality as the foundation of deep focus.",

@@ -1,6 +1,27 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Volume1, Volume2, VolumeX, Sparkles, Crown, Music, Heart, Play, Pause, Waves, Sliders } from "lucide-react";
+import {
+  Volume1,
+  Volume2,
+  VolumeX,
+  Sparkles,
+  Crown,
+  Music,
+  Heart,
+  Play,
+  Pause,
+  Waves,
+  Sliders,
+  Leaf,
+  CloudFog,
+  TreePine,
+  Flower2,
+  Bell,
+  CloudRain,
+  Moon,
+  Flame,
+  type LucideIcon
+} from "lucide-react";
 import {
   Card,
   EmptyState,
@@ -26,7 +47,7 @@ import type { FocusSession } from "../types/app";
 /**
  * Soundscape labels live in i18n (focus.soundscape.<id> / <id>Desc) so the
  * picker and the auto-pick share one source of truth. Only the id and the
- * glyph stay here.
+ * glyph name stay here; the glyph itself resolves through `SOUNDSCAPE_ICONS`.
  */
 const soundNameKey = (id: SoundscapeId) => `focus.soundscape.${id}` as MessageKey;
 const soundDescKey = (id: SoundscapeId) => `focus.soundscape.${id}Desc` as MessageKey;
@@ -35,17 +56,49 @@ const SOUNDSCAPES: {
   id: SoundscapeId;
   icon: string;
 }[] = [
-  { id: "day_still", icon: "🍃" },
-  { id: "dawn_mist", icon: "🌫️" },
-  { id: "zen_stream", icon: "🌊" },
-  { id: "forest_birds", icon: "🌲" },
-  { id: "binaural_alpha", icon: "🧘" },
-  { id: "singing_bowl", icon: "🔔" },
-  { id: "night_rain", icon: "🌧️" },
-  { id: "day_garden", icon: "🌸" },
-  { id: "dusk_ember", icon: "🪵" },
-  { id: "night_deep", icon: "🌌" },
+  { id: "day_still", icon: "Leaf" },
+  { id: "dawn_mist", icon: "CloudFog" },
+  { id: "zen_stream", icon: "Waves" },
+  { id: "forest_birds", icon: "TreePine" },
+  { id: "binaural_alpha", icon: "Sparkles" },
+  { id: "singing_bowl", icon: "Bell" },
+  { id: "night_rain", icon: "CloudRain" },
+  { id: "day_garden", icon: "Flower2" },
+  { id: "dusk_ember", icon: "Flame" },
+  { id: "night_deep", icon: "Moon" },
 ];
+
+/**
+ * Soundscape glyphs, keyed by the `icon` name each preset declares — the same
+ * name→component idiom as JournalPacks' pack icons.
+ *
+ * Deliberately lucide rather than emoji: emoji render as full-colour OS glyphs
+ * that ignore the tile's accent colour and vary by platform, so a list of them
+ * reads as a party of unrelated stickers. Line icons inherit `currentColor`,
+ * which is what ties the set to Zendo's palette.
+ *
+ * Mapped by meaning rather than by literal name: each soundscape gets the mark
+ * for the scene it evokes (a leaf for still daylight, a bell for the singing
+ * bowl, a moon for deep night). `FallbackIcon` covers anything unmapped, so a
+ * new preset never renders an empty row.
+ */
+const SOUNDSCAPE_ICONS: Record<string, LucideIcon> = {
+  Leaf,
+  CloudFog,
+  Waves,
+  TreePine,
+  Sparkles,
+  Bell,
+  CloudRain,
+  Flower2,
+  Flame,
+  Moon,
+};
+
+const FallbackIcon: LucideIcon = Music;
+
+/** Resolves a soundscape's stored glyph name to its lucide component. */
+const soundscapeIcon = (name: string): LucideIcon => SOUNDSCAPE_ICONS[name] ?? FallbackIcon;
 
 export default function FocusScreen() {
   const navigate = useNavigate();
@@ -171,6 +224,7 @@ export default function FocusScreen() {
     !closeDaySkipped;
 
   const currentSoundMeta = SOUNDSCAPES.find((s) => s.id === selectedSoundscape) ?? SOUNDSCAPES[0];
+  const CurrentSoundIcon = soundscapeIcon(currentSoundMeta.icon);
 
   return (
     <>
@@ -208,7 +262,9 @@ export default function FocusScreen() {
       <div className="mb-5 rounded-2xl border border-monk-border bg-monk-surface p-3.5 shadow-sm space-y-3">
         <div className="flex items-center justify-between gap-2">
           <div className="flex items-center gap-2.5 min-w-0">
-            <span className="text-xl shrink-0">{currentSoundMeta.icon}</span>
+            <span className="shrink-0 text-monk-accent" aria-hidden>
+              <CurrentSoundIcon size={20} strokeWidth={1.5} />
+            </span>
             <div className="min-w-0">
               <div className="flex items-center gap-2">
                 <span className="text-xs font-bold text-monk-text truncate">
@@ -290,6 +346,7 @@ export default function FocusScreen() {
               {SOUNDSCAPES.map((sound) => {
                 const isSelected = selectedSoundscape === sound.id;
                 const isPlaying = isSelected && musicOn;
+                const SoundIcon = soundscapeIcon(sound.icon);
                 return (
                   <button
                     key={sound.id}
@@ -304,7 +361,9 @@ export default function FocusScreen() {
                     }`}
                   >
                     <div className="flex items-start gap-2.5 min-w-0 flex-1">
-                      <span className="text-lg shrink-0 mt-0.5">{sound.icon}</span>
+                      <span className="shrink-0 mt-0.5" aria-hidden>
+                        <SoundIcon size={16} strokeWidth={1.75} />
+                      </span>
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-1.5">
                           <p className="text-xs font-bold text-monk-text truncate">

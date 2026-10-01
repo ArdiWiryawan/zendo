@@ -142,6 +142,21 @@ type MonkActions = {
   setDayAgenda: (dateString: string, agenda: string[]) => void;
   /** §23-25: create a positive practice, optionally supporting a goal. */
   addPractice: (input: { name: string; goalId?: string; weeklyTargetCount?: number; cue?: string }) => Practice | undefined;
+  /**
+   * §23-25: reclassify a goal as a practice instead of a goal. Not a new record
+   * model — a link plus a status change. Past activity (FocusSession/DayPlan
+   * `goalId`) keeps pointing at the original goal, which is only marked
+   * `released`, never rewritten or deleted.
+   */
+  convertGoalToPractice: (
+    goalId: string,
+    opts?: {
+      practiceName?: string;
+      weeklyTargetCount?: number;
+      /** When supplied, a NEW goal is created and the practice links to it. */
+      newGoal?: { title: string; why?: string; desiredOutcome?: string };
+    }
+  ) => Practice | undefined;
   updatePractice: (id: string, patch: Partial<Pick<Practice, "name" | "goalId" | "weeklyTargetCount" | "cue" | "status">>) => void;
   removePractice: (id: string) => void;
   /** Mark a practice done on a date. Idempotent per (practice, date). */
@@ -1375,6 +1390,70 @@ export const useMonkStore = create<MonkStore>()(
       updatedAt: now
     };
     set({ practices: [...state.practices, practice] });
+    return practice;
+  },
+
+  convertGoalToPractice: (goalId, opts) => {
+    const state = get();
+    const season = state.activeSeason;
+    if (!season) return undefined;
+    const goal = state.goals.find((g) => g.id === goalId);
+    if (!goal) return undefined;
+
+    const name = (opts?.practiceName ?? goal.title).trim();
+    if (!name) return undefined;
+
+    const now = nowIso();
+    // Same unit both sides document as "days per week you intend to show up",
+    // so this is a direct 1:1 map — the outcome target is a different concept.
+    const weeklyTargetCount = Math.max(
+      1,
+      Math.min(7, opts?.weeklyTargetCount ?? goal.weeklyTargetCount)
+    );
+
+    // A new goal only exists to hold the practice; it inherits the rhythm and
+    // the next-step text, and takes the next free priority slot.
+    const newGoal: Goal | undefined = opts?.newGoal
+      ? {
+          id: createId("goal"),
+          seasonId: goal.seasonId,
+          title: opts.newGoal.title.trim() || name,
+          keystoneAction: name,
+          why: opts.newGoal.why?.trim() || undefined,
+          desiredOutcome: opts.newGoal.desiredOutcome?.trim() || undefined,
+          priority: Math.min(3, state.goals.filter((g) => g.status === "active").length + 1) as 1 | 2 | 3,
+          weeklyTargetCount,
+          status: "active",
+          createdAt: now,
+          updatedAt: now
+        }
+      : undefined;
+
+    const practice: Practice = {
+      id: createId("practice"),
+      seasonId: season.id,
+      name,
+      goalId: newGoal?.id,
+      weeklyTargetCount,
+      // The goal's Plan B is the closest existing "when X, I will Y" text.
+      cue: goal.obstacleMitigation?.trim() || undefined,
+      status: "active",
+      createdAt: now,
+      updatedAt: now
+    };
+
+    // History stays put: FocusSession/DayPlan rows keep their original goalId,
+    // and the source goal is only reclassified — never rewritten or deleted.
+    // Skipping an already-released goal avoids bumping updatedAt for nothing.
+    const goals =
+      goal.status === "released"
+        ? state.goals
+        : state.goals.map((g) => (g.id === goal.id ? { ...g, status: "released" as const, updatedAt: now } : g));
+
+    set({
+      goals: newGoal ? [...goals, newGoal] : goals,
+      practices: [...state.practices, practice]
+    });
     return practice;
   },
 

@@ -75,7 +75,7 @@ function getSessionLeftLabel(session: FocusSession, t: Translate) {
 function getBreakGuidance(session: FocusSession, t: Translate): {
   title: string;
   description: string;
-  activities: { label: string; emoji: string }[];
+  activities: { label: string }[];
 } {
   const phase = getCurrentFocusPhase(session);
   if (phase.plannedMinutes >= 10) {
@@ -83,10 +83,10 @@ function getBreakGuidance(session: FocusSession, t: Translate): {
       title: t("focus.break10Title"),
       description: t("focus.break10Desc"),
       activities: [
-        { label: t("focus.break10Act1"), emoji: "✏️" },
-        { label: t("focus.break10Act2"), emoji: "🚶" },
-        { label: t("focus.break10Act3"), emoji: "🧘" },
-        { label: t("focus.break10Act4"), emoji: "🥜" },
+        { label: t("focus.break10Act1") },
+        { label: t("focus.break10Act2") },
+        { label: t("focus.break10Act3") },
+        { label: t("focus.break10Act4") },
       ],
     };
   }
@@ -94,10 +94,10 @@ function getBreakGuidance(session: FocusSession, t: Translate): {
     title: t("focus.break5Title"),
     description: t("focus.break5Desc"),
     activities: [
-      { label: t("focus.break5Act1"), emoji: "🤲" },
-      { label: t("focus.break5Act2"), emoji: "👁️" },
-      { label: t("focus.break5Act3"), emoji: "🌬️" },
-      { label: t("focus.break5Act4"), emoji: "💧" },
+      { label: t("focus.break5Act1") },
+      { label: t("focus.break5Act2") },
+      { label: t("focus.break5Act3") },
+      { label: t("focus.break5Act4") },
     ],
   };
 }
@@ -237,7 +237,6 @@ export function FocusSessionPanel({
                   key={activity.label}
                   className="flex items-center gap-1.5 rounded-full border border-monk-border bg-monk-soft px-3 py-1.5 text-xs text-monk-text"
                 >
-                  <span aria-hidden>{activity.emoji}</span>
                   {activity.label}
                 </span>
               ))}
@@ -449,7 +448,7 @@ export function FocusSessionSummary({
       <div className="mt-4 rounded-2xl border border-monk-border/70 bg-monk-bg p-3 text-left space-y-2">
         <div className="flex items-center justify-between">
           <p className="text-[10px] font-bold uppercase tracking-wider text-monk-muted flex items-center gap-1.5">
-            <span>💡</span> {t("focus.insightLabel")}
+            {t("focus.insightLabel")}
           </p>
           {noteSaved ? (
             <span className="flex items-center gap-1 text-[11px] font-bold text-monk-success">

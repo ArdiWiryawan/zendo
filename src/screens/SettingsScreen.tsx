@@ -13,6 +13,7 @@ import { playZenBell } from "../lib/audio";
 import {
   Bell,
   Calendar,
+  Check,
   Cloud,
   Crown,
   Download,
@@ -92,7 +93,7 @@ export default function SettingsScreen() {
 
   const handleTestReminder = () => {
     playZenBell();
-    toast.show(tUI("reminder.testFired") || "🔔 Pengingat Berfungsi: Waktunya kembali fokus!");
+    toast.show(tUI("reminder.testFired") || "Pengingat Berfungsi: Waktunya kembali fokus!");
     if ("Notification" in window && Notification.permission === "granted") {
       try {
         new Notification("Zendo Monk Focus", {
@@ -261,7 +262,7 @@ export default function SettingsScreen() {
                     {lang === "id" ? "Dukung Zendo" : "Support Zendo"}
                   </h3>
                   <span className="inline-flex items-center gap-1 rounded-full bg-monk-success/15 border border-monk-success/30 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-monk-success font-mono">
-                    <span>✓</span>
+                    <Check size={11} strokeWidth={3} aria-hidden="true" />
                     <span>{lang === "id" ? "100% Gratis & Bebas Iklan" : "100% Free & Ad-Free"}</span>
                   </span>
                 </div>
@@ -280,25 +281,25 @@ export default function SettingsScreen() {
               className="w-full flex items-center justify-center gap-2 rounded-2xl bg-monk-accent px-4 py-3 text-xs sm:text-sm font-bold text-monk-bg shadow-md transition active:scale-[0.98] hover:opacity-95 hover:shadow-lg border border-monk-warning/30"
             >
               <Sparkles size={15} className="text-monk-warning" />
-              <span>{lang === "id" ? "☕ Donasi / Traktir Kopi via QRIS" : "☕ Tip / Donate via QRIS"}</span>
+              <span>{lang === "id" ? "Donasi / Traktir Kopi via QRIS" : "Tip / Donate via QRIS"}</span>
             </button>
 
             {/* 4 Unlocked Pillars Matrix: Sleek Zen Micro-Grid */}
             <div className="grid grid-cols-2 gap-2 pt-1 border-t border-monk-border/40 text-xs">
               <div className="flex items-center gap-2 p-2.5 rounded-xl bg-monk-soft/50 border border-monk-border/40">
-                <span className="grid h-4 w-4 shrink-0 place-items-center rounded-md bg-monk-success/15 text-monk-success text-[9px] font-bold">✓</span>
+                <span className="grid h-4 w-4 shrink-0 place-items-center rounded-md bg-monk-success/15 text-monk-success"><Check size={11} strokeWidth={3} aria-hidden="true" /></span>
                 <span className="text-[11px] font-semibold text-monk-text truncate">{lang === "id" ? "10 Zen Soundscapes" : "10 Zen Soundscapes"}</span>
               </div>
               <div className="flex items-center gap-2 p-2.5 rounded-xl bg-monk-soft/50 border border-monk-border/40">
-                <span className="grid h-4 w-4 shrink-0 place-items-center rounded-md bg-monk-success/15 text-monk-success text-[9px] font-bold">✓</span>
+                <span className="grid h-4 w-4 shrink-0 place-items-center rounded-md bg-monk-success/15 text-monk-success"><Check size={11} strokeWidth={3} aria-hidden="true" /></span>
                 <span className="text-[11px] font-semibold text-monk-text truncate">{lang === "id" ? "Semua 6+ Protokol" : "All 6+ Protocols"}</span>
               </div>
               <div className="flex items-center gap-2 p-2.5 rounded-xl bg-monk-soft/50 border border-monk-border/40">
-                <span className="grid h-4 w-4 shrink-0 place-items-center rounded-md bg-monk-success/15 text-monk-success text-[9px] font-bold">✓</span>
+                <span className="grid h-4 w-4 shrink-0 place-items-center rounded-md bg-monk-success/15 text-monk-success"><Check size={11} strokeWidth={3} aria-hidden="true" /></span>
                 <span className="text-[11px] font-semibold text-monk-text truncate">{lang === "id" ? "6 Palet Zen & Media" : "6 Zen Themes & Media"}</span>
               </div>
               <div className="flex items-center gap-2 p-2.5 rounded-xl bg-monk-soft/50 border border-monk-border/40">
-                <span className="grid h-4 w-4 shrink-0 place-items-center rounded-md bg-monk-success/15 text-monk-success text-[9px] font-bold">✓</span>
+                <span className="grid h-4 w-4 shrink-0 place-items-center rounded-md bg-monk-success/15 text-monk-success"><Check size={11} strokeWidth={3} aria-hidden="true" /></span>
                 <span className="text-[11px] font-semibold text-monk-text truncate">{lang === "id" ? "Cloud Sync Multi-Device" : "Multi-Device Sync"}</span>
               </div>
             </div>
@@ -319,7 +320,7 @@ export default function SettingsScreen() {
                   </p>
                 </div>
                 <span className="text-[10px] text-monk-success font-semibold flex items-center gap-1">
-                  <span>✓</span>
+                  <Check size={12} strokeWidth={3} aria-hidden="true" />
                   <span>{lang === "id" ? "Semua 6 Palet Terbuka" : "All 6 Palettes Unlocked"}</span>
                 </span>
               </div>
@@ -358,7 +359,7 @@ export default function SettingsScreen() {
                         <span className="text-xs truncate">{tItem.name}</span>
                       </div>
                       {active && (
-                        <span className="text-[11px] text-monk-accent font-bold">✓</span>
+                        <Check size={13} strokeWidth={3} className="text-monk-accent" aria-hidden="true" />
                       )}
                     </button>
                   );

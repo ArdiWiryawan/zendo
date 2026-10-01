@@ -225,7 +225,7 @@ function PackCard({
   const progress = activeSession?.progress ?? 0;
   const inProgress = !!activeSession && progress < 100;
   const hasSession = !!activeSession;
-  const PackIcon = iconMap[pack.icon] ?? FallbackIcon;
+  const PackIcon = journalPackIcon(pack.icon);
   const locked = !!pack.isPremium && !purchased;
 
   return (
@@ -477,8 +477,8 @@ function PackSession({ pack, onBack }: { pack: JournalPack; onBack: () => void }
 
     return (
       <div className="py-10 text-center max-w-md mx-auto">
-        <div className="mx-auto mb-4 grid h-16 w-16 place-items-center rounded-full border border-monk-success/30 bg-monk-success-soft text-2xl text-monk-success">
-          ✓
+        <div className="mx-auto mb-4 grid h-16 w-16 place-items-center rounded-full border border-monk-success/30 bg-monk-success-soft text-monk-success">
+          <Check size={28} strokeWidth={2.5} aria-hidden="true" />
         </div>
         <h2 className="text-xl font-semibold text-monk-text">{t("packs.wellDone")}</h2>
         <p className="mt-1 text-sm text-monk-muted">{t("packs.completedPack", { title: pack.title })}</p>
@@ -816,3 +816,13 @@ const iconMap: Record<string, LucideIcon> = {
 };
 
 const FallbackIcon: LucideIcon = NotebookPen;
+
+/**
+ * Resolves a pack's stored `icon` name to its lucide component, falling back to
+ * `FallbackIcon` for anything unmapped. Exported so other surfaces that render a
+ * pack (LibraryScreen's completed-session list, for one) use the identical glyph
+ * rather than re-deriving their own.
+ */
+export function journalPackIcon(name: string): LucideIcon {
+  return iconMap[name] ?? FallbackIcon;
+}

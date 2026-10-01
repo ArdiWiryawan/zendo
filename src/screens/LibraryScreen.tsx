@@ -19,7 +19,7 @@ import {
   TextInput,
 } from "../components/ui";
 import JournalNotebook, { NotebookEditor } from "./JournalNotebook";
-import JournalPacks from "./JournalPacks";
+import JournalPacks, { journalPackIcon } from "./JournalPacks";
 import { ZendoProModal } from "../components/ZendoProModal";
 import { groupPhotoRuns, renderBodyMarkdown, toPlainExcerpt } from "../lib/notebookMarkdown";
 import type { AppLanguage, TimelineStatus } from "../types/app";
@@ -355,7 +355,7 @@ export function JournalLibraryScreen() {
                         return g ? (
                           <div className="pt-1">
                             <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-monk-accent bg-monk-accent/10 px-2 py-0.5 rounded-full border border-monk-accent/20">
-                              🎯 {g.track ? `${g.track} · ` : ""}{g.title}
+                              {g.track ? `${g.track} · ` : ""}{g.title}
                             </span>
                           </div>
                         ) : null;
@@ -415,7 +415,7 @@ export function JournalLibraryScreen() {
                         {l.sourceTitle && <p className="text-sm font-semibold text-monk-text mt-1">{l.sourceTitle}</p>}
                         {l.lesson && <div className="text-xs text-monk-muted mt-1 line-clamp-3">{renderer(l.lesson)}</div>}
                         {l.actionIdea && <div className="text-xs text-monk-text-soft mt-1 italic line-clamp-2">→ {renderer(l.actionIdea)}</div>}
-                        {goal && <p className="text-xs text-monk-success mt-1">🎯 {goal.title}</p>}
+                        {goal && <p className="text-xs text-monk-success mt-1">{goal.title}</p>}
                         <p className="text-xs text-monk-text-soft mt-1">{t("library.minutesUnit", { n: Math.round(l.actualDurationSeconds / 60) })}</p>
                       </button>
                       {open && (l.content || l.lesson || l.actionIdea) && (
@@ -457,12 +457,15 @@ export function JournalLibraryScreen() {
               .sort((a, b) => new Date(b.completedAt!).getTime() - new Date(a.completedAt!).getTime())
               .map((session) => {
                 const pack = store.journalPacks.find((p) => p.id === session.packId);
+                const PackIcon = journalPackIcon(pack?.icon ?? "");
                 const open = openPackSessionId === session.id;
                 return (
                   <div key={session.id} className="rounded-xl border border-monk-border/40 bg-monk-surface">
                     <button type="button" onClick={() => setOpenPackSessionId(open ? null : session.id)} className="w-full text-left p-4 transition hover:border-monk-accent">
                       <div className="flex items-center gap-2 mb-1">
-                        <span className="text-sm">{t("library.packEmoji")}</span>
+                        <span className="inline-flex shrink-0 items-center text-monk-muted" aria-hidden>
+                          <PackIcon size={16} strokeWidth={1.75} />
+                        </span>
                         <span className="text-sm font-semibold text-monk-text">{pack?.title ?? t("library.unknownPack")}</span>
                       </div>
                       <p className="text-xs text-monk-muted mt-1">{t("library.answersCount", { n: session.answers.length })}</p>

@@ -446,7 +446,7 @@ export function WeeklyReviewModal({ isOpen, onClose, weeklyPlanId }: WeeklyRevie
                                   : "bg-monk-surface text-monk-muted border border-monk-border hover:border-monk-border-strong"
                               }`}
                             >
-                              ✓ {t("week.review.continue")}
+                              {t("week.review.continue")}
                             </button>
                             <button
                               type="button"
@@ -457,7 +457,7 @@ export function WeeklyReviewModal({ isOpen, onClose, weeklyPlanId }: WeeklyRevie
                                   : "bg-monk-surface text-monk-muted border border-monk-border hover:border-monk-border-strong"
                               }`}
                             >
-                              ⚡ {t("week.review.adjust")}
+                              {t("week.review.adjust")}
                             </button>
                             <button
                               type="button"
@@ -468,7 +468,7 @@ export function WeeklyReviewModal({ isOpen, onClose, weeklyPlanId }: WeeklyRevie
                                   : "bg-monk-surface text-monk-muted border border-monk-border hover:border-monk-border-strong"
                               }`}
                             >
-                              ✕ {t("week.review.release")}
+                              {t("week.review.release")}
                             </button>
                           </div>
 
