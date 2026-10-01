@@ -34,7 +34,7 @@ import {
   nowIso
 } from "../lib/date";
 import { createId } from "../lib/ids";
-import { MAX_SEASON_GOALS } from "../lib/validation";
+import { MAX_ACTIVE_GOAL_TRACKS, MAX_SEASON_GOALS } from "../lib/validation";
 import { parseIntention } from "../lib/implementationIntention";
 import { loadState } from "../lib/storage";
 import { stopMusic } from "../lib/focusMusic";
@@ -56,6 +56,7 @@ import type {
   GoalAllocation,
   GoalAvailability,
   GoalTask,
+  GoalTrack,
   GoalType,
   GoalWeekday,
   JournalAnswers,
@@ -213,6 +214,16 @@ type MonkActions = {
   toggleGoalTask: (goalId: string, taskId: string) => void;
   deleteGoalTask: (goalId: string, taskId: string) => void;
   updateGoalTrack: (goalId: string, track: string) => void;
+  /**
+   * GOAL TRACKS — the named focus-area layer above goals. `Goal.track` keeps
+   * holding the track NAME, so these actions manage identity/order/lifecycle and
+   * keep the goal strings in sync on rename.
+   */
+  addGoalTrack: (name: string) => GoalTrack | undefined;
+  renameGoalTrack: (id: string, name: string) => void;
+  removeGoalTrack: (id: string) => void;
+  reorderGoalTracks: (orderedIds: string[]) => void;
+  setGoalTrackStatus: (id: string, status: GoalTrack["status"]) => void;
   releaseGoalFromSeason: (goalId: string, note?: string) => void;
   updateSettings: (patch: Partial<AppSettings>) => void;
   updateReminder: (id: string, patch: Partial<NotificationReminder>) => void;
@@ -302,6 +313,7 @@ function snapshot(state: MonkStore | MonkMVPState): MonkMVPState {  return {
     appSettings: state.appSettings,
     activeSeason: state.activeSeason,
     goals: state.goals,
+    goalTracks: state.goalTracks ?? [],
     badHabits: state.badHabits,
     practices: state.practices ?? [],
     practiceLogs: state.practiceLogs ?? [],
@@ -755,6 +767,10 @@ export const useMonkStore = create<MonkStore>()(
         proTier: stored.proTier ?? "lifetime",
         weeklyReviews: stored.weeklyReviews ?? {},
         releasedSeasonGoals: stored.releasedSeasonGoals ?? [],
+        // Goal Tracks arrived after goals existed: nobody had a named track
+        // entity before, so an empty list is honest (goals keep their `track`
+        // string either way and read as untracked).
+        goalTracks: stored.goalTracks ?? [],
         // §23: practices arrived after `badHabits`, so any state written before
         // them has no such arrays. Defaulting to empty is honest here — nobody
         // had a positive practice to lose.
@@ -2478,6 +2494,91 @@ export const useMonkStore = create<MonkStore>()(
     });
   },
 
+  addGoalTrack: (name) => {
+    const state = get();
+    const season = state.activeSeason;
+    if (!season) return undefined;
+    const trimmed = name.trim();
+    if (!trimmed) return undefined;
+    const seasonTracks = (state.goalTracks ?? []).filter((track) => track.seasonId === season.id);
+    // The cap is on ACTIVE tracks: pausing one frees a slot for a new focus.
+    if (seasonTracks.filter((track) => track.status === "active").length >= MAX_ACTIVE_GOAL_TRACKS) {
+      return undefined;
+    }
+    const now = nowIso();
+    const track: GoalTrack = {
+      id: createId("track"),
+      seasonId: season.id,
+      name: trimmed,
+      order: seasonTracks.reduce((max, item) => Math.max(max, item.order), 0) + 1,
+      status: "active",
+      createdAt: now,
+      updatedAt: now
+    };
+    set({ goalTracks: [...(state.goalTracks ?? []), track] });
+    return track;
+  },
+
+  renameGoalTrack: (id, name) => {
+    const state = get();
+    const existing = (state.goalTracks ?? []).find((track) => track.id === id);
+    if (!existing) return;
+    const trimmed = name.trim();
+    if (!trimmed || trimmed === existing.name) return;
+    const now = nowIso();
+    // Rename rewrites the goal strings in the same set: `Goal.track` holds the
+    // NAME, so leaving it stale would strand those goals under a track that no
+    // longer exists. Same write, so the two can never be observed apart.
+    const oldName = existing.name;
+    set({
+      goalTracks: (state.goalTracks ?? []).map((track) =>
+        track.id === id ? { ...track, name: trimmed, updatedAt: now } : track
+      ),
+      goals: state.goals.map((goal) =>
+        goal.seasonId === existing.seasonId && goal.track === oldName
+          ? { ...goal, track: trimmed, updatedAt: now }
+          : goal
+      )
+    });
+  },
+
+  removeGoalTrack: (id) => {
+    const state = get();
+    const existing = (state.goalTracks ?? []).find((track) => track.id === id);
+    if (!existing) return;
+    // Removes the track only. Goals keep their `track` string and simply read as
+    // untracked — deleting a grouping must never destroy the work under it.
+    set({ goalTracks: (state.goalTracks ?? []).filter((track) => track.id !== id) });
+  },
+
+  reorderGoalTracks: (orderedIds) => {
+    const state = get();
+    if (orderedIds.length === 0) return;
+    const now = nowIso();
+    const position = new Map(orderedIds.map((id, index) => [id, index + 1]));
+    let changed = false;
+    const goalTracks = (state.goalTracks ?? []).map((track) => {
+      const nextOrder = position.get(track.id);
+      if (nextOrder === undefined || nextOrder === track.order) return track;
+      changed = true;
+      return { ...track, order: nextOrder, updatedAt: now };
+    });
+    if (!changed) return;
+    set({ goalTracks });
+  },
+
+  setGoalTrackStatus: (id, status) => {
+    const state = get();
+    const existing = (state.goalTracks ?? []).find((track) => track.id === id);
+    if (!existing || existing.status === status) return;
+    // A track from another season cannot be revived by the active-season guard.
+    set({
+      goalTracks: (state.goalTracks ?? []).map((track) =>
+        track.id === id ? { ...track, status, updatedAt: nowIso() } : track
+      )
+    });
+  },
+
   reviewWeek: (weekId, decisions, opts) => {
     const state = get();
     const season = state.activeSeason;
@@ -2911,6 +3012,7 @@ export const useMonkStore = create<MonkStore>()(
       appSettings: data.appSettings !== undefined ? { ...state.appSettings, ...data.appSettings } : state.appSettings,
       activeSeason: data.activeSeason !== undefined ? data.activeSeason : state.activeSeason,
       goals: data.goals !== undefined ? data.goals : state.goals,
+      goalTracks: data.goalTracks !== undefined ? data.goalTracks : state.goalTracks,
       badHabits: data.badHabits !== undefined ? data.badHabits : state.badHabits,
       practices: data.practices !== undefined ? data.practices : state.practices,
       practiceLogs: data.practiceLogs !== undefined ? data.practiceLogs : state.practiceLogs,
@@ -2944,6 +3046,7 @@ export const useMonkStore = create<MonkStore>()(
         appSettings: state.appSettings,
         activeSeason: state.activeSeason,
         goals: state.goals,
+        goalTracks: state.goalTracks,
         badHabits: state.badHabits,
         weeklyPlans: state.weeklyPlans,
         dayPlans: state.dayPlans,

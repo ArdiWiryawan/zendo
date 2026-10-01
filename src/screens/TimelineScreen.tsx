@@ -19,7 +19,6 @@ import {
   Plus,
   RotateCcw,
   Sparkles,
-  ShieldCheck,
   ArrowRight,
   X
 } from "lucide-react";
@@ -60,7 +59,6 @@ import {
   getDailyStatusForDate,
   isRetroEligible,
 } from "../lib/dailyActivity";
-import { getFocusStreak } from "../lib/focusStreak";
 import { selectSeasonFocusSummary, selectTotalFocusSecondsForDate } from "../store/selectors";
 import { useMonkStore } from "../store/useMonkStore";
 import type { AppLanguage, TimelineEvent, TimelineEventType } from "../types/app";
@@ -145,14 +143,18 @@ function TimelineStats() {
   );
 }
 
-/** Streak and Consistency Overview (completed vs bolong) */
-function StreakConsistencyCard() {
+/**
+ * Day Counts — how the season's days actually went, stated as fact.
+ *
+ * Deliberately not a streak board (evidence §24, §27): no run counter, no
+ * milestone, no target. It reports what happened and never grades it, so a gap
+ * reads as information rather than a broken chain.
+ */
+function DayCountsCard() {
   const store = useMonkStore();
   const t = useT();
-  const lang = useLanguage();
   const season = store.activeSeason!;
   const today = getTodayDateString();
-  const streak = getFocusStreak(store, today);
 
   const passedCount = Math.min(season.durationDays, getDaysPassed(season.startDate, today));
   const passedDates = datesInRange(season.startDate, passedCount);
@@ -170,70 +172,40 @@ function StreakConsistencyCard() {
     else if (status === "missed" || status === "relapse") missedCount++;
   });
 
-  const milestones = [3, 7, 14, 21, 30, 60, 90];
-  const nextMilestone = milestones.find((m) => m > streak.count) ?? null;
-  const daysToMilestone = nextMilestone ? nextMilestone - streak.count : 0;
-
   return (
     <div className="rounded-2xl border border-monk-border/80 bg-monk-surface/90 p-4 sm:p-5 shadow-xs transition-all duration-200">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="min-w-0">
-          <div className="flex items-center gap-2 flex-wrap">
-            <div className="flex items-baseline gap-1.5">
-              <span className="text-xl font-mono font-bold text-monk-accent leading-none">
-                {streak.count}
-              </span>
-              <span className="text-base font-bold text-monk-text tracking-tight">
-                {t("timeline.streak.dayUnit")}
-              </span>
-            </div>
-            {streak.best > streak.count ? (
-              <span className="text-[11px] font-mono font-medium text-monk-accent bg-monk-accent/10 px-1.5 py-0.5 rounded-md border border-monk-accent/30">
-                {t("timeline.streak.best", { n: streak.best })}
-              </span>
-            ) : null}
-            {nextMilestone ? (
-              <span className="text-[10px] font-mono font-medium text-monk-success bg-monk-success-soft px-2 py-0.5 rounded-md border border-monk-success/30">
-                {t("timeline.streak.nextMilestone", { target: nextMilestone, left: daysToMilestone })}
-              </span>
-            ) : (
-              <span className="text-[10px] font-mono font-medium text-monk-accent bg-monk-accent/10 px-2 py-0.5 rounded-md border border-monk-accent/30">
-                {t("timeline.streak.milestoneMax")}
-              </span>
-            )}
-          </div>
-          <p className="mt-1 text-xs text-monk-muted">
-            {t("timeline.streak.title")}
+          <p className="text-[11px] font-bold uppercase tracking-wider text-monk-muted">
+            {t("timeline.stats.consistency")}
+          </p>
+          <p className="mt-0.5 text-sm font-semibold text-monk-text tabular-nums">
+            {t("timeline.stats.days", { n: completedCount, total: passedCount })}
           </p>
         </div>
 
-        {/* Counter chips */}
+        {/* Day chips — descriptive counts, no judgment */}
         <div className="flex flex-wrap items-center gap-1.5 text-xs font-semibold">
           <span className="inline-flex items-center gap-1 rounded-lg border border-monk-success/30 bg-monk-success-soft px-2 py-1 text-monk-success">
             <Check size={12} strokeWidth={2.5} />
-            <span>{completedCount} {t("timeline.streak.completed")}</span>
+            <span>{completedCount} {t("timeline.legend.done")}</span>
           </span>
           <span className="inline-flex items-center gap-1 rounded-lg border border-monk-rest/30 bg-monk-rest-soft px-2 py-1 text-monk-rest">
             <Moon size={12} strokeWidth={2} />
-            <span>{restCount} {t("timeline.streak.rest")}</span>
+            <span>{restCount} {t("timeline.legend.rest")}</span>
           </span>
           {partialCount > 0 ? (
-            <span className="inline-flex items-center gap-1 rounded-lg border border-monk-warning/30 bg-monk-warning-soft px-2 py-1 text-monk-warning">
-              <Flame size={12} strokeWidth={2} />
-              <span>{partialCount} {t("timeline.streak.partial")}</span>
+            <span className="inline-flex items-center gap-1 rounded-lg border border-monk-border bg-monk-soft px-2 py-1 text-monk-muted">
+              <Timer size={12} strokeWidth={2} />
+              <span>{partialCount} {t("timeline.legend.partial")}</span>
             </span>
           ) : null}
           {missedCount > 0 ? (
-            <span className="inline-flex items-center gap-1 rounded-lg border border-monk-danger/30 bg-monk-danger-soft px-2 py-1 text-monk-danger">
-              <span className="inline-block h-1.5 w-1.5 rounded-full bg-monk-danger" />
-              <span>{missedCount} {t("timeline.streak.missed")}</span>
-            </span>
-          ) : (
             <span className="inline-flex items-center gap-1 rounded-lg border border-monk-border bg-monk-soft px-2 py-1 text-monk-muted">
-              <ShieldCheck size={13} className="text-monk-success" />
-              <span>{t("timeline.streak.noMissed")}</span>
+              <span className="inline-block h-1.5 w-1.5 rounded-full bg-monk-muted" />
+              <span>{missedCount} {t("timeline.legend.missed")}</span>
             </span>
-          )}
+          ) : null}
         </div>
       </div>
     </div>
@@ -995,7 +967,7 @@ export default function TimelineScreen() {
               })}
             </div>
 
-            <StreakConsistencyCard />
+            <DayCountsCard />
           </motion.div>
         )}
 
@@ -1301,7 +1273,7 @@ export default function TimelineScreen() {
               </div>
             </Card>
 
-            <StreakConsistencyCard />
+            <DayCountsCard />
           </motion.div>
         )}
 
@@ -1315,6 +1287,7 @@ export default function TimelineScreen() {
           >
             {/* High-level Focus Time and Returns Consistency at top */}
             <TimelineStats />
+            <DayCountsCard />
             <SeasonProgressCard onOpenGoal={setBlueprintGoalId} />
             <WhyCard />
 

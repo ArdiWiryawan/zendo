@@ -116,6 +116,23 @@ export type Project = {
   updatedAt: ISODateString;
 };
 
+/**
+ * GOAL TRACK — a named focus area a season's goals are grouped under
+ * ("Magang", "YouTube", "Bisnis"). The entity carries identity, order and
+ * lifecycle; `Goal.track` still holds the track NAME and stays the single
+ * source of truth for what a goal belongs to, so every existing read site keeps
+ * working. Renaming a track rewrites the matching goal strings in the same set.
+ */
+export type GoalTrack = {
+  id: string;
+  seasonId: string;
+  name: string;
+  order: number;
+  status: "active" | "paused" | "archived";
+  createdAt: ISODateString;
+  updatedAt: ISODateString;
+};
+
 export type Goal = {
   id: string;
   seasonId: string;
@@ -651,6 +668,8 @@ export type MonkMVPState = {
   activeSeason: Season | null;
   pastSeasons: Season[];
   goals: Goal[];
+  /** Named focus areas for the season's goals (see GoalTrack). */
+  goalTracks: GoalTrack[];
   badHabits: BadHabit[];
   /** §23 positive practices — the "do this" layer, separate from badHabits. */
   practices: Practice[];

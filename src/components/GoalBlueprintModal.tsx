@@ -11,7 +11,13 @@ import {
   ChevronUp,
   ShieldAlert,
   Check,
-  Repeat
+  Repeat,
+  Plus,
+  ArrowUp,
+  ArrowDown,
+  Pause,
+  Play,
+  Trash2
 } from "lucide-react";
 import { useMonkStore, normalizeAvailability } from "../store/useMonkStore";
 import { useT } from "../i18n";
@@ -20,6 +26,7 @@ import type { GoalType, GoalWeekday } from "../types/app";
 import { PrimaryButton, SecondaryButton, GhostButton, TextInput, Textarea, CalmAlert, useCalmToast, useModalA11y } from "./ui";
 import { hapticPress } from "../lib/haptics";
 import { GOAL_TEMPLATES, GoalBlueprintTemplate } from "../constants/goalTemplates";
+import { MAX_ACTIVE_GOAL_TRACKS } from "../lib/validation";
 
 interface GoalBlueprintModalProps {
   goalId: string | null;
@@ -37,6 +44,213 @@ const WEEKDAY_KEYS = [
   "blueprint.weekday.sat",
   "blueprint.weekday.sun"
 ] as const;
+
+/**
+ * GOAL TRACKS — the season's named focus areas, with real identity so they can
+ * be renamed, reordered, paused and deleted. The chips set THIS goal's track
+ * (which stays a plain name on the goal); the list below is the season-wide
+ * manager. The active cap is a gentle nudge, never a hard error: at the limit
+ * the add action explains the trade-off and points at pausing.
+ */
+function GoalTrackManager({
+  lang,
+  selectedTrack,
+  onSelectTrack
+}: {
+  lang: "en" | "id";
+  selectedTrack: string;
+  onSelectTrack: (name: string) => void;
+}) {
+  const store = useMonkStore();
+  const seasonId = store.activeSeason?.id;
+  const tracks = (store.goalTracks ?? [])
+    .filter((track) => track.seasonId === seasonId)
+    .sort((a, b) => a.order - b.order);
+  const activeTracks = tracks.filter((track) => track.status === "active");
+  const atCap = activeTracks.length >= MAX_ACTIVE_GOAL_TRACKS;
+
+  const [drafts, setDrafts] = useState<Record<string, string>>({});
+  const [newName, setNewName] = useState("");
+  const [showCapNote, setShowCapNote] = useState(false);
+
+  const commitRename = (id: string, fallback: string) => {
+    const draft = drafts[id];
+    if (draft === undefined) return;
+    setDrafts((prev) => {
+      const next = { ...prev };
+      delete next[id];
+      return next;
+    });
+    const trimmed = draft.trim();
+    if (!trimmed || trimmed === fallback) return;
+    hapticPress("light");
+    store.renameGoalTrack(id, trimmed);
+  };
+
+  const move = (id: string, direction: -1 | 1) => {
+    const ids = tracks.map((track) => track.id);
+    const index = ids.indexOf(id);
+    const target = index + direction;
+    if (index < 0 || target < 0 || target >= ids.length) return;
+    [ids[index], ids[target]] = [ids[target], ids[index]];
+    hapticPress("light");
+    store.reorderGoalTracks(ids);
+  };
+
+  const handleAdd = () => {
+    const trimmed = newName.trim();
+    if (!trimmed) return;
+    if (atCap) {
+      // Surface the trade-off rather than a hard error; nothing is written.
+      setShowCapNote(true);
+      return;
+    }
+    hapticPress("light");
+    const created = store.addGoalTrack(trimmed);
+    if (created) {
+      setNewName("");
+      setShowCapNote(false);
+      onSelectTrack(created.name);
+    }
+  };
+
+  return (
+    <div className="space-y-2">
+      {/* Quick pick — sets this goal's track from the season's real tracks. */}
+      {activeTracks.length > 0 ? (
+        <div className="flex flex-wrap gap-1.5 pt-0.5">
+          {activeTracks.map((item) => (
+            <button
+              key={item.id}
+              type="button"
+              onClick={() => { hapticPress("light"); onSelectTrack(item.name); }}
+              aria-pressed={selectedTrack === item.name}
+              className={`rounded-lg px-2 py-0.5 text-[10px] font-semibold transition active:scale-95 border ${
+                selectedTrack === item.name
+                  ? "border-monk-accent bg-monk-accent/15 text-monk-accent font-bold"
+                  : "border-monk-border/60 bg-monk-surface text-monk-muted hover:text-monk-text"
+              }`}
+            >
+              {item.name}
+            </button>
+          ))}
+        </div>
+      ) : null}
+
+      {/* Manager */}
+      <div className="space-y-1.5 border-t border-monk-border/50 pt-2">
+        <span className="block text-[10px] font-bold uppercase tracking-wider text-monk-muted">
+          {lang === "en" ? "Tracks this season" : "Track musim ini"}
+        </span>
+
+        {tracks.length === 0 ? (
+          <p className="text-[11px] text-monk-muted">
+            {lang === "en"
+              ? "No tracks yet. Add one to group related goals."
+              : "Belum ada track. Tambahkan satu untuk mengelompokkan goal terkait."}
+          </p>
+        ) : null}
+
+        {tracks.map((item, index) => {
+          const paused = item.status !== "active";
+          return (
+            <div
+              key={item.id}
+              className="flex items-center gap-1.5 rounded-lg border border-monk-border/60 bg-monk-surface px-2 py-1.5"
+            >
+              <span className="w-5 shrink-0 font-mono text-[10px] tabular-nums text-monk-muted">
+                {String(index + 1).padStart(2, "0")}
+              </span>
+              <input
+                value={drafts[item.id] ?? item.name}
+                onChange={(e) => setDrafts((prev) => ({ ...prev, [item.id]: e.target.value }))}
+                onBlur={() => commitRename(item.id, item.name)}
+                onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); }}
+                aria-label={lang === "en" ? "Track name" : "Nama track"}
+                className={`min-w-0 flex-1 bg-transparent text-xs font-semibold focus:outline-none ${
+                  paused ? "text-monk-muted line-through" : "text-monk-text"
+                }`}
+              />
+              <button
+                type="button"
+                onClick={() => move(item.id, -1)}
+                disabled={index === 0}
+                aria-label={lang === "en" ? "Move up" : "Naikkan"}
+                className="grid h-6 w-6 shrink-0 place-items-center rounded text-monk-muted transition hover:text-monk-text disabled:opacity-30"
+              >
+                <ArrowUp size={13} />
+              </button>
+              <button
+                type="button"
+                onClick={() => move(item.id, 1)}
+                disabled={index === tracks.length - 1}
+                aria-label={lang === "en" ? "Move down" : "Turunkan"}
+                className="grid h-6 w-6 shrink-0 place-items-center rounded text-monk-muted transition hover:text-monk-text disabled:opacity-30"
+              >
+                <ArrowDown size={13} />
+              </button>
+              <button
+                type="button"
+                onClick={() => { hapticPress("light"); store.setGoalTrackStatus(item.id, paused ? "active" : "paused"); }}
+                aria-label={
+                  paused
+                    ? (lang === "en" ? "Resume track" : "Lanjutkan track")
+                    : (lang === "en" ? "Pause track" : "Jeda track")
+                }
+                className="grid h-6 w-6 shrink-0 place-items-center rounded text-monk-muted transition hover:text-monk-text"
+              >
+                {paused ? <Play size={13} /> : <Pause size={13} />}
+              </button>
+              <button
+                type="button"
+                onClick={() => { hapticPress("light"); store.removeGoalTrack(item.id); }}
+                aria-label={lang === "en" ? "Delete track" : "Hapus track"}
+                className="grid h-6 w-6 shrink-0 place-items-center rounded text-monk-muted transition hover:text-monk-danger"
+              >
+                <Trash2 size={13} />
+              </button>
+            </div>
+          );
+        })}
+
+        <div className="flex items-center gap-1.5 pt-0.5">
+          <input
+            value={newName}
+            onChange={(e) => { setNewName(e.target.value); if (showCapNote) setShowCapNote(false); }}
+            onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); handleAdd(); } }}
+            placeholder={lang === "en" ? "New track name" : "Nama track baru"}
+            aria-label={lang === "en" ? "New track name" : "Nama track baru"}
+            className="min-w-0 flex-1 rounded-lg border border-monk-border bg-monk-surface px-2 py-1.5 text-xs text-monk-text focus:border-monk-accent focus:outline-none"
+          />
+          <button
+            type="button"
+            onClick={handleAdd}
+            className="grid h-7 w-7 shrink-0 place-items-center rounded-lg border border-monk-border bg-monk-surface text-monk-muted transition hover:text-monk-text active:scale-95"
+            aria-label={lang === "en" ? "Add track" : "Tambah track"}
+          >
+            <Plus size={14} />
+          </button>
+        </div>
+
+        {showCapNote ? (
+          <CalmAlert
+            type="info"
+            title={
+              lang === "en"
+                ? `You already have ${MAX_ACTIVE_GOAL_TRACKS} active tracks`
+                : `Kamu sudah punya ${MAX_ACTIVE_GOAL_TRACKS} track aktif`
+            }
+            description={
+              lang === "en"
+                ? "Three live tracks is usually as much as a season can carry well. Pause one to free a slot, or replace one you're no longer working on — nothing is lost either way."
+                : "Tiga track aktif biasanya sudah sebatas yang bisa dijalani dengan baik dalam satu musim. Jeda salah satunya untuk membuka slot, atau ganti yang sudah tidak kamu kerjakan — tidak ada yang hilang."
+            }
+          />
+        ) : null}
+      </div>
+    </div>
+  );
+}
 
 export function GoalBlueprintModal({ goalId, isOpen, onClose }: GoalBlueprintModalProps) {
   const t = useT();
@@ -352,22 +566,7 @@ export function GoalBlueprintModal({ goalId, isOpen, onClose }: GoalBlueprintMod
                   placeholder={t("blueprint.trackPlaceholder")}
                   className="bg-monk-surface text-sm"
                 />
-                <div className="flex flex-wrap gap-1.5 pt-0.5">
-                  {["Magang", "YouTube", "Bisnis", "Personal", "Studi"].map((chip) => (
-                    <button
-                      key={chip}
-                      type="button"
-                      onClick={() => setTrack(chip)}
-                      className={`rounded-lg px-2 py-0.5 text-[10px] font-semibold transition active:scale-95 border ${
-                        track === chip
-                          ? "border-monk-accent bg-monk-accent/15 text-monk-accent font-bold"
-                          : "border-monk-border/60 bg-monk-surface text-monk-muted hover:text-monk-text"
-                      }`}
-                    >
-                      {chip}
-                    </button>
-                  ))}
-                </div>
+                <GoalTrackManager lang={lang} selectedTrack={track} onSelectTrack={setTrack} />
               </div>
 
               {/* Pillar 2: Next Keystone Action */}

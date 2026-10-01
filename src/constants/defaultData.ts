@@ -100,6 +100,7 @@ export function createInitialState(): MonkMVPState {
     activeSeason: null,
     pastSeasons: [],
     goals: [],
+    goalTracks: [],
     badHabits: [],
     practices: [],
     practiceLogs: [],

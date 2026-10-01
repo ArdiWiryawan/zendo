@@ -51,6 +51,7 @@ function mergeScalar<T extends HasUpdatedAt | null>(local: T, remote: T): T {
 /** Array fields that carry `id` + `updatedAt` — unioned by id, newer wins. */
 const ARRAY_KEYS: (keyof MonkMVPState)[] = [
   "goals",
+  "goalTracks",
   "badHabits",
   "practices",
   "practiceLogs",

@@ -8,6 +8,15 @@ import type { GoalAllocation, GoalDraft, ValidationResult } from "../types/app";
  */
 export const MAX_SEASON_GOALS = 3;
 
+/**
+ * Intentional constraint: at most this many ACTIVE Goal Tracks per season.
+ * Tracks are the focus-area layer above goals, so the same reasoning as
+ * MAX_SEASON_GOALS applies one level up: a fifth live track means attention is
+ * split too thin to move any of them. Pausing a track frees a slot — the limit
+ * is on attention, not on how many tracks a season may remember.
+ */
+export const MAX_ACTIVE_GOAL_TRACKS = 3;
+
 export function valid(message?: string): ValidationResult {
   return { valid: true, message };
 }
