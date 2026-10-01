@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { mergeRemoteState } from "./syncMerge";
 import type { MonkMVPState, Goal } from "../types/app";
-import { createInitialState } from "../constants/defaultData";
+import { createInitialState, createDefaultOnboarding } from "../constants/defaultData";
 
 function mkState(goals: Partial<Goal>[] = []): MonkMVPState {
   const st = createInitialState();
@@ -133,5 +133,56 @@ describe("mergeRemoteState", () => {
     expect(merged.notebookCategoryDeletedAt?.cat_spiritual).toBe("2026-08-02T00:00:00.000Z");
     expect(merged.notebookCategories.map((c) => c.id)).not.toContain("cat_spiritual");
     expect(merged.notebookCategories.map((c) => c.id)).toContain("cat_karier");
+  });
+
+  describe("onboarding (magang-vs-youtube)", () => {
+    function mkOnboarding(selectedFocusGoalIds: string[], updatedAt?: string) {
+      const ob = createDefaultOnboarding();
+      ob.selectedFocusGoalIds = selectedFocusGoalIds;
+      if (updatedAt !== undefined) ob.updatedAt = updatedAt;
+      return ob;
+    }
+
+    it("adopts newer remote selectedFocusGoalIds", () => {
+      const local = mkState();
+      local.onboarding = mkOnboarding(["youtube"], "2026-08-01T10:00:00Z");
+      const remote = mkState();
+      remote.onboarding = mkOnboarding(["magang"], "2026-08-02T10:00:00Z");
+
+      const merged = mergeRemoteState(local, remote);
+      expect(merged.onboarding.selectedFocusGoalIds).toEqual(["magang"]);
+    });
+
+    it("does not clobber a newer local selection with an older remote", () => {
+      const local = mkState();
+      local.onboarding = mkOnboarding(["magang"], "2026-08-02T10:00:00Z");
+      const remote = mkState();
+      remote.onboarding = mkOnboarding(["youtube"], "2026-08-01T10:00:00Z");
+
+      const merged = mergeRemoteState(local, remote);
+      expect(merged.onboarding.selectedFocusGoalIds).toEqual(["magang"]);
+    });
+
+    it("leaves local unchanged when neither side has updatedAt", () => {
+      const local = mkState();
+      local.onboarding = mkOnboarding(["magang"]);
+      const remote = mkState();
+      remote.onboarding = mkOnboarding(["youtube"]);
+
+      const merged = mergeRemoteState(local, remote);
+      expect(merged.onboarding.selectedFocusGoalIds).toEqual(["magang"]);
+    });
+
+    it("default onboarding (updatedAt undefined) loses to a dated remote", () => {
+      const local = mkState();
+      local.onboarding = createDefaultOnboarding();
+      expect(local.onboarding.updatedAt).toBeUndefined();
+      const remote = mkState();
+      remote.onboarding = mkOnboarding(["magang"], "2026-08-02T10:00:00Z");
+
+      const merged = mergeRemoteState(local, remote);
+      expect(merged.onboarding.selectedFocusGoalIds).toEqual(["magang"]);
+      expect(merged.onboarding.updatedAt).toBe("2026-08-02T10:00:00Z");
+    });
   });
 });

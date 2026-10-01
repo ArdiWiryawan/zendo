@@ -93,14 +93,20 @@ async function initSync(): Promise<void> {
   window.addEventListener("online", onOnline);
   window.addEventListener("offline", onOffline);
 
-  // Register the debounced push BEFORE the initial pull so offline edits are
-  // never stranded: even if the pull below fails (offline boot), any later
-  // store change pushes to the cloud as soon as sync is possible.
+  // Arm the debounced push only AFTER the initial pull settles (success or
+  // failure). Ordering matters: a store write during boot (e.g. recordOpen()
+  // runs on every mount and does set({appSettings})) would otherwise fire
+  // pushState 800ms later — shipping a state that hydrate() had not yet
+  // reconciled with the cloud row, and wiping it. Nothing can push during the
+  // pull window because the app has just started and holds no user edits yet.
+  // A future reader moving this back above `pullRemote()` reintroduces that bug.
   let timer: ReturnType<typeof setTimeout> | null = null;
-  useMonkStore.subscribe((next) => {
-    if (timer) clearTimeout(timer);
-    timer = setTimeout(() => void pushState(), 800);
-  });
+  const armPush = () => {
+    useMonkStore.subscribe(() => {
+      if (timer) clearTimeout(timer);
+      timer = setTimeout(() => void pushState(), 800);
+    });
+  };
 
   // Listen to Auth state changes to pull cloud data on login / reset on logout
   subscribeAuthState((_event, session) => {
@@ -111,7 +117,13 @@ async function initSync(): Promise<void> {
     }
   });
 
-  await pullRemote();
+  try {
+    await pullRemote();
+  } finally {
+    // Offline boot: the pull rejects or returns early, but the subscription
+    // still arms here, so offline edits are pushed as soon as sync is possible.
+    armPush();
+  }
 }
 
 initSync();

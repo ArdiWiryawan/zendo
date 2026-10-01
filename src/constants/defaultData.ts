@@ -89,7 +89,11 @@ export function createDefaultOnboarding(): OnboardingState {
     goalWhys: {},
     goalDesiredOutcomes: {},
     goalValueMapping: {},
-    obstacleMitigations: {}
+    obstacleMitigations: {},
+    // Deliberately unset: a default draft has not been written by the user, so
+    // it must not out-rank a dated remote onboarding on merge. Every onboarding
+    // action stamps this (see OnboardingState.updatedAt).
+    updatedAt: undefined
   };
 }
 

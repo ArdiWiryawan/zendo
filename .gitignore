@@ -152,3 +152,6 @@ today-screen.png
 
 # UI/UX audit screenshot output (regenerate via tools/audit/*.mjs)
 /audit/
+
+# One-off local data-recovery page (contains the Supabase anon key). Never ship.
+recover.html

@@ -921,14 +921,14 @@ export const useMonkStore = create<MonkStore>()(
   updateOnboarding: (patch) => {
     const state = get();
     set({
-      onboarding: { ...state.onboarding, ...patch }
+      onboarding: { ...state.onboarding, ...patch, updatedAt: nowIso() }
     });
   },
 
   setOnboardingStep: (step) => {
     const state = get();
     set({
-      onboarding: { ...state.onboarding, currentStep: step }
+      onboarding: { ...state.onboarding, currentStep: step, updatedAt: nowIso() }
     });
   },
 
@@ -948,7 +948,7 @@ export const useMonkStore = create<MonkStore>()(
       const next = selectedHabits[selectedHabits.length - 1];
       frictionActions[next.id] = frictionActionsForHabit(next);
     }
-    set({ onboarding: { ...state.onboarding, selectedHabits, frictionActions } });
+    set({ onboarding: { ...state.onboarding, selectedHabits, frictionActions, updatedAt: nowIso() } });
   },
 
   setCustomPatternName: (name) => {
@@ -969,7 +969,8 @@ export const useMonkStore = create<MonkStore>()(
         frictionActions: {
           ...state.onboarding.frictionActions,
           [nextHabit.id]: frictionActionsForHabit(nextHabit)
-        }
+        },
+        updatedAt: nowIso()
       }
     });
   },
@@ -985,7 +986,8 @@ export const useMonkStore = create<MonkStore>()(
           [habitId]: actions.map((action) =>
             action.id === actionId ? { ...action, completed: !action.completed } : action
           )
-        }
+        },
+        updatedAt: nowIso()
       }
     });
   },
@@ -997,7 +999,8 @@ export const useMonkStore = create<MonkStore>()(
         ...state.onboarding,
         goalDrafts: state.onboarding.goalDrafts.map((goal) =>
           goal.id === id ? { ...goal, title } : goal
-        )
+        ),
+        updatedAt: nowIso()
       }
     });
   },
@@ -1008,7 +1011,8 @@ export const useMonkStore = create<MonkStore>()(
     set({
       onboarding: {
         ...state.onboarding,
-        goalDrafts: [...state.onboarding.goalDrafts, { id: createId("draft_goal"), title: "" }]
+        goalDrafts: [...state.onboarding.goalDrafts, { id: createId("draft_goal"), title: "" }],
+        updatedAt: nowIso()
       }
     });
   },
@@ -1020,7 +1024,8 @@ export const useMonkStore = create<MonkStore>()(
         ...state.onboarding,
         goalDrafts: state.onboarding.goalDrafts.filter((goal) => goal.id !== id),
         releasedGoalIds: state.onboarding.releasedGoalIds.filter((goalId) => goalId !== id),
-        selectedFocusGoalIds: state.onboarding.selectedFocusGoalIds.filter((goalId) => goalId !== id)
+        selectedFocusGoalIds: state.onboarding.selectedFocusGoalIds.filter((goalId) => goalId !== id),
+        updatedAt: nowIso()
       }
     });
   },
@@ -1034,7 +1039,8 @@ export const useMonkStore = create<MonkStore>()(
         releasedGoalIds: released
           ? state.onboarding.releasedGoalIds.filter((goalId) => goalId !== id)
           : [...state.onboarding.releasedGoalIds, id],
-        selectedFocusGoalIds: state.onboarding.selectedFocusGoalIds.filter((goalId) => goalId !== id)
+        selectedFocusGoalIds: state.onboarding.selectedFocusGoalIds.filter((goalId) => goalId !== id),
+        updatedAt: nowIso()
       }
     });
   },
@@ -1054,7 +1060,8 @@ export const useMonkStore = create<MonkStore>()(
       onboarding: {
         ...state.onboarding,
         selectedFocusGoalIds,
-        weeklyAllocations
+        weeklyAllocations,
+        updatedAt: nowIso()
       }
     });
   },
@@ -1068,7 +1075,8 @@ export const useMonkStore = create<MonkStore>()(
         seasonDurationDays: days,
         customDurationDays: [7, 30, 90].includes(days) ? undefined : days,
         seasonStartDate: start,
-        seasonEndDate: addDaysToDate(start, days - 1)
+        seasonEndDate: addDaysToDate(start, days - 1),
+        updatedAt: nowIso()
       }
     });
   },
@@ -1078,7 +1086,8 @@ export const useMonkStore = create<MonkStore>()(
     set({
       onboarding: {
         ...state.onboarding,
-        keystoneActions: { ...state.onboarding.keystoneActions, [goalId]: action }
+        keystoneActions: { ...state.onboarding.keystoneActions, [goalId]: action },
+        updatedAt: nowIso()
       }
     });
   },
@@ -1088,7 +1097,8 @@ export const useMonkStore = create<MonkStore>()(
     set({
       onboarding: {
         ...state.onboarding,
-        obstacleMitigations: { ...state.onboarding.obstacleMitigations, [goalId]: mitigation }
+        obstacleMitigations: { ...state.onboarding.obstacleMitigations, [goalId]: mitigation },
+        updatedAt: nowIso()
       }
     });
   },
@@ -1096,7 +1106,7 @@ export const useMonkStore = create<MonkStore>()(
   setWeeklyMode: (mode) => {
     const state = get();
     set({
-      onboarding: { ...state.onboarding, weeklyMode: mode }
+      onboarding: { ...state.onboarding, weeklyMode: mode, updatedAt: nowIso() }
     });
   },
 
@@ -1120,7 +1130,8 @@ export const useMonkStore = create<MonkStore>()(
     set({
       onboarding: {
         ...state.onboarding,
-        weeklyAllocations: newAllocations
+        weeklyAllocations: newAllocations,
+        updatedAt: nowIso()
       }
     });
   },
@@ -3119,6 +3130,13 @@ export const useMonkStore = create<MonkStore>()(
         goals: state.goals,
         goalTracks: state.goalTracks,
         badHabits: state.badHabits,
+        // §23 positive practices and their logged history. Written by
+        // addPractice/logPractice; omitted here they only ever lived in memory,
+        // so hydrate's `stored.practices ?? []` wiped them on any reload.
+        practices: state.practices,
+        practiceLogs: state.practiceLogs,
+        // §16 projects — same class of omission as the two above.
+        projects: state.projects,
         weeklyPlans: state.weeklyPlans,
         dayPlans: state.dayPlans,
         focusSessions: state.focusSessions,

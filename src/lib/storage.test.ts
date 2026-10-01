@@ -158,6 +158,22 @@ describe("storage", () => {
     expect(loadState()).toBeNull();
   });
 
+  // Regression: `partialize` used to omit practices/practiceLogs, so hydrate's
+  // `stored.practices ?? []` wiped a user's practices and their logged history
+  // on every reload. This asserts the round-trip at the storage layer, which is
+  // what the persist adapter actually writes and loadState actually reads.
+  it("round-trips practices and practiceLogs through saveState/loadState", () => {
+    const state = baseState({
+      practices: [{ id: "p1", name: "Membaca" } as MonkMVPState["practices"][number]],
+      practiceLogs: [{ id: "l1", practiceId: "p1", date: "2026-08-01" } as MonkMVPState["practiceLogs"][number]]
+    });
+    saveState(state);
+
+    const loaded = loadState()!;
+    expect(loaded.practices).toEqual([{ id: "p1", name: "Membaca" }]);
+    expect(loaded.practiceLogs).toEqual([{ id: "l1", practiceId: "p1", date: "2026-08-01" }]);
+  });
+
   it("loadLastFocus returns null when missing/invalid", () => {
     expect(loadLastFocus()).toBeNull();
     localStorage.setItem(LAST_FOCUS_KEY, "{bad");

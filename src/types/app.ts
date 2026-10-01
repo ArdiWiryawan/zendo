@@ -631,6 +631,23 @@ export type OnboardingState = {
   goalDesiredOutcomes: Record<string, string>;
   goalValueMapping: Record<string, string[]>;
   obstacleMitigations: Record<string, string>;
+  /**
+   * Last write to this onboarding draft. The whole OnboardingState is merged
+   * as ONE scalar (syncMerge SCALAR_KEYS → mergeScalar), so without a
+   * timestamp a stale device always won: `isNewer` sees no timestamp on either
+   * side and returns false, keeping local. That silently discarded the season's
+   * real goal selection (`selectedFocusGoalIds`) when it was chosen elsewhere.
+   *
+   * Optional on purpose. Two states must stay timestamp-less (and therefore
+   * lose the scalar comparison, making the remote win):
+   *   - a default/fresh onboarding, which is a draft nobody has edited yet;
+   *     stamping it "now" would beat a genuinely newer remote selection;
+   *   - an onboarding written before this field existed, which carries no
+   *     ordering signal and so must adopt the dated device's version.
+   * Every user write stamps it, so from the first real edit onward multi-device
+   * merge is ordinary last-write-wins.
+   */
+  updatedAt?: ISODateString;
 };
 
 export type WeeklyReviewDecision = {
