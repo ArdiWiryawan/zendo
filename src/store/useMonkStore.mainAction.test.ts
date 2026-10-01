@@ -72,10 +72,22 @@ describe("setDayMainAction", () => {
     expect(plan().mainAction).toBe("Draft the outline");
   });
 
-  it("falls back to the goal's keystone action when cleared", () => {
+  it("clears to empty instead of resurrecting the goal's keystone action", () => {
+    // §22: the day owns its Main Action. Falling back to the keystone here was
+    // what let a cleared day silently revert to a stale goal-level string.
     seed();
     useMonkStore.getState().setDayMainAction(DATE, "");
-    expect(plan().mainAction).toBe("Write the nav copy");
+    expect(plan().mainAction).toBe("");
+  });
+
+  it("replaces the keystone copy with the user's own action, not the reverse", () => {
+    // The seeded day starts equal to the keystone; a real edit must win and
+    // clearing must not bring the keystone back.
+    seed();
+    useMonkStore.getState().setDayMainAction(DATE, "Write 3 possible hooks");
+    expect(plan().mainAction).toBe("Write 3 possible hooks");
+    useMonkStore.getState().setDayMainAction(DATE, "");
+    expect(plan().mainAction).toBe("");
   });
 
   it("leaves the day untouched when there is no plan for that date", () => {

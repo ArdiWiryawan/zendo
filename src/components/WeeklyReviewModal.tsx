@@ -487,11 +487,17 @@ export function WeeklyReviewModal({ isOpen, onClose, weeklyPlanId }: WeeklyRevie
 
                           {isAdjusting && (
                             <div className="mt-2 pt-2 border-t border-monk-border/40">
+                              {/* The keystone is offered as a PLACEHOLDER, not as the
+                                  field's value (§22). Prefilling the input made the
+                                  goal's default look like a decision already taken,
+                                  so an untouched field silently became the week's
+                                  action. As a hint it stays a suggestion until the
+                                  user actually types. */}
                               <TextInput
                                 label={t("week.review.actionLabel")}
-                                value={currentDecision.mainAction ?? goal?.keystoneAction ?? ""}
+                                value={currentDecision.mainAction ?? ""}
                                 onChange={(e) => setGoalMainAction(alloc.goalId, e.target.value)}
-                                placeholder={t("week.review.actionPlaceholder")}
+                                placeholder={goal?.keystoneAction?.trim() || t("week.review.actionPlaceholder")}
                                 className="text-xs"
                               />
                             </div>

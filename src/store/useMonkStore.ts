@@ -1430,13 +1430,16 @@ export const useMonkStore = create<MonkStore>()(
     const state = get();
     const plan = state.dayPlans.find((day) => day.date === dateString);
     if (!plan) return;
-    // Empty clears back to the goal's keystone action rather than to nothing —
-    // a goal day with no next step is worse than one with a generic one.
-    const goal = plan.goalId ? state.goals.find((g) => g.id === plan.goalId) : undefined;
-    const next = mainAction.trim() || goal?.keystoneAction;
+    // The day owns its Main Action (§22). Clearing leaves it empty — it must NOT
+    // fall back to the goal's keystone action. That fallback is what made the
+    // rendered action silently revert to a stale goal-level string after the user
+    // cleared or replaced it: the keystone is a starting suggestion, not a value
+    // the day inherits forever. The suggestion is still offered explicitly in the
+    // Today UI, so nothing is lost by not writing it automatically.
+    const next = mainAction.trim();
     // No-op writes would bump updatedAt and make the sync merge think this
     // record changed, which can clobber a newer edit from another device.
-    if ((plan.mainAction || "") === (next || "")) return;
+    if ((plan.mainAction || "") === next) return;
     const dayPlan = { ...plan, mainAction: next, updatedAt: nowIso() };
     set({
       dayPlans: state.dayPlans.map((day) => (day.id === dayPlan.id ? dayPlan : day))

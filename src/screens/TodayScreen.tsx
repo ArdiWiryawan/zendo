@@ -872,7 +872,11 @@ export function TodayScreen() {
                       className="text-xs font-semibold text-monk-accent hover:underline active:scale-95"
                       onClick={() => {
                         hapticPress("light");
-                        const initial = todayPlan.mainAction || goal?.keystoneAction || "";
+                        // Prefill from the DAY's own action only (§22). Seeding the
+                        // edit form with the goal's keystone meant opening "edit" on
+                        // an empty day and saving committed the goal's default as
+                        // though the user had written it themselves.
+                        const initial = todayPlan.mainAction || "";
                         const parsed = parseIntention(initial);
                         setEditTime(parsed.time || "");
                         setEditWhen(parsed.when || "");
@@ -924,18 +928,12 @@ export function TodayScreen() {
                         type="button"
                         className="text-xs font-semibold text-monk-accent hover:underline"
                         onClick={() => {
-                          const formatted = formatIntention(editWhen, editAction, editTime);
-                          if (formatted.trim()) {
-                            hapticPress("medium");
-                            store.createOrUpdateDayPlan(today, {
-                              dayType: "goal",
-                              goalId: todayPlan.goalId,
-                              mainAction: formatted.trim()
-                            });
-                            store.setTodayHighlight(editAction.trim() || formatted.trim());
-                            setEditingAction(false);
-                            toast.show(t("toast.intentionSaved"));
-                          }
+                          const formatted = formatIntention(editWhen, editAction, editTime).trim();
+                          hapticPress("medium");
+                          store.setDayMainAction(today, formatted);
+                          store.setTodayHighlight(editAction.trim() || formatted);
+                          setEditingAction(false);
+                          toast.show(t("toast.intentionSaved"));
                         }}
                       >
                         {t("today.save")}
@@ -982,7 +980,16 @@ export function TodayScreen() {
                   if (goal?.keystoneAction) {
                     return (
                       <div className="space-y-2">
-                        <p className="text-sm sm:text-base font-bold leading-relaxed text-monk-text">
+                        {/* Shown as a labelled SUGGESTION, not as the day's action
+                            (§22). Rendering it in the same bold text as a real Main
+                            Action made the goal's default indistinguishable from
+                            something the user chose — and now that clearing the day
+                            no longer writes the keystone, this is what an unset day
+                            actually shows. The label keeps the provenance visible. */}
+                        <div className="text-[10px] uppercase tracking-widest text-monk-text-soft font-mono">
+                          {t("today.suggested")}
+                        </div>
+                        <p className="text-sm text-monk-muted leading-relaxed">
                           {goal.keystoneAction}
                         </p>
                         <button
