@@ -1316,34 +1316,69 @@ h5.md-heading, h6.md-heading { font-size: 1rem; }
   padding: 1rem;
 }
 
-/* Morning pages — an open page, not a form field.
+/* Morning pages — a page of the notebook, not a form field.
  *
- * The writing surface is deliberately bare: no border, no shadow, no ruled
- * lines, no margin rule. A visible container made the act of writing read as
- * filling in a form, which is the opposite of what a morning page is for.
- * The page's own typography and whitespace establish the writing context.
+ * The surface is a ruled sheet of paper, matching the notebook editor
+ * (`.nb-sheet` + `.nb-page-body`) so morning pages read as the same physical
+ * object as the rest of the journal rather than a separate textbox.
  *
- * Colours come from the theme tokens rather than literal hex so the surface
- * follows all six themes like the rest of the app. */
+ * The ruled lines are drawn with a repeating gradient at a 24px pitch and
+ * `line-height` is set to that same 24px, so text sits ON the rules instead of
+ * drifting between them. `background-position: 0 6px` is the offset from the
+ * shipped `.nb-page-body`, which places the first rule just under the first
+ * line's baseline. Keep these three numbers in lockstep if either changes.
+ *
+ * Colours come from the notebook theme tokens rather than literal hex so the
+ * surface follows all six themes like the rest of the app. */
 .morning-page-textarea {
-  background: transparent;
+  display: block;
+  width: 100%;
+  min-height: 320px;
+  padding: 8px 20px 24px;
+  font-family: 'Outfit', ui-sans-serif, system-ui, sans-serif;
+  font-size: 0.98rem;
+  line-height: 24px;
+  letter-spacing: 0.01em;
+  color: var(--notebook-text-body);
+  /* the sheet itself */
+  background-color: var(--notebook-bg);
+  border-radius: 8px;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.05),
+    inset 0 0 0 1px rgba(164, 139, 94, 0.06),
+    0 4px 14px rgba(0, 0, 0, 0.28);
+  /* the rules */
+  background-image: repeating-linear-gradient(
+    to bottom,
+    transparent 0,
+    transparent 23px,
+    var(--notebook-card-line) 23px,
+    var(--notebook-card-line) 24px
+  );
+  background-position: 0 6px;
   border: none;
   outline: none;
   resize: none;
-  width: 100%;
-  min-height: 320px;
-  font-size: 1rem;
-  line-height: 2rem;
-  letter-spacing: 0.01em;
-  color: rgb(var(--color-text));
-  padding: 0;
-  font-family: inherit;
+  /* Grown by JS to fit the writing (see growMorningPage in JournalEntryScreen).
+     `hidden`, not `auto`: a scrollbar here would cut the ruled lines off
+     mid-sheet and reintroduce the nested-scroll the notebook avoids. */
+  overflow-y: hidden;
   caret-color: rgb(var(--color-accent));
 }
 
+.morning-page-textarea:focus,
+.morning-page-textarea:focus-visible {
+  outline: none;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.05),
+    inset 0 0 0 1px rgba(164, 139, 94, 0.12),
+    0 4px 14px rgba(0, 0, 0, 0.28);
+}
+
+/* Matches the shipped `.nb-page-body::placeholder` treatment. */
 .morning-page-textarea::placeholder {
-  color: rgb(var(--color-text-soft));
-  opacity: 0.7;
+  color: var(--notebook-text-body);
+  opacity: 0.6;
 }
 
 /* Pack session wrapper */

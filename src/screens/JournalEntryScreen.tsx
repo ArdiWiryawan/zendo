@@ -71,6 +71,21 @@ export function JournalEntryScreen() {
   const leaveRef = useRef(false);
   const toast = useCalmToast();
 
+  /**
+   * Morning Pages auto-grow. The surface is a ruled sheet, so it must grow with
+   * the writing rather than scroll inside itself: a scrollbar on the page would
+   * cut the ruled lines off mid-sheet and turn the page back into a box with a
+   * viewport. Same rAF-after-commit contract as the notebook editor — resizing
+   * synchronously in onChange measures the OLD value and clips the last line.
+   */
+  const morningRef = useRef<HTMLTextAreaElement | null>(null);
+  const growMorningPage = () => {
+    const el = morningRef.current;
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = `${el.scrollHeight}px`;
+  };
+
   useEffect(() => { window.scrollTo(0, 0); }, []);
 
   useEffect(() => {
@@ -121,6 +136,13 @@ export function JournalEntryScreen() {
       : (answers.whatMovedToday?.trim() || "") !== (savedEntryAnswers.whatMovedToday?.trim() || "");
   const unsaved = !saved && hasDraft && currentTabHasChange;
   const blocker = useBlocker(() => unsaved);
+
+  // Grow the ruled sheet on mount and whenever the stored entry (or the tab)
+  // changes, so a saved multi-line page opens at full height instead of
+  // scrolled. Runs after commit, matching growMorningPage's contract.
+  useEffect(() => {
+    requestAnimationFrame(growMorningPage);
+  }, [answers.morningPages, currentTab, initial]);
 
   useEffect(() => {
     // Shortcut nav is deliberate: draft is autosaved to localStorage, so
@@ -238,12 +260,14 @@ export function JournalEntryScreen() {
           </div>
           <textarea
             id="morningPages"
+            ref={morningRef}
             value={answers.morningPages ?? ""}
             placeholder={t("journal.morningPlaceholder")}
             className="morning-page-textarea"
             onChange={(event) => {
               setSaved(false);
               setAnswers((value) => ({ ...value, morningPages: event.target.value }));
+              requestAnimationFrame(growMorningPage);
             }}
           />
           <p className="text-[11px] text-monk-text-soft text-center leading-relaxed px-2">
