@@ -1,7 +1,7 @@
 import { useEffect, useState, useMemo } from "react";
 import type { RelapseLog } from "../types/app";
 import { useNavigate } from "react-router-dom";
-import { Moon, BookOpen, Check, ChevronRight, MoreHorizontal, Sun, Sparkles, Zap, ShieldAlert, Flame, Timer, Clock } from "lucide-react";
+import { Moon, BookOpen, Check, ChevronDown, ChevronRight, MoreHorizontal, Sun, Sparkles, ShieldAlert, CircleDashed, Timer, Clock } from "lucide-react";
 import { hapticPress } from "../lib/haptics";
 import { useMonkStore, goalEvidence } from "../store/useMonkStore";
 import { useT } from "../i18n";
@@ -407,6 +407,11 @@ export function TodayScreen() {
   const [weeklyReviewModalOpen, setWeeklyReviewModalOpen] = useState(false);
   const [planningModalOpen, setPlanningModalOpen] = useState(false);
   const [sixDaysBannerDismissed, setSixDaysBannerDismissed] = useState(false);
+  /** Disclosure state for the focus card. Deliberately NOT persisted: a remembered
+   *  open state would greet the user with the long card they collapsed yesterday,
+   *  which is exactly the height this redesign removes. */
+  const [cardDetailsOpen, setCardDetailsOpen] = useState(false);
+  const [cardMenuOpen, setCardMenuOpen] = useState(false);
 
   const savedReview = weeklyPlan ? store.weeklyReviews?.[weeklyPlan.id] : undefined;
 
@@ -763,32 +768,22 @@ export function TodayScreen() {
                   ) : isRest ? (
                     <Moon size={12} strokeWidth={2} />
                   ) : todayPlan?.status === "partial" ? (
-                    <Flame size={12} strokeWidth={2} />
+                    <CircleDashed size={12} strokeWidth={2} />
                   ) : null}
                   <span>{statusLabel}</span>
                 </span>
                 {!isRest && goal ? (
-                  <div className="ml-auto flex items-center gap-1">
+                  <div className="relative ml-auto">
                     <button
                       type="button"
-                      aria-label={t("blueprint.openButton")}
-                      title={t("blueprint.dialogTitle")}
-                      className="flex items-center gap-1.5 rounded-full border border-monk-border bg-monk-surface px-2.5 py-0.5 text-xs font-semibold text-monk-text-soft transition hover:border-monk-accent hover:text-monk-accent active:scale-95"
-                      onClick={() => {
-                        hapticPress("light");
-                        setBlueprintGoalId(goal.id);
-                      }}
-                    >
-                      <Sparkles size={14} className="text-monk-accent" />
-                      <span>{t("blueprint.openButton")}</span>
-                    </button>
-                    <button
-                      type="button"
-                      aria-label={t("release.triggerLabel")}
+                      aria-label={t("today.cardMenuLabel")}
+                      aria-expanded={cardMenuOpen}
+                      aria-controls="today-card-menu"
+                      aria-haspopup="menu"
                       className="grid min-h-8 min-w-8 place-items-center rounded-full text-monk-muted transition hover:bg-monk-soft hover:text-monk-text active:scale-90"
                       onClick={() => {
-                        setReleaseNote("");
-                        setReleaseOpen(true);
+                        hapticPress("light");
+                        setCardMenuOpen((open) => !open);
                       }}
                     >
                       <MoreHorizontal size={16} />
@@ -796,60 +791,58 @@ export function TodayScreen() {
                   </div>
                 ) : null}
               </div>
+              {/* Menu lives outside the card's overflow-hidden box so it is never
+                  clipped, but stays aligned to the ⋯ that opened it. */}
+              {!isRest && goal && cardMenuOpen ? (
+                <div
+                  id="today-card-menu"
+                  className="absolute right-5 top-[3.25rem] z-30 w-48 overflow-hidden rounded-xl border border-monk-border bg-monk-surface p-1 shadow-lg sm:right-6"
+                >
+                  <button
+                    type="button"
+                    className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm font-semibold text-monk-text-soft transition hover:bg-monk-soft hover:text-monk-accent"
+                    onClick={() => {
+                      hapticPress("light");
+                      setCardMenuOpen(false);
+                      setBlueprintGoalId(goal.id);
+                    }}
+                  >
+                    <Sparkles size={14} className="shrink-0 text-monk-accent" />
+                    <span>{t("blueprint.openButton")}</span>
+                  </button>
+                  <button
+                    type="button"
+                    className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm font-semibold text-monk-text-soft transition hover:bg-monk-soft hover:text-monk-text"
+                    onClick={() => {
+                      hapticPress("light");
+                      setCardMenuOpen(false);
+                      setReleaseNote("");
+                      setReleaseOpen(true);
+                    }}
+                  >
+                    <Moon size={14} className="shrink-0 text-monk-muted" />
+                    <span>{t("release.triggerLabel")}</span>
+                  </button>
+                </div>
+              ) : null}
 
               <span className="sr-only" aria-live="polite" id="today-status-live">
                 {t("today.statusLive", { status: statusLabel })}
               </span>
 
-              <div className="relative mt-3 flex items-start justify-between gap-3">
-                <div className="min-w-0 flex-1">
-                  {/* Goal Title */}
-                  <h2 className="text-2xl sm:text-3xl font-bold leading-tight tracking-tight text-monk-text">
-                    {isRest ? t("today.quietRecovery") : goal?.title ?? t("today.oneTheme")}
-                  </h2>
+              <div className="relative mt-3 min-w-0">
+                {/* Goal Title */}
+                <h2 className="text-lg font-semibold leading-snug tracking-tight text-monk-text">
+                  {isRest ? t("today.quietRecovery") : goal?.title ?? t("today.oneTheme")}
+                </h2>
 
-                  {/* Identity Anchor (James Clear) */}
-                  {!isRest && goal?.why ? (
-                    <p className="mt-1.5 text-sm font-medium italic text-monk-accent/90 line-clamp-2">
-                      {t("today.identityBecoming", { why: goal.why })}
-                    </p>
-                  ) : null}
-                  {!isRest && goal?.desiredOutcome ? (
-                    <p className="mt-1 text-sm text-monk-muted line-clamp-2">
-                      {t("today.outcomeLine", { outcome: goal.desiredOutcome })}
-                    </p>
-                  ) : null}
-                </div>
-
-                {/* The app's core action — labelled, so it reads as one */}
-                <button
-                  type="button"
-                  aria-label={isDone ? t("today.markIncomplete") : t("today.markComplete")}
-                  aria-pressed={isDone}
-                  className={`flex min-h-12 shrink-0 items-center gap-2 rounded-full border-2 px-4 transition active:scale-95 ${
-                    isDone
-                      ? "border-monk-success bg-monk-success text-monk-bg shadow-[inset_0_1px_0_rgba(255,255,255,0.2),0_4px_16px_-4px_rgba(100,123,94,0.6)]"
-                      : "border-monk-border/90 bg-monk-surface text-monk-text-soft shadow-sm hover:border-monk-accent hover:text-monk-accent"
-                  }`}
-                  onClick={() => {
-                    unlockAudio();
-                    const willBeCompleted = !isDone;
-                    if (willBeCompleted) {
-                      hapticPress("success");
-                      playCompletionChime();
-                      if (todayPlan?.highlight?.trim()) toast.show(t("today.highlightDone"));
-                      else toast.show(t("today.mainActionDone"));
-                    } else {
-                      hapticPress("light");
-                    }
-                    store.toggleTodayCompletion();
-                  }}
-                >
-                  <Check size={20} strokeWidth={2.6} className={isDone ? "" : "text-monk-muted"} />
-                  <span className="text-xs font-bold tracking-wide">
-                    {isDone ? t("today.doneToday") : t("today.completeCta")}
-                  </span>
-                </button>
+                {/* Identity Anchor (James Clear). One line only: the full sentence
+                    is a detail, and a hero that wraps three times is not a hero. */}
+                {!isRest && goal?.why ? (
+                  <p className="mt-1.5 truncate text-sm font-medium italic text-monk-accent/90">
+                    {t("today.identityBecoming", { why: goal.why })}
+                  </p>
+                ) : null}
               </div>
 
               {/* Action Anchor Section — one flat block, not a card inside a card.
@@ -858,7 +851,6 @@ export function TodayScreen() {
               <div className="relative mt-5 border-t border-monk-border/50 pt-4">
                 <div className="flex items-center justify-between gap-2 mb-2">
                   <div className="flex items-center gap-1.5">
-                    <Zap size={14} className="text-monk-accent shrink-0" />
                     <p className="text-xs font-bold uppercase tracking-wider text-monk-muted">
                       {isRest ? t("today.restNote") : t("today.actionHeading")}
                     </p>
@@ -1033,12 +1025,53 @@ export function TodayScreen() {
                   );
                 })()}
 
+                {/* The one control that matters, full width so it reads as the
+                    strongest thing on the card. */}
+                {!editingAction ? (
+                  <button
+                    type="button"
+                    aria-label={isDone ? t("today.markIncomplete") : t("today.markComplete")}
+                    aria-pressed={isDone}
+                    className={`mt-3 flex min-h-12 w-full items-center justify-center gap-2 rounded-monk border text-base font-bold transition active:scale-[0.98] ${
+                      isDone
+                        ? "border-monk-success/40 bg-monk-success-soft text-monk-success"
+                        : "border-transparent bg-monk-accent text-monk-bg hover:brightness-105"
+                    }`}
+                    onClick={() => {
+                      unlockAudio();
+                      const willBeCompleted = !isDone;
+                      if (willBeCompleted) {
+                        hapticPress("success");
+                        playCompletionChime();
+                        if (todayPlan?.highlight?.trim()) toast.show(t("today.highlightDone"));
+                        else toast.show(t("today.mainActionDone"));
+                      } else {
+                        hapticPress("light");
+                      }
+                      store.toggleTodayCompletion();
+                    }}
+                  >
+                    <Check size={18} strokeWidth={2.6} />
+                    <span>{isDone ? t("today.doneToday") : t("today.completeCta")}</span>
+                  </button>
+                ) : null}
+              </div>
+
+              {/* Everything below the fold of the day's one action. Always in the
+                  DOM (so aria-controls resolves) but hidden until asked for. */}
+              <div id="today-card-details" hidden={!cardDetailsOpen} className="mt-4">
+                {!isRest && goal?.desiredOutcome ? (
+                  <p className="mb-3 line-clamp-2 text-sm text-monk-muted">
+                    {t("today.outcomeLine", { outcome: goal.desiredOutcome })}
+                  </p>
+                ) : null}
+
                 {/* Next-action prompt (§24). Shown once the day's Main Action is
                     completed, so the screen never goes quiet on a next step. It is
                     an invitation only: it creates nothing, and tapping it opens the
                     same edit form, prefilled from the day's own action (§22). */}
                 {isDone && !isRest && !editingAction ? (
-                  <div className="mt-4 border-t border-monk-border/40 pt-3">
+                  <div className="border-t border-monk-border/40 pt-3">
                     <p className="text-sm font-semibold leading-relaxed text-monk-text">
                       {t("today.nextActionPrompt")}
                     </p>
@@ -1074,7 +1107,7 @@ export function TodayScreen() {
                       <span className="flex items-center gap-1.5 text-sm font-medium text-monk-text-soft">
                         <ShieldAlert size={14} className="shrink-0 text-monk-warning" />
                         <span aria-live="polite">
-                          {isPlanBActive ? t("today.planBActiveBadge") : t("today.planBTrigger")}
+                          {t("today.planBLabel")}
                         </span>
                       </span>
                       {isPlanBActive ? (
@@ -1117,41 +1150,15 @@ export function TodayScreen() {
                     Stays available on a completed day: finishing the Main Action
                     is not a reason to hide the rest of the work. */}
                 {!isRest && goal ? (
-                  <GoalTasksCard goal={goal} todayMainAction={todayPlan.mainAction} />
+                  <div className="mt-3">
+                    <GoalTasksCard goal={goal} todayMainAction={todayPlan.mainAction} />
+                  </div>
                 ) : null}
-              </div>
 
-              {/* Bottom Meta & Progress Bar */}
-              <div className="mt-4 border-t border-monk-border/40 pt-3 flex flex-wrap items-center justify-between gap-2 text-xs text-monk-muted">
-                <div className="flex flex-wrap items-center gap-2">
-                  {allocation ? (
-                    <span className="font-medium text-monk-text-soft">
-                      {t("today.daysOnGoal", { done: allocation.completedCount, target: allocation.targetCount })}
-                    </span>
-                  ) : (
-                    <span>{isRest ? t("today.protectRecovery") : t("today.stayWithOne")}</span>
-                  )}
-                  {focusMinutes > 0 ? (
-                    <span className="rounded-full border border-monk-border bg-monk-soft px-2 py-0.5 font-mono text-xs">
-                      {t("today.focusMinutes", { n: focusMinutes })}
-                    </span>
-                  ) : null}
-                  {hasLearning ? (
-                    <span className="rounded-full border border-monk-border bg-monk-soft px-2 py-0.5 font-mono text-xs">
-                      {t("today.learnCount", { n: learningSessions.length })}
-                    </span>
-                  ) : null}
-                </div>
-
-                {isDone ? (
-                  <p className="flex items-center gap-1.5 font-semibold text-monk-success">
-                    <span className="inline-block h-1.5 w-1.5 rounded-full bg-monk-success" />
-                    {t("today.movedQuiet")}
-                  </p>
-                ) : (
+                {!isDone ? (
                   <button
                     type="button"
-                    className="text-xs font-semibold text-monk-muted transition hover:text-monk-accent hover:underline"
+                    className="mt-3 text-xs font-semibold text-monk-muted transition hover:text-monk-accent hover:underline"
                     onClick={() => {
                       if (!todayPlan) return;
                       const restoreStatus =
@@ -1170,7 +1177,56 @@ export function TodayScreen() {
                   >
                     {t("today.changeTheme")}
                   </button>
-                )}
+                ) : null}
+              </div>
+
+              {/* Bottom Meta & Progress Bar */}
+              <div className="mt-4 border-t border-monk-border/40 pt-3 flex flex-wrap items-center justify-between gap-2 text-xs text-monk-muted">
+                <div className="flex min-w-0 flex-wrap items-center gap-2">
+                  {allocation ? (
+                    <span className="font-medium text-monk-text-soft">
+                      {t("today.daysOnGoal", { done: allocation.completedCount, target: allocation.targetCount })}
+                    </span>
+                  ) : (
+                    <span>{isRest ? t("today.protectRecovery") : t("today.stayWithOne")}</span>
+                  )}
+                  {focusMinutes > 0 ? (
+                    <span className="rounded-full border border-monk-border bg-monk-soft px-2 py-0.5 font-mono text-xs tabular-nums">
+                      {t("today.focusMinutes", { n: focusMinutes })}
+                    </span>
+                  ) : null}
+                  {hasLearning ? (
+                    <span className="rounded-full border border-monk-border bg-monk-soft px-2 py-0.5 font-mono text-xs tabular-nums">
+                      {t("today.learnCount", { n: learningSessions.length })}
+                    </span>
+                  ) : null}
+                </div>
+
+                <div className="ml-auto flex items-center gap-2">
+                  {isDone ? (
+                    <p className="flex items-center gap-1.5 font-semibold text-monk-success">
+                      <span className="inline-block h-1.5 w-1.5 rounded-full bg-monk-success" />
+                      {t("today.movedQuiet")}
+                    </p>
+                  ) : null}
+                  <button
+                    type="button"
+                    aria-expanded={cardDetailsOpen}
+                    aria-controls="today-card-details"
+                    className="flex items-center gap-1 rounded-md text-xs font-bold uppercase tracking-wider text-monk-muted transition hover:text-monk-accent"
+                    onClick={() => {
+                      hapticPress("light");
+                      setCardDetailsOpen((open) => !open);
+                    }}
+                  >
+                    <span>{t("today.detailsToggle")}</span>
+                    <ChevronDown
+                      size={14}
+                      strokeWidth={2.4}
+                      className={`transition-transform duration-200 ${cardDetailsOpen ? "rotate-180" : ""}`}
+                    />
+                  </button>
+                </div>
               </div>
             </Card>
 
