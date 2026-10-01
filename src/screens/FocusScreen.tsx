@@ -260,6 +260,31 @@ export default function FocusScreen() {
 
       {/* Soundscape Selector Bar with Instant Audio Preview & Volume Blend */}
       <div className="mb-5 rounded-2xl border border-monk-border bg-monk-surface p-3.5 shadow-sm space-y-3">
+        {activeSession ? (
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2 min-w-0">
+              <span className="shrink-0 text-monk-accent" aria-hidden>
+                <CurrentSoundIcon size={16} strokeWidth={1.5} />
+              </span>
+              <span className="text-xs font-bold text-monk-text truncate">
+                {t(soundNameKey(currentSoundMeta.id))}
+              </span>
+            </div>
+            <button
+              type="button"
+              onClick={toggleMusicHandler}
+              className={`shrink-0 px-2.5 py-1.5 rounded-xl border text-xs font-bold transition active:scale-95 flex items-center gap-1.5 ${
+                musicOn
+                  ? "border-monk-accent bg-monk-accent-soft text-monk-accent shadow-xs"
+                  : "border-monk-border bg-monk-soft text-monk-muted hover:text-monk-text"
+              }`}
+              aria-label={musicOn ? t("focus.audioPauseAria") : t("focus.audioPlayAria")}
+            >
+              {musicOn ? <Pause size={13} /> : <Play size={13} />}
+            </button>
+          </div>
+        ) : (
+        <>
         <div className="flex items-center justify-between gap-2">
           <div className="flex items-center gap-2.5 min-w-0">
             <span className="shrink-0 text-monk-accent" aria-hidden>
@@ -311,7 +336,8 @@ export default function FocusScreen() {
           </div>
         </div>
 
-        {/* Realtime Ambient Volume Slider (Optimized to blend with background playlists) */}
+        {!activeSession && (
+        /* Realtime Ambient Volume Slider (Optimized to blend with background playlists) */
         <div className="flex items-center gap-2 pt-2 border-t border-monk-border/40">
           <span className="text-[11px] font-semibold text-monk-muted flex items-center gap-1.5 shrink-0">
             {volume === 0 ? <VolumeX size={13} /> : volume < 50 ? <Volume1 size={13} /> : <Volume2 size={13} />}
@@ -331,8 +357,9 @@ export default function FocusScreen() {
             {volume}%
           </span>
         </div>
+        )}
 
-        {soundscapePickerOpen && (
+        {!activeSession && soundscapePickerOpen && (
           <div className="space-y-2 pt-2 border-t border-monk-border/60">
             <div className="flex items-center justify-between">
               <p className="text-[11px] font-semibold text-monk-muted">
@@ -397,6 +424,8 @@ export default function FocusScreen() {
               {t("focus.audioBlendFootnote")}
             </p>
           </div>
+        )}
+        </>
         )}
       </div>
 
