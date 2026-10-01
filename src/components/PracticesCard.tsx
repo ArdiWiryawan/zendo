@@ -1,10 +1,11 @@
-import { useState } from "react";
-import { CalendarDays, CalendarRange, Check, ChevronDown, Plus, Repeat, X } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { CalendarDays, CalendarRange, Check, ChevronDown, ChevronLeft, ChevronRight, Plus, Repeat, X } from "lucide-react";
 import { useMonkStore } from "../store/useMonkStore";
 import { useLanguage, useT } from "../i18n";
 import { hapticPress } from "../lib/haptics";
-import { getTodayDateString } from "../lib/date";
+import { addDaysToDate, getTodayDateString, parseLocalDateKey } from "../lib/date";
 import { practiceMonthView, practiceSeasonView, practiceWeekView } from "../lib/practiceHistory";
+import type { PracticeHistoryScale } from "../types/app";
 
 /**
  * §23-24: the positive-practice layer.
@@ -31,7 +32,28 @@ export function PracticesCard() {
   const [name, setName] = useState("");
   const [targetDays, setTargetDays] = useState(7);
   /** `null` is the default concise weekly count; a scale is opened deliberately. */
-  const [scale, setScale] = useState<"week" | "month" | "season" | null>(null);
+  const [scale, setScale] = useState<PracticeHistoryScale | null>(
+    store.appSettings.practiceHistoryScale ?? "week"
+  );
+  /**
+   * The period the history panel is looking at. `today` means "the current
+   * one", and the nav arrows move it. Ephemeral on purpose — a stale anchor
+   * persisted across sessions would silently open the panel on an old week and
+   * read as lost data.
+   *
+   * Held as an OFFSET from today, not an absolute date: an absolute anchor
+   * captured at mount goes stale if the app is left open past midnight, so a
+   * phone that has been idle overnight would keep showing yesterday as "this
+   * week". `resetKey` re-seeds the anchor whenever the calendar day changes.
+   */
+  const [anchor, setAnchor] = useState<string>(() => today);
+  const resetKeyRef = useRef(today);
+  if (resetKeyRef.current !== today) {
+    resetKeyRef.current = today;
+    if (anchor !== today) setAnchor(today);
+  }
+  /** Whether the panel is open at all, independent of which scale it shows. */
+  const [open, setOpen] = useState(false);
 
   const season = store.activeSeason;
   const practices = store.practices.filter(
@@ -51,15 +73,86 @@ export function PracticesCard() {
     { id: "season" as const, label: lang === "en" ? "Season" : "Musim", Icon: CalendarRange }
   ];
 
-  const weekStart = (() => {
-    const d = new Date(`${today}T00:00:00`);
+  /** Monday of the week containing `date`. */
+  const mondayOf = (date: string) => {
+    const d = new Date(`${date}T00:00:00`);
     const day = (d.getDay() + 6) % 7; // Monday = 0
     d.setDate(d.getDate() - day);
     return getTodayDateString(d);
+  };
+
+  const weekStart = mondayOf(anchor);
+
+  /**
+   * Move the anchor by one period. Week steps exactly 7 days; month steps to the
+   * 1st of the neighbouring month so a 28/29/30/31-day month can never drift.
+   */
+  const shift = (direction: -1 | 1) => {
+    hapticPress("light");
+    if (scale === "month") {
+      const d = new Date(`${anchor}T00:00:00`);
+      setAnchor(getTodayDateString(new Date(d.getFullYear(), d.getMonth() + direction, 1)));
+      return;
+    }
+    setAnchor(addDaysToDate(anchor, 7 * direction));
+  };
+
+  /**
+   * The next period must not be in the future: there is nothing to show, and a
+   * disabled arrow says that more honestly than an empty grid would.
+   */
+  const atCurrentPeriod =
+    scale === "month" ? anchor.slice(0, 7) === today.slice(0, 7) : weekStart >= mondayOf(today);
+
+  /**
+   * Day-level label for this card only. `formatHumanDate` is English-only
+   * (`"MMM d"`) and shared with Archive/Timeline, so it is left alone; these
+   * two new nav labels are the user-facing ones, so they follow `lang`.
+   */
+  const SHORT_MONTHS =
+    lang === "en"
+      ? ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+      : ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Agu", "Sep", "Okt", "Nov", "Des"];
+  const shortDate = (date: string) => {
+    const d = parseLocalDateKey(date);
+    return `${SHORT_MONTHS[d.getMonth()]} ${d.getDate()}`;
+  };
+
+  /** Window label for the nav row, built from the anchored period itself. */
+  const periodLabel = (() => {
+    const MONTHS =
+      lang === "en"
+        ? ["January", "February", "March", "April", "May", "June",
+           "July", "August", "September", "October", "November", "December"]
+        : ["Januari", "Februari", "Maret", "April", "Mei", "Juni",
+           "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
+    if (scale === "month") {
+      const d = parseLocalDateKey(anchor);
+      return `${MONTHS[d.getMonth()]} ${d.getFullYear()}`;
+    }
+    // Same year on both ends is the common case; showing it twice is noise.
+    const start = parseLocalDateKey(weekStart);
+    const end = parseLocalDateKey(addDaysToDate(weekStart, 6));
+    const endLabel = start.getFullYear() === end.getFullYear()
+      ? shortDate(addDaysToDate(weekStart, 6))
+      : `${shortDate(addDaysToDate(weekStart, 6))} ${end.getFullYear()}`;
+    return `${shortDate(weekStart)} – ${endLabel}`;
   })();
 
   const isDoneToday = (practiceId: string) =>
     store.practiceLogs.some((l) => l.practiceId === practiceId && l.date === today);
+
+  /**
+   * The remembered scale is a synced preference, so it can change underneath us
+   * when another device writes it. Adopt the incoming value, but never while
+   * the panel is open — that would yank the lens out from under someone who is
+   * actively reading, and the next local switch would overwrite it anyway.
+   */
+  const rememberedScale = store.appSettings.practiceHistoryScale ?? "week";
+  useEffect(() => {
+    if (open) return;
+    setScale((current) => (current === rememberedScale ? current : rememberedScale));
+  }, [rememberedScale, open]);
 
   const handleAdd = () => {
     const created = store.addPractice({ name, weeklyTargetCount: targetDays });
@@ -102,20 +195,23 @@ export function PracticesCard() {
               type="button"
               onClick={() => {
                 hapticPress("light");
-                setScale(scale ? null : "week");
+                // Reopening resets to the current period. Keeping the old anchor
+                // would show a past week with no obvious reason why.
+                if (!open) setAnchor(getTodayDateString());
+                setOpen(!open);
               }}
-              aria-expanded={scale !== null}
+              aria-expanded={open}
               className="flex items-center gap-1.5 text-[11px] font-medium text-monk-muted transition hover:text-monk-accent"
             >
               <CalendarRange size={13} />
-              <span>{scale ? (lang === "en" ? "Hide history" : "Sembunyikan riwayat") : lang === "en" ? "See history" : "Lihat riwayat"}</span>
+              <span>{open ? (lang === "en" ? "Hide history" : "Sembunyikan riwayat") : lang === "en" ? "See history" : "Lihat riwayat"}</span>
               <ChevronDown
                 size={13}
-                className={`transition-transform ${scale ? "rotate-180" : ""}`}
+                className={`transition-transform ${open ? "rotate-180" : ""}`}
               />
             </button>
 
-            {scale ? (
+            {open ? (
               <>
                 <div
                   role="group"
@@ -129,6 +225,10 @@ export function PracticesCard() {
                       onClick={() => {
                         hapticPress("light");
                         setScale(id);
+                        // Remembered so the panel reopens where the user left it.
+                        store.setPracticeHistoryScale(id);
+                        // A week offset means nothing once the lens changes.
+                        setAnchor(getTodayDateString());
                       }}
                       aria-pressed={scale === id}
                       className={`flex min-h-8 flex-1 items-center justify-center gap-1.5 rounded-lg px-2 text-[11px] font-semibold transition ${
@@ -142,6 +242,61 @@ export function PracticesCard() {
                     </button>
                   ))}
                 </div>
+
+                {/* Week and month are anchored to a period the user can move;
+                    season covers the whole season and has nowhere to navigate. */}
+                {scale !== "season" ? (
+                  <div className="flex items-center justify-between gap-2">
+                    <button
+                      type="button"
+                      onClick={() => shift(-1)}
+                      aria-label={scale === "month"
+                        ? (lang === "en" ? "Previous month" : "Bulan sebelumnya")
+                        : (lang === "en" ? "Previous week" : "Minggu sebelumnya")}
+                      className="grid h-8 w-8 shrink-0 place-items-center rounded-lg border border-monk-border bg-monk-surface text-monk-muted transition hover:text-monk-accent active:scale-90"
+                    >
+                      <ChevronLeft size={15} />
+                    </button>
+
+                    <div className="flex min-w-0 flex-col items-center">
+                      <span className="truncate font-mono text-[11px] text-monk-text">
+                        {periodLabel}
+                      </span>
+                      {atCurrentPeriod ? (
+                        <span className="text-[10px] text-monk-muted/70">
+                          {scale === "month"
+                            ? (lang === "en" ? "This month" : "Bulan ini")
+                            : (lang === "en" ? "This week" : "Minggu ini")}
+                        </span>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            hapticPress("light");
+                            setAnchor(getTodayDateString());
+                          }}
+                          className="text-[10px] font-medium text-monk-accent hover:underline"
+                        >
+                          {scale === "month"
+                            ? (lang === "en" ? "Back to this month" : "Kembali ke bulan ini")
+                            : (lang === "en" ? "Back to this week" : "Kembali ke minggu ini")}
+                        </button>
+                      )}
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => shift(1)}
+                      disabled={atCurrentPeriod}
+                      aria-label={scale === "month"
+                        ? (lang === "en" ? "Next month" : "Bulan berikutnya")
+                        : (lang === "en" ? "Next week" : "Minggu berikutnya")}
+                      className="grid h-8 w-8 shrink-0 place-items-center rounded-lg border border-monk-border bg-monk-surface text-monk-muted transition enabled:hover:text-monk-accent enabled:active:scale-90 disabled:opacity-30"
+                    >
+                      <ChevronRight size={15} />
+                    </button>
+                  </div>
+                ) : null}
                 {/* §40: each scale states the question it answers, so the three
                     read as different lenses rather than one dashboard tripled. */}
                 <p className="px-0.5 text-[11px] leading-relaxed text-monk-muted">
@@ -162,7 +317,7 @@ export function PracticesCard() {
           </div>
         ) : null}
 
-        {practices.length > 0 && scale ? (
+        {practices.length > 0 && open ? (
           <div className="space-y-2 rounded-2xl border border-monk-border bg-monk-soft/30 p-3">
             {practices.map((practice) => {
               if (scale === "week") {
@@ -200,7 +355,7 @@ export function PracticesCard() {
               }
 
               if (scale === "month") {
-                const view = practiceMonthView(store.practiceLogs, practice, today);
+                const view = practiceMonthView(store.practiceLogs, practice, anchor);
                 const peak = Math.max(view.modalWeekdayCount, 1);
                 const sessionLabel = lang === "en" ? "sessions" : "sesi";
                 return (

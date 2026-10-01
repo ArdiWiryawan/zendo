@@ -81,6 +81,7 @@ import type {
   SeasonWhy,
   TimelineDay,
   TimelineStatus,
+  PracticeHistoryScale,
   WeeklyMode,
   WeeklyPlan,
   WeeklyReviewDecision,
@@ -130,6 +131,7 @@ type MonkActions = {
   setKeystoneAction: (goalId: string, action: string) => void;
   setObstacleMitigation: (goalId: string, mitigation: string) => void;
   setWeeklyMode: (mode: WeeklyMode) => void;
+  setPracticeHistoryScale: (scale: PracticeHistoryScale) => void;
   setWeeklyAllocation: (goalId: string, targetCount: number) => void;
   createSeasonFromOnboarding: () => void;
   getOrCreateCurrentWeeklyPlan: () => WeeklyPlan | undefined;
@@ -1121,6 +1123,18 @@ export const useMonkStore = create<MonkStore>()(
     const state = get();
     set({
       onboarding: { ...state.onboarding, weeklyMode: mode, updatedAt: nowIso() }
+    });
+  },
+
+  /**
+   * Remember which history scale the practice card was left on. A small
+   * preference, kept on `appSettings` so it syncs through the existing scalar
+   * merge instead of needing its own path.
+   */
+  setPracticeHistoryScale: (scale) => {
+    const state = get();
+    set({
+      appSettings: { ...state.appSettings, practiceHistoryScale: scale, updatedAt: nowIso() }
     });
   },
 

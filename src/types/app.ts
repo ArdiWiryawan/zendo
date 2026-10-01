@@ -54,9 +54,20 @@ export type AppSettings = {
   defaultFocusDuration: number;
   installDismissed?: boolean;
   openCount: number;
+  /**
+   * Which history scale the practice card reopens on. Deliberately on
+   * `appSettings` rather than local state: it is a small preference, and
+   * `appSettings` is a synced scalar that already carries `updatedAt`, so this
+   * rides the existing merge path with no new sync work. Optional so states
+   * written before it existed fall back to the `week` default.
+   */
+  practiceHistoryScale?: PracticeHistoryScale;
   createdAt: ISODateString;
   updatedAt: ISODateString;
 };
+
+/** The three lenses the practice history panel offers (§40). */
+export type PracticeHistoryScale = "week" | "month" | "season";
 
 /** Motivation snapshot — 4-component flow: Why, Desired Outcome, Anti-Why, plus identity/values */
 export type SeasonWhy = {
