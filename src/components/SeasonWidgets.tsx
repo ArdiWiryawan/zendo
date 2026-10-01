@@ -8,21 +8,46 @@ import {
 } from "./ui";
 import { CORE_VALUES } from "../constants/whyValues";
 import {
-  parseLocalDateKey,
   getDaysLeft,
   getDaysPassed,
   getSeasonProgress,
+  getTodayDateString,
+  isDatePast,
+  isSeasonEnded,
+  parseLocalDateKey,
 } from "../lib/date";
 import { selectActiveGoals } from "../store/selectors";
 import { useMonkStore } from "../store/useMonkStore";
 import { useT, useLanguage } from "../i18n";
-import type { SeasonWhy } from "../types/app";
+import type { Season, SeasonWhy } from "../types/app";
+
+/**
+ * Elapsed days and the calendar day the season closes, in one string. `today` is
+ * a parameter so the year boundary can be pinned in tests.
+ */
+export function formatSeasonWindow(
+  season: Pick<Season, "startDate" | "endDate" | "durationDays">,
+  locale: string,
+  today = getTodayDateString()
+) {
+  const total = Number.isFinite(season.durationDays) && season.durationDays > 0
+    ? season.durationDays
+    : 0;
+  // `getDaysPassed` floors at 1 (day 1 is the start date itself), so a season
+  // whose start is still ahead of us must be floored to 0 by hand.
+  const passed = isDatePast(today, season.startDate) ? 0 : getDaysPassed(season.startDate, today);
+  const elapsed = Math.min(total, passed);
+  const closed = parseLocalDateKey(season.endDate).toLocaleDateString(locale, {
+    day: "numeric",
+    month: "short",
+  });
+  // A season with no usable duration has no day count to show, only its close date.
+  return total > 0 ? `${elapsed}/${total} · ${closed}` : closed;
+}
 
 export function SeasonProgressCard({
-  compact = false,
   onOpenGoal
 }: {
-  compact?: boolean;
   /**
    * D7: the Season view is where a user reads their goal tracks, but the chips
    * were inert text — the goal's own blueprint was unreachable from here. When
@@ -36,25 +61,65 @@ export function SeasonProgressCard({
   const lang = useLanguage();
   const { activeSeason } = store;
   if (!activeSeason) return null;
-  const daysPassed = getDaysPassed(activeSeason.startDate);
-  const daysLeft = getDaysLeft(activeSeason.endDate);
-  const progress = getSeasonProgress(activeSeason);
+  const today = getTodayDateString();
+  const daysLeft = getDaysLeft(activeSeason.endDate, today);
+  const rawProgress = getSeasonProgress(activeSeason, today);
+  // A season with no duration (or a malformed one) yields NaN — never let it
+  // reach `width` or `aria-valuenow`.
+  const progress = Number.isFinite(rawProgress) ? Math.min(100, Math.max(0, rawProgress)) : 0;
+  // The season's own dates decide its phase, not the store's `status`: an ended
+  // season with a non-zero duration would otherwise render `durationDays/0%`.
+  // `isDatePast(a, b)` is `b > a`, so the arguments must be swapped here: the
+  // season has not started when *today* is before the start date.
+  const notStarted = isDatePast(today, activeSeason.startDate);
+  const finished = isSeasonEnded(activeSeason, today);
+  const daysLeftLabel =
+    finished
+      ? t("season.closed")
+      : notStarted
+        ? t("season.opens")
+        : daysLeft <= 1
+          ? t("season.lastDay")
+          : t("season.daysLeft", { n: daysLeft });
+  const progressText = finished
+    ? t("season.progressComplete")
+    : notStarted
+      ? t("season.progressNotStarted")
+      : t("season.progressValue", { n: Math.round(progress) });
+  // A season that has barely begun must not look identical to one that has not
+  // begun: clamp a started-but-tiny fill to a visible sliver. Never invent a
+  // fill for a season that has not started.
+  const fillPercent = notStarted ? 0 : finished ? 100 : Math.max(2, progress);
   const goals = selectActiveGoals(store);
   return (
     <Card className="bg-monk-surface p-4">
       <div className="flex items-center justify-between gap-3">
-        <p className="font-semibold truncate">{activeSeason.name}</p>
-        <p className="shrink-0 font-mono text-xs text-monk-accent">{t("season.daysLeft", { n: daysLeft })}</p>
+        <h2 className="font-semibold truncate">{activeSeason.name}</h2>
+        <p className="shrink-0 font-mono text-xs text-monk-accent">{daysLeftLabel}</p>
       </div>
-      <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-monk-border">
-        <div className="h-full rounded-full bg-monk-accent transition-all" style={{ width: `${progress}%` }} />
+      <div
+        role="progressbar"
+        aria-label={t("season.progressLabel")}
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-valuenow={Math.round(progress)}
+        aria-valuetext={progressText}
+        className="mt-3 flex h-4 items-center gap-2"
+      >
+        <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-monk-border">
+          <div
+            className="h-full rounded-full bg-monk-accent transition-all"
+            style={{ width: `${fillPercent}%` }}
+          />
+        </div>
+        <span className="shrink-0 font-mono text-[11px] tabular-nums text-monk-muted">
+          {progressText}
+        </span>
       </div>
-      <p className="mt-3 text-sm text-monk-muted">
-        {compact
-          ? `${t("season.dayNumber", { n: daysPassed })} · ${t("season.daysLeft", { n: daysLeft })}`
-          : `${t("season.dayOf", { day: daysPassed, total: activeSeason.durationDays })} · ${t("season.ends", { date: parseLocalDateKey(activeSeason.endDate).toLocaleDateString(lang === "id" ? "id-ID" : "en-US", { month: "short", day: "numeric" }) })}`}
+      <p className="mt-2 font-mono text-xs tabular-nums text-monk-muted">
+        {formatSeasonWindow(activeSeason, lang === "id" ? "id-ID" : "en-US", today)}
       </p>
-      {!compact && goals.length ? (
+      {goals.length ? (
         <div className="mt-4 flex flex-wrap gap-2">
           {goals.map((goal) => (
             <button
@@ -62,7 +127,7 @@ export function SeasonProgressCard({
               type="button"
               onClick={() => onOpenGoal?.(goal.id)}
               disabled={!onOpenGoal}
-              aria-label={t("blueprint.openButton")}
+              aria-label={`${t("blueprint.openButton")}: ${goal.track ? `${goal.track} ` : ""}${goal.title}`}
               title={t("blueprint.dialogTitle")}
               className="inline-flex items-center gap-1.5 rounded-full border border-monk-border bg-monk-soft px-3 py-1 text-xs text-monk-text-soft transition enabled:hover:border-monk-accent enabled:hover:text-monk-accent enabled:active:scale-95 disabled:cursor-default"
             >

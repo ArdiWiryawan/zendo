@@ -8,10 +8,16 @@ import { CORE_VALUES } from "../constants/whyValues";
 import { useT, useLanguage } from "../i18n";
 import type { EnergyLevel, Goal, GoalTask } from "../types/app";
 
+/** One treatment for every inline text action on the focus card. Edit, Add
+ *  intention, Set action, Cancel and Save are all the same class of affordance,
+ *  so they must not each invent their own size, weight and hover. */
+export const focusLinkClass =
+  "rounded-md text-sm font-semibold text-monk-accent transition hover:underline active:scale-95";
+export const focusLinkMutedClass =
+  "rounded-md text-sm font-medium text-monk-muted transition hover:underline active:scale-95";
+
 export function EnergyCheck({ value, onChange, compact = false }: { value?: EnergyLevel; onChange: (value: EnergyLevel) => void; compact?: boolean }) {
   const t = useT();
-  const lang = useLanguage();
-  const isId = lang === "id";
   const store = useMonkStore();
   const today = getTodayDateString();
   const past7 = Array.from({ length: 7 }, (_, i) => {
@@ -21,20 +27,20 @@ export function EnergyCheck({ value, onChange, compact = false }: { value?: Ener
   });
 
   const labels: Record<EnergyLevel, string> = {
-    low: isId ? "Rendah" : "Low",
-    medium: isId ? "Stabil" : "Steady",
-    high: isId ? "Tinggi" : "High"
+    low: t("rest.energy.low"),
+    medium: t("rest.energy.medium"),
+    high: t("rest.energy.high")
   };
 
   return (
     <Card className="p-4">
       <div className="mb-3 flex items-center justify-between gap-3">
         <div>
-          <p className="font-semibold text-sm">{isId ? "Energi" : "Energy"}</p>
+          <p className="font-semibold text-sm">{t("today.check.energy")}</p>
           <p className="mt-0.5 text-xs text-monk-muted">{t("today.energy.tank")}</p>
         </div>
         {value ? (
-          <span className={`rounded-full border px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide ${
+          <span className={`rounded-full border px-2.5 py-1 text-xs font-bold uppercase tracking-wide ${
             value === "high"
               ? "border-monk-success/30 bg-monk-success-soft text-monk-success"
               : value === "medium"
@@ -75,10 +81,10 @@ export function EnergyCheck({ value, onChange, compact = false }: { value?: Ener
       </div>
       {!compact ? (
         <div className="mt-4">
-          <p className="mb-1.5 text-[10px] font-medium uppercase tracking-wider text-monk-muted">
-            {isId ? "Tren 7 Hari" : "7-Day Trend"}
+          <p className="mb-1.5 text-xs font-medium uppercase tracking-wider text-monk-muted">
+            {t("today.energy.trendTitle")}
           </p>
-          <div className="flex items-end gap-1.5" aria-label={isId ? "Tren energi 7 hari terakhir" : "Energy trend last 7 days"}>
+          <div className="flex items-end gap-1.5" aria-label={t("today.energy.trendAria")}>
             {past7.map((date) => {
               const log = store.energyLogs?.find((l) => l.date === date);
               const isToday = date === today;
@@ -93,7 +99,7 @@ export function EnergyCheck({ value, onChange, compact = false }: { value?: Ener
               return (
                 <span
                   key={date}
-                  title={`${date}${log ? ` · ${log.level}` : ""}`}
+                  title={`${date}${log ? ` · ${labels[log.level]}` : ""}`}
                   className={`inline-block w-full rounded-sm ${h} ${color} ${isToday ? "ring-1 ring-monk-accent/50" : ""}`}
                 />
               );
@@ -272,8 +278,6 @@ export function WhyStrip({ compact = false }: { compact?: boolean }) {
 export function GoalTasksCard({ goal, todayMainAction }: { goal: Goal; todayMainAction?: string }) {
   const store = useMonkStore();
   const t = useT();
-  const lang = useLanguage();
-  const isId = lang === "id";
   const today = getTodayDateString();
   const [newTitle, setNewTitle] = useState("");
   const [newProjectTitle, setNewProjectTitle] = useState("");
@@ -319,12 +323,12 @@ export function GoalTasksCard({ goal, todayMainAction }: { goal: Goal; todayMain
   };
 
   return (
-    <div className="mt-3.5 space-y-2 rounded-xl border border-monk-border/70 bg-monk-soft/30 p-3.5">
+    <div className="mt-4 border-t border-monk-border/60 pt-3.5 space-y-2">
       <div className="flex items-center justify-between gap-2">
-        <p className="text-[11px] font-bold uppercase tracking-wider text-monk-muted flex items-center gap-1.5">
-          <span>{isId ? "Langkah / Subtask" : "Steps / Subtasks"}</span>
+        <p className="text-xs font-bold uppercase tracking-wider text-monk-muted flex items-center gap-1.5">
+          <span>{t("today.tasks.heading")}</span>
           {tasks.length > 0 ? (
-            <span className="font-mono text-[10px] text-monk-accent">
+            <span className="font-mono text-xs text-monk-accent">
               ({tasks.filter((t) => t.completed).length}/{tasks.length})
             </span>
           ) : null}
@@ -334,7 +338,7 @@ export function GoalTasksCard({ goal, todayMainAction }: { goal: Goal; todayMain
             <button
               type="button"
               onClick={() => setIsAddingProject(true)}
-              className="text-[11px] font-semibold text-monk-muted hover:text-monk-accent hover:underline active:scale-95"
+              className="text-xs font-semibold text-monk-accent transition hover:underline active:scale-95"
             >
               {t("project.addNew")}
             </button>
@@ -343,9 +347,9 @@ export function GoalTasksCard({ goal, todayMainAction }: { goal: Goal; todayMain
             <button
               type="button"
               onClick={() => setIsAdding(true)}
-              className="text-[11px] font-semibold text-monk-accent hover:underline active:scale-95"
+              className="text-xs font-semibold text-monk-accent transition hover:underline active:scale-95"
             >
-              {isId ? "+ Tambah" : "+ Add"}
+              {t("today.add")}
             </button>
           )}
         </div>
@@ -365,6 +369,7 @@ export function GoalTasksCard({ goal, todayMainAction }: { goal: Goal; todayMain
             }}
             placeholder={t("project.namePlaceholder")}
             autoFocus
+            aria-label={t("project.newAria")}
             className="flex-1 rounded-lg border border-monk-border bg-monk-surface px-2.5 py-1 text-xs text-monk-text placeholder:text-monk-muted focus:border-monk-accent focus:outline-none"
           />
           <button
@@ -372,14 +377,14 @@ export function GoalTasksCard({ goal, todayMainAction }: { goal: Goal; todayMain
             onClick={handleAddProject}
             className="rounded-lg bg-monk-accent px-2.5 py-1 text-xs font-semibold text-monk-bg transition active:scale-95"
           >
-            {isId ? "Simpan" : "Save"}
+            {t("today.save")}
           </button>
           <button
             type="button"
             onClick={() => setIsAddingProject(false)}
             className="text-xs text-monk-muted hover:text-monk-text px-1"
           >
-            {isId ? "Batal" : "Cancel"}
+            {t("today.cancel")}
           </button>
         </div>
       ) : null}
@@ -390,9 +395,9 @@ export function GoalTasksCard({ goal, todayMainAction }: { goal: Goal; todayMain
             <div key={group.project?.id ?? "ungrouped"} className="space-y-1.5">
               {group.project ? (
                 <div className="flex items-center justify-between gap-2 border-b border-monk-border/40 pb-1">
-                  <span className="flex min-w-0 items-center gap-1.5 text-[11px] font-semibold text-monk-text">
+                  <span className="flex min-w-0 items-center gap-1.5 text-xs font-semibold text-monk-text">
                     <span className="truncate">{group.project.title}</span>
-                    <span className="font-mono text-[10px] text-monk-muted">
+                    <span className="font-mono text-xs text-monk-muted">
                       ({group.tasks.filter((t) => t.completed).length}/{group.tasks.length})
                     </span>
                   </span>
@@ -404,13 +409,13 @@ export function GoalTasksCard({ goal, todayMainAction }: { goal: Goal; todayMain
                           status: group.project!.status === "done" ? "active" : "done"
                         })
                       }
-                      className="rounded px-1.5 py-0.5 text-[10px] font-semibold text-monk-accent hover:bg-monk-accent/15 transition active:scale-95"
+                      className="rounded px-1.5 py-0.5 text-xs font-semibold text-monk-accent transition hover:bg-monk-accent/15 active:scale-95"
                     >
                       {group.project.status === "done" ? t("project.reopen") : t("project.markDone")}
                     </button>
                     <button
                       type="button"
-                      title={isId ? "Hapus" : "Delete"}
+                      aria-label={`${t("dialog.delete")}: ${group.project!.title}`}
                       onClick={() => store.removeProject(group.project!.id)}
                       className="text-monk-muted/60 hover:text-monk-danger p-0.5 transition"
                     >
@@ -428,7 +433,7 @@ export function GoalTasksCard({ goal, todayMainAction }: { goal: Goal; todayMain
                     className={`flex items-center justify-between gap-2 rounded-lg border px-2.5 py-1.5 text-xs transition ${
                       isCurrentMain
                         ? "border-monk-accent/50 bg-monk-accent/10"
-                        : "border-monk-border/40 bg-monk-surface/60 hover:bg-monk-surface"
+                        : "border-monk-border/40 hover:bg-monk-soft/40"
                     }`}
                   >
                     <div className="flex min-w-0 flex-1 items-center gap-2">
@@ -436,6 +441,7 @@ export function GoalTasksCard({ goal, todayMainAction }: { goal: Goal; todayMain
                         type="checkbox"
                         checked={task.completed}
                         onChange={() => store.toggleGoalTask(goal.id, task.id)}
+                        aria-label={task.title}
                         className="h-3.5 w-3.5 rounded border-monk-border text-monk-accent focus:ring-0 cursor-pointer"
                       />
                       <span
@@ -450,8 +456,8 @@ export function GoalTasksCard({ goal, todayMainAction }: { goal: Goal; todayMain
                         {task.title}
                       </span>
                       {isCurrentMain && (
-                        <span className="shrink-0 rounded-full bg-monk-accent/20 px-1.5 py-0.2 text-[9px] font-bold text-monk-accent">
-                          {isId ? "Aksi Hari Ini" : "Today's Action"}
+                        <span className="shrink-0 rounded-full bg-monk-accent/20 px-1.5 py-0.2 text-xs font-bold text-monk-accent">
+                          {t("today.tasks.todayActionTag")}
                         </span>
                       )}
                     </div>
@@ -464,7 +470,7 @@ export function GoalTasksCard({ goal, todayMainAction }: { goal: Goal; todayMain
                             store.setGoalTaskProject(goal.id, task.id, e.target.value || undefined)
                           }
                           aria-label={t("project.assignLabel")}
-                          className="max-w-[7rem] rounded border border-monk-border/60 bg-monk-surface px-1 py-0.5 text-[10px] text-monk-muted focus:border-monk-accent focus:outline-none"
+                          className="max-w-[7rem] rounded border border-monk-border/60 bg-monk-surface px-1 py-0.5 text-xs text-monk-muted focus:border-monk-accent focus:outline-none"
                         >
                           <option value="">{t("project.none")}</option>
                           {projects.map((p) => (
@@ -477,16 +483,16 @@ export function GoalTasksCard({ goal, todayMainAction }: { goal: Goal; todayMain
                       {!task.completed && !isCurrentMain && (
                         <button
                           type="button"
-                          title={isId ? "Jadikan Aksi Hari Ini" : "Set as Today's Action"}
+                          aria-label={t("today.tasks.setAsAction")}
                           onClick={() => handlePromoteToAction(task.title)}
-                          className="rounded px-1.5 py-0.5 text-[10px] font-semibold text-monk-accent hover:bg-monk-accent/15 transition active:scale-95"
+                          className="rounded px-1.5 py-0.5 text-xs font-semibold text-monk-accent transition hover:bg-monk-accent/15 active:scale-95"
                         >
-                          {isId ? "Jadikan Aksi" : "Set Action"}
+                          {t("today.tasks.setAsAction")}
                         </button>
                       )}
                       <button
                         type="button"
-                        title={isId ? "Hapus" : "Delete"}
+                        aria-label={t("today.tasks.deleteAria", { title: task.title })}
                         onClick={() => store.deleteGoalTask(goal.id, task.id)}
                         className="text-monk-muted/60 hover:text-monk-danger p-0.5 transition"
                       >
@@ -513,8 +519,9 @@ export function GoalTasksCard({ goal, todayMainAction }: { goal: Goal; todayMain
                 handleAdd();
               }
             }}
-            placeholder={isId ? "Langkah 10 menit (mis: Tulis draft bab 1)..." : "10-minute step (e.g. Write draft of chapter 1)..."}
+            placeholder={t("today.tasks.newStepPlaceholder")}
             autoFocus
+            aria-label={t("today.tasks.newStepAria")}
             className="flex-1 rounded-lg border border-monk-border bg-monk-surface px-2.5 py-1 text-xs text-monk-text placeholder:text-monk-muted focus:border-monk-accent focus:outline-none"
           />
           <button
@@ -522,14 +529,14 @@ export function GoalTasksCard({ goal, todayMainAction }: { goal: Goal; todayMain
             onClick={handleAdd}
             className="rounded-lg bg-monk-accent px-2.5 py-1 text-xs font-semibold text-monk-bg transition active:scale-95"
           >
-            {isId ? "Simpan" : "Save"}
+            {t("today.save")}
           </button>
           <button
             type="button"
             onClick={() => setIsAdding(false)}
             className="text-xs text-monk-muted hover:text-monk-text px-1"
           >
-            {isId ? "Batal" : "Cancel"}
+            {t("today.cancel")}
           </button>
         </div>
       ) : tasks.length === 0 ? (
@@ -538,7 +545,7 @@ export function GoalTasksCard({ goal, todayMainAction }: { goal: Goal; todayMain
           onClick={() => setIsAdding(true)}
           className="w-full text-center py-1.5 text-xs text-monk-muted/80 hover:text-monk-accent border border-dashed border-monk-border/60 rounded-lg transition"
         >
-          {isId ? "+ Pecah target ini jadi langkah-langkah kecil" : "+ Break this goal into small steps"}
+          {t("today.tasks.breakIntoSteps")}
         </button>
       ) : null}
     </div>

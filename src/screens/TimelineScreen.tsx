@@ -182,6 +182,9 @@ function DayCountsCard() {
           <p className="mt-0.5 text-sm font-semibold text-monk-text tabular-nums">
             {t("timeline.stats.days", { n: completedCount, total: passedCount })}
           </p>
+          <p className="mt-0.5 text-[10px] text-monk-muted">
+            {t("timeline.legend.scopeSeason")}
+          </p>
         </div>
 
         {/* Day chips — descriptive counts, no judgment */}
@@ -998,7 +1001,7 @@ export default function TimelineScreen() {
                     </h3>
                     <p className="text-[11px] text-monk-muted mt-1 leading-none">
                       {monthSeasonStats.seasonDaysInMonth > 0
-                        ? t("timeline.month.seasonProgress", {
+                        ? t("timeline.month.seasonProgressMonth", {
                             completed: monthSeasonStats.completedInMonth,
                             total: monthSeasonStats.seasonDaysInMonth,
                           })
@@ -1056,6 +1059,24 @@ export default function TimelineScreen() {
                         const isDateToday = cell.dateStr === today;
                         const isSelected = cell.dateStr === selectedMonthDate;
                         const tile = getStatusTileStyle(cell);
+                        const cellStatus = getDailyStatusForDate(store, cell.dateStr);
+                        const statusLabel = !cell.isCurrentMonth
+                          ? t("timeline.month.outOfSeason")
+                          : cellStatus === "completed"
+                            ? t("timeline.legend.done")
+                            : cellStatus === "rest"
+                              ? t("timeline.legend.rest")
+                              : cellStatus === "partial"
+                                ? t("timeline.legend.partial")
+                                : cellStatus === "relapse"
+                                  ? t("timeline.legend.relapse")
+                                  : cellStatus === "not_started"
+                                    ? t("timeline.legend.notStarted")
+                                    : t("timeline.legend.missed");
+                        const cellLabel = t("timeline.month.cellAria", {
+                          date: formatHumanDate(cell.dateStr),
+                          status: statusLabel,
+                        });
 
                         return (
                           <button
@@ -1071,7 +1092,8 @@ export default function TimelineScreen() {
                             className={`w-full aspect-square rounded-xl border p-1 sm:p-1.5 flex flex-col items-center justify-between transition-all duration-150 relative ${tile.tileClass} ${
                               isDateToday ? "ring-2 ring-monk-accent scale-[1.02] z-10" : ""
                             } ${isSelected && !isDateToday ? "ring-2 ring-white/80 scale-[1.02] z-10" : ""}`}
-                            title={cell.dateStr}
+                            aria-label={cellLabel}
+                            title={cellLabel}
                           >
                             <span className={`text-xs font-mono tabular-nums leading-none ${tile.numClass}`}>
                               {cell.dayNum}

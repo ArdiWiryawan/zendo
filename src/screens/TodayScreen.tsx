@@ -34,7 +34,7 @@ import {
 import { FocusSessionPanel } from "../screens/FocusSession";
 import { CoachHint } from "./OnboardingSteps";
 import { WhyEditor } from "../components/SeasonWidgets";
-import { EnergyCheck, WhyStrip, GoalTasksCard } from "./TodayScreen.components";
+import { EnergyCheck, WhyStrip, GoalTasksCard, focusLinkClass, focusLinkMutedClass } from "./TodayScreen.components";
 import { GoalBlueprintModal } from "../components/GoalBlueprintModal";
 import { PracticesCard } from "../components/PracticesCard";
 import { WeeklyReviewModal } from "../components/WeeklyReviewModal";
@@ -751,84 +751,85 @@ export function TodayScreen() {
               ) : null}
 
               {/* Top Navigation & Status */}
-              <div className="relative flex items-start justify-between gap-3">
-                <div className="min-w-0 flex-1">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <p className="text-xs font-bold uppercase tracking-widest text-monk-muted">
-                      {isRest ? t("today.restDay") : t("today.todaysFocus")}
-                    </p>
-                    <span className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider ${statusClass}`}>
-                      {isDone ? (
-                        <Check size={11} strokeWidth={2.5} />
-                      ) : activeSession ? (
-                        <Timer size={11} strokeWidth={2} />
-                      ) : isRest ? (
-                        <Moon size={11} strokeWidth={2} />
-                      ) : todayPlan?.status === "partial" ? (
-                        <Flame size={11} strokeWidth={2} />
-                      ) : null}
-                      <span>{statusLabel}</span>
-                    </span>
-                    {!isRest && goal ? (
-                      <div className="flex items-center gap-1">
-                        <button
-                          type="button"
-                          aria-label={t("blueprint.openButton")}
-                          title={t("blueprint.dialogTitle")}
-                          className="flex items-center gap-1.5 rounded-full border border-monk-border bg-monk-surface px-2.5 py-0.5 text-[11px] font-semibold text-monk-text-soft transition hover:border-monk-accent hover:text-monk-accent active:scale-95"
-                          onClick={() => {
-                            hapticPress("light");
-                            setBlueprintGoalId(goal.id);
-                          }}
-                        >
-                          <Sparkles size={12} className="text-monk-accent" />
-                          <span>{t("blueprint.openButton")}</span>
-                        </button>
-                        <button
-                          type="button"
-                          aria-label={t("release.triggerLabel")}
-                          className="grid min-h-7 min-w-7 place-items-center rounded-full text-monk-muted transition hover:bg-monk-soft hover:text-monk-text active:scale-90"
-                          onClick={() => {
-                            setReleaseNote("");
-                            setReleaseOpen(true);
-                          }}
-                        >
-                          <MoreHorizontal size={15} />
-                        </button>
-                      </div>
-                    ) : null}
+              <div className="relative flex flex-wrap items-center gap-2">
+                <p className="text-xs font-bold uppercase tracking-widest text-monk-muted">
+                  {isRest ? t("today.restDay") : t("today.todaysFocus")}
+                </p>
+                <span className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-xs font-bold uppercase tracking-wider ${statusClass}`}>
+                  {isDone ? (
+                    <Check size={12} strokeWidth={2.5} />
+                  ) : activeSession ? (
+                    <Timer size={12} strokeWidth={2} />
+                  ) : isRest ? (
+                    <Moon size={12} strokeWidth={2} />
+                  ) : todayPlan?.status === "partial" ? (
+                    <Flame size={12} strokeWidth={2} />
+                  ) : null}
+                  <span>{statusLabel}</span>
+                </span>
+                {!isRest && goal ? (
+                  <div className="ml-auto flex items-center gap-1">
+                    <button
+                      type="button"
+                      aria-label={t("blueprint.openButton")}
+                      title={t("blueprint.dialogTitle")}
+                      className="flex items-center gap-1.5 rounded-full border border-monk-border bg-monk-surface px-2.5 py-0.5 text-xs font-semibold text-monk-text-soft transition hover:border-monk-accent hover:text-monk-accent active:scale-95"
+                      onClick={() => {
+                        hapticPress("light");
+                        setBlueprintGoalId(goal.id);
+                      }}
+                    >
+                      <Sparkles size={14} className="text-monk-accent" />
+                      <span>{t("blueprint.openButton")}</span>
+                    </button>
+                    <button
+                      type="button"
+                      aria-label={t("release.triggerLabel")}
+                      className="grid min-h-8 min-w-8 place-items-center rounded-full text-monk-muted transition hover:bg-monk-soft hover:text-monk-text active:scale-90"
+                      onClick={() => {
+                        setReleaseNote("");
+                        setReleaseOpen(true);
+                      }}
+                    >
+                      <MoreHorizontal size={16} />
+                    </button>
                   </div>
+                ) : null}
+              </div>
 
-                  <span className="sr-only" aria-live="polite" id="today-status-live">
-                    {t("today.statusLive", { status: statusLabel })}
-                  </span>
+              <span className="sr-only" aria-live="polite" id="today-status-live">
+                {t("today.statusLive", { status: statusLabel })}
+              </span>
 
+              <div className="relative mt-3 flex items-start justify-between gap-3">
+                <div className="min-w-0 flex-1">
                   {/* Goal Title */}
-                  <h2 className="mt-2.5 text-2xl sm:text-3xl font-bold leading-tight tracking-tight text-monk-text">
+                  <h2 className="text-2xl sm:text-3xl font-bold leading-tight tracking-tight text-monk-text">
                     {isRest ? t("today.quietRecovery") : goal?.title ?? t("today.oneTheme")}
                   </h2>
 
                   {/* Identity Anchor (James Clear) */}
                   {!isRest && goal?.why ? (
-                    <p className="mt-1.5 text-xs sm:text-sm font-medium italic text-monk-accent/90 line-clamp-2">
+                    <p className="mt-1.5 text-sm font-medium italic text-monk-accent/90 line-clamp-2">
                       {t("today.identityBecoming", { why: goal.why })}
                     </p>
                   ) : null}
                   {!isRest && goal?.desiredOutcome ? (
-                    <p className="mt-1 text-xs sm:text-sm text-monk-muted line-clamp-2">
+                    <p className="mt-1 text-sm text-monk-muted line-clamp-2">
                       {t("today.outcomeLine", { outcome: goal.desiredOutcome })}
                     </p>
                   ) : null}
                 </div>
 
-                {/* Big Tactile Completion Button */}
+                {/* The app's core action — labelled, so it reads as one */}
                 <button
                   type="button"
                   aria-label={isDone ? t("today.markIncomplete") : t("today.markComplete")}
-                  className={`flex min-h-12 min-w-12 shrink-0 items-center justify-center rounded-full border-2 transition active:scale-90 ${
+                  aria-pressed={isDone}
+                  className={`flex min-h-12 shrink-0 items-center gap-2 rounded-full border-2 px-4 transition active:scale-95 ${
                     isDone
                       ? "border-monk-success bg-monk-success text-monk-bg shadow-[inset_0_1px_0_rgba(255,255,255,0.2),0_4px_16px_-4px_rgba(100,123,94,0.6)]"
-                      : "border-monk-border/90 bg-monk-surface hover:border-monk-accent hover:text-monk-accent text-monk-muted shadow-sm"
+                      : "border-monk-border/90 bg-monk-surface text-monk-text-soft shadow-sm hover:border-monk-accent hover:text-monk-accent"
                   }`}
                   onClick={() => {
                     unlockAudio();
@@ -844,16 +845,21 @@ export function TodayScreen() {
                     store.toggleTodayCompletion();
                   }}
                 >
-                  {isDone ? <Check size={20} strokeWidth={2.6} /> : null}
+                  <Check size={20} strokeWidth={2.6} className={isDone ? "" : "text-monk-muted"} />
+                  <span className="text-xs font-bold tracking-wide">
+                    {isDone ? t("today.doneToday") : t("today.completeCta")}
+                  </span>
                 </button>
               </div>
 
-              {/* Action Anchor Section */}
-              <div className="relative mt-5 rounded-2xl border border-monk-border/70 bg-monk-soft/50 p-4 transition shadow-xs">
+              {/* Action Anchor Section — one flat block, not a card inside a card.
+                  Hierarchy comes from type scale and a hairline rule, not from
+                  another rounded border. */}
+              <div className="relative mt-5 border-t border-monk-border/50 pt-4">
                 <div className="flex items-center justify-between gap-2 mb-2">
                   <div className="flex items-center gap-1.5">
                     <Zap size={14} className="text-monk-accent shrink-0" />
-                    <p className="text-[11px] font-bold uppercase tracking-wider text-monk-muted">
+                    <p className="text-xs font-bold uppercase tracking-wider text-monk-muted">
                       {isRest ? t("today.restNote") : t("today.actionHeading")}
                     </p>
                     {Boolean(
@@ -861,7 +867,7 @@ export function TodayScreen() {
                       todayPlan?.mainAction &&
                       todayPlan.mainAction.trim() === goal.obstacleMitigation.trim()
                     ) ? (
-                      <span className="rounded-full border border-monk-warning/40 bg-monk-warning/15 px-2 py-0.5 text-[10px] font-bold text-monk-warning">
+                      <span className="rounded-full border border-monk-warning/40 bg-monk-warning/15 px-2 py-0.5 text-xs font-bold text-monk-warning">
                         {t("today.planBActiveBadge")}
                       </span>
                     ) : null}
@@ -869,7 +875,7 @@ export function TodayScreen() {
                   {!editingAction && !isRest ? (
                     <button
                       type="button"
-                      className="text-xs font-semibold text-monk-accent hover:underline active:scale-95"
+                      className={focusLinkClass}
                       onClick={() => {
                         hapticPress("light");
                         // Prefill from the DAY's own action only (§22). Seeding the
@@ -890,7 +896,7 @@ export function TodayScreen() {
                 </div>
 
                 {editingAction ? (
-                  <div className="mt-2 space-y-3 rounded-xl border border-monk-border bg-monk-surface p-3.5 shadow-sm">
+                  <div className="mt-2 space-y-3 rounded-xl border border-monk-border bg-monk-surface/70 p-3.5">
                     <div>
                       <label htmlFor="today-time-input" className="mb-1.5 block text-xs font-semibold text-monk-text-soft">
                         {t("today.time")}
@@ -900,7 +906,7 @@ export function TodayScreen() {
                         id="today-time-input"
                         value={editTime}
                         onChange={(e) => setEditTime(e.target.value)}
-                        className="w-full rounded-xl border border-monk-border bg-monk-surface px-3 py-2 text-xs text-monk-text transition-colors focus:border-monk-accent focus:outline-none focus:ring-1 focus:ring-monk-accent/40"
+                        className="w-full rounded-xl border border-monk-border bg-monk-surface px-3 py-2 text-sm text-monk-text transition-colors focus:border-monk-accent focus:outline-none focus:ring-1 focus:ring-monk-accent/40"
                       />
                     </div>
                     <TextInput
@@ -909,7 +915,7 @@ export function TodayScreen() {
                       onChange={(e) => setEditWhen(e.target.value)}
                       placeholder={t("today.whenPlaceholder")}
                     />
-                    <p className="text-[11px] text-monk-muted">{t("today.whenHint")}</p>
+                    <p className="text-xs text-monk-muted">{t("today.whenHint")}</p>
                     <TextInput
                       label={t("today.iWill")}
                       value={editAction}
@@ -919,14 +925,14 @@ export function TodayScreen() {
                     <div className="flex justify-end gap-3 pt-1">
                       <button
                         type="button"
-                        className="text-xs font-semibold text-monk-muted hover:underline"
+                        className={focusLinkMutedClass}
                         onClick={() => setEditingAction(false)}
                       >
                         {t("today.cancel")}
                       </button>
                       <button
                         type="button"
-                        className="text-xs font-semibold text-monk-accent hover:underline"
+                        className={focusLinkClass}
                         onClick={() => {
                           const formatted = formatIntention(editWhen, editAction, editTime).trim();
                           hapticPress("medium");
@@ -944,12 +950,12 @@ export function TodayScreen() {
                   todayPlan.highlight ? (
                     <div className="space-y-1">
                       <p className="text-xs font-medium text-monk-muted">{t("today.restRenewal.chosenRest")}</p>
-                      <p className="text-sm sm:text-base font-bold leading-relaxed text-monk-text">
+                      <p className="text-base font-bold leading-relaxed text-monk-text">
                         {todayPlan.highlight}
                       </p>
                     </div>
                   ) : (
-                    <p className="text-sm font-semibold leading-relaxed text-monk-text">
+                    <p className="text-base text-monk-muted leading-relaxed">
                       {t("today.rechargeNote")}
                     </p>
                   )
@@ -959,12 +965,12 @@ export function TodayScreen() {
                     return (
                       <div className="space-y-1">
                         {shown.time ? (
-                          <span className="inline-block rounded-md border border-monk-border bg-monk-surface px-2 py-0.5 text-[11px] font-mono font-semibold text-monk-text-soft">
+                          <span className="inline-block rounded-md border border-monk-border bg-monk-surface px-2 py-0.5 text-xs font-mono font-semibold text-monk-text-soft">
                             ⏰ {shown.time}
                           </span>
                         ) : null}
                         <p className="text-xs text-monk-muted">{t("today.whenShown", { when: shown.when })}</p>
-                        <p className="text-sm sm:text-base font-bold leading-relaxed text-monk-text">
+                        <p className="text-base font-bold leading-relaxed text-monk-text">
                           {shown.action}
                         </p>
                       </div>
@@ -972,7 +978,7 @@ export function TodayScreen() {
                   }
                   if (todayPlan.mainAction) {
                     return (
-                      <p className="text-sm sm:text-base font-bold leading-relaxed text-monk-text">
+                      <p className="text-base font-bold leading-relaxed text-monk-text">
                         {todayPlan.mainAction}
                       </p>
                     );
@@ -986,15 +992,15 @@ export function TodayScreen() {
                             something the user chose — and now that clearing the day
                             no longer writes the keystone, this is what an unset day
                             actually shows. The label keeps the provenance visible. */}
-                        <div className="text-[10px] uppercase tracking-widest text-monk-text-soft font-mono">
+                        <div className="text-xs uppercase tracking-widest text-monk-text-soft font-mono">
                           {t("today.suggested")}
                         </div>
-                        <p className="text-sm text-monk-muted leading-relaxed">
+                        <p className="text-base text-monk-muted leading-relaxed">
                           {goal.keystoneAction}
                         </p>
                         <button
                           type="button"
-                          className="text-xs font-bold text-monk-accent hover:underline"
+                          className={focusLinkClass}
                           onClick={() => {
                             const parsed = parseIntention(goal.keystoneAction);
                             setEditTime(parsed.time || "");
@@ -1003,17 +1009,17 @@ export function TodayScreen() {
                             setEditingAction(true);
                           }}
                         >
-                          + {t("today.makeIntention")}
+                          {t("today.makeIntention")}
                         </button>
                       </div>
                     );
                   }
                   return (
                     <div className="space-y-2">
-                      <p className="text-sm text-monk-muted">{t("today.nameAction")}</p>
+                      <p className="text-base text-monk-muted">{t("today.nameAction")}</p>
                       <button
                         type="button"
-                        className="text-xs font-bold text-monk-accent hover:underline"
+                        className={focusLinkClass}
                         onClick={() => {
                           setEditTime("");
                           setEditWhen("");
@@ -1021,7 +1027,7 @@ export function TodayScreen() {
                           setEditingAction(true);
                         }}
                       >
-                        + {t("today.addIntention")}
+                        {t("today.addIntention")}
                       </button>
                     </div>
                   );
@@ -1032,16 +1038,16 @@ export function TodayScreen() {
                     an invitation only: it creates nothing, and tapping it opens the
                     same edit form, prefilled from the day's own action (§22). */}
                 {isDone && !isRest && !editingAction ? (
-                  <div className="mt-3 rounded-xl border border-monk-border/60 bg-monk-soft/30 px-3.5 py-3">
+                  <div className="mt-4 border-t border-monk-border/40 pt-3">
                     <p className="text-sm font-semibold leading-relaxed text-monk-text">
                       {t("today.nextActionPrompt")}
                     </p>
-                    <p className="mt-1 text-xs leading-relaxed text-monk-muted">
+                    <p className="mt-1 text-sm leading-relaxed text-monk-muted">
                       {t("today.primary.intentionBody")}
                     </p>
                     <button
                       type="button"
-                      className="mt-2 text-xs font-semibold text-monk-accent hover:underline active:scale-95"
+                      className={`mt-2 ${focusLinkClass}`}
                       onClick={() => {
                         hapticPress("light");
                         const initial = parseIntention(todayPlan.mainAction || "");
@@ -1064,10 +1070,12 @@ export function TodayScreen() {
                     todayPlan.mainAction.trim() === goal.obstacleMitigation.trim()
                   );
                   return (
-                    <div className="mt-3.5 flex items-center justify-between gap-2 rounded-xl border border-monk-warning/30 bg-monk-warning/10 px-3.5 py-2 text-xs transition">
-                      <span className="flex items-center gap-1.5 font-medium text-monk-text-soft">
+                    <div className="mt-4 flex items-center justify-between gap-2 rounded-xl border border-monk-warning/30 bg-monk-warning/10 px-3.5 py-2.5 transition">
+                      <span className="flex items-center gap-1.5 text-sm font-medium text-monk-text-soft">
                         <ShieldAlert size={14} className="shrink-0 text-monk-warning" />
-                        <span>{isPlanBActive ? t("today.planBActiveBadge") : t("today.planBTrigger")}</span>
+                        <span aria-live="polite">
+                          {isPlanBActive ? t("today.planBActiveBadge") : t("today.planBTrigger")}
+                        </span>
                       </span>
                       {isPlanBActive ? (
                         <button
@@ -1080,7 +1088,7 @@ export function TodayScreen() {
                               mainAction: goal.keystoneAction || ""
                             });
                           }}
-                          className="font-semibold text-monk-accent hover:underline active:scale-95"
+                          className={focusLinkClass}
                         >
                           {t("today.planBSwitchBack")}
                         </button>
@@ -1096,7 +1104,7 @@ export function TodayScreen() {
                             });
                             toast.show(t("today.planBToast"));
                           }}
-                          className="font-semibold text-monk-warning hover:underline active:scale-95"
+                          className="rounded-md text-sm font-semibold text-monk-warning transition hover:underline active:scale-95"
                         >
                           {t("today.planBActivate")}
                         </button>
@@ -1105,7 +1113,9 @@ export function TodayScreen() {
                   );
                 })() : null}
 
-                {/* Subtask checklist with 1-tap promotion to today's action */}
+                {/* Subtask checklist with 1-tap promotion to today's action.
+                    Stays available on a completed day: finishing the Main Action
+                    is not a reason to hide the rest of the work. */}
                 {!isRest && goal ? (
                   <GoalTasksCard goal={goal} todayMainAction={todayPlan.mainAction} />
                 ) : null}
@@ -1122,12 +1132,12 @@ export function TodayScreen() {
                     <span>{isRest ? t("today.protectRecovery") : t("today.stayWithOne")}</span>
                   )}
                   {focusMinutes > 0 ? (
-                    <span className="rounded-full border border-monk-border bg-monk-soft px-2 py-0.5 font-mono text-[11px]">
+                    <span className="rounded-full border border-monk-border bg-monk-soft px-2 py-0.5 font-mono text-xs">
                       {t("today.focusMinutes", { n: focusMinutes })}
                     </span>
                   ) : null}
                   {hasLearning ? (
-                    <span className="rounded-full border border-monk-border bg-monk-soft px-2 py-0.5 font-mono text-[11px]">
+                    <span className="rounded-full border border-monk-border bg-monk-soft px-2 py-0.5 font-mono text-xs">
                       {t("today.learnCount", { n: learningSessions.length })}
                     </span>
                   ) : null}
@@ -1141,7 +1151,7 @@ export function TodayScreen() {
                 ) : (
                   <button
                     type="button"
-                    className="text-[11px] font-semibold text-monk-muted transition hover:text-monk-accent hover:underline"
+                    className="text-xs font-semibold text-monk-muted transition hover:text-monk-accent hover:underline"
                     onClick={() => {
                       if (!todayPlan) return;
                       const restoreStatus =
