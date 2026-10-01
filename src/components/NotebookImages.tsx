@@ -3,6 +3,9 @@ import { X, Trash2, ChevronLeft, ChevronRight } from "lucide-react";
 import { IMG_MARKER } from "../lib/imageStore";
 import { useT } from "../i18n";
 
+/** Load phase of an image id. "failed" means the blob is missing or unreadable. */
+export type ImageStatus = "loading" | "ready" | "failed";
+
 /** Signature for "user tapped an inline photo" — the id is an imageStore marker id. */
 export type PhotoOpenHandler = (id: string) => void;
 
@@ -17,14 +20,19 @@ export function photoIdsInBody(body: string): string[] {
 }
 import { getImage } from "../lib/imageStore";
 
-/** Resolve an image id → object URL. Fetches blob from IndexedDB once, revokes on unmount/re-fetch. */
-export function useObjectUrl(id: string | null): string | null {
-  const [url, setUrl] = useState<string | null>(null);
+/** Load an image id from IndexedDB and expose both its object URL and load outcome. */
+function useObjectUrlState(id: string | null): { url: string | null; status: ImageStatus } {
+  const [state, setState] = useState<{ url: string | null; status: ImageStatus }>({
+    url: null,
+    status: "loading"
+  });
   useEffect(() => {
+    // No id: nothing to load, so not "loading" and not a failure either.
     if (!id) {
-      setUrl(null);
+      setState({ url: null, status: "ready" });
       return;
     }
+    setState({ url: null, status: "loading" });
     let revoked = false;
     let objectUrl: string | null = null;
     let alive = true;
@@ -32,14 +40,14 @@ export function useObjectUrl(id: string | null): string | null {
       .then((blob) => {
         if (!alive) return;
         if (!blob) {
-          setUrl(null);
+          setState({ url: null, status: "failed" });
           return;
         }
         objectUrl = URL.createObjectURL(blob);
-        if (!revoked) setUrl(objectUrl);
+        if (!revoked) setState({ url: objectUrl, status: "ready" });
       })
       .catch(() => {
-        if (alive) setUrl(null);
+        if (alive) setState({ url: null, status: "failed" });
       });
     return () => {
       alive = false;
@@ -47,8 +55,20 @@ export function useObjectUrl(id: string | null): string | null {
       revoked = true;
     };
   }, [id]);
-  return url;
+  return state;
 }
+
+/** Resolve an image id → object URL. Fetches blob from IndexedDB once, revokes on unmount/re-fetch. */
+export function useObjectUrl(id: string | null): string | null {
+  return useObjectUrlState(id).url;
+}
+
+/** Load phase of an image id: "loading" | "ready" | "failed". A missing/unreadable blob is "failed". */
+export function useImageStatus(id: string | null): ImageStatus {
+  return useObjectUrlState(id).status;
+}
+
+export { useObjectUrlState };
 
 /** A photo embedded inline in the body (rendered from a {{img:…}} marker line). Click opens the lightbox. */
 export function InlinePhoto({
@@ -186,7 +206,21 @@ export function PhotoLightbox({
 }
 
 function LightboxImage({ id }: { id: string }) {
-  const url = useObjectUrl(id);
+  // ONE loader call: url + status come from the same state machine, so the blob
+  // is fetched and its object URL created exactly once per id.
+  const { url, status } = useObjectUrlState(id);
+  const t = useT();
+  if (status === "failed") {
+    return (
+      <div
+        role="img"
+        aria-label={t("notebook.photoError")}
+        className="flex min-h-[180px] min-w-[280px] items-center justify-center rounded-2xl border border-dashed border-monk-border-strong bg-monk-soft px-6 py-10 text-center"
+      >
+        <span className="text-sm font-medium text-monk-muted">{t("notebook.photoError")}</span>
+      </div>
+    );
+  }
   if (!url) return null;
   return <img src={url} alt="" className="nb-lightbox-img" />;
 }

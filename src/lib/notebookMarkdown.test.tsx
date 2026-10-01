@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { autolistMarker, groupPhotoRuns, renderBodyMarkdown } from "./notebookMarkdown";
+import { autolistMarker, groupPhotoRuns, renderBodyMarkdown, toPlainExcerpt } from "./notebookMarkdown";
 import { renderToStaticMarkup } from "react-dom/server";
 
 function html(body: string): string {
@@ -235,5 +235,48 @@ describe("groupPhotoRuns", () => {
     const withoutDel = html("{{img:a}}");
     expect(withDel).toContain("nb-photo-del");
     expect(withoutDel).not.toContain("nb-photo-del");
+  });
+});
+
+describe("toPlainExcerpt", () => {
+  it("separates heading, paragraph, list and heading blocks", () => {
+    const body =
+      "# Ide\n\nBeberapa hal yang ingin saya coba:\n\n- Aplikasi kebiasaan\n- Catatan riset\n\n## Catatan\n\nIni **penting** dan *mendesak*.";
+    expect(toPlainExcerpt(body)).toBe(
+      "Ide · Beberapa hal yang ingin saya coba: · Aplikasi kebiasaan, Catatan riset · Catatan · Ini penting dan mendesak."
+    );
+  });
+
+  it("joins consecutive list items with a comma, not glued or dotted", () => {
+    const out = toPlainExcerpt("- a\n- b");
+    expect(out).toBe("a, b");
+    expect(out).not.toContain("ab");
+    expect(out).not.toContain("·");
+  });
+
+  it("returns a single short paragraph unchanged", () => {
+    expect(toPlainExcerpt("Halo dunia")).toBe("Halo dunia");
+  });
+
+  it("appends an ellipsis at maxChars when truncated", () => {
+    const long = "kata ".repeat(60).trim();
+    const out = toPlainExcerpt(long, 40);
+    expect(out.endsWith("…")).toBe(true);
+    expect(out.length).toBeLessThanOrEqual(41);
+    expect(out.slice(0, -1).trim()).toBe(long.slice(0, 40).trimEnd());
+  });
+
+  it("emits no raw markdown syntax and drops whole-line image markers", () => {
+    const out = toPlainExcerpt(
+      "# Judul\n\n> kutipan\n\n- satu\n- dua\n\n{{img:abc}}\n\nLihat [[Catatan]] dan `kode` **tebal**."
+    );
+    expect(out).not.toContain("{{img");
+    expect(out).not.toContain("#");
+    expect(out).not.toContain("**");
+    expect(out).not.toContain("`");
+    expect(out).not.toContain(">");
+    expect(out).not.toContain("[[");
+    expect(out).not.toMatch(/(^|[\s·,])- /);
+    expect(out).toBe("Judul · kutipan · satu, dua · Lihat Catatan dan kode tebal.");
   });
 });

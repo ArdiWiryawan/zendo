@@ -740,6 +740,11 @@ export const id: Record<MessageKey, string> = {
   "notebook.boldTooltip": "Teks Tebal",
   "notebook.italicTooltip": "Teks Miring",
   "notebook.quoteTooltip": "Kutipan",
+  "notebook.todoLabel": "Tugas",
+  "notebook.bulletLabel": "Poin",
+  "notebook.numberLabel": "Nomor",
+  "notebook.headingLabel": "Judul",
+  "notebook.goalLabel": "Target",
 
   "packs.title": "Pack",
   "packs.subtitle": "Pertanyaan bertema untuk refleksi lebih dalam",

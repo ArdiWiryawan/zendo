@@ -42,6 +42,9 @@ const LIST_PREFIX = /^(?:[-*+]|\d+[.)])\s+/;
 const TASK_PREFIX = /^(?:[-*+]\s+)?\[[ xX]\]\s*/;
 const EMPHASIS_MARKERS = /(\*\*|__|~~|`|\*)/g;
 const LINK_SYNTAX = /\[([^\]\n]*)\]\([^)\s]*\)/g;
+const WIKILINK = /\[\[([^\[\]\n]+)\]\]/g;
+/** A list line: bullet, ordered, or task — with or without a bullet in front. */
+const LIST_LINE = /^(?:[-*+]\s+(?:\[[ xX]\]\s+)?|\d+[.)]\s+|\[[ xX]\]\s+)/;
 
 /**
  * Flatten markdown-lite source into a single natural-language excerpt for the
@@ -57,20 +60,34 @@ export function toPlainExcerpt(body: string, maxChars = 160): string {
     // marker embedded in prose is left as literal text rather than silently
     // deleting the words around it.
     .filter((line) => !IMG.test(line.trim()))
-    .map((line) =>
-      line
+    // Classify BEFORE stripping, so a list line is still recognisable as one.
+    .map((line) => {
+      const text = line
         .replace(ATX_HEADING, "")
         .replace(BLOCKQUOTE_PREFIX, "")
         .replace(TASK_PREFIX, "")
         .replace(LIST_PREFIX, "")
         .replace(LINK_SYNTAX, "$1")
+        .replace(WIKILINK, "$1")
         .replace(EMPHASIS_MARKERS, "")
-    )
-    .join(" ")
-    .replace(/\s+/g, " ")
-    .trim();
-  if (plain.length <= maxChars) return plain;
-  return `${plain.slice(0, maxChars).trimEnd()}…`;
+        .replace(/\s+/g, " ")
+        .trim();
+      return { text, isList: LIST_LINE.test(line.trimStart()) };
+    })
+    .filter((line) => line.text.length > 0);
+
+  // Blocks stay distinguishable, but separators must never be newlines: the
+  // excerpt renders in a 1–2 line clamped element. "·" marks a block (blank
+  // line) boundary; consecutive list items read better joined with a comma.
+  let out = "";
+  for (let i = 0; i < plain.length; i++) {
+    if (i > 0) out += plain[i].isList && plain[i - 1].isList ? ", " : " · ";
+    out += plain[i].text;
+  }
+
+  if (out.length <= maxChars) return out;
+  const cut = out.slice(0, maxChars).trimEnd();
+  return cut.endsWith("·") ? `${cut.slice(0, -1).trimEnd()}…` : `${cut}…`;
 }
 
 type ListKind = "ul" | "ol" | "task";

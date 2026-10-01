@@ -738,6 +738,11 @@ export const en = {
   "notebook.boldTooltip": "Bold Text",
   "notebook.italicTooltip": "Italic Text",
   "notebook.quoteTooltip": "Blockquote",
+  "notebook.todoLabel": "To-Do",
+  "notebook.bulletLabel": "Bullet",
+  "notebook.numberLabel": "Number",
+  "notebook.headingLabel": "Heading",
+  "notebook.goalLabel": "Goal",
 
   "packs.title": "Packs",
   "packs.subtitle": "Themed questions for deeper reflection",

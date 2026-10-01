@@ -708,7 +708,7 @@ export default function JournalNotebook({ onEditingChange, initialEntryId }: { o
                     e.stopPropagation();
                     setCatMenu((cur) => (cur?.id === cat.id ? null : { id: cat.id, anchor: e.currentTarget }));
                   }}
-                  className={`grid h-5 w-5 place-items-center rounded-full transition ${menuOpen ? "bg-monk-soft text-monk-text" : "text-monk-text-soft hover:bg-monk-soft/60 hover:text-monk-text"}`}
+                  className={`relative grid h-5 w-5 shrink-0 place-items-center rounded-full transition after:absolute after:left-1/2 after:top-1/2 after:h-6 after:w-6 after:-translate-x-1/2 after:-translate-y-1/2 after:content-[''] ${menuOpen ? "bg-monk-soft text-monk-text" : "text-monk-text-soft hover:bg-monk-soft/60 hover:text-monk-text"}`}
                 >
                   <MoreVertical size={12} strokeWidth={2} />
                 </button>
@@ -2385,7 +2385,7 @@ export function NotebookEditor({
               <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5 text-xs">
                 <span className="shrink-0 text-[10px] font-bold uppercase tracking-wider text-monk-muted mr-1 flex items-center gap-1">
                   <Target size={11} strokeWidth={2} />
-                  <span>Goal:</span>
+                  <span>{t("notebook.goalLabel")}:</span>
                 </span>
                 {activeGoals.map((g) => {
                   const active = goalId === g.id;
@@ -2470,7 +2470,9 @@ export function NotebookEditor({
       />
 
       {/* Sleek Zen Markdown Island Toolbar */}
-      <div className="mb-3 flex items-center gap-1 overflow-x-auto rounded-xl border border-monk-border/60 bg-monk-surface/90 p-1 backdrop-blur-md shadow-xs scrollbar-none">
+      <div className="mb-3 flex flex-col gap-1 rounded-xl border border-monk-border/60 bg-monk-surface/90 p-1 backdrop-blur-md shadow-xs">
+      {/* Row 1 — structure */}
+      <div className="flex flex-wrap items-center gap-1">
         {/* Zen Template Picker */}
         <button
           type="button"
@@ -2482,8 +2484,6 @@ export function NotebookEditor({
           <span>{t("notebook.templatesTitle")}</span>
         </button>
 
-        <div className="h-4 w-px bg-monk-border/50 shrink-0 mx-0.5" />
-
         {/* To-Do Checklist */}
         <button
           type="button"
@@ -2492,7 +2492,7 @@ export function NotebookEditor({
           className="flex h-8 shrink-0 whitespace-nowrap items-center gap-1.5 rounded-lg px-2.5 text-xs font-semibold text-monk-accent bg-monk-accent/10 transition hover:bg-monk-accent/15 active:scale-95"
         >
           <ListTodo size={14} className="shrink-0 text-monk-accent" />
-          <span>To-Do</span>
+          <span>{t("notebook.todoLabel")}</span>
         </button>
 
         {/* Bullet List */}
@@ -2503,7 +2503,7 @@ export function NotebookEditor({
           className="flex h-8 shrink-0 whitespace-nowrap items-center gap-1.5 rounded-lg px-2.5 text-xs font-medium text-monk-text-soft transition hover:bg-monk-soft/70 hover:text-monk-text active:scale-95"
         >
           <List size={14} className="shrink-0" />
-          <span>Poin</span>
+          <span>{t("notebook.bulletLabel")}</span>
         </button>
 
         {/* Numbered List */}
@@ -2514,7 +2514,7 @@ export function NotebookEditor({
           className="flex h-8 shrink-0 whitespace-nowrap items-center gap-1.5 rounded-lg px-2.5 text-xs font-medium text-monk-text-soft transition hover:bg-monk-soft/70 hover:text-monk-text active:scale-95"
         >
           <ListOrdered size={14} className="shrink-0" />
-          <span>Nomor</span>
+          <span>{t("notebook.numberLabel")}</span>
         </button>
 
         {/* Heading */}
@@ -2525,11 +2525,12 @@ export function NotebookEditor({
           className="flex h-8 shrink-0 whitespace-nowrap items-center gap-1.5 rounded-lg px-2.5 text-xs font-medium text-monk-text-soft transition hover:bg-monk-soft/70 hover:text-monk-text active:scale-95"
         >
           <Heading size={14} className="shrink-0" />
-          <span>Judul</span>
+          <span>{t("notebook.headingLabel")}</span>
         </button>
+      </div>
 
-        <div className="h-4 w-px bg-monk-border/50 shrink-0 mx-0.5" />
-
+      {/* Row 2 — formatting */}
+      <div className="flex flex-wrap items-center gap-1 pt-1 border-t border-monk-border/40">
         {/* Bold */}
         <button
           type="button"
@@ -2571,8 +2572,6 @@ export function NotebookEditor({
           <span>[[ ]]</span>
         </button>
 
-        <div className="h-4 w-px bg-monk-border/50 shrink-0 mx-0.5" />
-
         {/* Photo from Gallery */}
         <button
           type="button"
@@ -2594,6 +2593,7 @@ export function NotebookEditor({
           <Palette size={14} className="shrink-0" />
           <span>{t("notebook.drawLabel")}</span>
         </button>
+      </div>
       </div>
 
       {drawingPage !== null ? (
