@@ -295,7 +295,25 @@ export function FocusSessionPanel({
         </div>
       </div>
 
-      <div className="flex items-stretch gap-2">
+      {/*
+        Break-phase backing for the pinned control row (no-op while compact).
+        `isBreak` swaps the panel to bg-monk-rest-soft/40, a different token
+        than the row's opaque bg-monk-soft, so the row restates the composite.
+      */}
+      {!compact && isBreak ? (
+        <div
+          aria-hidden
+          className="pointer-events-none sticky bottom-[calc(env(safe-area-inset-bottom)+78px)] z-20 -mx-2 -mb-5 h-0 rounded-monk bg-monk-rest-soft/40"
+        />
+      ) : null}
+
+      <div
+        className={`flex items-stretch gap-2 ${
+          compact
+            ? ""
+            : "sticky bottom-[calc(env(safe-area-inset-bottom)+78px)] z-30 -mx-2 rounded-monk bg-monk-soft px-2 pt-3 pb-2 shadow-[0_-8px_16px_rgb(var(--color-surface-soft))]"
+        }`}
+      >
         {session.status === "running" ? (
           <SecondaryButton onClick={() => store.pauseFocusSession(session.id)} className="flex-1 min-h-12">
             {t("focus.pause")}
