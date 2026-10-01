@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import { beforeEach, describe, expect, it } from "vitest";
 import { useMonkStore } from "../store/useMonkStore";
 import { createInitialState } from "../constants/defaultData";
+import { getTodayDateString } from "../lib/date";
 
 function src(path: string): string {
   return readFileSync(path, "utf8");
@@ -17,7 +18,10 @@ function src(path: string): string {
  * replaced the headline. These pin the store-level facts the fix relies on.
  */
 describe("highlight and main action are separate fields", () => {
-  const DATE = "2026-09-30";
+  // Derived, never hardcoded: `setTodayHighlight` resolves the plan through
+  // `findTodayPlan` (the real current date), so a fixed literal silently turns
+  // these into clock-dependent time bombs that fail the moment the day rolls over.
+  const DATE = getTodayDateString();
 
   beforeEach(() => {
     useMonkStore.setState(createInitialState(), false);
@@ -27,7 +31,7 @@ describe("highlight and main action are separate fields", () => {
         id: "season-1",
         name: "Test Season",
         startDate: "2026-09-01",
-        endDate: "2026-09-30",
+        endDate: "2099-09-30",
         durationDays: 30,
         status: "active",
         mode: "flow",

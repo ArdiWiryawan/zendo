@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { useMonkStore } from "./useMonkStore";
+import { getTodayDateString } from "../lib/date";
 import type { DayPlan, Goal } from "../types/app";
 
 /**
@@ -8,7 +9,7 @@ import type { DayPlan, Goal } from "../types/app";
  * first-class store operation rather than a side effect of saving time blocks.
  */
 describe("setDayMainAction", () => {
-  const DATE = "2026-09-30";
+  const DATE = getTodayDateString();
 
   const seed = () => {
     const goal: Goal = {
@@ -39,7 +40,7 @@ describe("setDayMainAction", () => {
         id: "season-test",
         name: "Test Season",
         startDate: "2026-09-01",
-        endDate: "2026-09-30",
+        endDate: "2099-09-30",
         durationDays: 30,
         status: "active",
         mode: "flow",
