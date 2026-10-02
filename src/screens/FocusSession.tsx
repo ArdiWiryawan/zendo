@@ -185,7 +185,7 @@ export function FocusSessionPanel({
         isPaused
           ? "opacity-95"
           : !isBreak
-            ? "shadow-[0_0_40px_rgba(164,139,94,0.08)]"
+            ? "shadow-[0_0_40px_rgb(var(--color-accent) / 0.08)]"
             : ""
       }`}
     >
@@ -423,7 +423,7 @@ export function FocusSessionSummary({
   return (
     <Card
       important
-      className="relative border-monk-border-strong bg-monk-soft p-6 text-center shadow-[0_0_40px_rgba(164,139,94,0.08)]"
+      className="relative border-monk-border-strong bg-monk-soft p-6 text-center shadow-[0_0_40px_rgb(var(--color-accent) / 0.08)]"
     >
       <p className="text-sm font-bold text-monk-text">{t("focus.summary.title")}</p>
       <p className="mt-1 text-xs text-monk-muted">{t("focus.summary.subtitle")}</p>

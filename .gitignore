@@ -48,6 +48,10 @@ web_modules/
 # TypeScript cache
 *.tsbuildinfo
 
+# tsc -b emits these from tailwind.config.ts (via tsconfig.node.json)
+tailwind.config.js
+tailwind.config.d.ts
+
 # Optional npm cache directory
 .npm
 

@@ -268,14 +268,14 @@ body {
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
   background:
-    radial-gradient(ellipse 95% 42% at 50% -6%, rgba(164, 139, 94, 0.08), transparent 60%),
+    radial-gradient(ellipse 95% 42% at 50% -6%, rgb(var(--color-accent) / 0.08), transparent 60%),
     radial-gradient(ellipse 120% 60% at 50% 108%, rgba(90, 103, 114, 0.05), transparent 62%),
     rgb(var(--color-bg));
   background-attachment: fixed;
 }
 
 ::selection {
-  background: rgba(164, 139, 94, 0.35);
+  background: rgb(var(--color-accent) / 0.35);
   color: rgb(var(--color-text));
 }
 
@@ -461,18 +461,18 @@ button {
 }
 
 .notebook-card:hover {
-  box-shadow: 0 4px 16px rgba(0,0,0,0.3), 0 0 1px 1px rgba(164, 139, 94, 0.15);
+  box-shadow: 0 4px 16px rgba(0,0,0,0.3), 0 0 1px 1px rgb(var(--color-accent) / 0.15);
   border-color: rgb(var(--color-border-strong));
 }
 
 .notebook-card.pinned {
-  box-shadow: 0 0 12px rgba(164, 139, 94, 0.15), 0 2px 8px rgba(0,0,0,0.2);
-  border-color: rgba(164, 139, 94, 0.4);
+  box-shadow: 0 0 12px rgb(var(--color-accent) / 0.15), 0 2px 8px rgba(0,0,0,0.2);
+  border-color: rgb(var(--color-accent) / 0.4);
 }
 
 .notebook-card.pinned:hover {
-  box-shadow: 0 0 16px rgba(164, 139, 94, 0.25), 0 4px 16px rgba(0,0,0,0.3);
-  border-color: rgba(164, 139, 94, 0.6);
+  box-shadow: 0 0 16px rgb(var(--color-accent) / 0.25), 0 4px 16px rgba(0,0,0,0.3);
+  border-color: rgb(var(--color-accent) / 0.6);
 }
 
 .font-handwriting {
@@ -561,7 +561,7 @@ h5.md-heading, h6.md-heading { font-size: 1rem; }
 
 .notebook-page-bg {
   background:
-    radial-gradient(ellipse 80% 50% at 50% -10%, rgba(164, 139, 94, 0.08), transparent 55%),
+    radial-gradient(ellipse 80% 50% at 50% -10%, rgb(var(--color-accent) / 0.08), transparent 55%),
     var(--notebook-bg);
   min-height: 100%;
 }
@@ -588,11 +588,11 @@ h5.md-heading, h6.md-heading { font-size: 1rem; }
 .nb-binder {
   --nb-leather: #262019;
   --nb-leather-2: #2e2620;
-  --nb-stitch: rgba(164, 139, 94, 0.45);
+  --nb-stitch: rgb(var(--color-accent) / 0.45);
   position: relative;
   border-radius: 16px;
   background:
-    radial-gradient(ellipse 90% 55% at 20% -15%, rgba(164, 139, 94, 0.08), transparent 62%),
+    radial-gradient(ellipse 90% 55% at 20% -15%, rgb(var(--color-accent) / 0.08), transparent 62%),
     linear-gradient(160deg, var(--nb-leather-2), var(--nb-leather));
   padding: 16px 14px 22px 0;
   box-shadow:
@@ -612,9 +612,9 @@ h5.md-heading, h6.md-heading { font-size: 1rem; }
   padding: 20px 20px 18px;
   border-radius: 12px;
   background:
-    radial-gradient(ellipse 80% 60% at 70% -20%, rgba(164, 139, 94, 0.14), transparent 60%),
+    radial-gradient(ellipse 80% 60% at 70% -20%, rgb(var(--color-accent) / 0.14), transparent 60%),
     linear-gradient(150deg, #332a21, #201a14);
-  border: 1px solid rgba(164, 139, 94, 0.18);
+  border: 1px solid rgb(var(--color-accent) / 0.18);
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.06),
     inset 0 0 32px rgba(0, 0, 0, 0.25);
@@ -662,7 +662,7 @@ h5.md-heading, h6.md-heading { font-size: 1rem; }
   box-shadow:
     inset 0 0 0 1px rgba(0, 0, 0, 0.35),
     2px 0 5px rgba(0, 0, 0, 0.3),
-    inset -1px 0 0 rgba(164, 139, 94, 0.12);
+    inset -1px 0 0 rgb(var(--color-accent) / 0.12);
 }
 
 /* Sheets area — ruled paper pages sitting to the right of the spine */
@@ -681,7 +681,7 @@ h5.md-heading, h6.md-heading { font-size: 1rem; }
   background: var(--notebook-bg);
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.05),
-    inset 0 0 0 1px rgba(164, 139, 94, 0.06),
+    inset 0 0 0 1px rgb(var(--color-accent) / 0.06),
     0 4px 14px rgba(0, 0, 0, 0.28);
   transition: transform 0.15s ease, box-shadow 0.15s ease;
 }
@@ -691,7 +691,7 @@ h5.md-heading, h6.md-heading { font-size: 1rem; }
     transform: translateY(-2px);
     box-shadow:
       inset 0 1px 0 rgba(255, 255, 255, 0.05),
-      inset 0 0 0 1px rgba(164, 139, 94, 0.1),
+      inset 0 0 0 1px rgb(var(--color-accent) / 0.1),
       0 10px 24px rgba(0, 0, 0, 0.34);
   }
 }
@@ -725,7 +725,7 @@ h5.md-heading, h6.md-heading { font-size: 1rem; }
   width: 1px;
   background-image: linear-gradient(
     to bottom,
-    rgba(164, 139, 94, 0.4) 3px,
+    rgb(var(--color-accent) / 0.4) 3px,
     transparent 3px
   );
   background-size: 100% 7px;
@@ -763,9 +763,9 @@ h5.md-heading, h6.md-heading { font-size: 1rem; }
   padding: 14px 16px;
   border-radius: 12px;
   background:
-    radial-gradient(ellipse 70% 90% at 80% -30%, rgba(164, 139, 94, 0.12), transparent 60%),
+    radial-gradient(ellipse 70% 90% at 80% -30%, rgb(var(--color-accent) / 0.12), transparent 60%),
     linear-gradient(150deg, #332a21, #201a14);
-  border: 1px solid rgba(164, 139, 94, 0.18);
+  border: 1px solid rgb(var(--color-accent) / 0.18);
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.06),
     inset 0 0 32px rgba(0, 0, 0, 0.25);
@@ -778,7 +778,7 @@ h5.md-heading, h6.md-heading { font-size: 1rem; }
   background: var(--notebook-bg);
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.05),
-    inset 0 0 0 1px rgba(164, 139, 94, 0.08),
+    inset 0 0 0 1px rgb(var(--color-accent) / 0.08),
     0 8px 24px rgba(0, 0, 0, 0.28);
   /* visible so auto-growing title/body textareas never clip the caret */
   overflow: visible;
@@ -1277,7 +1277,7 @@ h5.md-heading, h6.md-heading { font-size: 1rem; }
   background-color: #1f1c17;
   color: #d4cdc0;
   border: 1px solid #2a251e;
-  border-left: 3px solid #a48b5e;
+  border-left: 3px solid rgb(var(--color-accent));
   border-radius: 4px;
   box-shadow: 0 2px 12px rgba(0,0,0,0.15);
 }
@@ -1345,7 +1345,7 @@ h5.md-heading, h6.md-heading { font-size: 1rem; }
   border-radius: 8px;
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.05),
-    inset 0 0 0 1px rgba(164, 139, 94, 0.06),
+    inset 0 0 0 1px rgb(var(--color-accent) / 0.06),
     0 4px 14px rgba(0, 0, 0, 0.28);
   /* the rules */
   background-image: repeating-linear-gradient(
@@ -1371,7 +1371,7 @@ h5.md-heading, h6.md-heading { font-size: 1rem; }
   outline: none;
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.05),
-    inset 0 0 0 1px rgba(164, 139, 94, 0.12),
+    inset 0 0 0 1px rgb(var(--color-accent) / 0.12),
     0 4px 14px rgba(0, 0, 0, 0.28);
 }
 

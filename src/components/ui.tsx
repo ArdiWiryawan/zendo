@@ -402,7 +402,7 @@ export function ChoiceCard({
           : "active:scale-[0.98]"
       } ${
         selected
-          ? "border-monk-accent bg-monk-accent-soft shadow-[inset_0_1px_0_rgba(255,255,255,0.05),0_10px_24px_-14px_rgba(164,139,94,0.55)]"
+          ? "border-monk-accent bg-monk-accent-soft shadow-[inset_0_1px_0_rgba(255,255,255,0.05),0_10px_24px_-14px_rgb(var(--color-accent) / 0.55)]"
           : disabled
             ? ""
             : "border-monk-border bg-monk-surface shadow-[inset_0_1px_0_rgba(255,255,255,0.03)] hover:border-monk-border-strong"

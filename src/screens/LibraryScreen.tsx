@@ -59,7 +59,7 @@ export function CalendarCell({
       onClick={isEligible ? onClick : undefined}
       className={`aspect-square flex items-center justify-center ${isEligible ? "cursor-pointer" : ""}`}
     >
-      <span className={`block w-1 h-1 rounded-full transition-all duration-300 ${dotColor} ${active ? "!w-2 !h-2 !bg-monk-accent/80 shadow-[0_0_6px_rgba(164,139,94,0.4)]" : ""} ${isEligible ? "hover:!w-2 hover:!h-2" : ""}`} />
+      <span className={`block w-1 h-1 rounded-full transition-all duration-300 ${dotColor} ${active ? "!w-2 !h-2 !bg-monk-accent/80 shadow-[0_0_6px_rgb(var(--color-accent) / 0.4)]" : ""} ${isEligible ? "hover:!w-2 hover:!h-2" : ""}`} />
     </div>
   );
 }

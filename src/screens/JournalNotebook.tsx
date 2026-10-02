@@ -610,7 +610,7 @@ export default function JournalNotebook({ onEditingChange, initialEntryId }: { o
           placeholder={t("notebook.searchPlaceholder")}
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          className="w-full min-h-11 rounded-monk border border-monk-border bg-monk-surface pl-9 pr-10 text-sm text-monk-text placeholder:text-monk-text-soft transition focus:border-monk-accent focus:shadow-[0_0_0_2px_rgba(164,139,94,0.2)] focus:outline-none"
+          className="w-full min-h-11 rounded-monk border border-monk-border bg-monk-surface pl-9 pr-10 text-sm text-monk-text placeholder:text-monk-text-soft transition focus:border-monk-accent focus:shadow-[0_0_0_2px_rgb(var(--color-accent) / 0.2)] focus:outline-none"
         />
         {searchQuery ? (
           <button
@@ -905,7 +905,7 @@ export default function JournalNotebook({ onEditingChange, initialEntryId }: { o
       <button
         type="button"
         onClick={() => setShowNewModal(true)}
-        className="fixed bottom-[calc(env(safe-area-inset-bottom)+88px)] right-6 z-40 grid h-14 w-14 place-items-center rounded-full bg-monk-accent text-monk-bg shadow-[inset_0_1px_0_rgba(255,255,255,0.25),0_10px_26px_rgba(164,139,94,0.4)] transition duration-200 hover:scale-[1.05] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.3),0_14px_34px_rgba(164,139,94,0.5)] active:scale-90"
+        className="fixed bottom-[calc(env(safe-area-inset-bottom)+88px)] right-6 z-40 grid h-14 w-14 place-items-center rounded-full bg-monk-accent text-monk-bg shadow-[inset_0_1px_0_rgba(255,255,255,0.25),0_10px_26px_rgb(var(--color-accent) / 0.4)] transition duration-200 hover:scale-[1.05] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.3),0_14px_34px_rgb(var(--color-accent) / 0.5)] active:scale-90"
         aria-label={t("notebook.newNoteAria")}
       >
         <Plus size={24} strokeWidth={2} />

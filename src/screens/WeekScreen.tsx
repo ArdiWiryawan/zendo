@@ -160,7 +160,7 @@ export function WeekScreen() {
 
                 <div className="mt-5 h-2 rounded-full bg-monk-surface/60 overflow-hidden shadow-inner" aria-hidden="true">
                   <motion.div
-                    className="h-full rounded-full bg-gradient-to-r from-monk-accent to-monk-accent/80 shadow-[0_0_8px_rgba(164,139,94,0.4)]"
+                    className="h-full rounded-full bg-gradient-to-r from-monk-accent to-monk-accent/80 shadow-[0_0_8px_rgb(var(--color-accent) / 0.4)]"
                     initial={{ width: 0 }}
                     animate={{ width: `${Math.min(100, Math.round((stats.focusDone / Math.max(1, stats.targetFocus)) * 100))}%` }}
                     transition={{ duration: 0.8, delay: 0.2, ease: [0.16, 1, 0.3, 1] }}
