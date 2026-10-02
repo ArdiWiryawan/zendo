@@ -458,7 +458,7 @@ export function StepIndicator({ currentStep, totalSteps, phaseLabel }: { current
         ))}
       </div>
       <div className="mt-1 h-1 w-full overflow-hidden rounded-full bg-monk-soft/60">
-        <div className="h-1 rounded-full bg-gradient-to-r from-monk-accent/80 to-monk-accent shadow-[0_0_8px_rgba(164,139,94,0.45)] transition-all duration-500 ease-monk motion-reduce:transition-none" style={{ width: `${width}%` }} />
+        <div className="h-1 rounded-full bg-gradient-to-r from-monk-accent/80 to-monk-accent shadow-[0_0_8px_rgb(var(--color-accent)/0.45)] transition-all duration-500 ease-monk motion-reduce:transition-none" style={{ width: `${width}%` }} />
       </div>
     </div>
   );

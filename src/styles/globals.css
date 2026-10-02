@@ -385,7 +385,7 @@ button {
 
 /* Elevated / important surface — warmer top sheen + faint accent lift. */
 .monk-depth-raised {
-  background-image: linear-gradient(180deg, rgba(164, 139, 94, 0.05), transparent 46%);
+  background-image: linear-gradient(180deg, color-mix(in srgb, rgb(var(--color-accent)) 5%, transparent), transparent 46%);
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.06),
     0 2px 4px rgba(0, 0, 0, 0.34),
@@ -397,17 +397,17 @@ button {
   background-image: linear-gradient(180deg, color-mix(in srgb, rgb(var(--color-accent)) 100%, white 10%), rgb(var(--color-accent)));
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.22),
-    0 6px 18px -6px rgba(164, 139, 94, 0.45);
+    0 6px 18px -6px color-mix(in srgb, rgb(var(--color-accent)) 45%, transparent);
 }
 .monk-btn-primary:enabled:hover {
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.28),
-    0 8px 22px -6px rgba(164, 139, 94, 0.6);
+    0 8px 22px -6px color-mix(in srgb, rgb(var(--color-accent)) 60%, transparent);
 }
 .monk-btn-primary:enabled:active {
   box-shadow:
     inset 0 1px 2px rgba(0, 0, 0, 0.25),
-    0 3px 10px -6px rgba(164, 139, 94, 0.4);
+    0 3px 10px -6px color-mix(in srgb, rgb(var(--color-accent)) 40%, transparent);
 }
 
 /* Skeleton pulse for calm loading states */

@@ -1,7 +1,7 @@
 import { useEffect, useState, useMemo } from "react";
 import type { RelapseLog } from "../types/app";
 import { useNavigate } from "react-router-dom";
-import { Moon, BookOpen, Check, ChevronDown, ChevronRight, MoreHorizontal, Sun, Sparkles, ShieldAlert, CircleDashed, Timer, Clock } from "lucide-react";
+import { Moon, BookOpen, Check, ChevronDown, ChevronRight, Sun, Sparkles, ShieldAlert, CircleDashed, Timer, Clock } from "lucide-react";
 import { hapticPress } from "../lib/haptics";
 import { useMonkStore, goalEvidence } from "../store/useMonkStore";
 import { useT } from "../i18n";
@@ -411,7 +411,6 @@ export function TodayScreen() {
    *  open state would greet the user with the long card they collapsed yesterday,
    *  which is exactly the height this redesign removes. */
   const [cardDetailsOpen, setCardDetailsOpen] = useState(false);
-  const [cardMenuOpen, setCardMenuOpen] = useState(false);
 
   const savedReview = weeklyPlan ? store.weeklyReviews?.[weeklyPlan.id] : undefined;
 
@@ -489,9 +488,6 @@ export function TodayScreen() {
     !isReentryAnswered(today) &&
     shouldOfferReentry(store, season.startDate, today);
   const dayPart = getDayPart();
-  const allocation = todayPlan?.goalId && weeklyPlan
-    ? allocations.find((a) => a.goalId === todayPlan.goalId)
-    : undefined;
   const showMorningNudge =
     !isRest &&
     !todayPlan?.mainAction &&
@@ -545,6 +541,8 @@ export function TodayScreen() {
     ? "border-monk-accent/40 bg-monk-accent-soft text-monk-accent"
     : isRest
     ? "border-monk-rest/30 bg-monk-rest-soft text-monk-rest"
+    : todayPlan?.status === "partial"
+    ? "border-monk-rest/40 bg-monk-rest-soft text-monk-rest"
     : "border-monk-border bg-monk-soft text-monk-muted";
 
   const coachStep = getCoachStep({
@@ -740,7 +738,7 @@ export function TodayScreen() {
             <Card
               important
               id="today-primary"
-              className={`today-primary-anchor relative overflow-hidden p-5 sm:p-6 transition-all duration-300 shadow-[inset_0_1px_0_rgba(212,163,89,0.12)] ${
+              className={`today-primary-anchor relative overflow-hidden p-5 sm:p-6 transition-all duration-200 shadow-[inset_0_1px_0_rgb(var(--color-accent)/0.12)] ${
                 isDone
                   ? "border-monk-success/35 bg-gradient-to-b from-monk-success-soft/25 via-monk-surface to-monk-surface"
                   : isRest
@@ -756,11 +754,11 @@ export function TodayScreen() {
               ) : null}
 
               {/* Top Navigation & Status */}
-              <div className="relative flex flex-wrap items-center gap-2">
-                <p className="text-xs font-bold uppercase tracking-widest text-monk-muted">
+              <div className="relative flex items-center gap-2">
+                <p className="min-w-0 truncate text-xs font-bold uppercase tracking-widest text-monk-muted">
                   {isRest ? t("today.restDay") : t("today.todaysFocus")}
                 </p>
-                <span className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-xs font-bold uppercase tracking-wider ${statusClass}`}>
+                <span className={`shrink-0 inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-xs font-bold uppercase tracking-wider ${statusClass}`}>
                   {isDone ? (
                     <Check size={12} strokeWidth={2.5} />
                   ) : activeSession ? (
@@ -772,74 +770,22 @@ export function TodayScreen() {
                   ) : null}
                   <span>{statusLabel}</span>
                 </span>
-                {!isRest && goal ? (
-                  <div className="relative ml-auto">
-                    <button
-                      type="button"
-                      aria-label={t("today.cardMenuLabel")}
-                      aria-expanded={cardMenuOpen}
-                      aria-controls="today-card-menu"
-                      aria-haspopup="menu"
-                      className="grid min-h-8 min-w-8 place-items-center rounded-full text-monk-muted transition hover:bg-monk-soft hover:text-monk-text active:scale-90"
-                      onClick={() => {
-                        hapticPress("light");
-                        setCardMenuOpen((open) => !open);
-                      }}
-                    >
-                      <MoreHorizontal size={16} />
-                    </button>
-                  </div>
-                ) : null}
               </div>
-              {/* Menu lives outside the card's overflow-hidden box so it is never
-                  clipped, but stays aligned to the ⋯ that opened it. */}
-              {!isRest && goal && cardMenuOpen ? (
-                <div
-                  id="today-card-menu"
-                  className="absolute right-5 top-[3.25rem] z-30 w-48 overflow-hidden rounded-xl border border-monk-border bg-monk-surface p-1 shadow-lg sm:right-6"
-                >
-                  <button
-                    type="button"
-                    className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm font-semibold text-monk-text-soft transition hover:bg-monk-soft hover:text-monk-accent"
-                    onClick={() => {
-                      hapticPress("light");
-                      setCardMenuOpen(false);
-                      setBlueprintGoalId(goal.id);
-                    }}
-                  >
-                    <Sparkles size={14} className="shrink-0 text-monk-accent" />
-                    <span>{t("blueprint.openButton")}</span>
-                  </button>
-                  <button
-                    type="button"
-                    className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm font-semibold text-monk-text-soft transition hover:bg-monk-soft hover:text-monk-text"
-                    onClick={() => {
-                      hapticPress("light");
-                      setCardMenuOpen(false);
-                      setReleaseNote("");
-                      setReleaseOpen(true);
-                    }}
-                  >
-                    <Moon size={14} className="shrink-0 text-monk-muted" />
-                    <span>{t("release.triggerLabel")}</span>
-                  </button>
-                </div>
-              ) : null}
 
               <span className="sr-only" aria-live="polite" id="today-status-live">
                 {t("today.statusLive", { status: statusLabel })}
               </span>
 
-              <div className="relative mt-3 min-w-0">
+              <div className="relative mt-2 min-w-0">
                 {/* Goal Title */}
-                <h2 className="text-lg font-semibold leading-snug tracking-tight text-monk-text">
+                <h2 className="text-lg font-semibold leading-tight tracking-tight text-monk-text">
                   {isRest ? t("today.quietRecovery") : goal?.title ?? t("today.oneTheme")}
                 </h2>
 
                 {/* Identity Anchor (James Clear). One line only: the full sentence
                     is a detail, and a hero that wraps three times is not a hero. */}
                 {!isRest && goal?.why ? (
-                  <p className="mt-1.5 truncate text-sm font-medium italic text-monk-accent/90">
+                  <p className="mt-1 truncate text-sm leading-5 font-medium italic text-monk-accent/90">
                     {t("today.identityBecoming", { why: goal.why })}
                   </p>
                 ) : null}
@@ -848,7 +794,7 @@ export function TodayScreen() {
               {/* Action Anchor Section — one flat block, not a card inside a card.
                   Hierarchy comes from type scale and a hairline rule, not from
                   another rounded border. */}
-              <div className="relative mt-5 border-t border-monk-border/50 pt-4">
+              <div className="relative mt-4 border-t border-monk-border/50 pt-4">
                 <div className="flex items-center justify-between gap-2 mb-2">
                   <div className="flex items-center gap-1.5">
                     <p className="text-xs font-bold uppercase tracking-wider text-monk-muted">
@@ -1027,12 +973,12 @@ export function TodayScreen() {
 
                 {/* The one control that matters, full width so it reads as the
                     strongest thing on the card. */}
-                {!editingAction ? (
+                {!editingAction && !isRest ? (
                   <button
                     type="button"
                     aria-label={isDone ? t("today.markIncomplete") : t("today.markComplete")}
                     aria-pressed={isDone}
-                    className={`mt-3 flex min-h-12 w-full items-center justify-center gap-2 rounded-monk border text-base font-bold transition active:scale-[0.98] ${
+                    className={`mt-2 flex min-h-12 w-full items-center justify-center gap-2 rounded-monk border text-base font-bold transition-colors duration-150 ease-monk active:scale-[0.98] ${
                       isDone
                         ? "border-monk-success/40 bg-monk-success-soft text-monk-success"
                         : "border-transparent bg-monk-accent text-monk-bg hover:brightness-105"
@@ -1060,6 +1006,33 @@ export function TodayScreen() {
               {/* Everything below the fold of the day's one action. Always in the
                   DOM (so aria-controls resolves) but hidden until asked for. */}
               <div id="today-card-details" hidden={!cardDetailsOpen} className="mt-4">
+                {goal ? (
+                  <div className="mt-4 flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      className="flex min-h-11 items-center gap-2 rounded-lg px-3 text-sm font-semibold text-monk-text-soft transition duration-150 ease-monk hover:bg-monk-soft hover:text-monk-accent"
+                      onClick={() => {
+                        hapticPress("light");
+                        setBlueprintGoalId(goal.id);
+                      }}
+                    >
+                      <Sparkles size={14} className="shrink-0 text-monk-accent" />
+                      <span>{t("blueprint.openButton")}</span>
+                    </button>
+                    <button
+                      type="button"
+                      className="flex min-h-11 items-center gap-2 rounded-lg px-3 text-sm font-semibold text-monk-text-soft transition duration-150 ease-monk hover:bg-monk-soft hover:text-monk-text"
+                      onClick={() => {
+                        hapticPress("light");
+                        setReleaseNote("");
+                        setReleaseOpen(true);
+                      }}
+                    >
+                      <Moon size={14} className="shrink-0 text-monk-muted" />
+                      <span>{t("release.triggerLabel")}</span>
+                    </button>
+                  </div>
+                ) : null}
                 {!isRest && goal?.desiredOutcome ? (
                   <p className="mb-3 line-clamp-2 text-sm text-monk-muted">
                     {t("today.outcomeLine", { outcome: goal.desiredOutcome })}
@@ -1181,15 +1154,9 @@ export function TodayScreen() {
               </div>
 
               {/* Bottom Meta & Progress Bar */}
-              <div className="mt-4 border-t border-monk-border/40 pt-3 flex flex-wrap items-center justify-between gap-2 text-xs text-monk-muted">
+              <div className="mt-4 border-t border-monk-border/40 pt-4 flex flex-wrap items-center justify-between gap-x-3 gap-y-1.5 text-xs leading-4 text-monk-muted">
                 <div className="flex min-w-0 flex-wrap items-center gap-2">
-                  {allocation ? (
-                    <span className="font-medium text-monk-text-soft">
-                      {t("today.daysOnGoal", { done: allocation.completedCount, target: allocation.targetCount })}
-                    </span>
-                  ) : (
-                    <span>{isRest ? t("today.protectRecovery") : t("today.stayWithOne")}</span>
-                  )}
+                  <span>{isRest ? t("today.protectRecovery") : t("today.stayWithOne")}</span>
                   {focusMinutes > 0 ? (
                     <span className="rounded-full border border-monk-border bg-monk-soft px-2 py-0.5 font-mono text-xs tabular-nums">
                       {t("today.focusMinutes", { n: focusMinutes })}
@@ -1205,7 +1172,7 @@ export function TodayScreen() {
                 <div className="ml-auto flex items-center gap-2">
                   {isDone ? (
                     <p className="flex items-center gap-1.5 font-semibold text-monk-success">
-                      <span className="inline-block h-1.5 w-1.5 rounded-full bg-monk-success" />
+                      <span className="inline-block h-1.5 w-1.5 rounded-full bg-monk-success" aria-hidden />
                       {t("today.movedQuiet")}
                     </p>
                   ) : null}
@@ -1213,7 +1180,7 @@ export function TodayScreen() {
                     type="button"
                     aria-expanded={cardDetailsOpen}
                     aria-controls="today-card-details"
-                    className="flex items-center gap-1 rounded-md text-xs font-bold uppercase tracking-wider text-monk-muted transition hover:text-monk-accent"
+                    className="flex items-center gap-1 rounded-md px-1 text-xs font-bold uppercase tracking-wider text-monk-muted transition duration-150 ease-monk hover:text-monk-accent"
                     onClick={() => {
                       hapticPress("light");
                       setCardDetailsOpen((open) => !open);
