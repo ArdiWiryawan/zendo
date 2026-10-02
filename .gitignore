@@ -153,5 +153,9 @@ today-screen.png
 # UI/UX audit screenshot output (regenerate via tools/audit/*.mjs)
 /audit/
 
+# Generated audit state (seed-today.mjs writes these; never authored by hand)
+tools/audit/today-state.json
+tools/audit/today-storage.json
+
 # One-off local data-recovery page (contains the Supabase anon key). Never ship.
 recover.html

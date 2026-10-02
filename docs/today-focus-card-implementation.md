@@ -425,9 +425,17 @@ If any string is added for any reason: **add to `en.ts` FIRST** — `id.ts:3` is
 6. Reduced-motion pass: confirm nothing animates.
 7. Contrast spot-check on the `partial` pill (§6) in `wabi_sabi` and `temple_gold`.
 
-## 14. Cleanup before commit
+## 14. Audit artifacts
 
-Untracked artifacts at repo root must be removed or gitignored:
-`today-before.png`, `card-close.png`, `today-card-before-collapsed.png`, plus
-`tools/audit/today-state.json`, `tools/audit/today-storage.json`,
-`audit/measure.focus-card.json`.
+Two harnesses are tracked, because both are reusable:
+
+- `tools/audit/seed-today.mjs` — shifts the demo state so the Today card
+  renders, and writes it to `tools/audit/today-state.json`.
+- `tools/audit/measure-focus-card.mjs` — measures the card geometry at
+  mobile width and reads that state file.
+
+Their outputs are generated, not authored, so they are gitignored rather
+than committed: `tools/audit/today-state.json`,
+`tools/audit/today-storage.json`, and everything under `/audit/`.
+
+Screenshots and one-off probe scripts are scratch and are not tracked.
