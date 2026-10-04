@@ -908,7 +908,7 @@ export function TodayScreen() {
                           </span>
                         ) : null}
                         <p className="text-xs text-monk-muted">{t("today.whenShown", { when: shown.when })}</p>
-                        <p className="text-base font-bold leading-relaxed text-monk-text">
+                        <p className="text-lg font-bold leading-relaxed text-monk-text tracking-[-0.01em]">
                           {shown.action}
                         </p>
                       </div>
@@ -916,7 +916,7 @@ export function TodayScreen() {
                   }
                   if (todayPlan.mainAction) {
                     return (
-                      <p className="text-base font-bold leading-relaxed text-monk-text">
+                      <p className="text-lg font-bold leading-relaxed text-monk-text tracking-[-0.01em]">
                         {todayPlan.mainAction}
                       </p>
                     );
@@ -978,10 +978,10 @@ export function TodayScreen() {
                     type="button"
                     aria-label={isDone ? t("today.markIncomplete") : t("today.markComplete")}
                     aria-pressed={isDone}
-                    className={`mt-2 flex min-h-12 w-full items-center justify-center gap-2 rounded-monk border text-base font-bold transition-colors duration-150 ease-monk active:scale-[0.98] ${
+                    className={`mt-2 flex min-h-12 w-full items-center justify-center gap-2 rounded-monk border text-base font-bold transition-all duration-200 ease-monk active:scale-[0.975] ${
                       isDone
                         ? "border-monk-success/40 bg-monk-success-soft text-monk-success"
-                        : "border-transparent bg-monk-accent text-monk-bg hover:brightness-105"
+                        : "border-transparent bg-monk-accent text-monk-bg shadow-monk-accent-soft hover:brightness-105"
                     }`}
                     onClick={() => {
                       unlockAudio();
@@ -1180,7 +1180,7 @@ export function TodayScreen() {
                     type="button"
                     aria-expanded={cardDetailsOpen}
                     aria-controls="today-card-details"
-                    className="flex items-center gap-1 rounded-md px-1 text-xs font-bold uppercase tracking-wider text-monk-muted transition duration-150 ease-monk hover:text-monk-accent"
+                    className="-mr-1 flex min-h-9 items-center gap-1 rounded-md px-2 text-xs font-bold uppercase tracking-wider text-monk-muted transition duration-150 ease-monk hover:bg-monk-soft hover:text-monk-accent"
                     onClick={() => {
                       hapticPress("light");
                       setCardDetailsOpen((open) => !open);
