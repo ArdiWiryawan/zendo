@@ -1,4 +1,5 @@
 import { IMG_MARKER } from "./imageStore";
+import { photoIdsInBody } from "../components/NotebookImages";
 
 /**
  * Multi-page helpers for notebook entries. `body` on the entry is always the
@@ -35,6 +36,16 @@ export function trimTrailingBlankPages(pages: string[] | undefined | null): stri
     lastIndex--;
   }
   return pages.slice(0, lastIndex + 1);
+}
+
+/**
+ * Whether a sheet holds anything a user would mourn: non-whitespace text or an
+ * embedded photo. Blank sheets delete without a confirm step — we only
+ * interrupt for destructive intent, not for removing an empty sheet.
+ */
+export function pageHasContent(page: string | undefined | null): boolean {
+  if (!page) return false;
+  return page.trim().length > 0 || photoIdsInBody(page).length > 0;
 }
 
 /**

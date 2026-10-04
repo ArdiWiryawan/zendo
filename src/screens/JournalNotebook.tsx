@@ -9,7 +9,7 @@ import { Search, Plus, Pin, PinOff, Trash2, ArrowLeft, X, BookOpen, ImagePlus, C
 import { useT, useLanguage, type MessageKey } from "../i18n";
 import { hapticPress } from "../lib/haptics";
 import { autolistMarker, groupPhotoRuns, renderBodyMarkdown, toPlainExcerpt } from "../lib/notebookMarkdown";
-import { deletePageAtIndex, joinPages, removePhotoMarker, trimTrailingBlankPages } from "../lib/notebookPages";
+import { deletePageAtIndex, joinPages, pageHasContent, removePhotoMarker, trimTrailingBlankPages } from "../lib/notebookPages";
 import { IMG_MARKER, compressImage, putImage, getImage, deleteImage, matchImageMarkers } from "../lib/imageStore";
 import { InlinePhoto, PhotoLightbox, photoIdsInBody, useObjectUrl } from "../components/NotebookImages";
 import { ZendoProModal } from "../components/ZendoProModal";
@@ -1592,7 +1592,10 @@ export function NotebookEditor({
   const [newCatName, setNewCatName] = useState("");
   const [dirty, setDirty] = useState(false);
   const [savedFlash, setSavedFlash] = useState(false);
-  const [confirmKind, setConfirmKind] = useState<"leave" | "delete-editor" | "delete-cat-editor" | null>(null);
+  const [confirmKind, setConfirmKind] = useState<"leave" | "delete-editor" | "delete-cat-editor" | "delete-page" | null>(null);
+  // Index, not the page text: the sheet can be edited while the dialog is open,
+  // so confirm resolves it against the latest pages rather than a snapshot.
+  const [pendingDeletePage, setPendingDeletePage] = useState<number | null>(null);
   const [catMenu, setCatMenu] = useState<{ id: string; anchor: HTMLElement | null } | null>(null);
   const [renameCat, setRenameCat] = useState<{ id: string; name: string } | null>(null);
   const [pendingDeleteCat, setPendingDeleteCat] = useState<{ id: string; name: string } | null>(null);
@@ -1721,6 +1724,17 @@ export function NotebookEditor({
     markDirty();
     hapticPress("light");
   }, []);
+
+  // Ask first only when the sheet would take text or photos with it; an empty
+  // sheet is trivia, and confirming trivia trains users to dismiss dialogs blindly.
+  const requestDeletePage = useCallback((pageIdx: number) => {
+    if (!pageHasContent(pages[pageIdx])) {
+      handleDeletePage(pageIdx);
+      return;
+    }
+    setPendingDeletePage(pageIdx);
+    setConfirmKind("delete-page");
+  }, [pages, handleDeletePage]);
 
   const cleanAllBlankPages = useCallback(() => {
     setPages((prev) => {
@@ -2671,7 +2685,7 @@ export function NotebookEditor({
                 </div>
                 <button
                   type="button"
-                  onClick={() => handleDeletePage(i)}
+                  onClick={() => requestDeletePage(i)}
                   aria-label={t("notebook.removePage")}
                   title={t("notebook.removePage")}
                   className="flex items-center gap-1 rounded-md px-2 py-0.5 text-[11px] font-semibold text-monk-danger/80 transition hover:bg-monk-danger/10 hover:text-monk-danger active:scale-95"
@@ -2909,6 +2923,28 @@ export function NotebookEditor({
           clearNotebookDraft(draftKey);
           setConfirmKind(null);
           onBack();
+        }}
+      />
+      <CalmDialog
+        open={confirmKind === "delete-page"}
+        title={t("notebook.deleteSheet")}
+        description={t("notebook.removePageConfirm")}
+        confirmLabel={t("dialog.delete")}
+        cancelLabel={t("dialog.cancel")}
+        danger
+        onCancel={() => {
+          // Cancel drops only the pending index — no page or photo is touched.
+          setConfirmKind(null);
+          setPendingDeletePage(null);
+        }}
+        onConfirm={() => {
+          // A sheet may have been removed while the dialog was open; a stale
+          // index must no-op rather than delete whatever now sits at it.
+          if (pendingDeletePage !== null && pendingDeletePage < pages.length) {
+            handleDeletePage(pendingDeletePage);
+          }
+          setConfirmKind(null);
+          setPendingDeletePage(null);
         }}
       />
       <CalmDialog

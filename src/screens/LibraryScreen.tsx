@@ -1,9 +1,10 @@
 import { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, BookOpen, FileText, History, Search, Sparkles, Filter } from "lucide-react";
+import { ArrowLeft, BookOpen, CalendarCheck, FileText, History, Search, Sparkles, Filter } from "lucide-react";
 import { useMonkStore } from "../store/useMonkStore";
 import { useT, useLanguage } from "../i18n";
 import { getJournalAnswerItems } from "../i18n/prompts";
+import type { MessageKey } from "../i18n";
 import { getTodayDateString, formatHumanDate } from "../lib/date";
 import { routes } from "../constants/routes";
 import { DAILY_STATUS_LABELS, resolveDailyActivityStatus } from "../constants/dailyActivityStatus";
@@ -22,7 +23,9 @@ import JournalNotebook, { NotebookEditor } from "./JournalNotebook";
 import JournalPacks, { journalPackIcon } from "./JournalPacks";
 import { ZendoProModal } from "../components/ZendoProModal";
 import { groupPhotoRuns, renderBodyMarkdown, toPlainExcerpt } from "../lib/notebookMarkdown";
-import type { AppLanguage, TimelineStatus } from "../types/app";
+import { filterReviewHistory, buildReviewHistory, type ReviewHistoryItem } from "../lib/reviewHistory";
+import { RestGlyph } from "../components/RestGlyph";
+import type { AppLanguage, EnergyLevel, TimelineStatus } from "../types/app";
 
 export function CalendarCell({
   date,
@@ -617,14 +620,77 @@ export function PacksPage() {
   );
 }
 
+const ENERGY_LABEL_KEYS: Record<EnergyLevel, MessageKey> = {
+  low: "rest.energy.low",
+  medium: "rest.energy.medium",
+  high: "rest.energy.high"
+};
 
+/**
+ * One past week, read back.
+ *
+ * A week plan can be gone (released season, legacy data) while its review still
+ * holds the only record of that decision, so the row shows the review's own date
+ * as a fallback instead of hiding it. A skipped review says so plainly rather
+ * than borrowing the completed-review layout.
+ */
+function ReviewRow({ item, t }: { item: ReviewHistoryItem; t: (key: MessageKey, vars?: Record<string, string | number>) => string }) {
+  const { review, skipped, decisions, reflections } = item;
+  const weekLabel = item.weekNumber != null ? t("week.weekN", { n: item.weekNumber }) : t("reviews.weekOf", { date: formatHumanDate(item.startDate) });
+  const wins = reflections.find((r) => r.labelKey === "weeklyReviewModal.winsLabel");
+  const rest = review.restActivity;
 
+  return (
+    <Card className="p-4 border border-monk-border/60 bg-monk-surface/30">
+      <div className="flex items-baseline justify-between gap-2">
+        <p className="text-sm font-semibold text-monk-text">{weekLabel}</p>
+        <span className="text-xs text-monk-muted shrink-0">{formatHumanDate(item.startDate)}</span>
+      </div>
 
+      {skipped ? (
+        <div className="mt-2">
+          <span className="inline-block rounded-full border border-monk-warning/30 bg-monk-warning/10 px-2 py-0.5 text-[11px] font-bold uppercase tracking-wider text-monk-warning">
+            {t("reviews.skippedLabel")}
+          </span>
+          <p className="mt-1.5 text-xs leading-relaxed text-monk-muted">{t("reviews.skippedBody")}</p>
+        </div>
+      ) : (
+        <>
+          {decisions.total > 0 && (
+            <p className="mt-2 text-xs leading-relaxed text-monk-accent/90">
+              {t("week.review.summary", { cont: decisions.cont, adj: decisions.adj, rel: decisions.rel })}
+            </p>
+          )}
+
+          {wins?.value && (
+            <p className="mt-2 text-xs leading-relaxed text-monk-text-soft line-clamp-2">
+              <span className="font-semibold text-monk-text">{t("weeklyReviewModal.winsLabel")}: </span>
+              {wins.value}
+            </p>
+          )}
+
+          {rest && (
+            <p className="mt-2 flex items-center gap-1.5 text-xs font-medium text-monk-text">
+              <RestGlyph name={rest.icon || "Trees"} size={14} className="text-monk-rest" />
+              <span>{rest.title}</span>
+            </p>
+          )}
+
+          {item.energy && (
+            <p className="mt-2 text-[11px] font-semibold uppercase tracking-wider text-monk-muted">
+              {t("weeklyReviewModal.energyLabel")}: {t(ENERGY_LABEL_KEYS[item.energy])}
+            </p>
+          )}
+        </>
+      )}
+    </Card>
+  );
+}
 
 export function LibraryScreen() {
   const store = useMonkStore();
   const navigate = useNavigate();
-  const [subview, setSubview] = useState<"journal" | "learning" | "history" | null>(null);
+  const [subview, setSubview] = useState<"journal" | "learning" | "history" | "reviews" | null>(null);
   const [activeTab, setActiveTab] = useState<"focus" | "drifts">("focus");
   const [searchQuery, setSearchQuery] = useState("");
   const [proModalOpen, setProModalOpen] = useState(false);
@@ -691,6 +757,18 @@ export function LibraryScreen() {
       );
     }).sort((a, b) => b.createdAt.localeCompare(a.createdAt));
   }, [store.relapseLogs, searchQuery]);
+
+  // Reloaded when the store's review map or week plans change, so a review made
+  // from WeekScreen shows up here without a remount.
+  const reviewItems = useMemo(
+    () => buildReviewHistory(store.weeklyReviews, store.weeklyPlans),
+    [store.weeklyReviews, store.weeklyPlans]
+  );
+
+  const filteredReviews = useMemo(
+    () => filterReviewHistory(reviewItems, searchQuery),
+    [reviewItems, searchQuery]
+  );
 
   if (subview === "journal") {
     return (
@@ -1000,6 +1078,48 @@ export function LibraryScreen() {
     );
   }
 
+  if (subview === "reviews") {
+    return (
+      <>
+        <div className="flex items-center gap-3 mb-6">
+          <button
+            type="button"
+            onClick={() => { setSubview(null); setSearchQuery(""); }}
+            className="grid h-10 w-10 place-items-center rounded-full border border-monk-border bg-monk-surface text-monk-muted active:scale-95"
+            aria-label={t("library.aria.back")}
+          >
+            <ArrowLeft size={18} />
+          </button>
+          <div>
+            <h1 className="text-xl font-bold text-monk-text">{t("reviews.title")}</h1>
+            <p className="text-xs text-monk-muted">{t("reviews.desc")}</p>
+          </div>
+        </div>
+
+        <div className="space-y-4">
+          {/* Search only earns its space once there is more than one week to sift. */}
+          {reviewItems.length > 1 && (
+            <TextInput
+              placeholder={t("reviews.search")}
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
+          )}
+
+          <div className="space-y-3">
+            {reviewItems.length === 0 ? (
+              <EmptyState title={t("reviews.empty.title")} description={t("reviews.empty.desc")} />
+            ) : filteredReviews.length === 0 ? (
+              <EmptyState title={t("library.searchReflectionsEmpty")} description={t("library.searchReflectionsNoResult")} />
+            ) : (
+              filteredReviews.map((item) => <ReviewRow key={item.id} item={item} t={t} />)
+            )}
+          </div>
+        </div>
+      </>
+    );
+  }
+
   return (
     <>
       <PageHeader
@@ -1073,6 +1193,23 @@ export function LibraryScreen() {
               <span className="text-xs text-monk-text-soft">
                 {t("library.historyCounts", { focus: store.focusSessions.filter(s => ["completed", "ended_early"].includes(s.status)).length, drifts: store.relapseLogs.length })}
               </span>
+            </div>
+          </Card>
+        </button>
+
+        {/* Week reviews: the read-back surface for past re-decisions. */}
+        <button
+          type="button"
+          onClick={() => setSubview("reviews")}
+          className="w-full text-left transition active:scale-[0.99]"
+        >
+          <Card className="p-4 border border-monk-border bg-monk-surface/40 hover:bg-monk-surface transition-colors">
+            <div className="flex items-center justify-between gap-3 text-monk-muted">
+              <div className="flex items-center gap-3">
+                <CalendarCheck size={16} />
+                <span className="text-sm font-semibold">{t("reviews.title")}</span>
+              </div>
+              <span className="text-xs text-monk-text-soft">{t("reviews.count", { n: reviewItems.length })}</span>
             </div>
           </Card>
         </button>

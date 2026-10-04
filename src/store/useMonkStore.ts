@@ -35,12 +35,13 @@ import {
 } from "../lib/date";
 import { createId } from "../lib/ids";
 import { dedupeDayPlans, isNewerDayPlan } from "../lib/dayPlans";
-import { MAX_ACTIVE_GOAL_TRACKS, MAX_SEASON_GOALS } from "../lib/validation";
+import { MAX_ACTIVE_GOAL_TRACKS, MAX_SEASON_GOALS, validateWeeklyAllocation } from "../lib/validation";
 import { parseIntention } from "../lib/implementationIntention";
 import { loadState } from "../lib/storage";
 import { stopMusic } from "../lib/focusMusic";
 import { syncFocusNotifications } from "../lib/focusNotifications";
 import { resolveLinkedNoteIds } from "../lib/notebookLinks";
+import { computeWeeklyRhythm } from "../lib/rhythmAccounting";
 import { t } from "../i18n";
 import type {
   AppSettings,
@@ -88,7 +89,8 @@ import type {
   WeeklyReflectionAnswers,
   RestActivityItem,
   TimeBlock,
-  TimeBlockCategory
+  TimeBlockCategory,
+  ValidationResult
 } from "../types/app";
 
 type StoreSnapshot = MonkMVPState;
@@ -227,6 +229,18 @@ type MonkActions = {
   removeGoalTrack: (id: string) => void;
   reorderGoalTracks: (orderedIds: string[]) => void;
   setGoalTrackStatus: (id: string, status: GoalTrack["status"]) => void;
+  /**
+   * §20-22: what happens to the focus capacity a released goal frees up. This is
+   * the ONLY writer of the rhythm invariant — releasing a goal never recomputes
+   * anything, it just leaves the freed day unclaimed, and these three choices
+   * claim it. Invalid combinations are rejected (never written) so `focus +
+   * rest === 7` cannot silently break again.
+   */
+  reallocateFreeDays: (
+    choice:
+      | { kind: "addToGoal"; goalId: string }
+      | { kind: "toRest" }
+  ) => ValidationResult;
   releaseGoalFromSeason: (goalId: string, note?: string) => void;
   updateSettings: (patch: Partial<AppSettings>) => void;
   updateReminder: (id: string, patch: Partial<NotificationReminder>) => void;
@@ -241,6 +255,8 @@ type MonkActions = {
       skipped?: boolean;
       reflection?: WeeklyReflectionAnswers;
       restActivity?: RestActivityItem;
+      /** Optional so callers written before energy was recorded stay valid. */
+      energy?: EnergyLevel;
     }
   ) => void;
   skipWeekReview: (weekId: string) => void;
@@ -2699,6 +2715,20 @@ export const useMonkStore = create<MonkStore>()(
     const state = get();
     const season = state.activeSeason;
     if (!season) return;
+
+    // Side effects below (release / keystone change) are destructive, so they
+    // must run once per week. `weeklyReviews` is keyed by weekId, which makes
+    // the record idempotent, but a plain re-submit (same "Edit review" pass,
+    // or a double-tap on Finish) would re-run releaseGoalFromSeason and
+    // overwrite a keystone action the user has since re-set. An unchanged
+    // decision set is a no-op; changed decisions still apply.
+    const previous = state.weeklyReviews?.[weekId];
+    const previousEnergy = previous?.energy;
+    const sameDecisions =
+      previous !== undefined &&
+      previous.skipped !== true &&
+      JSON.stringify(previous.decisions ?? {}) === JSON.stringify(decisions ?? {});
+
     set({
       weeklyReviews: {
         ...state.weeklyReviews,
@@ -2707,10 +2737,15 @@ export const useMonkStore = create<MonkStore>()(
           decisions,
           reflection: opts?.reflection,
           restActivity: opts?.restActivity,
+          // Keep a previously recorded energy when the caller only re-saves text.
+          energy: opts?.energy ?? previousEnergy,
           skipped: opts?.skipped
         }
       }
     });
+
+    if (sameDecisions) return;
+
     const storeWithRelease = get() as MonkStore & { releaseGoalFromSeason?: (goalId: string) => void };
     Object.entries(decisions).forEach(([goalId, decision]) => {
       if (decision.action === "adjust" && decision.mainAction?.trim()) {
@@ -2734,6 +2769,41 @@ export const useMonkStore = create<MonkStore>()(
         [weekId]: { date: nowIso(), decisions: {}, skipped: true }
       }
     });
+  },
+
+  reallocateFreeDays: (choice) => {
+    const base = snapshot(get());
+    const { weeklyPlan } = getOrCreateWeekState(base);
+    if (!weeklyPlan) return { valid: false, message: "No weekly plan yet." };
+    const { freeDays } = computeWeeklyRhythm(weeklyPlan);
+    if (freeDays <= 0) return { valid: false, message: "No free day to place." };
+
+    // Both choices claim ALL free days, so the outcome is always focus+rest=7;
+    // a partial claim would leave a residue the UI has no language for.
+    const nextAllocations =
+      choice.kind === "addToGoal"
+        ? weeklyPlan.goalAllocations.map((a) =>
+            a.goalId === choice.goalId ? { ...a, targetCount: a.targetCount + freeDays } : a
+          )
+        : weeklyPlan.goalAllocations;
+    if (choice.kind === "addToGoal" && !nextAllocations.some((a) => a.goalId === choice.goalId)) {
+      return { valid: false, message: "That goal is not in this week's rhythm." };
+    }
+    const nextRest = choice.kind === "toRest" ? weeklyPlan.restDayTarget + freeDays : weeklyPlan.restDayTarget;
+
+    // Refuse to write state that breaks the invariant the whole card reads from.
+    const check = validateWeeklyAllocation(nextAllocations, nextRest);
+    if (!check.valid) return check;
+
+    const timestamp = nowIso();
+    const updated: WeeklyPlan = {
+      ...weeklyPlan,
+      goalAllocations: nextAllocations,
+      restDayTarget: nextRest,
+      updatedAt: timestamp
+    };
+    set({ weeklyPlans: base.weeklyPlans.map((p) => (p.id === weeklyPlan.id ? updated : p)) });
+    return check;
   },
 
   releaseGoalFromSeason: (goalId, note) => {

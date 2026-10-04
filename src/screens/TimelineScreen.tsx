@@ -59,6 +59,7 @@ import {
   getDailyStatusForDate,
   isRetroEligible,
 } from "../lib/dailyActivity";
+import { selectSeasonRhythmAccounting } from "../lib/rhythmAccounting";
 import { selectSeasonFocusSummary, selectTotalFocusSecondsForDate } from "../store/selectors";
 import { useMonkStore } from "../store/useMonkStore";
 import type { AppLanguage, TimelineEvent, TimelineEventType } from "../types/app";
@@ -82,10 +83,10 @@ function TimelineStats() {
     getDaysPassed(season.startDate, today)
   );
   const passedDates = datesInRange(season.startDate, totalPassedDays);
-  const completedDaysCount = passedDates.filter((d) => {
-    return getDailyStatusForDate(store, d) === "completed";
-  }).length;
-  const consistencyRate = totalPassedDays > 0 ? Math.round((completedDaysCount / totalPassedDays) * 100) : 0;
+  // Rest days are planned, so they count on both sides: a day of rest leaves the
+  // rate untouched, while a day genuinely missed only adds to the denominator.
+  const rhythm = selectSeasonRhythmAccounting(store, passedDates);
+  const consistencyRate = rhythm.consistencyRate;
 
   return (
     <motion.div
@@ -129,8 +130,13 @@ function TimelineStats() {
               {t("timeline.stats.consistency")}
             </p>
             <p className="text-sm font-semibold text-monk-text mt-0.5 tabular-nums">
-              {t("timeline.stats.days", { n: completedDaysCount, total: totalPassedDays })}
+              {t("timeline.stats.days", { n: rhythm.accountedDays, total: totalPassedDays })}
             </p>
+            {rhythm.focusDays > 0 || rhythm.restDays > 0 ? (
+              <p className="mt-0.5 text-[10px] text-monk-muted tabular-nums">
+                {t("timeline.stats.daysBreakdown", { focus: rhythm.focusDays, rest: rhythm.restDays })}
+              </p>
+            ) : null}
           </div>
           <div className="text-right">
             <span className="font-mono text-xs font-bold text-monk-accent bg-monk-accent/10 px-2 py-0.5 rounded-md border border-monk-accent/20">
@@ -159,18 +165,11 @@ function DayCountsCard() {
   const passedCount = Math.min(season.durationDays, getDaysPassed(season.startDate, today));
   const passedDates = datesInRange(season.startDate, passedCount);
 
-  let completedCount = 0;
-  let partialCount = 0;
-  let restCount = 0;
-  let missedCount = 0;
-
-  passedDates.forEach((date) => {
-    const status = getDailyStatusForDate(store, date);
-    if (status === "completed") completedCount++;
-    else if (status === "partial") partialCount++;
-    else if (status === "rest") restCount++;
-    else if (status === "missed" || status === "relapse") missedCount++;
-  });
+  const rhythm = selectSeasonRhythmAccounting(store, passedDates);
+  const completedCount = rhythm.focusDays;
+  const restCount = rhythm.restDays;
+  const missedCount = rhythm.missedDays;
+  const partialCount = passedDates.length - completedCount - restCount - missedCount;
 
   return (
     <div className="rounded-2xl border border-monk-border/80 bg-monk-surface/90 p-4 sm:p-5 shadow-xs transition-all duration-200">
@@ -180,8 +179,13 @@ function DayCountsCard() {
             {t("timeline.stats.consistency")}
           </p>
           <p className="mt-0.5 text-sm font-semibold text-monk-text tabular-nums">
-            {t("timeline.stats.days", { n: completedCount, total: passedCount })}
+            {t("timeline.stats.days", { n: rhythm.accountedDays, total: passedCount })}
           </p>
+          {completedCount > 0 || restCount > 0 ? (
+            <p className="mt-0.5 text-[10px] text-monk-muted tabular-nums">
+              {t("timeline.stats.daysBreakdown", { focus: completedCount, rest: restCount })}
+            </p>
+          ) : null}
           <p className="mt-0.5 text-[10px] text-monk-muted">
             {t("timeline.legend.scopeSeason")}
           </p>

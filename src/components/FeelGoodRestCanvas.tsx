@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Moon,
@@ -9,20 +9,30 @@ import {
   BatteryFull,
   RotateCcw,
   ChevronRight,
+  PenLine,
   type LucideIcon
 } from "lucide-react";
 import { useMonkStore } from "../store/useMonkStore";
+import { selectCurrentWeeklyPlan } from "../store/selectors";
 import { useT, useLanguage } from "../i18n";
 import { hapticPress } from "../lib/haptics";
 import { Card, PrimaryButton, GhostButton, useCalmToast } from "./ui";
 import { getTodayDateString } from "../lib/date";
-import { restIcon } from "../constants/restActivities";
+import { restIcon, REST_ACTIVITIES } from "../constants/restActivities";
 import { REST_QUESTIONS } from "../constants/restQuestionnaire";
 import {
   recommendRest,
   isQuestionnaireComplete,
   type RestAnswers
 } from "../lib/restRecommend";
+import {
+  clearRestDraft,
+  deriveWeeklyRhythm,
+  loadRestDraft,
+  resolveRestFlow,
+  resolveRestTitle,
+  saveRestDraft
+} from "../lib/restFlow";
 import type { EnergyLevel } from "../types/app";
 
 interface FeelGoodRestCanvasProps {
@@ -43,19 +53,29 @@ export function FeelGoodRestCanvas({ onOpenWeeklyReview, className = "" }: FeelG
   const store = useMonkStore();
   const today = getTodayDateString();
 
-  const [answers, setAnswers] = useState<RestAnswers>({});
-  const [step, setStep] = useState(0);
+  // The draft is read once per mount; the effects persist it as it changes.
+  const [answers, setAnswers] = useState<RestAnswers>(() => loadRestDraft(today)?.answers ?? {});
+  const [step, setStep] = useState(() => loadRestDraft(today)?.step ?? 0);
+  // A chosen activity reopens as a settled day. Re-showing the questionnaire was
+  // the bug: the user answered the same four questions on every re-entry.
   const [showResults, setShowResults] = useState(false);
-  const [selectedId, setSelectedId] = useState<string | null>(() => {
-    const plan = store.dayPlans.find((p) => p.date === today);
-    return plan?.mainAction?.startsWith("rest:") ? plan.mainAction.replace("rest:", "") : null;
-  });
+  const [showFlow, setShowFlow] = useState(
+    () => resolveRestFlow(store.dayPlans.find((p) => p.date === today) ?? {}).stage !== "completed"
+  );
 
   const [customAction, setCustomAction] = useState("");
   const [isEditingCustom, setIsEditingCustom] = useState(false);
 
   const todayPlan = store.dayPlans.find((p) => p.date === today);
   const currentEnergy = todayPlan?.energyLevel ?? store.energyLogs.find((e) => e.date === today)?.level;
+
+  // Recomputed on every plan change so completing the flow shows the results
+  // immediately; `showFlow` only records that the user asked to change activity.
+  const flow = resolveRestFlow(todayPlan ?? {});
+  const stage = showFlow ? "check_in" : flow.stage;
+  const selected = flow.selected;
+
+  const rhythm = deriveWeeklyRhythm(selectCurrentWeeklyPlan(store, today));
 
   const complete = isQuestionnaireComplete(answers);
   const recommendations = useMemo(
@@ -64,6 +84,13 @@ export function FeelGoodRestCanvas({ onOpenWeeklyReview, className = "" }: FeelG
   );
 
   const question = REST_QUESTIONS[step];
+
+  // Resume where they left off: a mid-questionnaire exit should not cost answers.
+  useEffect(() => {
+    // Nothing in progress to remember once an activity is chosen.
+    if (selected) return;
+    saveRestDraft(today, { answers: answers as Record<string, string>, step });
+  }, [answers, step, today, selected]);
 
   const handleAnswer = (questionId: string, optionId: string) => {
     hapticPress("light");
@@ -81,24 +108,26 @@ export function FeelGoodRestCanvas({ onOpenWeeklyReview, className = "" }: FeelG
     setAnswers({});
     setStep(0);
     setShowResults(false);
+    setShowFlow(true);
+    clearRestDraft(today);
   };
 
   const handleSelectActivity = (id: string, title: string) => {
     hapticPress("light");
-    setSelectedId(id);
     store.createOrUpdateDayPlan(today, {
       dayType: "rest",
       mainAction: `rest:${id}`,
       highlight: title,
       status: "rest"
     });
+    // The day is settled; the draft has done its job.
+    clearRestDraft(today);
     toast.show(t("toast.saved"));
   };
 
   const handleSaveCustom = () => {
     if (!customAction.trim()) return;
     hapticPress("light");
-    setSelectedId("custom");
     store.createOrUpdateDayPlan(today, {
       dayType: "rest",
       mainAction: `rest:custom:${customAction.trim()}`,
@@ -106,6 +135,7 @@ export function FeelGoodRestCanvas({ onOpenWeeklyReview, className = "" }: FeelG
       status: "rest"
     });
     setIsEditingCustom(false);
+    clearRestDraft(today);
     toast.show(t("toast.saved"));
   };
 
@@ -173,7 +203,7 @@ export function FeelGoodRestCanvas({ onOpenWeeklyReview, className = "" }: FeelG
       </Card>
 
       {/* Questionnaire */}
-      {!showResults ? (
+      {stage === "check_in" && !showResults ? (
         <Card className="p-5">
           <div className="flex items-center justify-between gap-3">
             <p className="text-[10px] font-bold uppercase tracking-widest text-monk-muted">
@@ -245,7 +275,7 @@ export function FeelGoodRestCanvas({ onOpenWeeklyReview, className = "" }: FeelG
       ) : null}
 
       {/* Recommendations */}
-      {showResults ? (
+      {stage === "recommendation" && showResults ? (
         <Card className="p-5">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
@@ -267,7 +297,7 @@ export function FeelGoodRestCanvas({ onOpenWeeklyReview, className = "" }: FeelG
           <div className="mt-3.5 space-y-2.5">
             {recommendations.map((rec) => {
               const Icon = restIcon(rec.activity.icon);
-              const active = selectedId === rec.activity.id;
+              const active = selected?.id === rec.activity.id;
               return (
                 <div
                   key={rec.activity.id}
@@ -351,6 +381,71 @@ export function FeelGoodRestCanvas({ onOpenWeeklyReview, className = "" }: FeelG
               </button>
             )}
           </div>
+        </Card>
+      ) : null}
+
+      {/* Completed: the day is set. Rest is not a task, so this is calm and final. */}
+      {stage === "completed" ? (
+        <Card className="border-monk-rest/30 bg-monk-rest-soft/25 p-5">
+          <div className="flex items-center gap-2">
+            <Check size={15} strokeWidth={2.5} className="text-monk-rest" />
+            <p className="text-xs font-bold text-monk-rest">{t("rest.completedTitle")}</p>
+          </div>
+          <p className="mt-1 text-[11px] text-monk-muted leading-relaxed">{t("rest.completedBody")}</p>
+
+          {selected ? (
+            <div className="mt-3.5 flex items-center gap-3 rounded-2xl border border-monk-rest/35 bg-monk-surface p-3.5">
+              <div className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-monk-rest/15 text-monk-rest">
+                {selected.isCustom || !selected.id ? (
+                  <PenLine size={17} strokeWidth={1.75} />
+                ) : (
+                  (() => {
+                    // Unknown id (renamed/removed activity): neutral pen, not a guess.
+                    const known = REST_ACTIVITIES.find((a) => a.id === selected.id);
+                    if (!known) return <PenLine size={17} strokeWidth={1.75} />;
+                    const Icon = restIcon(known.icon);
+                    return <Icon size={17} strokeWidth={1.75} />;
+                  })()
+                )}
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-[10px] font-bold uppercase tracking-widest text-monk-muted">
+                  {t("rest.selected")}
+                </p>
+                <p className="mt-0.5 truncate text-xs font-bold text-monk-text">
+                  {resolveRestTitle(selected, lang)}
+                </p>
+              </div>
+            </div>
+          ) : null}
+
+          <div className="mt-3.5 flex flex-wrap items-center gap-x-4 gap-y-1.5">
+            {currentEnergy ? (
+              <span className="flex items-center gap-1.5 text-[11px] text-monk-muted">
+                {(() => {
+                  const Icon = ENERGY_ICONS[currentEnergy];
+                  return <Icon size={13} strokeWidth={2} />;
+                })()}
+                <span>
+                  {t("rest.energyLabel")}: {t(`rest.energy.${currentEnergy}`)}
+                </span>
+              </span>
+            ) : null}
+            {rhythm ? (
+              <span className="text-[11px] text-monk-muted">
+                {t("rest.rhythmLine", { focus: rhythm.focus, rest: rhythm.rest })}
+              </span>
+            ) : null}
+          </div>
+
+          <button
+            type="button"
+            onClick={handleRetake}
+            className="mt-3.5 flex items-center gap-1.5 text-[11px] font-medium text-monk-muted transition hover:text-monk-rest"
+          >
+            <RotateCcw size={12} strokeWidth={2} />
+            <span>{t("rest.change")}</span>
+          </button>
         </Card>
       ) : null}
 

@@ -687,6 +687,11 @@ export type WeeklyReview = {
   decisions: Record<string, WeeklyReviewDecision>;
   reflection?: WeeklyReflectionAnswers;
   restActivity?: RestActivityItem;
+  /**
+   * Energy the user picked while reviewing. Optional and additive, so reviews
+   * saved before this field existed stay valid without a migration.
+   */
+  energy?: EnergyLevel;
   skipped?: boolean;
 };
 

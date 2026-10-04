@@ -6,6 +6,7 @@ import {
   getTodayDateString
 } from "../lib/date";
 import { isNewerDayPlan } from "../lib/dayPlans";
+import { countSeasonDayPlans } from "../lib/rhythmAccounting";
 import type { DayPlan, EnergyLevel, Goal, MonkMVPState, TimelineDay, WeeklyPlan, FocusSession, LearningSession } from "../types/app";
 
 export function selectActiveGoals(state: MonkMVPState): Goal[] {
@@ -213,7 +214,10 @@ export function selectSeasonGoals(state: MonkMVPState, seasonId: string): Goal[]
   return state.goals.filter((g) => g.seasonId === seasonId);
 }
 
+/**
+ * Day plans for a season. Rest plans carry `status: "rest"`, so they sit on the
+ * accounted-for side rather than reading as unfinished plan work.
+ */
 export function selectSeasonDayPlanCounts(state: MonkMVPState, seasonId: string) {
-  const days = state.dayPlans.filter((d) => d.seasonId === seasonId);
-  return { planned: days.length, completed: days.filter((d) => d.status === "completed").length };
+  return countSeasonDayPlans(state, seasonId);
 }

@@ -1,4 +1,5 @@
 import type { GoalAllocation, GoalDraft, ValidationResult } from "../types/app";
+import { WEEK_TOTAL_CAPACITY } from "./rhythmAccounting";
 
 /**
  * Intentional constraint: a Season holds at most this many Goal Tracks.
@@ -61,8 +62,15 @@ export function validateWeeklyAllocation(allocations: GoalAllocation[], restDayT
   if (allocations.some((allocation) => allocation.targetCount < 1)) {
     return invalid("Every goal needs at least one day this week.");
   }
-  if (total !== 6) return invalid("Six focus days are enough.");
-  if (restDayTarget !== 1) return invalid("Keep one day for rest.");
+  if (!Number.isInteger(restDayTarget) || restDayTarget < 1) {
+    return invalid("Keep at least one day for rest.");
+  }
+  // The real invariant: a week has seven days, so focus days and planned rest
+  // must claim all of them. Previously this hardcoded 6 + exactly 1, which both
+  // forbade an honest 6-day rest budget and let a 7-day sum pass unchecked.
+  if (total + restDayTarget !== WEEK_TOTAL_CAPACITY) {
+    return invalid(`Focus days and rest days must add up to ${WEEK_TOTAL_CAPACITY}.`);
+  }
   return valid();
 }
 

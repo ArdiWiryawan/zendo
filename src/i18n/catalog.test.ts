@@ -1,3 +1,4 @@
+import { readFileSync, readdirSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { t } from "./index";
 import { en } from "./messages/en";
@@ -194,7 +195,7 @@ describe("Today, rest, and streak translations", () => {
     // The guide exists to teach the app's own vocabulary. When the two drift,
     // the user is taught a word they never see. Highlight and Main Action are
     // left untranslated in both languages and both surfaces must say the same.
-    // tests that scan the catalogs directly; this is the runtime half.
+    // tools/check-guide-terms.mts scans the source; this is the runtime half.
     for (const [concept, uiKey] of [
       ["guide.highlightTitle", "today.highlightLabel"],
       ["guide.mainActionTitle", "today.actionHeading"],
@@ -203,6 +204,30 @@ describe("Today, rest, and streak translations", () => {
     ] as const) {
       expect(id[concept], `Indonesian guide vs ${uiKey}`).toBe(id[uiKey]);
       expect(en[concept], `English guide vs ${uiKey}`).toBe(en[uiKey]);
+    }
+  });
+
+  it("every UI key the guide is compared against is actually rendered", () => {
+    // A dead key cannot be ground truth. This pins the specific bug already
+    // found once: the drift guard used `today.highlightHeading`, which nothing
+    // renders, so it stayed green while comparing the guide against a string no
+    // user ever saw. If a key below stops being referenced, either point the
+    // comparison at the live key or delete the row — do not leave it green.
+    const uiKeys = [
+      "today.highlightLabel",
+      "today.actionHeading",
+      "planning.mainActionTitle",
+      "today.agendaHeading",
+    ];
+    const roots = ["src/screens", "src/components", "src/app"];
+    const source = roots
+      .flatMap((r) => readdirSync(r).map((f) => `${r}/${f}`))
+      .filter((p) => /\.tsx?$/.test(p))
+      .map((p) => readFileSync(p, "utf8"))
+      .join("\n");
+
+    for (const key of uiKeys) {
+      expect(source, `${key} must be referenced by real UI code`).toContain(`"${key}"`);
     }
   });
 });

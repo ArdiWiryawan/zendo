@@ -10,6 +10,8 @@
     "lint": "tsc -b --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
+    "check:terms": "tsx tools/check-guide-terms.mts",
+    "audit:dead-keys": "tsx tools/audit-dead-keys.mts",
     "testsprite": "testsprite"
   },
   "dependencies": {

@@ -1,21 +1,40 @@
 import { useState, useEffect, useRef, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, ChevronLeft, ChevronRight, Check, Sparkles, Moon } from "lucide-react";
+import { X, ChevronLeft, ChevronRight, Check, Sparkles, Moon, CalendarDays, Pencil, BatteryMedium } from "lucide-react";
 import { useMonkStore, goalEvidence } from "../store/useMonkStore";
 import { useT } from "../i18n";
-import { selectActiveGoals, selectCurrentWeeklyPlan } from "../store/selectors";
-import { getTodayDateString } from "../lib/date";
+import { selectActiveGoals, selectCurrentWeeklyPlan, selectEnergyForDate } from "../store/selectors";
+import { getTodayDateString, formatHumanDate } from "../lib/date";
 import { hapticPress } from "../lib/haptics";
 import { useCalmToast, PrimaryButton, GhostButton, TextInput, Textarea, useModalA11y } from "./ui";
 import { REST_ACTIVITIES, REST_CATEGORIES, RestActivityCategory, RestActivityDef } from "../constants/restActivities";
 import { RestGlyph } from "./RestGlyph";
-import type { WeeklyReviewDecision, WeeklyReflectionAnswers, RestActivityItem } from "../types/app";
+import type { WeeklyReview, WeeklyReviewDecision, WeeklyReflectionAnswers, RestActivityItem, EnergyLevel } from "../types/app";
+import type { MessageKey } from "../i18n";
 
 interface WeeklyReviewModalProps {
   isOpen: boolean;
   onClose: () => void;
   weeklyPlanId?: string;
 }
+
+/**
+ * Whether a saved review should be shown as a finished summary rather than the
+ * wizard. A skipped week is deliberately NOT "complete": it has no answers to
+ * summarise, so it gets its own honest state instead of an empty report.
+ */
+export function reviewIsComplete(review?: WeeklyReview | null): boolean {
+  return !!review && review.skipped !== true;
+}
+
+/** Prompt slots rendered in the completed summary, in the order they were asked. */
+const REFLECTION_SECTIONS: { key: keyof WeeklyReflectionAnswers; labelKey: MessageKey }[] = [
+  { key: "wins", labelKey: "weeklyReviewModal.winsLabel" },
+  { key: "challenges", labelKey: "weeklyReviewModal.challengesLabel" },
+  { key: "lesson", labelKey: "weeklyReviewModal.lessonLabel" },
+  { key: "organise", labelKey: "weeklyReviewModal.organiseLabel" },
+  { key: "priorities", labelKey: "weeklyReviewModal.prioritiesLabel" }
+];
 
 const slideVariants = {
   enter: (dir: number) => ({
@@ -49,6 +68,14 @@ export function WeeklyReviewModal({ isOpen, onClose, weeklyPlanId }: WeeklyRevie
 
   const [step, setStep] = useState<number>(1);
   const [direction, setDirection] = useState<number>(1);
+  // A finished review opens as a summary, not as the wizard: auto-starting the
+  // form made a completed week look unanswered and re-ran the Finish side
+  // effects. Editing is now an explicit choice.
+  const [isEditing, setIsEditing] = useState<boolean>(false);
+
+  // Energy recorded with the review. Seeded from today's energy log so the
+  // review borrows the reading the rest of the app already uses.
+  const [energy, setEnergy] = useState<EnergyLevel | undefined>(undefined);
 
   // Reflection prompt state
   const [reflection, setReflection] = useState<WeeklyReflectionAnswers>({
@@ -75,6 +102,8 @@ export function WeeklyReviewModal({ isOpen, onClose, weeklyPlanId }: WeeklyRevie
     if (!isOpen) return;
     setStep(1);
     setDirection(1);
+    setIsEditing(false);
+    setEnergy(existingReview?.energy ?? selectEnergyForDate(store, today));
 
     if (existingReview) {
       if (existingReview.reflection) {
@@ -184,7 +213,8 @@ export function WeeklyReviewModal({ isOpen, onClose, weeklyPlanId }: WeeklyRevie
 
     store.reviewWeek(targetWeeklyPlan.id, decisions, {
       reflection,
-      restActivity: finalRestActivity
+      restActivity: finalRestActivity,
+      energy
     });
 
     // Mark today as rest day completed
@@ -203,6 +233,24 @@ export function WeeklyReviewModal({ isOpen, onClose, weeklyPlanId }: WeeklyRevie
   const filteredActivities = selectedCategory === "all"
     ? REST_ACTIVITIES
     : REST_ACTIVITIES.filter((a) => a.category === selectedCategory);
+
+  const showCompleted = reviewIsComplete(existingReview) && !isEditing;
+  const showSkipped = !!existingReview?.skipped && !isEditing;
+  const isSummary = showCompleted || showSkipped;
+
+  const decisionCounts = Object.values(existingReview?.decisions ?? {}).reduce(
+    (acc, decision) => {
+      acc[decision.action] += 1;
+      return acc;
+    },
+    { continue: 0, adjust: 0, release: 0 } as Record<WeeklyReviewDecision["action"], number>
+  );
+
+  const energyLabels: Record<EnergyLevel, string> = {
+    low: t("rest.energy.low"),
+    medium: t("rest.energy.medium"),
+    high: t("rest.energy.high")
+  };
 
   return (
     <div className="fixed inset-0 z-[80] flex items-center justify-center p-3 sm:p-5">
@@ -230,30 +278,43 @@ export function WeeklyReviewModal({ isOpen, onClose, weeklyPlanId }: WeeklyRevie
       >
         {/* Header Bar */}
         <div className="flex items-center justify-between border-b border-monk-border/50 px-5 py-3.5 sm:px-6">
-          <div className="flex items-center gap-2">
-            <span className="grid h-7 w-7 place-items-center rounded-lg bg-monk-accent-soft text-monk-accent text-xs font-bold">
-              {step}/6
-            </span>
-            <span className="text-xs font-semibold text-monk-muted">
-              {t("weeklyReviewModal.stepOf", { current: step, total: 6 })}
-            </span>
-          </div>
+          {isSummary ? (
+            <div className="flex items-center gap-2">
+              <span className="grid h-7 w-7 place-items-center rounded-lg bg-monk-success-soft text-monk-success">
+                {showCompleted ? <Check size={15} /> : <Moon size={15} />}
+              </span>
+              <span className="text-xs font-semibold text-monk-muted">
+                {t(showCompleted ? "week.reviewDoneBadge" : "week.review.skip")}
+              </span>
+            </div>
+          ) : (
+            <div className="flex items-center gap-2">
+              <span className="grid h-7 w-7 place-items-center rounded-lg bg-monk-accent-soft text-monk-accent text-xs font-bold">
+                {step}/6
+              </span>
+              <span className="text-xs font-semibold text-monk-muted">
+                {t("weeklyReviewModal.stepOf", { current: step, total: 6 })}
+              </span>
+            </div>
+          )}
 
           {/* Segmented Dots Indicator */}
-          <div className="flex items-center gap-1.5" aria-hidden>
-            {[1, 2, 3, 4, 5, 6].map((i) => (
-              <span
-                key={i}
-                className={`h-1.5 rounded-full transition-all duration-300 ${
-                  i === step
-                    ? "w-6 bg-monk-accent"
-                    : i < step
-                    ? "w-2 bg-monk-accent/50"
-                    : "w-2 bg-monk-border"
-                }`}
-              />
-            ))}
-          </div>
+          {!isSummary && (
+            <div className="flex items-center gap-1.5" aria-hidden>
+              {[1, 2, 3, 4, 5, 6].map((i) => (
+                <span
+                  key={i}
+                  className={`h-1.5 rounded-full transition-all duration-300 ${
+                    i === step
+                      ? "w-6 bg-monk-accent"
+                      : i < step
+                      ? "w-2 bg-monk-accent/50"
+                      : "w-2 bg-monk-border"
+                  }`}
+                />
+              ))}
+            </div>
+          )}
 
           <button
             type="button"
@@ -267,6 +328,109 @@ export function WeeklyReviewModal({ isOpen, onClose, weeklyPlanId }: WeeklyRevie
 
         {/* Scrollable Step Body */}
         <div ref={modalRef} className="flex-1 overflow-y-auto px-5 py-5 sm:px-6">
+          {isSummary && (
+            <div className="space-y-4">
+              <div className="flex items-start gap-3">
+                <span
+                  className={`grid h-11 w-11 shrink-0 place-items-center rounded-2xl ${
+                    showCompleted
+                      ? "bg-monk-success-soft text-monk-success"
+                      : "bg-monk-soft text-monk-muted"
+                  }`}
+                >
+                  {showCompleted ? <Check size={22} /> : <Moon size={20} />}
+                </span>
+                <div>
+                  <h3 className="text-xl font-bold tracking-tight text-monk-text">
+                    {t(
+                      showCompleted
+                        ? "weeklyReviewModal.completedTitle"
+                        : "weeklyReviewModal.skippedTitle"
+                    )}
+                  </h3>
+                  <p className="mt-1 text-sm leading-relaxed text-monk-muted">
+                    {t(
+                      showCompleted
+                        ? "weeklyReviewModal.completedBody"
+                        : "weeklyReviewModal.skippedBody"
+                    )}
+                  </p>
+                  {existingReview?.date && (
+                    <p className="mt-1.5 flex items-center gap-1.5 text-xs text-monk-muted">
+                      <CalendarDays size={13} />
+                      {t("weeklyReviewModal.completedOn", {
+                        date: formatHumanDate(existingReview.date.slice(0, 10))
+                      })}
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              {showCompleted && (
+                <>
+                  <div className="rounded-2xl border border-monk-border/60 bg-monk-soft/25 p-4">
+                    <p className="text-sm font-semibold text-monk-text">
+                      {t("week.review.summary", {
+                        cont: decisionCounts.continue,
+                        adj: decisionCounts.adjust,
+                        rel: decisionCounts.release
+                      })}
+                    </p>
+                  </div>
+
+                  {REFLECTION_SECTIONS.map(({ key, labelKey }) => {
+                    const answer = existingReview?.reflection?.[key];
+                    if (!answer || !answer.trim()) return null;
+                    return (
+                      <div
+                        key={key}
+                        className="rounded-2xl border border-monk-border/60 bg-monk-soft/25 p-3.5"
+                      >
+                        <h4 className="text-xs font-bold uppercase tracking-wider text-monk-accent">
+                          {t(labelKey)}
+                        </h4>
+                        <p className="mt-1.5 whitespace-pre-wrap text-sm leading-relaxed text-monk-text">
+                          {answer}
+                        </p>
+                      </div>
+                    );
+                  })}
+
+                  {existingReview?.restActivity && (
+                    <div className="rounded-2xl border border-monk-border/60 bg-monk-soft/25 p-3.5">
+                      <h4 className="text-xs font-bold uppercase tracking-wider text-monk-accent">
+                        {t("weeklyReviewModal.chosenRest")}
+                      </h4>
+                      <p className="mt-1.5 flex items-center gap-2 text-sm font-semibold text-monk-text">
+                        {existingReview.restActivity.icon && (
+                          <RestGlyph
+                            name={existingReview.restActivity.icon}
+                            size={15}
+                            className="text-monk-success"
+                          />
+                        )}
+                        {existingReview.restActivity.title}
+                      </p>
+                    </div>
+                  )}
+
+                  {existingReview?.energy && (
+                    <div className="rounded-2xl border border-monk-border/60 bg-monk-soft/25 p-3.5">
+                      <h4 className="text-xs font-bold uppercase tracking-wider text-monk-accent">
+                        {t("weeklyReviewModal.energyLabel")}
+                      </h4>
+                      <p className="mt-1.5 flex items-center gap-2 text-sm font-semibold text-monk-text">
+                        <BatteryMedium size={15} className="text-monk-success" />
+                        {energyLabels[existingReview.energy]}
+                      </p>
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+          )}
+
+          {!isSummary && (
           <AnimatePresence mode="wait" custom={direction}>
             {/* Step 1: Weekly Wins */}
             {step === 1 && (
@@ -574,6 +738,32 @@ export function WeeklyReviewModal({ isOpen, onClose, weeklyPlanId }: WeeklyRevie
                   </p>
                 </div>
 
+                {/* Energy recorded with the review — reuses the app's energy levels */}
+                <div className="rounded-2xl border border-monk-border/60 bg-monk-soft/25 p-3.5">
+                  <p className="text-xs font-bold uppercase tracking-wider text-monk-accent">
+                    {t("rest.energyLabel")}
+                  </p>
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {(["low", "medium", "high"] as const).map((level) => (
+                      <button
+                        key={level}
+                        type="button"
+                        onClick={() => {
+                          hapticPress("light");
+                          setEnergy(level);
+                        }}
+                        className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition active:scale-95 ${
+                          energy === level
+                            ? "bg-monk-success-soft text-monk-success border border-monk-success/50"
+                            : "bg-monk-soft text-monk-muted border border-monk-border/60 hover:text-monk-text"
+                        }`}
+                      >
+                        {t(`rest.energy.${level}`)}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
                 {/* Category Filter Pills */}
                 <div className="flex flex-wrap items-center gap-1.5 py-1">
                   <button
@@ -688,11 +878,35 @@ export function WeeklyReviewModal({ isOpen, onClose, weeklyPlanId }: WeeklyRevie
               </motion.div>
             )}
           </AnimatePresence>
+          )}
         </div>
 
         {/* Footer Actions */}
         <div className="flex items-center justify-between border-t border-monk-border/50 bg-monk-surface/90 px-5 py-3.5 sm:px-6">
-          {step > 1 ? (
+          {isSummary ? (
+            <>
+              <GhostButton
+                onClick={onClose}
+                className="text-xs font-semibold px-3 py-1.5 text-monk-muted"
+              >
+                {t("weeklyReviewModal.close")}
+              </GhostButton>
+              <PrimaryButton
+                onClick={() => {
+                  hapticPress("light");
+                  setIsEditing(true);
+                  setStep(1);
+                  modalRef.current?.scrollTo({ top: 0, behavior: "smooth" });
+                }}
+                className="flex items-center gap-1.5 text-xs font-semibold px-5 py-2"
+              >
+                <Pencil size={14} />
+                <span>{t("weeklyReviewModal.edit")}</span>
+              </PrimaryButton>
+            </>
+          ) : (
+            <>
+              {step > 1 ? (
             <GhostButton
               onClick={() => goToStep(step - 1)}
               className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5"
@@ -725,6 +939,8 @@ export function WeeklyReviewModal({ isOpen, onClose, weeklyPlanId }: WeeklyRevie
               <Moon size={15} />
               <span>{t("weeklyReviewModal.finish")}</span>
             </PrimaryButton>
+          )}
+            </>
           )}
         </div>
       </motion.div>

@@ -9,6 +9,7 @@ import { routes } from "../constants/routes";
 import { DefenseChips } from "./TodayScreen";
 import { selectTodayPlan, selectActiveGoals, selectCurrentWeeklyPlan, selectEnergyForDate, selectTotalFocusSecondsForDate } from "../store/selectors";
 import { isRetroEligible } from "../lib/dailyActivity";
+import { computeWeeklyRhythm } from "../lib/rhythmAccounting";
 import { RetroLogModal } from "../components/RetroLogModal";
 import {
   Card,
@@ -24,6 +25,7 @@ import {
 import { ZendoProModal } from "../components/ZendoProModal";
 import { WeeklyReviewModal } from "../components/WeeklyReviewModal";
 import { RestGlyph } from "../components/RestGlyph";
+import { FreeDayDialog } from "../components/FreeDayDialog";
 import type { EnergyLevel, TimelineStatus } from "../types/app";
 
 export function WeekScreen() {
@@ -37,6 +39,7 @@ export function WeekScreen() {
   const [retroDate, setRetroDate] = useState<string | null>(null);
   const [proModalOpen, setProModalOpen] = useState(false);
   const [weeklyReviewModalOpen, setWeeklyReviewModalOpen] = useState(false);
+  const [reallocateOpen, setReallocateOpen] = useState(false);
 
   useEffect(() => {
     store.getOrCreateCurrentWeeklyPlan();
@@ -71,7 +74,11 @@ export function WeekScreen() {
     const rest = plans.filter((p) => p?.dayType === "rest" || p?.status === "rest").length;
     const missed = plans.filter((p) => p?.status === "missed" || p?.status === "relapse").length;
     const unhandled = plans.filter((p, i) => !p && weekDates[i] < today).length;
-    const targetFocus = allocations.reduce((s, a) => s + a.targetCount, 0) || 6;
+    // The rhythm is read from the plan, never invented: a plan with no
+    // allocations is honestly 0 focus days, not a fallback "6" that hides a
+    // released goal's freed capacity. See computeWeeklyRhythm.
+    const rhythm = computeWeeklyRhythm(weeklyPlan);
+    const targetFocus = rhythm.focusAllocated;
     const focusDone = Math.max(
       completed,
       allocations.reduce((s, a) => s + a.completedCount, 0),
@@ -83,7 +90,7 @@ export function WeekScreen() {
       return acc;
     }, {} as Record<EnergyLevel, number>);
     const energyTotal = Object.values(energyCounts).reduce((a, b) => a + b, 0);
-    return { completed, partial, rest, missed, unhandled, targetFocus, focusDone, energyCounts, energyTotal };
+    return { completed, partial, rest, missed, unhandled, targetFocus, focusDone, energyCounts, energyTotal, rhythm, freeDays: rhythm.freeDays };
   }, [weeklyPlan, weekDates, store.dayPlans, store.focusSessions, store.energyLogs]);
 
   const remainingDays = weekDates.filter((d) => d >= today).length;
@@ -151,7 +158,11 @@ export function WeekScreen() {
                     <p className="mt-1 text-xs text-monk-muted/90">{t("week.focusComplete")}</p>
                   </div>
                   <div className="text-right text-[11px] text-monk-muted/80 space-y-1">
-                    {stats.rest > 0 ? <p className="flex items-center gap-1.5 justify-end"><span className="h-1.5 w-1.5 rounded-full bg-monk-rest/70" />{t("week.restCount", { n: stats.rest })}</p> : null}
+                    {/* Planned rest is rest, not an unfinished focus day: it is
+                        stated from the plan, so a released goal reads as a 6→5
+                        shrink here instead of silently disappearing. */}
+                    {stats.rhythm.restPlanned > 0 ? <p className="flex items-center gap-1.5 justify-end"><span className="h-1.5 w-1.5 rounded-full bg-monk-rest/70" />{t("week.restCount", { n: stats.rhythm.restPlanned })}</p> : null}
+                    {stats.freeDays > 0 ? <p className="flex items-center gap-1.5 justify-end text-monk-accent"><span className="h-1.5 w-1.5 rounded-full bg-monk-accent/70" />{t("rhythm.freeDays", { n: stats.freeDays })}</p> : null}
                     {stats.partial > 0 ? <p className="flex items-center gap-1.5 justify-end"><span className="h-1.5 w-1.5 rounded-full bg-monk-accent/70" />{t("week.partialCount", { n: stats.partial })}</p> : null}
                     {stats.missed + stats.unhandled > 0 ? <p className="flex items-center gap-1.5 justify-end text-monk-warning"><span className="h-1.5 w-1.5 rounded-full bg-monk-warning/70" />{stats.missed > 0 ? t("week.missedCount", { n: stats.missed }) + " " : ""}{stats.unhandled > 0 ? t("week.openMissed", { n: stats.unhandled }) : ""}</p> : null}
                     <p className="text-monk-muted/60">{remainingDays === 1 ? t("week.daysLeft", { n: remainingDays }) : t("week.daysLeftPlural", { n: remainingDays })}</p>
@@ -166,6 +177,25 @@ export function WeekScreen() {
                     transition={{ duration: 0.8, delay: 0.2, ease: [0.16, 1, 0.3, 1] }}
                   />
                 </div>
+
+                {/*
+                  Released goals leave a day nobody has claimed. It stays visible
+                  here (not only in the release dialog, which the user may have
+                  already closed) so the choice is deliberate and survives reload.
+                */}
+                {stats.freeDays > 0 ? (
+                  <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-monk-accent/30 bg-monk-accent/5 px-3 py-2.5">
+                    <p className="text-xs leading-5 text-monk-text">
+                      {t("rhythm.freeDay.body", { n: stats.freeDays })}
+                    </p>
+                    <GhostButton
+                      className="min-h-9 px-3 text-xs"
+                      onClick={() => setReallocateOpen(true)}
+                    >
+                      {t("rhythm.freeDay.action")}
+                    </GhostButton>
+                  </div>
+                ) : null}
               </div>
             </Card>
             </motion.div>
@@ -488,6 +518,14 @@ export function WeekScreen() {
         weeklyPlanId={weeklyPlan?.id}
       />
       <ZendoProModal isOpen={proModalOpen} onClose={() => setProModalOpen(false)} />
+      {stats && stats.freeDays > 0 ? (
+        <FreeDayDialog
+          open={reallocateOpen}
+          freeDays={stats.freeDays}
+          goals={goals}
+          onClose={() => setReallocateOpen(false)}
+        />
+      ) : null}
     </>
   );
 }

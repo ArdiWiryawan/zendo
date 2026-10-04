@@ -178,7 +178,7 @@ export function SeasonArchiveDetail() {
           <Card className="p-4">
             <p className="text-[11px] font-bold uppercase tracking-wider text-monk-muted">{t("seasons.detail.days")}</p>
             <p className="mt-1 text-3xl font-bold tabular-nums text-monk-text">
-              {dayCounts?.completed ?? 0}
+              {dayCounts?.accounted ?? 0}
               <span className="ml-1 text-sm font-semibold text-monk-muted">/ {dayCounts?.planned ?? 0}</span>
             </p>
             <p className="mt-1 text-xs text-monk-muted">{t("seasons.detail.completedDays")}</p>

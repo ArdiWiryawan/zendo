@@ -20,10 +20,12 @@ import {
   Trash2
 } from "lucide-react";
 import { useMonkStore, normalizeAvailability } from "../store/useMonkStore";
+import { selectCurrentWeeklyPlan } from "../store/selectors";
 import { useT } from "../i18n";
 import type { MessageKey } from "../i18n";
 import type { GoalType, GoalWeekday } from "../types/app";
 import { PrimaryButton, SecondaryButton, GhostButton, TextInput, CalmAlert, CalmDialog, useCalmToast, useModalA11y } from "./ui";
+import { ReleaseChoiceDialog } from "./ReleaseChoiceDialog";
 import { hapticPress } from "../lib/haptics";
 import { GOAL_TEMPLATES, GoalBlueprintTemplate } from "../constants/goalTemplates";
 import { MAX_ACTIVE_GOAL_TRACKS } from "../lib/validation";
@@ -260,13 +262,20 @@ export function GoalBlueprintModal({ goalId, isOpen, onClose }: GoalBlueprintMod
   const lang = (store.appSettings.language ?? "id") === "en" ? "en" : "id";
   const templates = GOAL_TEMPLATES[lang];
 
+  // Releasing a goal removes it from this week's allocations, so the week gets
+  // those focus days back. Stated up front so the release dialog can name them.
+  const currentPlan = selectCurrentWeeklyPlan(store);
+  const freedFocusDays = currentPlan
+    ? currentPlan.goalAllocations.find((a) => a.goalId === goalId)?.targetCount ?? 0
+    : 0;
+
   const [showTemplates, setShowTemplates] = useState(false);
   const [showAdvanced, setShowAdvanced] = useState(false);
 
   // §release — releasing a goal from the season lives here now, as the modal's
-  // own escape hatch. `releaseOpen` drives the destructive CalmDialog.
+  // own escape hatch. `releaseOpen` drives ReleaseChoiceDialog, which names the
+  // focus day the release hands back before asking the note.
   const [releaseOpen, setReleaseOpen] = useState(false);
-  const [releaseNote, setReleaseNote] = useState("");
 
   // 4 Essential Pillars
   const [title, setTitle] = useState("");
@@ -327,7 +336,6 @@ export function GoalBlueprintModal({ goalId, isOpen, onClose }: GoalBlueprintMod
       setConvertNewGoal(false);
       setConvertGoalTitle(goal.desiredOutcome || "");
       setReleaseOpen(false);
-      setReleaseNote("");
       setError("");
     }
   }, [goal, isOpen]);
@@ -349,7 +357,6 @@ export function GoalBlueprintModal({ goalId, isOpen, onClose }: GoalBlueprintMod
       // would close underneath the dialog.
       if (releaseOpen) {
         setReleaseOpen(false);
-        setReleaseNote("");
         return;
       }
       if (showTemplates) setShowTemplates(false);
@@ -869,7 +876,6 @@ export function GoalBlueprintModal({ goalId, isOpen, onClose }: GoalBlueprintMod
             type="button"
             onClick={() => {
               hapticPress("light");
-              setReleaseNote("");
               setReleaseOpen(true);
             }}
             aria-haspopup="dialog"
@@ -915,34 +921,29 @@ export function GoalBlueprintModal({ goalId, isOpen, onClose }: GoalBlueprintMod
         the blueprint — a released goal no longer belongs to the season, so the
         modal has nothing left to show.
       */}
-      {releaseOpen ? (
+      {releaseOpen && goal ? (
         <div className="fixed inset-0 z-[90]">
-          <CalmDialog
+          <ReleaseChoiceDialog
             open
-            title={t("release.title", { goal: goal.title })}
-            description={t("release.body")}
-            confirmLabel={t("release.confirm")}
-            cancelLabel={t("release.cancel")}
-            danger
-            onConfirm={() => {
-              store.releaseGoalFromSeason(goal.id, releaseNote);
+            goal={goal}
+            activeGoals={store.goals.filter(
+              (candidate) => candidate.id !== goal.id && candidate.status === "active"
+            )}
+            freedDays={freedFocusDays}
+            onConfirm={(note, choice) => {
+              // Release first: the freed days only exist once the allocation is gone.
+              store.releaseGoalFromSeason(goal.id, note);
+              if (choice.kind !== "none") {
+                const result = store.reallocateFreeDays(choice);
+                // The chosen goal may have been released in the meantime; say so
+                // instead of leaving the day silently unclaimed.
+                if (!result.valid) toast.show(t("rhythm.failed"));
+              }
               setReleaseOpen(false);
-              setReleaseNote("");
-              toast.show(t("release.done"));
               onClose();
             }}
-            onCancel={() => {
-              setReleaseOpen(false);
-              setReleaseNote("");
-            }}
-          >
-            <TextInput
-              label={t("release.noteLabel")}
-              placeholder={t("release.note")}
-              value={releaseNote}
-              onChange={(event) => setReleaseNote(event.target.value)}
-            />
-          </CalmDialog>
+            onCancel={() => setReleaseOpen(false)}
+          />
         </div>
       ) : null}
     </div>
