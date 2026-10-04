@@ -1,0 +1,726 @@
+<!doctype html>
+<html lang="en" data-lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<meta name="description" content="How Zendo handles your data: local-only by default, optional cloud sync, no ads, no analytics, and never sold.">
+<title>Privacy Policy &middot; Zendo</title>
+<style>
+  :root {
+    color-scheme: light dark;
+    --bg: #f7f5f0;
+    --surface: #ffffff;
+    --text: #1c1a15;
+    --muted: #5c564a;
+    --line: #ddd7c9;
+    --line-soft: #eae5da;
+    --accent: #6f5a34;
+    --accent-soft: #f0e9da;
+    --accent-contrast: #ffffff;
+    --mono: ui-monospace, "SFMono-Regular", "Cascadia Mono", "Segoe UI Mono", Menlo, Consolas, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #080908;
+      --surface: #121410;
+      --text: #e5e2da;
+      --muted: #a49e90;
+      --line: #2c2a23;
+      --line-soft: #22211c;
+      --accent: #a48b5e;
+      --accent-soft: #1d1b15;
+      --accent-contrast: #080908;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #080908;
+    --surface: #121410;
+    --text: #e5e2da;
+    --muted: #a49e90;
+    --line: #2c2a23;
+    --line-soft: #22211c;
+    --accent: #a48b5e;
+    --accent-soft: #1d1b15;
+    --accent-contrast: #080908;
+  }
+
+  * { box-sizing: border-box; }
+
+  html { -webkit-text-size-adjust: 100%; }
+
+  body {
+    margin: 0;
+    padding: 0 16px 96px;
+    background: var(--bg);
+    color: var(--text);
+    font: 16px/1.72 ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    font-variant-numeric: oldstyle-nums;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .wrap { max-width: 44rem; margin: 0 auto; }
+
+  a { color: var(--accent); text-underline-offset: 3px; text-decoration-thickness: 1px; }
+  a:hover { text-decoration-thickness: 2px; }
+
+  a:focus-visible,
+  button:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 3px;
+    border-radius: 3px;
+  }
+
+  header.site {
+    padding: 28px 0 18px;
+    border-bottom: 1px solid var(--line-soft);
+  }
+  .bar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 14px 18px;
+    align-items: baseline;
+    justify-content: space-between;
+  }
+  .back {
+    font-family: var(--mono);
+    font-size: 0.72rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    text-decoration: none;
+  }
+  nav.langs { display: flex; flex-wrap: wrap; gap: 6px; }
+  .chip {
+    display: inline-block;
+    padding: 4px 10px;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    font-family: var(--mono);
+    font-size: 0.7rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    text-decoration: none;
+    color: var(--muted);
+    background: transparent;
+    cursor: pointer;
+    line-height: 1.5;
+  }
+  .chip[aria-current="page"], .chip[aria-pressed="true"] {
+    border-color: var(--accent);
+    color: var(--accent);
+    background: var(--accent-soft);
+  }
+  .chip:hover { border-color: var(--accent); color: var(--accent); }
+
+  main { padding-top: 40px; }
+
+  .eyebrow {
+    font-family: var(--mono);
+    font-size: 0.7rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin: 0 0 14px;
+  }
+
+  /* Marks a value the owner must replace before publishing. Deliberately
+     ugly — a placeholder that looks like normal text ships by accident. */
+  .placeholder {
+    color: var(--accent);
+    font-weight: 600;
+    border: 1px dashed var(--accent);
+    border-radius: 3px;
+    padding: 0.06em 0.36em;
+    white-space: nowrap;
+  }
+
+  h1 {
+    font-size: clamp(1.75rem, 5vw, 2.4rem);
+    line-height: 1.18;
+    letter-spacing: -0.015em;
+    font-weight: 600;
+    margin: 0 0 16px;
+  }
+
+  .meta {
+    font-family: var(--mono);
+    font-size: 0.76rem;
+    letter-spacing: 0.04em;
+    color: var(--muted);
+    margin: 0 0 6px;
+  }
+  .meta strong { color: var(--text); font-weight: 600; }
+
+  .lede {
+    font-size: 1.06rem;
+    color: var(--muted);
+    margin: 18px 0 0;
+    max-width: 38rem;
+  }
+
+  h2 {
+    font-size: 1.18rem;
+    letter-spacing: -0.005em;
+    font-weight: 600;
+    margin: 0 0 16px;
+    scroll-margin-top: 24px;
+  }
+  h3 {
+    font-size: 0.98rem;
+    font-weight: 600;
+    margin: 28px 0 10px;
+  }
+
+  section {
+    padding: 40px 0;
+    border-top: 1px solid var(--line-soft);
+  }
+  section:first-of-type { border-top: none; padding-top: 8px; }
+
+  p { margin: 0 0 16px; max-width: 40rem; }
+  ul, ol { margin: 0 0 16px; padding-left: 1.25rem; max-width: 40rem; }
+  li { margin: 0 0 9px; }
+  li > ul, li > ol { margin-top: 9px; margin-bottom: 4px; }
+
+  code {
+    font-family: var(--mono);
+    font-size: 0.86em;
+    background: var(--accent-soft);
+    border: 1px solid var(--line-soft);
+    border-radius: 4px;
+    padding: 1px 5px;
+    word-break: break-word;
+  }
+
+  .toc {
+    margin: 36px 0 8px;
+    padding: 22px 24px;
+    background: var(--surface);
+    border: 1px solid var(--line-soft);
+    border-radius: 12px;
+  }
+  .toc h2 { font-size: 0.7rem; font-family: var(--mono); letter-spacing: 0.2em;
+            text-transform: uppercase; color: var(--muted); font-weight: 500;
+            margin: 0 0 14px; }
+  .toc ol { columns: 2; column-gap: 32px; margin: 0; padding-left: 1.2rem;
+            font-size: 0.92rem; }
+  .toc li { break-inside: avoid; margin-bottom: 7px; }
+  @media (max-width: 34rem) { .toc ol { columns: 1; } }
+
+  .table-scroll { overflow-x: auto; margin: 0 0 16px; }
+  table {
+    border-collapse: collapse;
+    width: 100%;
+    min-width: 30rem;
+    font-size: 0.92rem;
+    background: var(--surface);
+  }
+  caption {
+    caption-side: top;
+    text-align: left;
+    font-size: 0.85rem;
+    color: var(--muted);
+    padding-bottom: 10px;
+  }
+  th, td {
+    text-align: left;
+    vertical-align: top;
+    padding: 11px 14px;
+    border-bottom: 1px solid var(--line-soft);
+  }
+  thead th {
+    font-family: var(--mono);
+    font-size: 0.7rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--muted);
+    font-weight: 500;
+    border-bottom: 1px solid var(--line);
+    white-space: nowrap;
+  }
+  tbody th { font-weight: 600; width: 22%; }
+  tbody tr:last-child th, tbody tr:last-child td { border-bottom: none; }
+
+  .note {
+    margin: 0 0 16px;
+    padding: 14px 16px;
+    background: var(--surface);
+    border: 1px solid var(--line-soft);
+    border-left: 3px solid var(--accent);
+    border-radius: 8px;
+    font-size: 0.94rem;
+    max-width: 40rem;
+  }
+  .note p:last-child { margin-bottom: 0; }
+  .note .label {
+    display: block;
+    font-family: var(--mono);
+    font-size: 0.68rem;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 6px;
+  }
+
+  .todo {
+    display: block;
+    font-family: var(--mono);
+    font-size: 0.78rem;
+    color: var(--muted);
+  }
+
+  footer.site {
+    border-top: 1px solid var(--line-soft);
+    padding: 32px 0 0;
+    margin-top: 8px;
+    font-size: 0.86rem;
+    color: var(--muted);
+  }
+  footer.site p { margin-bottom: 10px; }
+  footer.site .langs { margin-bottom: 18px; }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+  }
+
+  @media print {
+    body { background: #fff; color: #000; }
+    .toc, nav.langs { break-inside: avoid; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="site">
+  <div class="bar">
+    <a class="back" href="/">&#8592; Back to Zendo</a>
+    <nav class="langs" aria-label="Language">
+      <a class="chip" href="/privacy.html" hreflang="en" lang="en" aria-current="page">EN</a>
+      <a class="chip" href="/id/privacy.html" hreflang="id" lang="id">ID</a>
+      <a class="chip" href="/terms.html" data-alt="terms">Terms</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+
+  <p class="eyebrow">Policy</p>
+  <h1>Privacy Policy</h1>
+  <p class="meta"><strong>Last updated:</strong> 2026-10-04</p>
+  <p class="meta"><strong>Version:</strong> 1.0</p>
+  <p class="lede">Zendo is a private focus and habit app. Your journal, your practices, and your notes are yours. This page says, plainly, what the app stores, where it stores it, who can read it, and what we never do with it.</p>
+
+  <nav class="toc" aria-labelledby="toc-heading">
+    <h2 id="toc-heading">Contents</h2>
+    <ol>
+      <li><a href="#at-a-glance">At a glance</a></li>
+      <li><a href="#storage-modes">The two storage modes</a></li>
+      <li><a href="#what-we-collect">What we collect</a></li>
+      <li><a href="#why-and-bases">Why we process it, and on what basis</a></li>
+      <li><a href="#not-collected">What we do not collect</a></li>
+      <li><a href="#sharing">Sharing and service providers</a></li>
+      <li><a href="#images">Notebook photos and images</a></li>
+      <li><a href="#cookies">Cookies, local storage and sessions</a></li>
+      <li><a href="#security">Security</a></li>
+      <li><a href="#retention">How long we keep things</a></li>
+      <li><a href="#your-rights">Your rights</a></li>
+      <li><a href="#children">Children</a></li>
+      <li><a href="#transfers">International transfers</a></li>
+      <li><a href="#changes">Changes to this policy</a></li>
+      <li><a href="#contact">Contact and complaints</a></li>
+    </ol>
+  </nav>
+
+  <section id="at-a-glance" aria-labelledby="at-a-glance-h">
+    <h2 id="at-a-glance-h">1. At a glance</h2>
+    <p><strong>Who &ldquo;we&rdquo; is:</strong> throughout this page, &ldquo;we&rdquo; and &ldquo;Zendo&rdquo; mean the single developer who built and runs this app &mdash; the data controller named in section 15. There is no company, no team, and no separate data processor acting on our behalf beyond the infrastructure providers listed in section 6.</p>
+    <div class="table-scroll">
+      <table>
+        <caption>A four-line summary of the whole policy. The sections below explain each row.</caption>
+        <thead>
+          <tr>
+            <th scope="col">Question</th>
+            <th scope="col">Answer</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <th scope="row">What do you store?</th>
+            <td>What you write and log inside Zendo: your profile, settings, practices and their logs, goals, day plans, focus and learning sessions, timeline events, journal entries and reflection answers, drift/relapse logs, season history, reminder settings, purchase unlock flags, and &mdash; only if you sign in &mdash; your email address. Notebook photos stay on your device.</td>
+          </tr>
+          <tr>
+            <th scope="row">Where does it live?</th>
+            <td>In this browser, by default (localStorage and IndexedDB). If and only if you sign in, a copy of your app data is also stored on our cloud database so it can sync between devices.</td>
+          </tr>
+          <tr>
+            <th scope="row">Who can read it?</th>
+            <td>On your device: anyone who can open this browser profile can read everything &mdash; your journal included &mdash; because it is stored as ordinary, unencrypted data. That is the default and it needs no account. In the cloud: only your signed-in session can read or write your row, enforced by the database itself. Zendo&rsquo;s developer does not browse user data.</td>
+          </tr>
+          <tr>
+            <th scope="row">Do you sell it?</th>
+            <td>No. We never sell or rent personal data. Zendo has no advertising, no analytics, no tracking pixels, no crash reporting, and no third-party marketing SDKs.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section id="storage-modes" aria-labelledby="storage-modes-h">
+    <h2 id="storage-modes-h">2. The two storage modes</h2>
+    <p>Zendo works in two modes. Which one applies to you depends on a single choice: whether you sign in.</p>
+
+    <h3>Local-only mode (no account)</h3>
+    <p>This is the default. With no sign-in, nothing leaves your device. Specifically:</p>
+    <ul>
+      <li>All app state is kept in this browser under the localStorage key <code>monk_mode_pwa_state_v1</code>, as one JSON object. A few mirror keys (<code>focusSessions</code>, <code>learningSessions</code>, <code>timelineEvents</code>) are written alongside it.</li>
+      <li>Notebook photos you attach are kept as raw image blobs in an IndexedDB database named <code>zendo_images</code>, object store <code>images</code>, keyed by an id.</li>
+      <li>If you use the Settings &ldquo;Full backup&rdquo; action, the app writes that whole state to a JSON file that downloads to your own device. Where you keep that file is up to you. Notebook photo files live in a separate store and are not part of that file.</li>
+      <li>The Settings &ldquo;Factory reset&rdquo; action clears localStorage. In a browser, clearing site data has the same effect.</li>
+    </ul>
+    <div class="note">
+      <span class="label">Irreversible by design</span>
+      <p>Clearing browser data for this site, or using Factory reset, destroys the local copy <strong>irretrievably</strong>. If you never signed in, that is the only copy and it is gone. If you did sign in, your synced copy stays in the cloud and can come back when you sign in again &mdash; but only the text data, and only up to the last successful sync. Notebook photos are never in the cloud, so they are gone either way. &ldquo;Last successful sync&rdquo; is the operative phrase: anything you wrote after that, or while offline, is not recoverable. If you sign out of the cloud later, do not assume your browser copy survives a cleanup.</p>
+    </div>
+
+    <h3>Cloud sync mode (only if you sign in)</h3>
+    <p>Signing in is optional. If you do sign in:</p>
+    <ul>
+      <li>Your account is an email address and a password, handled by Supabase Auth. Zendo itself never sees your plaintext password; the app sends it to Supabase Auth, which stores it hashed and verifies it on sign-in.</li>
+      <li>Your app data is stored in a table called <code>zendo_state</code>: one row per user, whose primary key is your Supabase auth user id, with a <code>state_json</code> column holding the same JSON object your browser holds, plus an <code>updated_at</code> timestamp.</li>
+      <li>Row Level Security is enabled on that table. The database server &mdash; not the app &mdash; enforces that only the session that owns a row can read or write it. Another signed-in user cannot read your row even if the app had a bug that asked for it.</li>
+      <li>Sync is text-only and entirely optional. Images are never synced. With no Supabase session, every cloud call the app would make is a no-op, and the app behaves as local-only.</li>
+    </ul>
+  </section>
+
+  <section id="what-we-collect" aria-labelledby="what-we-collect-h">
+    <h2 id="what-we-collect-h">3. What we collect</h2>
+    <p>Everything below is data you create inside the app. We do not observe you, infer things about you, or buy data about you from anyone.</p>
+
+    <h3>3.1 Account data &mdash; only if you sign in</h3>
+    <ul>
+      <li><strong>Email address.</strong> Used to identify your account and to let you sign in. The signup form collects an email and a password, and nothing else.</li>
+      <li><strong>Password.</strong> Handled by Supabase Auth. It is hashed there; Zendo never sees or stores the plaintext.</li>
+    </ul>
+
+    <h3>3.2 Your app data &mdash; the state blob</h3>
+    <p>Held locally always, and in the cloud only if you signed in:</p>
+    <ul>
+      <li>Your profile and app settings, including theme and language, and your notification toggles.</li>
+      <li>Your practices and the practice logs that record completing them.</li>
+      <li>Your goals, day plans, and season history.</li>
+      <li>Your focus sessions, including start and end timestamps, and your learning sessions.</li>
+      <li>Your timeline events.</li>
+      <li><strong>Your journal entries and reflection answers.</strong> These are private written reflections. Treat them as the most sensitive thing in the app, because they are.</li>
+      <li>Your drift or relapse logs.</li>
+      <li>Your notification reminder settings.</li>
+      <li>Purchase and unlock flags (see 3.3).</li>
+    </ul>
+
+    <h3>3.3 Purchase records</h3>
+    <p><strong>Two different things, and only one of them creates a record.</strong> (a) A Journal Pack unlock is a <em>purchase</em>: when Bayar GG confirms it, a row is written to <code>zendo_purchases</code> with the pack id and purchase metadata. By design those rows are readable by any signed-in user, because the webhook has no buyer identity to attach them to; they are never readable anonymously. A record ties a pack id to a time, not to a person. (b) A <em>tip</em> is not a purchase and creates no record at all &mdash; see section 6. (At this time Zendo shows no separate plain &ldquo;donation&rdquo; link; the tip panel is the donation route.)</p>
+
+    <h3>3.4 Notebook images</h3>
+    <p>If you attach a photo to a notebook page, the file is stored as a blob in this browser&rsquo;s IndexedDB. It is not uploaded anywhere. See section 7.</p>
+
+    <h3>3.5 Payment details</h3>
+    <p>Zendo never sees or stores your card, bank, or e-wallet credentials. When you pay through the payment gateway, you enter those details on the gateway&rsquo;s own page, not in Zendo.</p>
+  </section>
+
+  <section id="why-and-bases" aria-labelledby="why-and-bases-h">
+    <h2 id="why-and-bases-h">4. Why we process it, and on what basis</h2>
+    <p>Indonesian law (Undang-Undang No. 27 Tahun 2022, the Personal Data Protection Law &mdash; &ldquo;PDP Law&rdquo;) requires us to name a legal basis for each purpose. Here is the mapping, with no padding.</p>
+    <div class="table-scroll">
+      <table>
+        <thead>
+          <tr>
+            <th scope="col">Purpose</th>
+            <th scope="col">Legal basis under the PDP Law</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <th scope="row">Creating your account and delivering the app to you</th>
+            <td>Performance of the agreement between you and us. You asked for a Zendo account; we have to hold an identifier and your app data to provide one.</td>
+          </tr>
+          <tr>
+            <th scope="row">Syncing your data across devices</th>
+            <td>Explicit consent. Sync happens only after you choose to sign in, and it is the service you opted into by doing so.</td>
+          </tr>
+          <tr>
+            <th scope="row">Sending you reminders and notifications</th>
+            <td>Explicit consent. Reminders are opt-in through the notification toggles, and you can turn them off at any time.</td>
+          </tr>
+          <tr>
+            <th scope="row">Keeping the service secure and preventing abuse</th>
+            <td>Legitimate interest, where it does not override your rights. This covers things like enforcing row-level access and keeping the infrastructure healthy.</td>
+          </tr>
+          <tr>
+            <th scope="row">Keeping records of donations and purchases</th>
+            <td>Compliance with a legal obligation, where tax or accounting law requires records to be kept.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <p><strong>No profiling.</strong> We do not build behavioural profiles, we do not score you, and we do not use your journal, your practice logs, or your session history to make automated decisions about you. There is no automated decision-making in Zendo.</p>
+  </section>
+
+  <section id="not-collected" aria-labelledby="not-collected-h">
+    <h2 id="not-collected-h">5. What we do not collect</h2>
+    <p>This list is short because the app is short. We do not collect:</p>
+    <ul>
+      <li>Precise or approximate location.</li>
+      <li>Your contacts or address book.</li>
+      <li>Your calendar.</li>
+      <li>Microphone audio, or camera video streams. The camera is used only to let you choose or capture a notebook photo, and only at the moment you ask for it.</li>
+      <li>Advertising identifiers or any mobile advertising ID.</li>
+      <li>Analytics or usage telemetry of any kind.</li>
+      <li>Device fingerprints, or cross-site identifiers.</li>
+      <li>Data about you from third-party brokers, data partners, or social networks.</li>
+    </ul>
+    <p>Notebook photos are user-chosen files only: the app does not scan your device for images, does not read your photo library, and does not upload what you attach.</p>
+  </section>
+
+  <section id="sharing" aria-labelledby="sharing-h">
+    <h2 id="sharing-h">6. Sharing and service providers</h2>
+    <p>We do not sell your personal data, and we do not rent it. We do not share it for advertising or marketing. The only sharing that happens is with the infrastructure providers that make the app run, and only to the extent each one needs to do its job.</p>
+    <div class="table-scroll">
+      <table>
+        <thead>
+          <tr>
+            <th scope="col">Provider</th>
+            <th scope="col">What it receives</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <th scope="row">Supabase</th>
+            <td>Your account (email and a hashed password), and your synced app data &mdash; the <code>zendo_state</code> row. This only happens if you sign in. This is the database holding your synced state.</td>
+          </tr>
+          <tr>
+            <th scope="row">Vercel</th>
+            <td>Serves the Zendo site and runs the small server functions behind it. Its servers see standard web request data, which includes your IP address and user agent, as any web server would.</td>
+          </tr>
+          <tr>
+            <th scope="row">Google Fonts</th>
+            <td>Zendo loads its typefaces from Google Fonts. When your browser requests those font files, Google receives your IP address and user agent. The fonts are loaded from <code>fonts.googleapis.com</code> and <code>fonts.gstatic.com</code>.</td>
+          </tr>
+          <tr>
+            <th scope="row">Bayar GG (bayar.gg)</th>
+            <td>The payment gateway. It receives the payment request and the pack id, and it handles the payment itself, including whatever payment details you enter on its pages. We never see those details.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <p><strong>All of these providers are outside Indonesia.</strong> See section 13 for what that means under the PDP Law.</p>
+    <div class="note">
+      <span class="label">The QRIS tip panel is different</span>
+      <p>Zendo also offers an in-app QRIS tip panel. You choose or scan an amount, then pay inside your own banking app; the money goes from your bank to the merchant QR code &mdash; <span class="placeholder">Ardi Wiryawan</span> (the developer) &mdash; and no payment provider is involved. <strong>Zendo receives no transaction metadata from that flow</strong> &mdash; no amount, no identity, no confirmation that you paid, and nothing attached to your account. It is a tip, not a tracked purchase. When you use this panel the amount is chosen on your device and rendered into the QR code locally; it never passes through a Zendo server.</p>
+    </div>
+    <p>We may also disclose data if a valid legal process compels us to, such as a binding order from a competent authority. If that ever happens and we are permitted to tell you, we will.</p>
+  </section>
+
+  <section id="images" aria-labelledby="images-h">
+    <h2 id="images-h">7. Notebook photos and images</h2>
+    <p>Notebook photos are stored locally, as blobs in this browser&rsquo;s IndexedDB database (<code>zendo_images</code>). They are not synced to any server, and there is no server-side receipt of notebook images anywhere in Zendo.</p>
+    <ul>
+      <li><strong>Image metadata stays with you.</strong> If a photo carries EXIF data, that data stays with the local copy of the file. Any processing the app performs on an attached image happens on your device: when the app compresses a photo it re-encodes it locally, which can discard some of that metadata on your own device. The app performs no image processing on a server, and no version of your image is uploaded. We do not read EXIF data for any purpose.</li>
+      <li><strong>Clearing site data deletes these images.</strong> Like your journal entries, notebook photos are local-only. Signing in on another device will not bring them across, because they are never uploaded.</li>
+      <li><strong>What you attach is your choice.</strong> The app only stores the specific files you pick or capture. It does not read or upload anything else from your device.</li>
+    </ul>
+  </section>
+
+  <section id="cookies" aria-labelledby="cookies-h">
+    <h2 id="cookies-h">8. Cookies, local storage and sessions</h2>
+    <p>Zendo sets no advertising cookies, no analytics cookies, and no tracking cookies. There are no third-party marketing cookies on this site.</p>
+    <p><strong>To be exact, because &ldquo;no cookies&rdquo; gets misread:</strong> Zendo serves no cookies of its own at all &mdash; not for ads, not for analytics, not for tracking, not even a preference cookie. The language and theme choices on this page are kept in your browser&rsquo;s <code>localStorage</code>, not in a cookie. If you sign in, Supabase Auth keeps your session in browser storage as well. You will not find a Zendo cookie in your browser&rsquo;s cookie list, and that is deliberate.</p>
+    <p>The persistent data Zendo keeps in your browser includes:</p>
+    <ul>
+      <li><strong>Your app data</strong> &mdash; the <code>monk_mode_pwa_state_v1</code> state blob in localStorage, plus the few mirror keys, and your notebook photos in the <code>zendo_images</code> IndexedDB database.</li>
+      <li><strong>A session token</strong> &mdash; if you sign in, Supabase Auth stores a session in your browser so that you stay signed in. That is what keeps you from re-entering your password on every visit.</li>
+      <li><strong>Local preferences and drafts</strong> &mdash; short autosave drafts of a journal or notebook entry you are still writing, your last focus preset, your ambient-volume setting, and small per-day dismissal flags (such as a skipped end-of-day prompt).</li>
+    </ul>
+    <p>You will not see a cookie banner on Zendo. There is nothing to consent to beyond what you explicitly asked for: using the app stores your data in your browser, and signing in stores a session. Signing out, or clearing site data, removes the session.</p>
+  </section>
+
+  <section id="security" aria-labelledby="security-h">
+    <h2 id="security-h">9. Security</h2>
+    <p>What we actually do:</p>
+    <ul>
+      <li><strong>HTTPS everywhere.</strong> Traffic between your browser and the site is encrypted in transit.</li>
+      <li><strong>Server-enforced isolation.</strong> In the cloud database, Row Level Security limits each row to its owner, enforced by the database server. A bug in the app cannot widen that access.</li>
+      <li><strong>Passwords are hashed</strong> and held by Supabase Auth. We never hold the plaintext.</li>
+      <li><strong>Payments are handled by the gateway.</strong> Card and bank credentials are entered on the gateway&rsquo;s pages and never reach Zendo.</li>
+    </ul>
+    <div class="note">
+      <span class="label">Stated honestly</span>
+      <p>No system is perfectly secure, and we will not pretend otherwise.</p>
+    </div>
+    <h3 id="risk-that-applies">The risk that actually applies to you</h3>
+    <p>Zendo does not encrypt your local data. Everything you write &mdash; journals, reflections, drift logs, notebook photos &mdash; sits in this browser in plain data. On a shared computer, or on a phone whose lock screen someone else knows, opening Zendo is enough to read all of it; no password, no prompt. Two things reduce that risk and both are on you: (1) turn on a device lock or screen lock, and (2) do not sign in on a device you share. Signing out does <em>not</em> clear the local copy &mdash; only Factory reset or clearing site data does.</p>
+  </section>
+
+  <section id="retention" aria-labelledby="retention-h">
+    <h2 id="retention-h">10. How long we keep things</h2>
+    <ul>
+      <li><strong>Local data</strong> stays until you clear it. Factory reset or clearing site data removes it immediately and permanently.</li>
+      <li><strong>Cloud data</strong> stays until you ask us to delete it. There is no in-app delete button today &mdash; sign-out only. To have your synced row and your auth account erased, email the contact address in section 15. We will respond within 3 x 24 hours and will actually erase the data within 30 days of a verified request, as the PDP Law requires. If we fail to do so, the applicable remedy is set out in the Terms of Service, section 09.</li>
+      <li><strong>Purchase and donation records</strong> may be kept longer than your account, where tax or accounting law requires records to be retained. A purchase row carries a pack id and a time, not a person; tips leave no record at all.</li>
+    </ul>
+    <p>There is no automatic purge or expiry logic in the app. Data does not quietly disappear on a timer, and it does not quietly get archived either.</p>
+  </section>
+
+  <section id="your-rights" aria-labelledby="your-rights-h">
+    <h2 id="your-rights-h">11. Your rights</h2>
+    <p>Under the PDP Law you have the rights below. For each, here is the route that actually exists today. Where only email works, we say so rather than inventing a button.</p>
+    <div class="table-scroll">
+      <table>
+        <thead>
+          <tr>
+            <th scope="col">Right</th>
+            <th scope="col">How to exercise it</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <th scope="row">Access</th>
+            <td>Your data is already visible to you in the app. To see exactly what a signed-in account holds in the cloud, email the contact address and ask for a copy of your stored state.</td>
+          </tr>
+          <tr>
+            <th scope="row">Rectification</th>
+            <td>Correct anything you can edit directly in the app. For anything you cannot edit yourself &mdash; your account email, for instance &mdash; email the contact address.</td>
+          </tr>
+          <tr>
+            <th scope="row">Erasure</th>
+            <td>Local data: Settings &ldquo;Factory reset&rdquo;, or clear site data in your browser &mdash; immediate and permanent. Cloud data and your account: <strong>there is no in-app delete button, so email the contact address in section 15</strong>; we confirm receipt and erase the synced row and the auth account within 30 days. Deleting your account does not touch the copy on your own device, and clearing your device does not touch the cloud copy &mdash; they are separate, and you may need to do both.</td>
+          </tr>
+          <tr>
+            <th scope="row">Portability</th>
+            <td>Settings &ldquo;Full backup&rdquo; downloads your entire app state as a JSON file to your device. That is the portability mechanism, and it is available without asking us for anything. Notebook photo files are stored separately and are <strong>not</strong> included in that file &mdash; keep your own copies of those.</td>
+          </tr>
+          <tr>
+            <th scope="row">Restriction and objection</th>
+            <td>Signing out stops cloud sync. Turning off notification toggles stops reminders. For anything else, email the contact address.</td>
+          </tr>
+          <tr>
+            <th scope="row">Withdrawing consent</th>
+            <td>Consent here covers cloud sync and notifications, both of which you can turn off yourself in the app. Withdrawal takes effect going forward and does not affect processing that already happened lawfully.</td>
+          </tr>
+          <tr>
+            <th scope="row">Complaint</th>
+            <td>You can lodge a complaint with Indonesia&rsquo;s data protection supervisory authority. See section 15.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section id="children" aria-labelledby="children-h">
+    <h2 id="children-h">12. Children</h2>
+    <p>Zendo has no age gate and no parental-consent flow. It is not directed at children under 13, and it is not designed for them.</p>
+    <ul>
+      <li>If you are a minor, use Zendo only with a parent or guardian&rsquo;s involvement and consent.</li>
+      <li>If you are a parent or guardian and you believe a child has created an account without proper consent, email the contact address in section 15. We will delete that account and its data on request.</li>
+    </ul>
+  </section>
+
+  <section id="transfers" aria-labelledby="transfers-h">
+    <h2 id="transfers-h">13. International transfers</h2>
+    <p>The PDP Law requires us to tell you when your data leaves Indonesia. It does.</p>
+    <ul>
+      <li>If you sign in, your synced app data and your account are processed on <strong>Supabase</strong> infrastructure outside Indonesia. That includes your journal entries and other written content, because the whole state blob syncs as one object.</li>
+      <li>The Zendo site itself is served by <strong>Vercel</strong>, also outside Indonesia, and its servers log standard request data including your IP address.</li>
+      <li><strong>Google Fonts</strong> receives your IP address and user agent when your browser loads the typefaces, outside Indonesia.</li>
+      <li><strong>Bayar GG (bayar.gg)</strong> handles payments outside Indonesia, and receives the payment request and pack id.</li>
+      <li>The QRIS tip flow is the exception: it goes from your bank app to the merchant QR, and Zendo is not part of it at all.</li>
+    </ul>
+    <p>If you do not sign in, no personal data is transferred abroad — the local-only mode keeps everything in your browser, and the only outbound requests are for the page and its fonts. <strong>By choosing to sign in for cloud sync, you consent to your synced data being processed on that infrastructure outside Indonesia.</strong> If you would rather it stayed home, use Zendo without signing in.</p>
+  </section>
+
+  <section id="changes" aria-labelledby="changes-h">
+    <h2 id="changes-h">14. Changes to this policy</h2>
+    <p>When this policy changes we update the &ldquo;Last updated&rdquo; date at the top and the version number beside it. If a change is material &mdash; something that meaningfully affects what we collect or who can read it &mdash; we will surface it in the app rather than leaving you to notice a date change.</p>
+    <p>The current version is <strong>1.0</strong>, last updated <strong>2026-10-04</strong>.</p>
+  </section>
+
+  <section id="contact" aria-labelledby="contact-h">
+    <h2 id="contact-h">15. Contact and complaints</h2>
+    <p>Zendo is built and operated by a single developer, not a company.</p>
+    <p>
+      <!-- TODO(owner): replace the controller identity and the two contact addresses with the real ones before publishing. -->
+      <strong>Data controller:</strong> <span class="placeholder">Ardi Wiryawan</span>, an individual developer (sole proprietor), Surabaya, East Java, Indonesia.
+    </p>
+    <p>There is no separate Data Protection Officer. Under the PDP Law a DPO is required only where processing is high-risk, large-scale, or involves the systematic monitoring of personal data; Zendo does none of those, so this contact address is where every request arrives and is handled.</p>
+    <p>
+      <strong>Privacy and data-protection contact:</strong>
+      <a href="mailto:legal@zendo.app"><span class="placeholder">legal@zendo.app</span></a>
+    </p>
+    <p>
+      <strong>General support:</strong>
+      <a href="mailto:support@zendo.app"><span class="placeholder">support@zendo.app</span></a>
+    </p>
+    <p>For a deletion or access request, write from the email address associated with your Zendo account where possible, and say clearly what you want done. We will respond within 3 x 24 hours and will actually erase the data within 30 days of a verified request.</p>
+    <p><strong>Complaints.</strong> If you are not satisfied with how we handled your request, you have the right to lodge a complaint with Indonesia&rsquo;s data protection supervisory authority &mdash; the ministry responsible for personal data protection under the PDP Law. We will cooperate with any such process.</p>
+  </section>
+
+</main>
+
+<footer class="site">
+  <nav class="langs" aria-label="Language">
+    <a class="chip" href="/privacy.html" hreflang="en" lang="en" aria-current="page">English</a>
+    <a class="chip" href="/id/privacy.html" hreflang="id" lang="id">Bahasa Indonesia</a>
+    <a class="chip" href="/terms.html" data-alt="terms">Terms</a>
+  </nav>
+  <p><a href="/">Back to Zendo</a></p>
+  <p>Privacy Policy &middot; Version 1.0 &middot; Last updated: 2026-10-04</p>
+</footer>
+
+</div>
+
+<script>
+/* Progressive enhancement only. The page is complete and correct with JavaScript
+   disabled. This script does two things: remember the chosen language for the
+   cross-links, and remember an explicit theme override. It stores nothing else. */
+(function () {
+  try {
+    var store = window.localStorage;
+    var KEY_LANG = "zendo_legal_lang";
+    var KEY_THEME = "zendo_legal_theme";
+
+    var chosen = null;
+    try { chosen = store.getItem(KEY_LANG); } catch (e) { chosen = null; }
+    if (chosen !== "id" && chosen !== "en") {
+      chosen = (navigator.language || "en").toLowerCase().indexOf("id") === 0 ? "id" : "en";
+    }
+
+    var idPages = (chosen === "id");
+    var links = document.querySelectorAll("[data-id-href]");
+    for (var i = 0; i < links.length; i++) {
+      var href = idPages ? links[i].getAttribute("data-id-href") : "/privacy.html";
+      if (href) { links[i].setAttribute("href", href); }
+      links[i].addEventListener("click", function () {
+        try { store.setItem(KEY_LANG, "id"); } catch (e) {}
+      });
+    }
+    var enLinks = document.querySelectorAll('a[href="/privacy.html"]');
+    for (var j = 0; j < enLinks.length; j++) {
+      if (enLinks[j].getAttribute("data-id-href")) { continue; }
+      enLinks[j].addEventListener("click", function () {
+        try { store.setItem(KEY_LANG, "en"); } catch (e) {}
+      });
+    }
+
+    var theme = null;
+    try { theme = store.getItem(KEY_THEME); } catch (e) { theme = null; }
+    if (theme === "dark" || theme === "light") {
+      document.documentElement.setAttribute("data-theme", theme);
+    }
+  } catch (e) {
+    /* Enhancement failed. The document is already fully readable. */
+  }
+})();
+</script>
+
+</body>
+</html>

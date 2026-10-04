@@ -1,0 +1,724 @@
+<!doctype html>
+<html lang="en" data-lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="color-scheme" content="light dark" />
+    <meta name="theme-color" content="#080908" media="(prefers-color-scheme: dark)" />
+    <meta name="theme-color" content="#f7f5f0" media="(prefers-color-scheme: light)" />
+    <meta
+      name="description"
+      content="Terms of Service for Zendo, a free personal focus and habit app."
+    />
+    <title>Terms of Service — Zendo</title>
+    <style>
+      :root {
+        color-scheme: light dark;
+        --bg: #f7f5f0;
+        --surface: #fffefb;
+        --text: #1a1a17;
+        --muted: #4a473f;
+        --border: #e2ded4;
+        --accent: #a48b5e;
+        --accent-strong: #6b5527;
+        --rule: rgba(0, 0, 0, 0.08);
+        --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+        --sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue",
+          Arial, sans-serif;
+        --max: 46rem;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --bg: #080908;
+          --surface: #0e100e;
+          --text: #e5e2da;
+          --muted: #a8a498;
+          --border: #1e1f1d;
+          --accent: #a48b5e;
+          --accent-strong: #c9ab72;
+          --rule: rgba(255, 255, 255, 0.1);
+        }
+      }
+      /* Owner override: pin the theme for a preview by setting <html data-theme="dark">. */
+      html[data-theme="dark"] {
+        --bg: #080908;
+        --surface: #0e100e;
+        --text: #e5e2da;
+        --muted: #a8a498;
+        --border: #1e1f1d;
+        --accent: #a48b5e;
+        --accent-strong: #c9ab72;
+        --rule: rgba(255, 255, 255, 0.1);
+      }
+      html[data-theme="light"] {
+        --bg: #f7f5f0;
+        --surface: #fffefb;
+        --text: #1a1a17;
+        --muted: #4a473f;
+        --border: #e2ded4;
+        --accent: #a48b5e;
+        --accent-strong: #6b5527;
+        --rule: rgba(0, 0, 0, 0.08);
+      }
+
+      *,
+      *::before,
+      *::after {
+        box-sizing: border-box;
+      }
+      html {
+        scroll-behavior: smooth;
+      }
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--text);
+        font-family: var(--sans);
+        font-size: 1.0625rem;
+        line-height: 1.72;
+        text-rendering: optimizeLegibility;
+        -webkit-font-smoothing: antialiased;
+      }
+      a {
+        color: var(--accent-strong);
+        text-underline-offset: 0.18em;
+        text-decoration-thickness: 1px;
+      }
+      a:hover {
+        text-decoration-thickness: 2px;
+      }
+      a:focus-visible,
+      button:focus-visible,
+      [tabindex]:focus-visible {
+        outline: 2px solid var(--accent);
+        outline-offset: 3px;
+        border-radius: 2px;
+      }
+      @media (prefers-reduced-motion: reduce) {
+        html {
+          scroll-behavior: auto;
+        }
+        *,
+        *::before,
+        *::after {
+          animation-duration: 0.001ms !important;
+          transition-duration: 0.001ms !important;
+        }
+      }
+
+      .wrap {
+        width: 100%;
+        max-width: var(--max);
+        margin: 0 auto;
+        padding: 0 1rem;
+      }
+      header.masthead {
+        border-bottom: 1px solid var(--border);
+        padding: 3rem 0 2rem;
+      }
+      .eyebrow {
+        font-family: var(--mono);
+        font-size: 0.72rem;
+        letter-spacing: 0.2em;
+        text-transform: uppercase;
+        color: var(--accent-strong);
+        margin: 0 0 1.1rem;
+      }
+      h1 {
+        font-size: clamp(1.9rem, 6vw, 2.6rem);
+        line-height: 1.15;
+        letter-spacing: -0.015em;
+        margin: 0 0 1rem;
+        font-weight: 600;
+      }
+      .meta {
+        font-family: var(--mono);
+        font-size: 0.78rem;
+        letter-spacing: 0.04em;
+        color: var(--muted);
+        margin: 0;
+      }
+      .meta span {
+        white-space: nowrap;
+      }
+      .meta .sep {
+        color: var(--border);
+        margin: 0 0.5rem;
+      }
+
+      nav.utility {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem 1.25rem;
+        align-items: baseline;
+        margin-top: 1.6rem;
+        padding-top: 1.4rem;
+        border-top: 1px solid var(--border);
+      }
+      nav.utility ul {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem 1.25rem;
+        list-style: none;
+        margin: 0;
+        padding: 0;
+      }
+      nav.utility .label {
+        font-family: var(--mono);
+        font-size: 0.68rem;
+        letter-spacing: 0.16em;
+        text-transform: uppercase;
+        color: var(--muted);
+        width: 100%;
+      }
+      nav.utility a {
+        font-size: 0.9rem;
+      }
+      nav.utility a[aria-current="page"] {
+        color: var(--text);
+        text-decoration: none;
+        border-bottom: 2px solid var(--accent);
+      }
+
+      main {
+        padding: 2.5rem 0 3rem;
+      }
+      .lede {
+        font-size: 1.15rem;
+        color: var(--text);
+      }
+      aside.note {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-left: 3px solid var(--accent);
+        border-radius: 4px;
+        padding: 1.25rem 1.35rem;
+        margin: 1.75rem 0 2.25rem;
+      }
+      aside.note h2 {
+        font-family: var(--mono);
+        font-size: 0.72rem;
+        letter-spacing: 0.18em;
+        text-transform: uppercase;
+        color: var(--accent-strong);
+        margin: 0 0 0.85rem;
+        font-weight: 600;
+        border: 0;
+        padding: 0;
+      }
+      aside.note ul {
+        margin: 0 0 0.9rem;
+        padding-left: 1.1rem;
+      }
+      aside.note li {
+        margin: 0.35rem 0;
+      }
+      aside.note p {
+        margin: 0;
+        font-size: 0.95rem;
+        color: var(--muted);
+      }
+
+      nav.toc {
+        border-top: 1px solid var(--border);
+        border-bottom: 1px solid var(--border);
+        padding: 1.5rem 0;
+        margin: 0 0 2.5rem;
+      }
+      nav.toc .label {
+        font-family: var(--mono);
+        font-size: 0.68rem;
+        letter-spacing: 0.18em;
+        text-transform: uppercase;
+        color: var(--accent-strong);
+        margin: 0 0 0.9rem;
+      }
+      nav.toc ol {
+        list-style: none;
+        counter-reset: toc;
+        margin: 0;
+        padding: 0;
+        columns: 2;
+        column-gap: 2rem;
+      }
+      nav.toc li {
+        counter-increment: toc;
+        break-inside: avoid;
+        margin: 0 0 0.4rem;
+        font-size: 0.95rem;
+      }
+      nav.toc li::before {
+        content: counter(toc) ".";
+        font-family: var(--mono);
+        font-size: 0.78rem;
+        color: var(--muted);
+        display: inline-block;
+        width: 1.7em;
+      }
+
+      section {
+        margin: 0 0 2.6rem;
+        scroll-margin-top: 1.5rem;
+      }
+      h2 {
+        font-size: 1.3rem;
+        line-height: 1.3;
+        letter-spacing: -0.01em;
+        font-weight: 600;
+        margin: 0 0 0.9rem;
+        padding-top: 0.4rem;
+      }
+      h2 .num {
+        font-family: var(--mono);
+        font-size: 0.8rem;
+        letter-spacing: 0.08em;
+        color: var(--accent-strong);
+        display: block;
+        margin-bottom: 0.35rem;
+      }
+      h3 {
+        font-size: 1rem;
+        margin: 1.4rem 0 0.5rem;
+        font-weight: 600;
+      }
+      p {
+        margin: 0 0 1rem;
+      }
+      ul.plain,
+      ol.plain {
+        margin: 0 0 1rem;
+        padding-left: 1.25rem;
+      }
+      ul.plain li,
+      ol.plain li {
+        margin: 0.4rem 0;
+      }
+      strong {
+        font-weight: 600;
+      }
+      code {
+        font-family: var(--mono);
+        font-size: 0.88em;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 3px;
+        padding: 0.08em 0.34em;
+      }
+      /* Marks a value the owner must replace before publishing. Deliberately
+         ugly — a placeholder that looks like normal text ships by accident. */
+      .placeholder {
+        color: var(--accent-strong);
+        font-weight: 600;
+        border: 1px dashed var(--accent);
+        border-radius: 3px;
+        padding: 0.06em 0.36em;
+        white-space: nowrap;
+      }
+      .toplink {
+        display: inline-block;
+        font-family: var(--mono);
+        font-size: 0.72rem;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        color: var(--muted);
+        text-decoration: none;
+        margin-top: 0.4rem;
+      }
+
+      footer {
+        border-top: 1px solid var(--border);
+        padding: 2rem 0 3.5rem;
+        font-size: 0.9rem;
+        color: var(--muted);
+      }
+      footer p {
+        margin: 0 0 0.6rem;
+      }
+
+      @media (max-width: 34rem) {
+        nav.toc ol {
+          columns: 1;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <header class="masthead">
+      <div class="wrap">
+        <p class="eyebrow">Zendo</p>
+        <h1>Terms of Service</h1>
+        <p class="meta">
+          <span>Last updated: 2026-10-04</span>
+          <span class="sep">·</span>
+          <span>Version 1.0</span>
+        </p>
+
+        <nav class="utility" aria-label="Language and document links">
+          <span class="label">Language</span>
+          <ul>
+            <li><a href="/terms.html" aria-current="page" hreflang="en" lang="en">English</a></li>
+            <li><a href="/id/terms.html" hreflang="id" lang="id">Bahasa Indonesia</a></li>
+          </ul>
+          <span class="label">Documents</span>
+          <ul>
+            <li><a href="/terms.html" aria-current="page">Terms of Service</a></li>
+            <li><a href="/privacy.html">Privacy Policy</a></li>
+            <li><a href="/id/terms.html" hreflang="id" lang="id">Ketentuan Layanan (ID)</a></li>
+            <li><a href="/id/privacy.html" hreflang="id" lang="id">Kebijakan Privasi (ID)</a></li>
+          </ul>
+          <span class="label">Zendo</span>
+          <ul>
+            <li><a href="/">Back to Zendo</a></li>
+          </ul>
+        </nav>
+      </div>
+    </header>
+
+    <main class="wrap" id="top">
+      <p class="lede">
+        Zendo is a free personal focus and habit app. This page sets the rules for using it.
+        It is short on purpose. Please read it once.
+      </p>
+
+      <aside class="note" id="functions" aria-labelledby="functions-title">
+        <h2 id="functions-title">Functions of these Terms</h2>
+        <ul>
+          <li><strong>Usage rules.</strong> What you may do with Zendo, and what you may not.</li>
+          <li><strong>Liability limits.</strong> What we are responsible for, and what we are not.</li>
+          <li><strong>IP ownership.</strong> You own your journals and photos; we own the app.</li>
+        </ul>
+        <p>
+          These Terms explain the rules of use. The
+          <a href="/privacy.html">Privacy Policy</a> is a separate document that explains what
+          data Zendo handles and where it goes. Read them together.
+        </p>
+      </aside>
+
+      <nav class="toc" aria-labelledby="toc-title">
+        <p class="label" id="toc-title">Contents</p>
+        <ol>
+          <li><a href="#who-we-are">Who we are and what Zendo is</a></li>
+          <li><a href="#acceptance">Acceptance of these Terms</a></li>
+          <li><a href="#eligibility">Eligibility</a></li>
+          <li><a href="#account">Your account</a></li>
+          <li><a href="#acceptable-use">Acceptable use</a></li>
+          <li><a href="#your-content">Your content and intellectual property</a></li>
+          <li><a href="#free-service">Free service, optional support</a></li>
+          <li><a href="#availability">Availability and "as is"</a></li>
+          <li><a href="#liability">Limitation of liability</a></li>
+          <li><a href="#changes">Changes to these Terms</a></li>
+          <li><a href="#termination">Termination</a></li>
+          <li><a href="#governing-law">Governing law and disputes</a></li>
+          <li><a href="#general">General</a></li>
+          <li><a href="#contact">Contact</a></li>
+        </ol>
+      </nav>
+
+      <section id="who-we-are">
+        <h2><span class="num">01</span>Who we are and what Zendo is</h2>
+        <!-- TODO(owner): replace the entity line if Zendo is later run by a registered company (PT). -->
+        <p>
+          Zendo is built and run by one person:
+          <span class="placeholder">Ardi Wiryawan</span>, based in Surabaya, Indonesia. Unless this page
+          says otherwise, Zendo is a personal project and is not operated by a registered company
+          (PT).
+        </p>
+        <p>
+          Zendo is a free personal focus and habit app. It runs in your browser as a Progressive
+          Web App (PWA). The interface is bilingual (Indonesian and English). You can use the app
+          with no account at all: your data is then stored only on your own device.
+        </p>
+        <p>
+          Where these Terms say "we", "us", or "Zendo", they mean the developer above. Where they
+          say "you", they mean the person using the app.
+        </p>
+        <a class="toplink" href="#top">Back to top</a>
+      </section>
+
+      <section id="acceptance">
+        <h2><span class="num">02</span>Acceptance of these Terms</h2>
+        <p>
+          By using Zendo you accept these Terms. If you do not accept them, please do not use the
+          app.
+        </p>
+        <p>
+          <strong>Plainly stated:</strong> the sign-up screen does not currently show an
+          "I agree to the Terms" checkbox. No such checkbox exists in the app today. Acceptance
+          therefore happens by continuing to use Zendo. We may add a checkbox in a future version;
+          if we do, this page will say so.
+        </p>
+        <p>
+          If you keep using Zendo after the "Last updated" date changes, the version current at
+          that time applies to you.
+        </p>
+        <a class="toplink" href="#top">Back to top</a>
+      </section>
+
+      <section id="eligibility">
+        <h2><span class="num">03</span>Eligibility</h2>
+        <p>
+          Zendo has no age gate and does not ask for your age. It is not directed to children under
+          13.
+        </p>
+        <p>
+          Zendo is made for a general audience in Indonesia and elsewhere. Indonesian law does not
+          require guardian consent at 17 for a free app like this, so we do not claim to enforce
+          one. If you are a minor, please use Zendo only with a parent or guardian involved.
+        </p>
+        <p>
+          We do not run an age check and we do not collect an age field at sign-up. Do not read
+          this section as a promise of COPPA-grade compliance or of any other formal children's
+          data programme. It describes what the product actually does.
+        </p>
+        <a class="toplink" href="#top">Back to top</a>
+      </section>
+
+      <section id="account">
+        <h2><span class="num">04</span>Your account</h2>
+        <p>
+          Cloud features are optional. If you choose them, you create an account with an email
+          address and a password. Sign-in is handled by our authentication provider.
+        </p>
+        <ul class="plain">
+          <li>Keep your password safe. You are responsible for activity under your account.</li>
+          <li>One person per account. Do not share credentials or resell access.</li>
+          <li>You may sign out at any time.</li>
+        </ul>
+        <p>
+          <strong>A real limitation, stated plainly:</strong> the app has no in-app account
+          deletion button today. Only sign-out exists. If you want your account deleted, email
+          <span class="placeholder">legal@zendo.app</span> from the address on the account and ask. We
+          will action the request within 30 days.
+        </p>
+        <p>
+          Deleting the account removes your cloud copy and the login. It does not touch data on
+          your own device. Use the app's own wipe option for that. Note that wiping local data
+          alone does not delete the cloud copy.
+        </p>
+        <a class="toplink" href="#top">Back to top</a>
+      </section>
+
+      <section id="acceptable-use">
+        <h2><span class="num">05</span>Acceptable use</h2>
+        <p>Do not use Zendo to break the law or to harm the service or other people. In particular, do not:</p>
+        <ul class="plain">
+          <li>use Zendo for anything unlawful, or to infringe anyone's rights;</li>
+          <li>attack, overload, scrape, or otherwise disrupt the service or its infrastructure;</li>
+          <li>reverse-engineer the app in order to reach other users' data;</li>
+          <li>attempt to break the row-level security that isolates each user's stored data;</li>
+          <li>upload unlawful, infringing, or harmful content into journals, notes, or photos;</li>
+          <li>impersonate anyone, or misrepresent your connection to Zendo;</li>
+          <li>resell the service, or offer it as your own.</li>
+        </ul>
+        <p>
+          Each user's stored data is isolated on the server by row-level security, which the
+          server enforces. Do not attempt to defeat it. We may suspend an account that abuses the
+          service.
+        </p>
+        <a class="toplink" href="#top">Back to top</a>
+      </section>
+
+      <section id="your-content">
+        <h2><span class="num">06</span>Your content and intellectual property</h2>
+        <p>
+          <strong>You own everything you write or upload.</strong> That includes your journals,
+          reflections, answers, goals, day plans, timeline events, notes, and any photos you attach
+          to notebook pages.
+        </p>
+        <p>
+          You grant Zendo only the minimal licence needed to run the app for you: to store your
+          content and to sync it back to you on your own devices when you sign in. That licence is
+          limited to operating the service. It is not a licence to publish, sell, or share your
+          content, and it ends when your content is deleted.
+        </p>
+        <p>
+          Zendo owns the app itself: its name, its design, its text, and its source code. Nothing
+          in these Terms gives you ownership of the app. We claim no ownership over your journals
+          or your photos.
+        </p>
+        <a class="toplink" href="#top">Back to top</a>
+      </section>
+
+      <section id="free-service">
+        <h2><span class="num">07</span>Free service, optional support</h2>
+        <p>
+          Zendo is free to use. There is no subscription and no paywall. Support is voluntary and
+          separate from using the app.
+        </p>
+        <h3>Tips and donations</h3>
+        <p>
+          The app shows an optional QRIS tip panel. Scanning it pays the developer directly from
+          your own banking app. A donation is a <strong>gift</strong>. It is not a purchase of
+          goods or services, it gives you no extra rights, and it is generally
+          <strong>non-refundable</strong>. Zendo receives no transaction details from that flow.
+        </p>
+        <h3>Optional Journal Pack unlocks</h3>
+        <p>
+          Some optional Journal Pack unlocks are sold through a payment gateway (Bayar GG). When
+          you choose one, the app sends the pack identifier to a server function, which creates a
+          payment link, and you pay on the gateway's own site. The unlock is granted when the
+          gateway confirms payment by webhook. If demo mode is on, or no gateway key is set,
+          checkout short-circuits to a demo redirect and no money moves.
+        </p>
+        <p>
+          Zendo never processes or stores your card or bank credentials. Payment details stay with
+          the payment provider.
+        </p>
+        <a class="toplink" href="#top">Back to top</a>
+      </section>
+
+      <section id="availability">
+        <h2><span class="num">08</span>Availability and "as is"</h2>
+        <p>
+          Zendo is provided <strong>as is</strong> and <strong>as available</strong>. It is a
+          one-person project. There is no uptime promise (no SLA).
+        </p>
+        <ul class="plain">
+          <li>We do not warrant that your data will never be lost or corrupted.</li>
+          <li>Cloud sync may fail, lag, or be unavailable.</li>
+          <li>Sync is text-only. Notebook photo attachments are stored on your device and are never uploaded or synced.</li>
+          <li>Features may change, break, or be removed.</li>
+        </ul>
+        <p>
+          <strong>Keep your own backup.</strong> The Settings screen has a "Full backup" button
+          that downloads your whole app state as a JSON file to your own device. Use it. Because
+          notebook photos are not part of cloud sync, keep your own copies of those too.
+        </p>
+        <a class="toplink" href="#top">Back to top</a>
+      </section>
+
+      <section id="liability">
+        <h2><span class="num">09</span>Limitation of liability</h2>
+        <p>
+          To the maximum extent permitted by Indonesian law, and, where you are outside Indonesia,
+          by your local law, Zendo and its developer are not liable for indirect, incidental,
+          special, or consequential damages. That includes lost data, lost focus streaks, lost
+          profits, and missed goals arising from your use of the app.
+        </p>
+        <p>
+          Where liability cannot be excluded, it is capped at the greater of (a) the total amount
+          you paid Zendo in the 12 months before the claim, or (b) IDR 100,000. Since Zendo is
+          free, this cap will usually be IDR 100,000.
+        </p>
+        <p>
+          Nothing in these Terms waives or limits any right that Indonesian law does not allow to
+          be waived or limited. Those rights are preserved in full.
+        </p>
+        <a class="toplink" href="#top">Back to top</a>
+      </section>
+
+      <section id="changes">
+        <h2><span class="num">10</span>Changes to these Terms</h2>
+        <p>
+          We may update these Terms. When we make a material change, we will post a notice in the
+          app or on this page, and we will set a new "Last updated" date at the top.
+        </p>
+        <p>
+          If you keep using Zendo after a change takes effect, you accept the updated Terms. If you
+          do not accept them, stop using the app.
+        </p>
+        <a class="toplink" href="#top">Back to top</a>
+      </section>
+
+      <section id="termination">
+        <h2><span class="num">11</span>Termination</h2>
+        <p>
+          You may stop using Zendo at any time. You can sign out, or simply stop opening the app.
+          Your local data stays on your device until you wipe it.
+        </p>
+        <p>
+          We may suspend or end an account that abuses the service or breaks these Terms. Where it
+          is practical, we will tell you why. Where required by law, we will act accordingly.
+        </p>
+        <a class="toplink" href="#top">Back to top</a>
+      </section>
+
+      <section id="governing-law">
+        <h2><span class="num">12</span>Governing law and disputes</h2>
+        <p>
+          These Terms are governed by the laws of the Republic of Indonesia. The courts of
+          Surabaya, Indonesia, have venue over any dispute.
+        </p>
+        <p>
+          Before going to court, please write to us first and give us a reasonable chance to
+          resolve the matter in good faith. Most issues are small and can be settled by email.
+        </p>
+        <a class="toplink" href="#top">Back to top</a>
+      </section>
+
+      <section id="general">
+        <h2><span class="num">13</span>General</h2>
+        <ul class="plain">
+          <li>
+            <strong>Severability.</strong> If any part of these Terms is found unenforceable, the
+            rest stays in force.
+          </li>
+          <li>
+            <strong>Entire agreement.</strong> These Terms, together with the Privacy Policy, are
+            the whole agreement between you and Zendo about the app.
+          </li>
+          <li>
+            <strong>No waiver.</strong> If we do not enforce a right once, we do not lose it.
+          </li>
+          <li>
+            <strong>Assignment.</strong> You may not transfer your rights under these Terms. We
+            may transfer ours if the project changes hands; we will post a notice if that happens.
+          </li>
+          <li>
+            <strong>Language.</strong> This page is authoritative in both English and Indonesian.
+            If a translation conflict ever matters for an Indonesian consumer, the Indonesian
+            version governs for that consumer.
+          </li>
+        </ul>
+        <a class="toplink" href="#top">Back to top</a>
+      </section>
+
+      <section id="contact">
+        <h2><span class="num">14</span>Contact</h2>
+        <p>For account deletion, legal notices, or general support, write to:</p>
+        <!-- TODO(owner): replace the two placeholder addresses with the real ones before publication. -->
+        <ul class="plain">
+          <li>Legal: <span class="placeholder">legal@zendo.app</span></li>
+          <li>Support: <span class="placeholder">support@zendo.app</span></li>
+        </ul>
+        <p>
+          <!-- TODO(owner): add a postal address here if one is legally required for your situation. -->
+          No postal address is published.
+        </p>
+        <a class="toplink" href="#top">Back to top</a>
+      </section>
+    </main>
+
+    <footer>
+      <div class="wrap">
+        <p>Zendo — a free personal focus and habit app. Terms of Service, version 1.0.</p>
+        <p>Last updated: 2026-10-04</p>
+        <p>
+          <a href="/privacy.html">Privacy Policy</a> ·
+          <a href="/id/terms.html" hreflang="id" lang="id">Bahasa Indonesia</a> ·
+          <a href="/">Zendo</a>
+        </p>
+          <a href="/id/terms.html">Bahasa Indonesia</a> ·
+          <a href="/">Back to Zendo</a>
+        </p>
+      </div>
+    </footer>
+
+    <script>
+      // Progressive enhancement only. The page is fully readable with JavaScript disabled.
+      (function () {
+        try {
+          document.documentElement.setAttribute("data-js", "on");
+          var id = document.querySelector('a[hreflang="id"][href="/id/terms.html"]');
+          if (id) {
+            id.addEventListener("click", function () {
+              try {
+                localStorage.setItem("zendo_legal_lang", "id");
+              } catch (e) {}
+            });
+          }
+        } catch (e) {}
+      })();
+    </script>
+  </body>
+</html>

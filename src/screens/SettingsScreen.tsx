@@ -24,7 +24,9 @@ import {
   Heart,
   Moon,
   RotateCcw,
+  Scale,
   ShieldAlert,
+  ShieldCheck,
   Sparkles,
   Trash2,
   Upload,
@@ -68,6 +70,18 @@ const sectionReveal = {
   hidden: { opacity: 0, y: 16 },
   visible: { opacity: 1, y: 0, transition: { duration: 0.4, ease: [0.16, 1, 0.3, 1] as any } },
 };
+
+// Mirrors the "Last updated" + "Version" lines inside public/terms.html,
+// public/privacy.html and their /id/ counterparts. Bump both here and in those
+// four pages in the same commit — src/screens/settingsLegal.test.tsx pins them
+// so they cannot drift apart.
+const LEGAL_VERSION = "1.0";
+const LEGAL_UPDATED = "2026-10-04";
+
+/** Static pages ship per language, so the link points at the reader's own copy. */
+function legalHref(lang: AppLanguage, doc: "terms" | "privacy") {
+  return lang === "id" ? `/id/${doc}.html` : `/${doc}.html`;
+}
 
 export default function SettingsScreen() {
   const store = useMonkStore();
@@ -595,6 +609,39 @@ export default function SettingsScreen() {
         </motion.div>
 
 
+
+        {/* Legal & Privacy — static pages, so a plain anchor (no router hop, no
+            bundle cost). lang is carried across so the opened page matches the UI. */}
+        <motion.div variants={sectionReveal} initial="hidden" whileInView="visible" viewport={{ once: true, amount: 0.2 }}>
+          <SectionHeader icon={Scale} label={tUI("settings.legal")} />
+          <Card className="p-0 overflow-hidden">
+            <SettingsRow icon={FileText} title={tUI("settings.legalTerms")} description={tUI("settings.legalTermsDesc")}>
+              <a
+                href={legalHref(lang, "terms")}
+                target="_blank"
+                rel="noopener"
+                aria-label={tUI("settings.legalTermsAria")}
+                className="inline-flex min-h-8 shrink-0 items-center rounded-full border border-monk-border px-3 text-xs font-semibold text-monk-accent transition active:scale-95 hover:border-monk-accent/50 hover:bg-monk-accent/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-monk-accent"
+              >
+                {tUI("settings.legalOpen")}
+              </a>
+            </SettingsRow>
+            <SettingsRow icon={ShieldCheck} title={tUI("settings.legalPrivacy")} description={tUI("settings.legalPrivacyDesc")}>
+              <a
+                href={legalHref(lang, "privacy")}
+                target="_blank"
+                rel="noopener"
+                aria-label={tUI("settings.legalPrivacyAria")}
+                className="inline-flex min-h-8 shrink-0 items-center rounded-full border border-monk-border px-3 text-xs font-semibold text-monk-accent transition active:scale-95 hover:border-monk-accent/50 hover:bg-monk-accent/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-monk-accent"
+              >
+                {tUI("settings.legalOpen")}
+              </a>
+            </SettingsRow>
+            <p className="px-3 pb-2.5 text-[10px] text-monk-muted/50">
+              {tUI("settings.legalVersion", { version: LEGAL_VERSION, date: LEGAL_UPDATED })}
+            </p>
+          </Card>
+        </motion.div>
 
         {/* Danger Zone */}
         <motion.div variants={sectionReveal} initial="hidden" whileInView="visible" viewport={{ once: true, amount: 0.2 }}>

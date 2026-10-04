@@ -1,0 +1,738 @@
+<!doctype html>
+<html lang="id" data-lang="id">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="color-scheme" content="light dark" />
+    <meta name="theme-color" content="#080908" media="(prefers-color-scheme: dark)" />
+    <meta name="theme-color" content="#f7f5f0" media="(prefers-color-scheme: light)" />
+    <meta
+      name="description"
+      content="Ketentuan Layanan Zendo, aplikasi fokus dan kebiasaan pribadi yang gratis."
+    />
+    <title>Ketentuan Layanan — Zendo</title>
+    <style>
+      :root {
+        color-scheme: light dark;
+        --bg: #f7f5f0;
+        --surface: #fffefb;
+        --text: #1a1a17;
+        --muted: #4a473f;
+        --border: #e2ded4;
+        --accent: #a48b5e;
+        --accent-strong: #6b5527;
+        --rule: rgba(0, 0, 0, 0.08);
+        --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+        --sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue",
+          Arial, sans-serif;
+        --max: 46rem;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --bg: #080908;
+          --surface: #0e100e;
+          --text: #e5e2da;
+          --muted: #a8a498;
+          --border: #1e1f1d;
+          --accent: #a48b5e;
+          --accent-strong: #c9ab72;
+          --rule: rgba(255, 255, 255, 0.1);
+        }
+      }
+      /* Owner override: pin the theme for a preview by setting <html data-theme="dark">. */
+      html[data-theme="dark"] {
+        --bg: #080908;
+        --surface: #0e100e;
+        --text: #e5e2da;
+        --muted: #a8a498;
+        --border: #1e1f1d;
+        --accent: #a48b5e;
+        --accent-strong: #c9ab72;
+        --rule: rgba(255, 255, 255, 0.1);
+      }
+      html[data-theme="light"] {
+        --bg: #f7f5f0;
+        --surface: #fffefb;
+        --text: #1a1a17;
+        --muted: #4a473f;
+        --border: #e2ded4;
+        --accent: #a48b5e;
+        --accent-strong: #6b5527;
+        --rule: rgba(0, 0, 0, 0.08);
+      }
+
+      *,
+      *::before,
+      *::after {
+        box-sizing: border-box;
+      }
+      html {
+        scroll-behavior: smooth;
+      }
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--text);
+        font-family: var(--sans);
+        font-size: 1.0625rem;
+        line-height: 1.72;
+        text-rendering: optimizeLegibility;
+        -webkit-font-smoothing: antialiased;
+      }
+      a {
+        color: var(--accent-strong);
+        text-underline-offset: 0.18em;
+        text-decoration-thickness: 1px;
+      }
+      a:hover {
+        text-decoration-thickness: 2px;
+      }
+      a:focus-visible,
+      button:focus-visible,
+      [tabindex]:focus-visible {
+        outline: 2px solid var(--accent);
+        outline-offset: 3px;
+        border-radius: 2px;
+      }
+      @media (prefers-reduced-motion: reduce) {
+        html {
+          scroll-behavior: auto;
+        }
+        *,
+        *::before,
+        *::after {
+          animation-duration: 0.001ms !important;
+          transition-duration: 0.001ms !important;
+        }
+      }
+
+      .wrap {
+        width: 100%;
+        max-width: var(--max);
+        margin: 0 auto;
+        padding: 0 1rem;
+      }
+      header.masthead {
+        border-bottom: 1px solid var(--border);
+        padding: 3rem 0 2rem;
+      }
+      .eyebrow {
+        font-family: var(--mono);
+        font-size: 0.72rem;
+        letter-spacing: 0.2em;
+        text-transform: uppercase;
+        color: var(--accent-strong);
+        margin: 0 0 1.1rem;
+      }
+      h1 {
+        font-size: clamp(1.9rem, 6vw, 2.6rem);
+        line-height: 1.15;
+        letter-spacing: -0.015em;
+        margin: 0 0 1rem;
+        font-weight: 600;
+      }
+      .meta {
+        font-family: var(--mono);
+        font-size: 0.78rem;
+        letter-spacing: 0.04em;
+        color: var(--muted);
+        margin: 0;
+      }
+      .meta span {
+        white-space: nowrap;
+      }
+      .meta .sep {
+        color: var(--border);
+        margin: 0 0.5rem;
+      }
+
+      nav.utility {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem 1.25rem;
+        align-items: baseline;
+        margin-top: 1.6rem;
+        padding-top: 1.4rem;
+        border-top: 1px solid var(--border);
+      }
+      nav.utility ul {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem 1.25rem;
+        list-style: none;
+        margin: 0;
+        padding: 0;
+      }
+      nav.utility .label {
+        font-family: var(--mono);
+        font-size: 0.68rem;
+        letter-spacing: 0.16em;
+        text-transform: uppercase;
+        color: var(--muted);
+        width: 100%;
+      }
+      nav.utility a {
+        font-size: 0.9rem;
+      }
+      nav.utility a[aria-current="page"] {
+        color: var(--text);
+        text-decoration: none;
+        border-bottom: 2px solid var(--accent);
+      }
+
+      main {
+        padding: 2.5rem 0 3rem;
+      }
+      .lede {
+        font-size: 1.15rem;
+        color: var(--text);
+      }
+      aside.note {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-left: 3px solid var(--accent);
+        border-radius: 4px;
+        padding: 1.25rem 1.35rem;
+        margin: 1.75rem 0 2.25rem;
+      }
+      aside.note h2 {
+        font-family: var(--mono);
+        font-size: 0.72rem;
+        letter-spacing: 0.18em;
+        text-transform: uppercase;
+        color: var(--accent-strong);
+        margin: 0 0 0.85rem;
+        font-weight: 600;
+        border: 0;
+        padding: 0;
+      }
+      aside.note ul {
+        margin: 0 0 0.9rem;
+        padding-left: 1.1rem;
+      }
+      aside.note li {
+        margin: 0.35rem 0;
+      }
+      aside.note p {
+        margin: 0;
+        font-size: 0.95rem;
+        color: var(--muted);
+      }
+
+      nav.toc {
+        border-top: 1px solid var(--border);
+        border-bottom: 1px solid var(--border);
+        padding: 1.5rem 0;
+        margin: 0 0 2.5rem;
+      }
+      nav.toc .label {
+        font-family: var(--mono);
+        font-size: 0.68rem;
+        letter-spacing: 0.18em;
+        text-transform: uppercase;
+        color: var(--accent-strong);
+        margin: 0 0 0.9rem;
+      }
+      nav.toc ol {
+        list-style: none;
+        counter-reset: toc;
+        margin: 0;
+        padding: 0;
+        columns: 2;
+        column-gap: 2rem;
+      }
+      nav.toc li {
+        counter-increment: toc;
+        break-inside: avoid;
+        margin: 0 0 0.4rem;
+        font-size: 0.95rem;
+      }
+      nav.toc li::before {
+        content: counter(toc) ".";
+        font-family: var(--mono);
+        font-size: 0.78rem;
+        color: var(--muted);
+        display: inline-block;
+        width: 1.7em;
+      }
+
+      section {
+        margin: 0 0 2.6rem;
+        scroll-margin-top: 1.5rem;
+      }
+      h2 {
+        font-size: 1.3rem;
+        line-height: 1.3;
+        letter-spacing: -0.01em;
+        font-weight: 600;
+        margin: 0 0 0.9rem;
+        padding-top: 0.4rem;
+      }
+      h2 .num {
+        font-family: var(--mono);
+        font-size: 0.8rem;
+        letter-spacing: 0.08em;
+        color: var(--accent-strong);
+        display: block;
+        margin-bottom: 0.35rem;
+      }
+      h3 {
+        font-size: 1rem;
+        margin: 1.4rem 0 0.5rem;
+        font-weight: 600;
+      }
+      p {
+        margin: 0 0 1rem;
+      }
+      ul.plain,
+      ol.plain {
+        margin: 0 0 1rem;
+        padding-left: 1.25rem;
+      }
+      ul.plain li,
+      ol.plain li {
+        margin: 0.4rem 0;
+      }
+      strong {
+        font-weight: 600;
+      }
+      code {
+        font-family: var(--mono);
+        font-size: 0.88em;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 3px;
+        padding: 0.08em 0.34em;
+      }
+      /* Marks a value the owner must replace before publishing. Deliberately
+         ugly — a placeholder that looks like normal text ships by accident. */
+      .placeholder {
+        color: var(--accent-strong);
+        font-weight: 600;
+        border: 1px dashed var(--accent);
+        border-radius: 3px;
+        padding: 0.06em 0.36em;
+        white-space: nowrap;
+      }
+      .toplink {
+        display: inline-block;
+        font-family: var(--mono);
+        font-size: 0.72rem;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        color: var(--muted);
+        text-decoration: none;
+        margin-top: 0.4rem;
+      }
+
+      footer {
+        border-top: 1px solid var(--border);
+        padding: 2rem 0 3.5rem;
+        font-size: 0.9rem;
+        color: var(--muted);
+      }
+      footer p {
+        margin: 0 0 0.6rem;
+      }
+
+      @media (max-width: 34rem) {
+        nav.toc ol {
+          columns: 1;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <header class="masthead">
+      <div class="wrap">
+        <p class="eyebrow">Zendo</p>
+        <h1>Ketentuan Layanan</h1>
+        <p class="meta">
+          <span>Terakhir diperbarui: 2026-10-04</span>
+          <span class="sep">·</span>
+          <span>Versi 1.0</span>
+        </p>
+
+        <nav class="utility" aria-label="Tautan bahasa dan dokumen">
+          <span class="label">Bahasa</span>
+          <ul>
+            <li><a href="/id/terms.html" aria-current="page" hreflang="id" lang="id">Bahasa Indonesia</a></li>
+            <li><a href="/terms.html" hreflang="en" lang="en">English</a></li>
+          </ul>
+          <span class="label">Dokumen</span>
+          <ul>
+            <li><a href="/id/terms.html" aria-current="page">Ketentuan Layanan</a></li>
+            <li><a href="/id/privacy.html">Kebijakan Privasi</a></li>
+            <li><a href="/terms.html" hreflang="en" lang="en">Terms of Service (EN)</a></li>
+            <li><a href="/privacy.html" hreflang="en" lang="en">Privacy Policy (EN)</a></li>
+          </ul>
+          <span class="label">Zendo</span>
+          <ul>
+            <li><a href="/">Kembali ke Zendo</a></li>
+          </ul>
+        </nav>
+      </div>
+    </header>
+
+    <main class="wrap" id="top">
+      <p class="lede">
+        Zendo adalah aplikasi fokus dan kebiasaan pribadi yang gratis. Halaman ini menetapkan
+        aturan pemakaiannya. Sengaja dibuat singkat. Mohon dibaca sekali.
+      </p>
+
+      <aside class="note" id="functions" aria-labelledby="functions-title">
+        <h2 id="functions-title">Fungsi Ketentuan ini</h2>
+        <ul>
+          <li><strong>Aturan pemakaian.</strong> Apa yang boleh Anda lakukan dengan Zendo, dan apa yang tidak.</li>
+          <li><strong>Batas tanggung jawab.</strong> Apa yang menjadi tanggung jawab kami, dan apa yang bukan.</li>
+          <li><strong>Kepemilikan hak kekayaan intelektual.</strong> Jurnal dan foto Anda tetap milik Anda; aplikasinya milik kami.</li>
+        </ul>
+        <p>
+          Ketentuan ini menjelaskan aturan pemakaian.
+          <a href="/id/privacy.html">Kebijakan Privasi</a> adalah dokumen terpisah yang menjelaskan
+          data apa yang ditangani Zendo dan ke mana data itu pergi. Bacalah keduanya bersama-sama.
+        </p>
+      </aside>
+
+      <nav class="toc" aria-labelledby="toc-title">
+        <p class="label" id="toc-title">Daftar Isi</p>
+        <ol>
+          <li><a href="#who-we-are">Siapa kami dan apa itu Zendo</a></li>
+          <li><a href="#acceptance">Penerimaan Ketentuan ini</a></li>
+          <li><a href="#eligibility">Kelayakan</a></li>
+          <li><a href="#account">Akun Anda</a></li>
+          <li><a href="#acceptable-use">Pemakaian yang dapat diterima</a></li>
+          <li><a href="#your-content">Konten Anda dan hak kekayaan intelektual</a></li>
+          <li><a href="#free-service">Layanan gratis, dukungan sukarela</a></li>
+          <li><a href="#availability">Ketersediaan dan "sebagaimana adanya"</a></li>
+          <li><a href="#liability">Pembatasan tanggung jawab</a></li>
+          <li><a href="#changes">Perubahan atas Ketentuan ini</a></li>
+          <li><a href="#termination">Pengakhiran</a></li>
+          <li><a href="#governing-law">Hukum yang berlaku dan sengketa</a></li>
+          <li><a href="#general">Ketentuan umum</a></li>
+          <li><a href="#contact">Kontak</a></li>
+        </ol>
+      </nav>
+
+      <section id="who-we-are">
+        <h2><span class="num">01</span>Siapa kami dan apa itu Zendo</h2>
+        <!-- TODO(owner): ganti baris entitas ini jika Zendo kelak dijalankan oleh perusahaan terdaftar (PT). -->
+        <p>
+          Zendo dibangun dan dijalankan oleh satu orang:
+          <span class="placeholder">Ardi Wiryawan</span>, berdomisili di Surabaya, Indonesia. Kecuali
+          halaman ini menyatakan lain, Zendo adalah proyek pribadi dan tidak dijalankan oleh
+          perusahaan terdaftar (PT).
+        </p>
+        <p>
+          Zendo adalah aplikasi fokus dan kebiasaan pribadi yang gratis. Aplikasi ini berjalan di
+          peramban Anda sebagai Progressive Web App (PWA). Antarmukanya dwibahasa (Indonesia dan
+          Inggris). Anda dapat memakai aplikasi ini tanpa akun sama sekali: data Anda dengan
+          demikian hanya tersimpan di perangkat Anda sendiri.
+        </p>
+        <p>
+          Ketika Ketentuan ini menyebut "kami" atau "Zendo", yang dimaksud adalah pengembang di
+          atas. Ketika menyebut "Anda", yang dimaksud adalah orang yang memakai aplikasi ini.
+        </p>
+        <a class="toplink" href="#top">Kembali ke atas</a>
+      </section>
+
+      <section id="acceptance">
+        <h2><span class="num">02</span>Penerimaan Ketentuan ini</h2>
+        <p>
+          Dengan memakai Zendo, Anda menerima Ketentuan ini. Jika Anda tidak menerimanya, mohon
+          jangan memakai aplikasi ini.
+        </p>
+        <p>
+          <strong>Dinyatakan secara terang:</strong> layar pendaftaran saat ini tidak menampilkan
+          kotak centang "Saya menyetujui Ketentuan". Kotak centang seperti itu tidak ada di aplikasi
+          ini hari ini. Penerimaan karena itu terjadi dengan cara terus memakai Zendo. Kami mungkin
+          menambahkan kotak centang pada versi mendatang; jika kami melakukannya, halaman ini akan
+          menyatakannya.
+        </p>
+        <p>
+          Jika Anda terus memakai Zendo setelah tanggal "Terakhir diperbarui" berubah, versi yang
+          berlaku pada saat itu yang mengikat Anda.
+        </p>
+        <a class="toplink" href="#top">Kembali ke atas</a>
+      </section>
+
+      <section id="eligibility">
+        <h2><span class="num">03</span>Kelayakan</h2>
+        <p>
+          Zendo tidak memiliki pembatas usia dan tidak menanyakan usia Anda. Aplikasi ini tidak
+          ditujukan untuk anak di bawah 13 tahun.
+        </p>
+        <p>
+          Zendo dibuat untuk khalayak umum di Indonesia dan di tempat lain. Hukum Indonesia tidak
+          mewajibkan persetujuan orang tua atau wali pada usia 17 tahun untuk aplikasi gratis
+          seperti ini, sehingga kami tidak mengklaim menegakkan syarat tersebut. Jika Anda masih di
+          bawah umur, mohon pakai Zendo hanya dengan keterlibatan orang tua atau wali.
+        </p>
+        <p>
+          Kami tidak menjalankan pemeriksaan usia dan kami tidak meminta kolom usia saat pendaftaran.
+          Jangan membaca bagian ini sebagai janji kepatuhan setara COPPA atau program data anak
+          formal lainnya. Bagian ini menjelaskan apa yang benar-benar dilakukan produk ini.
+        </p>
+        <a class="toplink" href="#top">Kembali ke atas</a>
+      </section>
+
+      <section id="account">
+        <h2><span class="num">04</span>Akun Anda</h2>
+        <p>
+          Fitur cloud bersifat opsional. Jika Anda memilihnya, Anda membuat akun dengan alamat email
+          dan kata sandi. Proses masuk ditangani oleh penyedia autentikasi kami.
+        </p>
+        <ul class="plain">
+          <li>Jaga kerahasiaan kata sandi Anda. Anda bertanggung jawab atas aktivitas di bawah akun Anda.</li>
+          <li>Satu akun untuk satu orang. Jangan membagikan kredensial atau menjual kembali aksesnya.</li>
+          <li>Anda dapat keluar kapan saja.</li>
+        </ul>
+        <p>
+          <strong>Satu keterbatasan nyata, dinyatakan secara terang:</strong> aplikasi ini hari ini
+          tidak memiliki tombol penghapusan akun di dalam aplikasi. Yang ada hanya keluar. Jika Anda
+          ingin akun Anda dihapus, kirim email ke
+          <span class="placeholder">legal@zendo.app</span> dari alamat yang terdaftar pada akun itu dan
+          ajukan permintaan. Kami akan menindaklanjuti permintaan itu dalam 30 hari.
+        </p>
+        <p>
+          Menghapus akun akan menghapus salinan cloud Anda dan login Anda. Tindakan itu tidak
+          menyentuh data di perangkat Anda sendiri. Gunakan opsi hapus yang ada di aplikasi untuk
+          itu. Perhatikan bahwa menghapus data lokal saja tidak menghapus salinan cloud.
+        </p>
+        <a class="toplink" href="#top">Kembali ke atas</a>
+      </section>
+
+      <section id="acceptable-use">
+        <h2><span class="num">05</span>Pemakaian yang dapat diterima</h2>
+        <p>Jangan memakai Zendo untuk melanggar hukum atau merugikan layanan ini maupun orang lain. Secara khusus, jangan:</p>
+        <ul class="plain">
+          <li>memakai Zendo untuk hal yang melanggar hukum, atau untuk melanggar hak siapa pun;</li>
+          <li>menyerang, membebani berlebihan, mengambil data secara massal (scraping), atau dengan cara lain mengganggu layanan ini atau infrastrukturnya;</li>
+          <li>melakukan rekayasa balik atas aplikasi ini untuk mencapai data pengguna lain;</li>
+          <li>berupaya menembus Row Level Security yang mengisolasi data tersimpan setiap pengguna;</li>
+          <li>mengunggah konten yang melanggar hukum, melanggar hak, atau berbahaya ke dalam jurnal, catatan, atau foto;</li>
+          <li>menyamar sebagai siapa pun, atau memberi keterangan keliru tentang keterkaitan Anda dengan Zendo;</li>
+          <li>menjual kembali layanan ini, atau menawarkannya sebagai milik Anda sendiri.</li>
+        </ul>
+        <p>
+          Data tersimpan setiap pengguna diisolasi di server oleh Row Level Security, yang
+          ditegakkan oleh server. Jangan berupaya menembusnya. Kami dapat menangguhkan akun yang
+          menyalahgunakan layanan ini.
+        </p>
+        <a class="toplink" href="#top">Kembali ke atas</a>
+      </section>
+
+      <section id="your-content">
+        <h2><span class="num">06</span>Konten Anda dan hak kekayaan intelektual</h2>
+        <p>
+          <strong>Segala yang Anda tulis atau unggah adalah milik Anda.</strong> Itu mencakup
+          jurnal, refleksi, jawaban, tujuan, rencana harian, peristiwa linimasa, catatan, dan foto
+          apa pun yang Anda lampirkan pada halaman buku catatan Anda.
+        </p>
+        <p>
+          Anda memberikan kepada Zendo hanya lisensi minimal yang diperlukan untuk menjalankan
+          aplikasi ini bagi Anda: untuk menyimpan konten Anda dan menyinkronkannya kembali kepada
+          Anda di perangkat Anda sendiri saat Anda masuk. Lisensi itu terbatas pada
+          penyelenggaraan layanan. Lisensi itu bukan izin untuk menerbitkan, menjual, atau
+          membagikan konten Anda, dan lisensi itu berakhir ketika konten Anda dihapus.
+        </p>
+        <p>
+          Zendo memiliki aplikasinya sendiri: namanya, desainnya, teksnya, dan kode sumbernya.
+          Tidak ada apa pun dalam Ketentuan ini yang memberi Anda kepemilikan atas aplikasi ini.
+          Kami tidak mengklaim kepemilikan atas jurnal atau foto Anda.
+        </p>
+        <a class="toplink" href="#top">Kembali ke atas</a>
+      </section>
+
+      <section id="free-service">
+        <h2><span class="num">07</span>Layanan gratis, dukungan sukarela</h2>
+        <p>
+          Zendo gratis untuk dipakai. Tidak ada langganan dan tidak ada paywall. Dukungan bersifat
+          sukarela dan terpisah dari pemakaian aplikasi.
+        </p>
+        <h3>Tip dan donasi</h3>
+        <p>
+          Aplikasi ini menampilkan panel tip QRIS yang bersifat opsional. Memindainya membayar
+          pengembang secara langsung dari aplikasi bank Anda sendiri. Donasi adalah
+          <strong>hadiah</strong>. Donasi bukan pembelian barang atau jasa, tidak memberi Anda hak
+          tambahan apa pun, dan pada umumnya <strong>tidak dapat dikembalikan</strong>. Zendo tidak
+          menerima rincian transaksi apa pun dari alur tersebut.
+        </p>
+        <h3>Pembukaan Journal Pack opsional</h3>
+        <p>
+          Sebagian pembukaan Journal Pack opsional dijual melalui gerbang pembayaran (Bayar GG).
+          Ketika Anda memilih salah satunya, aplikasi mengirim pengenal paket ke sebuah fungsi
+          server, yang membuat tautan pembayaran, lalu Anda membayar di situs gerbang pembayaran
+          itu sendiri. Pembukaan akses diberikan ketika gerbang pembayaran mengonfirmasi
+          pembayaran melalui webhook. Jika mode demo aktif, atau tidak ada kunci gerbang pembayaran
+          yang disetel, proses pembayaran langsung dialihkan ke pengalihan demo dan tidak ada uang
+          yang berpindah.
+        </p>
+        <p>
+          Zendo tidak pernah memproses atau menyimpan kredensial kartu atau bank Anda. Rincian
+          pembayaran tetap berada pada penyedia pembayaran.
+        </p>
+        <a class="toplink" href="#top">Kembali ke atas</a>
+      </section>
+
+      <section id="availability">
+        <h2><span class="num">08</span>Ketersediaan dan "sebagaimana adanya"</h2>
+        <p>
+          Zendo disediakan <strong>sebagaimana adanya</strong> dan
+          <strong>sebagaimana tersedia</strong>. Ini proyek satu orang. Tidak ada janji waktu
+          operasi (tidak ada SLA).
+        </p>
+        <ul class="plain">
+          <li>Kami tidak menjamin bahwa data Anda tidak akan pernah hilang atau rusak.</li>
+          <li>Sinkronisasi cloud dapat gagal, tertunda, atau tidak tersedia.</li>
+          <li>Sinkronisasi hanya untuk teks. Lampiran foto buku catatan disimpan di perangkat Anda dan tidak pernah diunggah atau disinkronkan.</li>
+          <li>Fitur dapat berubah, rusak, atau dihapus.</li>
+        </ul>
+        <p>
+          <strong>Simpan cadangan Anda sendiri.</strong> Layar Pengaturan memiliki tombol
+          "Cadangan penuh" yang mengunduh seluruh status aplikasi Anda sebagai berkas JSON ke
+          perangkat Anda sendiri. Gunakanlah. Karena foto buku catatan bukan bagian dari
+          sinkronisasi cloud, simpan juga salinan Anda sendiri untuk foto-foto itu.
+        </p>
+        <a class="toplink" href="#top">Kembali ke atas</a>
+      </section>
+
+      <section id="liability">
+        <h2><span class="num">09</span>Pembatasan tanggung jawab</h2>
+        <p>
+          Sejauh diizinkan oleh hukum Indonesia, dan, jika Anda berada di luar Indonesia, sejauh
+          diizinkan oleh hukum setempat Anda, Zendo dan pengembangnya tidak bertanggung jawab atas
+          kerugian tidak langsung, insidental, khusus, atau konsekuensial. Itu termasuk kehilangan
+          data, kehilangan runtutan fokus, kehilangan keuntungan, dan tujuan yang tidak tercapai
+          yang timbul dari pemakaian aplikasi ini oleh Anda.
+        </p>
+        <p>
+          Jika tanggung jawab tidak dapat dikecualikan, tanggung jawab itu dibatasi pada yang
+          terbesar antara (a) jumlah total yang Anda bayarkan kepada Zendo dalam 12 bulan sebelum
+          klaim, atau (b) Rp100.000. Karena Zendo gratis, batas ini biasanya Rp100.000.
+        </p>
+        <p>
+          Tidak ada apa pun dalam Ketentuan ini yang melepaskan atau membatasi hak apa pun yang
+          menurut hukum Indonesia tidak boleh dilepaskan atau dibatasi. Hak-hak itu dipertahankan
+          sepenuhnya.
+        </p>
+        <a class="toplink" href="#top">Kembali ke atas</a>
+      </section>
+
+      <section id="changes">
+        <h2><span class="num">10</span>Perubahan atas Ketentuan ini</h2>
+        <p>
+          Kami dapat memperbarui Ketentuan ini. Ketika kami membuat perubahan yang bersifat
+          material, kami akan memasang pemberitahuan di dalam aplikasi atau di halaman ini, dan
+          kami akan menetapkan tanggal "Terakhir diperbarui" yang baru di bagian atas.
+        </p>
+        <p>
+          Jika Anda terus memakai Zendo setelah suatu perubahan berlaku, Anda menerima Ketentuan
+          yang diperbarui. Jika Anda tidak menerimanya, hentikan pemakaian aplikasi ini.
+        </p>
+        <a class="toplink" href="#top">Kembali ke atas</a>
+      </section>
+
+      <section id="termination">
+        <h2><span class="num">11</span>Pengakhiran</h2>
+        <p>
+          Anda dapat berhenti memakai Zendo kapan saja. Anda dapat keluar, atau sekadar berhenti
+          membuka aplikasi ini. Data lokal Anda tetap di perangkat Anda sampai Anda menghapusnya.
+        </p>
+        <p>
+          Kami dapat menangguhkan atau mengakhiri akun yang menyalahgunakan layanan ini atau
+          melanggar Ketentuan ini. Jika memungkinkan secara praktis, kami akan memberi tahu Anda
+          alasannya. Jika diwajibkan oleh hukum, kami akan bertindak sesuai ketentuan itu.
+        </p>
+        <a class="toplink" href="#top">Kembali ke atas</a>
+      </section>
+
+      <section id="governing-law">
+        <h2><span class="num">12</span>Hukum yang berlaku dan sengketa</h2>
+        <p>
+          Ketentuan ini diatur oleh hukum Republik Indonesia. Pengadilan di Surabaya, Indonesia,
+          berwenang atas setiap sengketa.
+        </p>
+        <p>
+          Sebelum pergi ke pengadilan, mohon tulis kepada kami terlebih dahulu dan beri kami
+          kesempatan yang wajar untuk menyelesaikan persoalan itu dengan itikad baik. Sebagian
+          besar persoalan bersifat kecil dan dapat diselesaikan lewat email.
+        </p>
+        <a class="toplink" href="#top">Kembali ke atas</a>
+      </section>
+
+      <section id="general">
+        <h2><span class="num">13</span>Ketentuan umum</h2>
+        <ul class="plain">
+          <li>
+            <strong>Keterpisahan.</strong> Jika ada bagian dari Ketentuan ini yang dinyatakan tidak
+            dapat dilaksanakan, bagian lainnya tetap berlaku.
+          </li>
+          <li>
+            <strong>Keseluruhan perjanjian.</strong> Ketentuan ini, bersama dengan Kebijakan
+            Privasi, merupakan keseluruhan perjanjian antara Anda dan Zendo tentang aplikasi ini.
+          </li>
+          <li>
+            <strong>Tidak ada pelepasan hak.</strong> Jika kami tidak menegakkan suatu hak satu
+            kali, kami tidak kehilangan hak itu.
+          </li>
+          <li>
+            <strong>Pengalihan.</strong> Anda tidak boleh mengalihkan hak Anda berdasarkan
+            Ketentuan ini. Kami boleh mengalihkan hak kami jika proyek ini berpindah tangan; kami
+            akan memasang pemberitahuan jika itu terjadi.
+          </li>
+          <li>
+            <strong>Bahasa.</strong> Halaman ini sama-sama otoritatif dalam bahasa Indonesia dan
+            bahasa Inggris. Jika pertentangan terjemahan kelak menjadi penting bagi konsumen
+            Indonesia, versi bahasa Indonesia yang berlaku bagi konsumen tersebut.
+          </li>
+        </ul>
+        <a class="toplink" href="#top">Kembali ke atas</a>
+      </section>
+
+      <section id="contact">
+        <h2><span class="num">14</span>Kontak</h2>
+        <p>Untuk penghapusan akun, pemberitahuan hukum, atau dukungan umum, tulis ke:</p>
+        <!-- TODO(owner): ganti dua alamat placeholder ini sebelum publikasi. -->
+        <ul class="plain">
+          <li>Legal: <span class="placeholder">legal@zendo.app</span></li>
+          <li>Dukungan: <span class="placeholder">support@zendo.app</span></li>
+        </ul>
+        <p>
+          <!-- TODO(owner): tambahkan alamat pos di sini jika memang diwajibkan untuk situasi Anda. -->
+          Alamat pos tidak dipublikasikan.
+        </p>
+        <a class="toplink" href="#top">Kembali ke atas</a>
+      </section>
+    </main>
+
+    <footer>
+      <div class="wrap">
+        <p>Zendo — aplikasi fokus dan kebiasaan pribadi yang gratis. Ketentuan Layanan, versi 1.0.</p>
+        <p>Terakhir diperbarui: 2026-10-04</p>
+        <p>
+          <a href="/id/privacy.html">Kebijakan Privasi</a> ·
+          <a href="/terms.html" hreflang="en" lang="en">English</a> ·
+          <a href="/">Kembali ke Zendo</a>
+        </p>
+      </div>
+    </footer>
+
+    <script>
+      // Hanya peningkatan progresif. Halaman ini sepenuhnya terbaca tanpa JavaScript.
+      (function () {
+        try {
+          document.documentElement.setAttribute("data-js", "on");
+          var en = document.querySelector('a[hreflang="en"][href="/terms.html"]');
+          if (en) {
+            en.addEventListener("click", function () {
+              try {
+                localStorage.setItem("zendo_legal_lang", "en");
+              } catch (e) {}
+            });
+          }
+        } catch (e) {}
+      })();
+    </script>
+  </body>
+</html>

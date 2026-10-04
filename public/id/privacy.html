@@ -1,0 +1,709 @@
+<!doctype html>
+<html lang="id" data-lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<meta name="description" content="Bagaimana Zendo menangani data Anda: hanya lokal secara bawaan, sinkronisasi cloud opsional, tanpa iklan, tanpa analitik, dan tidak pernah dijual.">
+<title>Kebijakan Privasi &middot; Zendo</title>
+<style>
+  :root {
+    color-scheme: light dark;
+    --bg: #f7f5f0;
+    --surface: #ffffff;
+    --text: #1c1a15;
+    --muted: #5c564a;
+    --line: #ddd7c9;
+    --line-soft: #eae5da;
+    --accent: #6f5a34;
+    --accent-soft: #f0e9da;
+    --accent-contrast: #ffffff;
+    --mono: ui-monospace, "SFMono-Regular", "Cascadia Mono", "Segoe UI Mono", Menlo, Consolas, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #080908;
+      --surface: #121410;
+      --text: #e5e2da;
+      --muted: #a49e90;
+      --line: #2c2a23;
+      --line-soft: #22211c;
+      --accent: #a48b5e;
+      --accent-soft: #1d1b15;
+      --accent-contrast: #080908;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #080908;
+    --surface: #121410;
+    --text: #e5e2da;
+    --muted: #a49e90;
+    --line: #2c2a23;
+    --line-soft: #22211c;
+    --accent: #a48b5e;
+    --accent-soft: #1d1b15;
+    --accent-contrast: #080908;
+  }
+
+  * { box-sizing: border-box; }
+
+  html { -webkit-text-size-adjust: 100%; }
+
+  body {
+    margin: 0;
+    padding: 0 16px 96px;
+    background: var(--bg);
+    color: var(--text);
+    font: 16px/1.72 ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    font-variant-numeric: oldstyle-nums;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .wrap { max-width: 44rem; margin: 0 auto; }
+
+  a { color: var(--accent); text-underline-offset: 3px; text-decoration-thickness: 1px; }
+  a:hover { text-decoration-thickness: 2px; }
+
+  a:focus-visible,
+  button:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 3px;
+    border-radius: 3px;
+  }
+
+  header.site {
+    padding: 28px 0 18px;
+    border-bottom: 1px solid var(--line-soft);
+  }
+  .bar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 14px 18px;
+    align-items: baseline;
+    justify-content: space-between;
+  }
+  .back {
+    font-family: var(--mono);
+    font-size: 0.72rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    text-decoration: none;
+  }
+  nav.langs { display: flex; flex-wrap: wrap; gap: 6px; }
+  .chip {
+    display: inline-block;
+    padding: 4px 10px;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    font-family: var(--mono);
+    font-size: 0.7rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    text-decoration: none;
+    color: var(--muted);
+    background: transparent;
+    cursor: pointer;
+    line-height: 1.5;
+  }
+  .chip[aria-current="page"], .chip[aria-pressed="true"] {
+    border-color: var(--accent);
+    color: var(--accent);
+    background: var(--accent-soft);
+  }
+  .chip:hover { border-color: var(--accent); color: var(--accent); }
+
+  main { padding-top: 40px; }
+
+  .eyebrow {
+    font-family: var(--mono);
+    font-size: 0.7rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin: 0 0 14px;
+  }
+
+  h1 {
+    font-size: clamp(1.75rem, 5vw, 2.4rem);
+    line-height: 1.18;
+    letter-spacing: -0.015em;
+    font-weight: 600;
+    margin: 0 0 16px;
+  }
+
+  .meta {
+    font-family: var(--mono);
+    font-size: 0.76rem;
+    letter-spacing: 0.04em;
+    color: var(--muted);
+    margin: 0 0 6px;
+  }
+  .meta strong { color: var(--text); font-weight: 600; }
+
+  .lede {
+    font-size: 1.06rem;
+    color: var(--muted);
+    margin: 18px 0 0;
+    max-width: 38rem;
+  }
+
+  h2 {
+    font-size: 1.18rem;
+    letter-spacing: -0.005em;
+    font-weight: 600;
+    margin: 0 0 16px;
+    scroll-margin-top: 24px;
+  }
+  h3 {
+    font-size: 0.98rem;
+    font-weight: 600;
+    margin: 28px 0 10px;
+  }
+
+  section {
+    padding: 40px 0;
+    border-top: 1px solid var(--line-soft);
+  }
+  section:first-of-type { border-top: none; padding-top: 8px; }
+
+  p { margin: 0 0 16px; max-width: 40rem; }
+  ul, ol { margin: 0 0 16px; padding-left: 1.25rem; max-width: 40rem; }
+  li { margin: 0 0 9px; }
+  li > ul, li > ol { margin-top: 9px; margin-bottom: 4px; }
+
+  code {
+    font-family: var(--mono);
+    font-size: 0.86em;
+    background: var(--accent-soft);
+    border: 1px solid var(--line-soft);
+    border-radius: 4px;
+    padding: 1px 5px;
+    word-break: break-word;
+  }
+
+  /* Menandai nilai yang harus diganti pemilik sebelum publikasi. Sengaja
+     dibuat mencolok — placeholder yang tampak seperti teks biasa bisa
+     terkirim tanpa sengaja. */
+  .placeholder {
+    color: var(--accent);
+    font-weight: 600;
+    border: 1px dashed var(--accent);
+    border-radius: 3px;
+    padding: 0.06em 0.36em;
+    white-space: nowrap;
+  }
+
+  .toc {
+    margin: 36px 0 8px;
+    padding: 22px 24px;
+    background: var(--surface);
+    border: 1px solid var(--line-soft);
+    border-radius: 12px;
+  }
+  .toc h2 { font-size: 0.7rem; font-family: var(--mono); letter-spacing: 0.2em;
+            text-transform: uppercase; color: var(--muted); font-weight: 500;
+            margin: 0 0 14px; }
+  .toc ol { columns: 2; column-gap: 32px; margin: 0; padding-left: 1.2rem;
+            font-size: 0.92rem; }
+  .toc li { break-inside: avoid; margin-bottom: 7px; }
+  @media (max-width: 34rem) { .toc ol { columns: 1; } }
+
+  .table-scroll { overflow-x: auto; margin: 0 0 16px; }
+  table {
+    border-collapse: collapse;
+    width: 100%;
+    min-width: 30rem;
+    font-size: 0.92rem;
+    background: var(--surface);
+  }
+  caption {
+    caption-side: top;
+    text-align: left;
+    font-size: 0.85rem;
+    color: var(--muted);
+    padding-bottom: 10px;
+  }
+  th, td {
+    text-align: left;
+    vertical-align: top;
+    padding: 11px 14px;
+    border-bottom: 1px solid var(--line-soft);
+  }
+  thead th {
+    font-family: var(--mono);
+    font-size: 0.7rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--muted);
+    font-weight: 500;
+    border-bottom: 1px solid var(--line);
+    white-space: nowrap;
+  }
+  tbody th { font-weight: 600; width: 22%; }
+  tbody tr:last-child th, tbody tr:last-child td { border-bottom: none; }
+
+  .note {
+    margin: 0 0 16px;
+    padding: 14px 16px;
+    background: var(--surface);
+    border: 1px solid var(--line-soft);
+    border-left: 3px solid var(--accent);
+    border-radius: 8px;
+    font-size: 0.94rem;
+    max-width: 40rem;
+  }
+  .note p:last-child { margin-bottom: 0; }
+  .note .label {
+    display: block;
+    font-family: var(--mono);
+    font-size: 0.68rem;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 6px;
+  }
+
+  .todo {
+    display: block;
+    font-family: var(--mono);
+    font-size: 0.78rem;
+    color: var(--muted);
+  }
+
+  footer.site {
+    border-top: 1px solid var(--line-soft);
+    padding: 32px 0 0;
+    margin-top: 8px;
+    font-size: 0.86rem;
+    color: var(--muted);
+  }
+  footer.site p { margin-bottom: 10px; }
+  footer.site .langs { margin-bottom: 18px; }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+  }
+
+  @media print {
+    body { background: #fff; color: #000; }
+    .toc, nav.langs { break-inside: avoid; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="site">
+  <div class="bar">
+    <a class="back" href="/">&#8592; Kembali ke Zendo</a>
+    <nav class="langs" aria-label="Bahasa">
+      <a class="chip" href="/id/privacy.html" hreflang="id" lang="id" aria-current="page">Bahasa Indonesia</a>
+      <a class="chip" href="/privacy.html" hreflang="en" lang="en">English</a>
+      <a class="chip" href="/id/terms.html" lang="id">Ketentuan</a>
+      <a class="chip" href="/terms.html" hreflang="en" lang="en">Terms (EN)</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+
+  <p class="eyebrow">Kebijakan</p>
+  <h1>Kebijakan Privasi</h1>
+  <p class="meta"><strong>Terakhir diperbarui:</strong> 2026-10-04</p>
+  <p class="meta"><strong>Versi:</strong> 1.0</p>
+  <p class="lede">Zendo adalah aplikasi fokus dan kebiasaan yang bersifat pribadi. Jurnal, praktik, dan catatan Anda adalah milik Anda. Halaman ini menjelaskan secara gamblang apa yang disimpan aplikasi, di mana data itu disimpan, siapa yang dapat membacanya, dan apa yang tidak pernah kami lakukan terhadapnya.</p>
+
+  <nav class="toc" aria-labelledby="toc-heading">
+    <h2 id="toc-heading">Daftar Isi</h2>
+    <ol>
+      <li><a href="#at-a-glance">Sekilas</a></li>
+      <li><a href="#storage-modes">Dua mode penyimpanan</a></li>
+      <li><a href="#what-we-collect">Apa yang kami kumpulkan</a></li>
+      <li><a href="#why-and-bases">Mengapa kami memprosesnya, dan atas dasar apa</a></li>
+      <li><a href="#not-collected">Apa yang tidak kami kumpulkan</a></li>
+      <li><a href="#sharing">Berbagi data dan penyedia layanan</a></li>
+      <li><a href="#images">Foto buku catatan dan gambar</a></li>
+      <li><a href="#cookies">Cookie, penyimpanan lokal, dan sesi</a></li>
+      <li><a href="#security">Keamanan</a></li>
+      <li><a href="#retention">Berapa lama kami menyimpan data</a></li>
+      <li><a href="#your-rights">Hak Anda</a></li>
+      <li><a href="#children">Anak-anak</a></li>
+      <li><a href="#transfers">Transfer internasional</a></li>
+      <li><a href="#changes">Perubahan kebijakan ini</a></li>
+      <li><a href="#contact">Kontak dan pengaduan</a></li>
+    </ol>
+  </nav>
+
+  <section id="at-a-glance" aria-labelledby="at-a-glance-h">
+    <h2 id="at-a-glance-h">1. Sekilas</h2>
+    <p><strong>Siapa &ldquo;kami&rdquo;:</strong> di sepanjang halaman ini, &ldquo;kami&rdquo; dan &ldquo;Zendo&rdquo; berarti pengembang tunggal yang membangun dan menjalankan aplikasi ini &mdash; pengendali data pribadi yang disebut pada bagian 15. Tidak ada perusahaan, tidak ada tim, dan tidak ada pemroses data terpisah yang bertindak atas nama kami selain penyedia infrastruktur yang tercantum pada bagian 6.</p>
+    <div class="table-scroll">
+      <table>
+        <caption>Ringkasan singkat dari keseluruhan kebijakan. Bagian-bagian di bawah menjelaskan setiap barisnya.</caption>
+        <thead>
+          <tr>
+            <th scope="col">Pertanyaan</th>
+            <th scope="col">Jawaban</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <th scope="row">Apa yang Anda simpan?</th>
+            <td>Apa yang Anda tulis dan catat di dalam Zendo: profil, pengaturan, praktik beserta catatannya, tujuan, rencana harian, sesi fokus dan belajar, peristiwa lini masa, entri jurnal dan jawaban refleksi, catatan drift/relapse, riwayat season, pengaturan pengingat, tanda pembelian yang terbuka, dan &mdash; hanya jika Anda masuk &mdash; alamat email Anda. Foto buku catatan tetap berada di perangkat Anda.</td>
+          </tr>
+          <tr>
+            <th scope="row">Di mana data disimpan?</th>
+            <td>Di browser ini, secara bawaan (localStorage dan IndexedDB). Jika dan hanya jika Anda masuk, salinan data aplikasi Anda juga disimpan di basis data cloud kami agar dapat tersinkronisasi antar perangkat.</td>
+          </tr>
+          <tr>
+            <th scope="row">Siapa yang dapat membacanya?</th>
+            <td>Di perangkat Anda: siapa pun yang dapat membuka profil browser ini dapat membaca semuanya &mdash; termasuk jurnal Anda &mdash; karena data disimpan sebagai data biasa yang tidak terenkripsi. Itulah bawaannya, dan tidak memerlukan akun. Di cloud: hanya sesi Anda yang sudah masuk yang dapat membaca atau menulis baris Anda, ditegakkan oleh basis data itu sendiri. Pengembang Zendo tidak menjelajahi data pengguna.</td>
+          </tr>
+          <tr>
+            <th scope="row">Apakah data dijual?</th>
+            <td>Tidak. Kami tidak pernah menjual atau menyewakan data pribadi. Zendo tidak memiliki iklan, analitik, piksel pelacak, pelaporan kerusakan, maupun SDK pemasaran pihak ketiga.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section id="storage-modes" aria-labelledby="storage-modes-h">
+    <h2 id="storage-modes-h">2. Dua mode penyimpanan</h2>
+    <p>Zendo bekerja dalam dua mode. Mode mana yang berlaku bagi Anda bergantung pada satu pilihan: apakah Anda masuk atau tidak.</p>
+
+    <h3>Mode hanya lokal (tanpa akun)</h3>
+    <p>Ini adalah bawaannya. Tanpa masuk, tidak ada yang meninggalkan perangkat Anda. Secara rinci:</p>
+    <ul>
+      <li>Seluruh status aplikasi disimpan di browser ini di bawah kunci localStorage <code>monk_mode_pwa_state_v1</code>, sebagai satu objek JSON. Beberapa kunci cermin (<code>focusSessions</code>, <code>learningSessions</code>, <code>timelineEvents</code>) ditulis bersamanya.</li>
+      <li>Foto buku catatan yang Anda lampirkan disimpan sebagai blob gambar mentah di basis data IndexedDB bernama <code>zendo_images</code>, object store <code>images</code>, dengan kunci berupa sebuah id.</li>
+      <li>Jika Anda menggunakan tindakan &ldquo;Backup penuh&rdquo; di Pengaturan, aplikasi menuliskan seluruh status itu ke berkas JSON yang diunduh ke perangkat Anda sendiri. Di mana Anda menyimpan berkas itu terserah Anda.</li>
+      <li>Tindakan &ldquo;Reset pabrik&rdquo; di Pengaturan menghapus localStorage. Di browser, menghapus data situs memberi efek yang sama.</li>
+    </ul>
+    <div class="note">
+      <span class="label">Tidak dapat dibatalkan secara sengaja</span>
+      <p>Menghapus data browser untuk situs ini, atau menggunakan Reset pabrik, akan menghancurkan salinan lokal <strong>tanpa bisa dipulihkan</strong>. Jika Anda tidak pernah masuk, itulah satu-satunya salinan dan data itu hilang. Jika Anda pernah masuk, salinan tersinkronisasi Anda tetap ada di cloud dan dapat kembali saat Anda masuk lagi &mdash; tetapi hanya data teks, dan hanya sampai sinkronisasi terakhir yang berhasil. Foto buku catatan tidak pernah ada di cloud, jadi foto-foto itu tetap hilang dalam kedua kasus. &ldquo;Sinkronisasi terakhir yang berhasil&rdquo; adalah frasa kuncinya: apa pun yang Anda tulis setelah itu, atau saat offline, tidak dapat dipulihkan. Jika nanti Anda keluar dari cloud, jangan berasumsi salinan di browser Anda selamat dari pembersihan.</p>
+    </div>
+
+    <h3>Mode sinkronisasi cloud (hanya jika Anda masuk)</h3>
+    <p>Masuk bersifat opsional. Jika Anda masuk:</p>
+    <ul>
+      <li>Akun Anda berupa alamat email dan kata sandi, yang ditangani oleh Supabase Auth. Zendo sendiri tidak pernah melihat kata sandi Anda dalam bentuk teks biasa; aplikasi mengirimkannya ke Supabase Auth, yang menyimpannya dalam bentuk hash dan memverifikasinya saat masuk.</li>
+      <li>Data aplikasi Anda disimpan dalam tabel bernama <code>zendo_state</code>: satu baris per pengguna, yang kunci utamanya adalah id pengguna auth Supabase Anda, dengan kolom <code>state_json</code> yang memuat objek JSON yang sama seperti yang ada di browser Anda, ditambah stempel waktu <code>updated_at</code>.</li>
+      <li>Row Level Security diaktifkan pada tabel itu. Server basis data &mdash; bukan aplikasi &mdash; yang menegakkan bahwa hanya sesi yang memiliki suatu baris dapat membaca atau menulisinya. Pengguna lain yang sudah masuk tidak dapat membaca baris Anda meskipun aplikasi memiliki bug yang memintanya.</li>
+      <li>Sinkronisasi hanya untuk teks dan sepenuhnya opsional. Gambar tidak pernah disinkronkan. Tanpa sesi Supabase, setiap panggilan cloud yang akan dilakukan aplikasi tidak berjalan (no-op), dan aplikasi berperilaku seperti mode hanya lokal.</li>
+    </ul>
+  </section>
+
+  <section id="what-we-collect" aria-labelledby="what-we-collect-h">
+    <h2 id="what-we-collect-h">3. Apa yang kami kumpulkan</h2>
+    <p>Semua yang di bawah ini adalah data yang Anda buat di dalam aplikasi. Kami tidak mengamati Anda, tidak menyimpulkan hal-hal tentang Anda, dan tidak membeli data tentang Anda dari siapa pun.</p>
+
+    <h3>3.1 Data akun &mdash; hanya jika Anda masuk</h3>
+    <ul>
+      <li><strong>Alamat email.</strong> Digunakan untuk mengidentifikasi akun Anda dan agar Anda dapat masuk. Formulir pendaftaran mengumpulkan email dan kata sandi, dan tidak yang lain.</li>
+      <li><strong>Kata sandi.</strong> Ditangani oleh Supabase Auth. Kata sandi di-hash di sana; Zendo tidak pernah melihat atau menyimpannya dalam bentuk teks biasa.</li>
+    </ul>
+
+    <h3>3.2 Data aplikasi Anda &mdash; blob status</h3>
+    <p>Selalu disimpan secara lokal, dan di cloud hanya jika Anda masuk:</p>
+    <ul>
+      <li>Profil dan pengaturan aplikasi Anda, termasuk tema dan bahasa, serta tombol notifikasi Anda.</li>
+      <li>Praktik Anda dan catatan praktik yang mencatat penyelesaiannya.</li>
+      <li>Tujuan, rencana harian, dan riwayat season Anda.</li>
+      <li>Sesi fokus Anda, termasuk stempel waktu mulai dan selesai, serta sesi belajar Anda.</li>
+      <li>Peristiwa lini masa Anda.</li>
+      <li>Entri jurnal dan jawaban refleksi Anda.</li>
+      <li>Catatan drift atau relapse Anda.</li>
+      <li>Pengaturan pengingat notifikasi Anda.</li>
+      <li>Tanda pembelian dan pembukaan (lihat 3.3).</li>
+    </ul>
+
+    <h3>3.3 Catatan pembelian</h3>
+    <p><strong>Dua hal yang berbeda, dan hanya satu di antaranya yang membuat catatan.</strong> (a) Pembukaan Journal Pack adalah sebuah <em>pembelian</em>: ketika Bayar GG mengonfirmasinya, sebuah baris ditulis ke <code>zendo_purchases</code> dengan id paket dan metadata pembelian. Secara desain, baris-baris itu dapat dibaca oleh setiap pengguna yang sudah masuk, karena webhook tidak memiliki identitas pembeli untuk dilekatkan padanya; baris-baris itu tidak pernah dapat dibaca secara anonim. Sebuah catatan mengaitkan id paket dengan waktu, bukan dengan seseorang. (b) Sebuah <em>tip</em> bukan pembelian dan tidak membuat catatan sama sekali &mdash; lihat bagian 6. (Saat ini Zendo tidak menampilkan tautan &ldquo;donasi&rdquo; biasa yang terpisah; panel tip adalah jalur donasinya.)</p>
+
+    <h3>3.4 Gambar buku catatan</h3>
+    <p>Jika Anda melampirkan foto ke halaman buku catatan, berkas disimpan sebagai blob di IndexedDB browser ini. Foto itu tidak diunggah ke mana pun. Lihat bagian 7.</p>
+
+    <h3>3.5 Detail pembayaran</h3>
+    <p>Zendo tidak pernah melihat atau menyimpan kredensial kartu, bank, atau dompet elektronik Anda. Saat Anda membayar melalui gateway pembayaran, Anda memasukkan detail tersebut di halaman gateway itu sendiri, bukan di Zendo.</p>
+  </section>
+
+  <section id="why-and-bases" aria-labelledby="why-and-bases-h">
+    <h2 id="why-and-bases-h">4. Mengapa kami memprosesnya, dan atas dasar apa</h2>
+    <p>Hukum Indonesia (Undang-Undang No. 27 Tahun 2022, Undang-Undang Perlindungan Data Pribadi &mdash; &ldquo;UU PDP&rdquo;) mewajibkan kami menyebutkan dasar hukum untuk setiap tujuan. Berikut pemetaannya, tanpa tambahan apa pun.</p>
+    <div class="table-scroll">
+      <table>
+        <thead>
+          <tr>
+            <th scope="col">Tujuan</th>
+            <th scope="col">Dasar hukum menurut UU PDP</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <th scope="row">Membuat akun Anda dan menyediakan aplikasi kepada Anda</th>
+            <td>Pelaksanaan perjanjian antara Anda dan kami. Anda meminta akun Zendo; kami harus menyimpan sebuah pengenal dan data aplikasi Anda untuk menyediakannya.</td>
+          </tr>
+          <tr>
+            <th scope="row">Menyinkronkan data Anda antar perangkat</th>
+            <td>Persetujuan eksplisit. Sinkronisasi hanya terjadi setelah Anda memilih untuk masuk, dan itulah layanan yang Anda pilih dengan melakukannya.</td>
+          </tr>
+          <tr>
+            <th scope="row">Mengirimkan pengingat dan notifikasi kepada Anda</th>
+            <td>Persetujuan eksplisit. Pengingat bersifat opt-in melalui tombol notifikasi, dan Anda dapat mematikannya kapan saja.</td>
+          </tr>
+          <tr>
+            <th scope="row">Menjaga keamanan layanan dan mencegah penyalahgunaan</th>
+            <td>Kepentingan yang sah, sepanjang tidak mengesampingkan hak Anda. Ini mencakup hal-hal seperti penegakan akses tingkat baris dan menjaga kesehatan infrastruktur.</td>
+          </tr>
+          <tr>
+            <th scope="row">Menyimpan catatan donasi dan pembelian</th>
+            <td>Pemenuhan kewajiban hukum, yaitu ketika hukum pajak atau akuntansi mewajibkan catatan disimpan.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <p><strong>Tanpa pembuatan profil.</strong> Kami tidak membangun profil perilaku, tidak memberi skor kepada Anda, dan tidak menggunakan jurnal, catatan praktik, atau riwayat sesi Anda untuk membuat keputusan otomatis tentang Anda. Tidak ada pengambilan keputusan otomatis di Zendo.</p>
+  </section>
+
+  <section id="not-collected" aria-labelledby="not-collected-h">
+    <h2 id="not-collected-h">5. Apa yang tidak kami kumpulkan</h2>
+    <p>Daftar ini singkat karena aplikasinya memang singkat. Kami tidak mengumpulkan:</p>
+    <ul>
+      <li>Lokasi yang presisi maupun perkiraan.</li>
+      <li>Kontak atau buku alamat Anda.</li>
+      <li>Kalender Anda.</li>
+      <li>Audio mikrofon, atau aliran video kamera. Kamera hanya digunakan untuk memungkinkan Anda memilih atau mengambil foto buku catatan, dan hanya pada saat Anda memintanya.</li>
+      <li>Pengenal iklan atau ID iklan seluler apa pun.</li>
+      <li>Analitik atau telemetri penggunaan dalam bentuk apa pun.</li>
+      <li>Sidik perangkat (device fingerprint), atau pengenal lintas situs.</li>
+      <li>Data tentang Anda dari broker pihak ketiga, mitra data, atau jejaring sosial.</li>
+    </ul>
+    <p>Foto buku catatan hanyalah berkas yang Anda pilih sendiri: aplikasi tidak memindai perangkat Anda untuk mencari gambar, tidak membaca pustaka foto Anda, dan tidak mengunggah apa yang Anda lampirkan.</p>
+  </section>
+
+  <section id="sharing" aria-labelledby="sharing-h">
+    <h2 id="sharing-h">6. Berbagi data dan penyedia layanan</h2>
+    <p>Kami tidak menjual data pribadi Anda, dan kami tidak menyewakannya. Kami tidak membagikannya untuk iklan atau pemasaran. Satu-satunya berbagi yang terjadi adalah dengan penyedia infrastruktur yang membuat aplikasi ini berjalan, dan hanya sejauh yang dibutuhkan masing-masing untuk menjalankan tugasnya.</p>
+    <div class="table-scroll">
+      <table>
+        <thead>
+          <tr>
+            <th scope="col">Penyedia</th>
+            <th scope="col">Apa yang diterimanya</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <th scope="row">Supabase</th>
+            <td>Akun Anda (email dan kata sandi yang di-hash), serta data aplikasi Anda yang tersinkronisasi &mdash; baris <code>zendo_state</code>. Ini hanya terjadi jika Anda masuk. Inilah basis data yang menyimpan status tersinkronisasi Anda.</td>
+          </tr>
+          <tr>
+            <th scope="row">Vercel</th>
+            <td>Menyajikan situs Zendo dan menjalankan fungsi server kecil di belakangnya. Servernya melihat data permintaan web standar, yang mencakup alamat IP dan user agent Anda, sebagaimana server web mana pun.</td>
+          </tr>
+          <tr>
+            <th scope="row">Google Fonts</th>
+            <td>Zendo memuat jenis hurufnya dari Google Fonts. Saat browser Anda meminta berkas font tersebut, Google menerima alamat IP dan user agent Anda. Font dimuat dari <code>fonts.googleapis.com</code> dan <code>fonts.gstatic.com</code>.</td>
+          </tr>
+          <tr>
+            <th scope="row">Bayar GG (bayar.gg)</th>
+            <td>Gateway pembayaran. Ia menerima permintaan pembayaran dan id paket, dan menangani pembayaran itu sendiri, termasuk detail pembayaran apa pun yang Anda masukkan di halamannya. Kami tidak pernah melihat detail tersebut.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <p><strong>Semua penyedia ini berada di luar Indonesia.</strong> Lihat bagian 13 untuk mengetahui artinya menurut UU PDP.</p>
+    <div class="note">
+      <span class="label">Panel tip QRIS berbeda</span>
+      <p>Zendo juga menyediakan panel tip QRIS di dalam aplikasi. Anda memilih atau memindai jumlah, lalu membayar di dalam aplikasi perbankan Anda sendiri; uang berpindah dari bank Anda ke kode QR merchant &mdash; <!-- TODO(owner): pastikan nama merchant QRIS ini benar sebelum publikasi. --><span class="placeholder">Ardi Wiryawan</span> (pengembang) &mdash; dan tidak ada penyedia pembayaran yang terlibat. <strong>Zendo tidak menerima metadata transaksi apa pun dari alur itu</strong> &mdash; tanpa jumlah, tanpa identitas, tanpa konfirmasi bahwa Anda sudah membayar, dan tanpa apa pun yang dilekatkan pada akun Anda. Ini tip, bukan pembelian yang dilacak. Saat Anda memakai panel ini, jumlah dipilih di perangkat Anda dan dirender ke dalam kode QR secara lokal; jumlah itu tidak pernah melewati server Zendo.</p>
+    </div>
+    <p>Kami juga dapat mengungkapkan data jika suatu proses hukum yang sah memaksa kami, misalnya perintah yang mengikat dari otoritas yang berwenang. Jika itu pernah terjadi dan kami diizinkan memberi tahu Anda, kami akan melakukannya.</p>
+  </section>
+
+  <section id="images" aria-labelledby="images-h">
+    <h2 id="images-h">7. Foto buku catatan dan gambar</h2>
+    <p>Foto buku catatan disimpan secara lokal, sebagai blob di basis data IndexedDB browser ini (<code>zendo_images</code>). Foto-foto itu tidak disinkronkan ke server mana pun, dan tidak ada penerimaan sisi server atas gambar buku catatan di mana pun dalam Zendo.</p>
+    <ul>
+      <li><strong>Metadata gambar tetap bersama Anda.</strong> Jika sebuah foto membawa data EXIF, data itu tetap bersama salinan lokal berkas tersebut. Pemrosesan apa pun yang dilakukan aplikasi terhadap gambar yang dilampirkan terjadi di perangkat Anda: saat aplikasi mengompresi sebuah foto, aplikasi mengenkode ulang foto itu secara lokal, yang dapat membuang sebagian metadata tersebut di perangkat Anda sendiri. Aplikasi tidak melakukan pemrosesan gambar di server, dan tidak ada versi gambar Anda yang diunggah. Kami tidak membaca data EXIF untuk tujuan apa pun.</li>
+      <li><strong>Menghapus data situs akan menghapus gambar-gambar ini.</strong> Seperti entri jurnal Anda, foto buku catatan hanya bersifat lokal. Masuk di perangkat lain tidak akan membawanya, karena foto-foto itu tidak pernah diunggah.</li>
+      <li><strong>Apa yang Anda lampirkan adalah pilihan Anda.</strong> Aplikasi hanya menyimpan berkas tertentu yang Anda pilih atau ambil. Aplikasi tidak membaca atau mengunggah apa pun yang lain dari perangkat Anda.</li>
+    </ul>
+  </section>
+
+  <section id="cookies" aria-labelledby="cookies-h">
+    <h2 id="cookies-h">8. Cookie, penyimpanan lokal, dan sesi</h2>
+    <p>Zendo tidak menyetel cookie iklan, cookie analitik, maupun cookie pelacak. Tidak ada cookie pemasaran pihak ketiga di situs ini.</p>
+    <p><strong>Untuk lebih tepatnya, karena &ldquo;tanpa cookie&rdquo; sering disalahpahami:</strong> Zendo sama sekali tidak menyajikan cookie miliknya sendiri &mdash; bukan untuk iklan, bukan untuk analitik, bukan untuk pelacakan, bahkan bukan cookie preferensi. Pilihan bahasa dan tema di halaman ini disimpan di <code>localStorage</code> browser Anda, bukan di cookie. Jika Anda masuk, Supabase Auth juga menyimpan sesi Anda di penyimpanan browser. Anda tidak akan menemukan cookie Zendo di daftar cookie browser Anda, dan itu memang disengaja.</p>
+    <p>Data persisten yang disimpan Zendo di browser Anda meliputi:</p>
+    <ul>
+      <li><strong>Data aplikasi Anda</strong> &mdash; blob status <code>monk_mode_pwa_state_v1</code> di localStorage, ditambah beberapa kunci cermin, dan foto buku catatan Anda di basis data IndexedDB <code>zendo_images</code>.</li>
+      <li><strong>Token sesi</strong> &mdash; jika Anda masuk, Supabase Auth menyimpan sesi di browser Anda agar Anda tetap masuk. Itulah yang membuat Anda tidak perlu memasukkan ulang kata sandi pada setiap kunjungan.</li>
+      <li><strong>Preferensi dan draf lokal</strong> &mdash; draf autosave singkat dari entri jurnal atau buku catatan yang masih Anda tulis, preset fokus terakhir Anda, pengaturan volume ambien Anda, string merchant QRIS kustom, kunci cadangan status (state-backup), dan tanda penolakan harian yang kecil (misalnya prompt akhir hari yang dilewati).</li>
+    </ul>
+    <p>Anda tidak akan melihat banner cookie di Zendo. Tidak ada yang perlu disetujui di luar apa yang secara eksplisit Anda minta: memakai aplikasi menyimpan data Anda di browser, dan masuk menyimpan sebuah sesi. Keluar, atau menghapus data situs, akan menghapus sesi itu.</p>
+  </section>
+
+  <section id="security" aria-labelledby="security-h">
+    <h2 id="security-h">9. Keamanan</h2>
+    <p>Yang sesungguhnya kami lakukan:</p>
+    <ul>
+      <li><strong>HTTPS di mana-mana.</strong> Lalu lintas antara browser Anda dan situs dienkripsi saat transit.</li>
+      <li><strong>Isolasi yang ditegakkan server.</strong> Di basis data cloud, Row Level Security membatasi setiap baris hanya untuk pemiliknya, ditegakkan oleh server basis data. Bug di aplikasi tidak dapat memperluas akses itu.</li>
+      <li><strong>Kata sandi di-hash</strong> dan disimpan oleh Supabase Auth. Kami tidak pernah menyimpan teks aslinya.</li>
+      <li><strong>Pembayaran ditangani oleh gateway.</strong> Kredensial kartu dan bank dimasukkan di halaman gateway dan tidak pernah mencapai Zendo.</li>
+    </ul>
+    <div class="note">
+      <span class="label">Dinyatakan dengan jujur</span>
+      <p>Tidak ada sistem yang sepenuhnya aman, dan kami tidak akan berpura-pura sebaliknya.</p>
+    </div>
+    <h3 id="risk-that-applies">Risiko yang sesungguhnya berlaku bagi Anda</h3>
+    <p>Zendo tidak mengenkripsi data lokal Anda. Semua yang Anda tulis &mdash; jurnal, refleksi, catatan drift, foto buku catatan &mdash; tersimpan di browser ini sebagai data biasa. Di komputer bersama, atau di ponsel yang kunci layarnya diketahui orang lain, membuka Zendo sudah cukup untuk membaca semuanya; tanpa kata sandi, tanpa prompt. Ada dua hal yang mengurangi risiko itu dan keduanya bergantung pada Anda: (1) aktifkan kunci perangkat atau kunci layar, dan (2) jangan masuk di perangkat yang Anda pakai bersama. Keluar <em>tidak</em> menghapus salinan lokal &mdash; hanya Reset pabrik atau menghapus data situs yang menghapusnya.</p>
+  </section>
+
+  <section id="retention" aria-labelledby="retention-h">
+    <h2 id="retention-h">10. Berapa lama kami menyimpan data</h2>
+    <ul>
+      <li><strong>Data lokal</strong> tetap ada sampai Anda menghapusnya. Reset pabrik atau menghapus data situs akan menghapusnya segera dan permanen.</li>
+      <li><strong>Data cloud</strong> tetap ada sampai Anda meminta kami menghapusnya. Saat ini tidak ada tombol hapus di dalam aplikasi &mdash; hanya keluar. Agar baris tersinkronisasi dan akun auth Anda dihapus, email alamat kontak di bagian 15. Kami akan menanggapi dalam 3 x 24 jam dan benar-benar menghapus data dalam 30 hari sejak permintaan terverifikasi, sebagaimana diwajibkan UU PDP. Jika kami gagal melakukannya, upaya hukum yang berlaku diatur dalam Ketentuan Layanan, bagian 09.</li>
+      <li><strong>Catatan pembelian dan donasi</strong> dapat disimpan lebih lama daripada akun Anda, jika hukum pajak atau akuntansi mewajibkan catatan dipertahankan. Baris pembelian memuat id paket dan waktu, bukan seseorang; tip tidak meninggalkan catatan sama sekali.</li>
+    </ul>
+    <p>Tidak ada logika pembersihan atau kedaluwarsa otomatis di aplikasi. Data tidak menghilang diam-diam menurut pengatur waktu, dan tidak juga diarsipkan diam-diam.</p>
+  </section>
+
+  <section id="your-rights" aria-labelledby="your-rights-h">
+    <h2 id="your-rights-h">11. Hak Anda</h2>
+    <p>Menurut UU PDP, Anda memiliki hak-hak di bawah ini. Untuk masing-masing, berikut jalur yang sesungguhnya tersedia saat ini. Ketika hanya email yang berfungsi, kami menyatakannya alih-alih mengarang tombol yang tidak ada.</p>
+    <div class="table-scroll">
+      <table>
+        <thead>
+          <tr>
+            <th scope="col">Hak</th>
+            <th scope="col">Cara menggunakannya</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <th scope="row">Akses</th>
+            <td>Data Anda sudah terlihat oleh Anda di dalam aplikasi. Untuk melihat persis apa yang disimpan sebuah akun yang sudah masuk di cloud, email alamat kontak dan minta salinan status Anda yang tersimpan.</td>
+          </tr>
+          <tr>
+            <th scope="row">Perbaikan</th>
+            <td>Perbaiki apa pun yang dapat Anda edit langsung di aplikasi. Untuk apa pun yang tidak dapat Anda edit sendiri &mdash; misalnya email akun Anda &mdash; email alamat kontak.</td>
+          </tr>
+          <tr>
+            <th scope="row">Penghapusan</th>
+            <td>Data lokal: &ldquo;Reset pabrik&rdquo; di Pengaturan, atau hapus data situs di browser Anda &mdash; segera dan permanen. Data cloud dan akun Anda: <strong>tidak ada tombol hapus di dalam aplikasi, jadi email alamat kontak di bagian 15</strong>; kami mengonfirmasi penerimaan dan menghapus baris tersinkronisasi serta akun auth dalam 30 hari. Menghapus akun Anda tidak menyentuh salinan di perangkat Anda sendiri, dan menghapus perangkat Anda tidak menyentuh salinan cloud &mdash; keduanya terpisah, dan Anda mungkin perlu melakukan keduanya.</td>
+          </tr>
+          <tr>
+            <th scope="row">Portabilitas</th>
+            <td>Tindakan &ldquo;Backup penuh&rdquo; di Pengaturan mengunduh seluruh status aplikasi Anda sebagai berkas JSON ke perangkat Anda. Itulah mekanisme portabilitasnya, dan tersedia tanpa perlu meminta apa pun dari kami.</td>
+          </tr>
+          <tr>
+            <th scope="row">Pembatasan dan penolakan</th>
+            <td>Keluar menghentikan sinkronisasi cloud. Mematikan tombol notifikasi menghentikan pengingat. Untuk hal lain, email alamat kontak.</td>
+          </tr>
+          <tr>
+            <th scope="row">Penarikan persetujuan</th>
+            <td>Persetujuan di sini mencakup sinkronisasi cloud dan notifikasi, yang keduanya dapat Anda matikan sendiri di aplikasi. Penarikan berlaku untuk ke depan dan tidak memengaruhi pemrosesan yang sudah terjadi secara sah.</td>
+          </tr>
+          <tr>
+            <th scope="row">Pengaduan</th>
+            <td>Anda dapat mengajukan pengaduan kepada otoritas pengawas perlindungan data pribadi Indonesia. Lihat bagian 15.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section id="children" aria-labelledby="children-h">
+    <h2 id="children-h">12. Anak-anak</h2>
+    <p>Zendo tidak memiliki gerbang usia maupun alur persetujuan orang tua. Aplikasi ini tidak ditujukan untuk anak di bawah 13 tahun, dan tidak dirancang untuk mereka.</p>
+    <ul>
+      <li>Jika Anda seorang anak di bawah umur, gunakan Zendo hanya dengan keterlibatan dan persetujuan orang tua atau wali.</li>
+      <li>Jika Anda orang tua atau wali dan Anda yakin seorang anak telah membuat akun tanpa persetujuan yang semestinya, email alamat kontak di bagian 15. Kami akan menghapus akun dan datanya atas permintaan.</li>
+    </ul>
+  </section>
+
+  <section id="transfers" aria-labelledby="transfers-h">
+    <h2 id="transfers-h">13. Transfer internasional</h2>
+    <p>UU PDP mewajibkan kami memberi tahu Anda ketika data Anda meninggalkan Indonesia. Hal itu memang terjadi.</p>
+    <ul>
+      <li>Jika Anda masuk, data aplikasi Anda yang tersinkronisasi dan akun Anda diproses pada infrastruktur <strong>Supabase</strong> di luar Indonesia. Ini mencakup entri jurnal dan konten tertulis lainnya, karena seluruh blob status tersinkronisasi sebagai satu objek.</li>
+      <li>Situs Zendo sendiri disajikan oleh <strong>Vercel</strong>, juga di luar Indonesia, dan servernya mencatat data permintaan standar termasuk alamat IP Anda.</li>
+      <li><strong>Google Fonts</strong> menerima alamat IP dan user agent Anda saat browser memuat jenis huruf, di luar Indonesia.</li>
+      <li><strong>Bayar GG (bayar.gg)</strong> menangani pembayaran di luar Indonesia, dan menerima permintaan pembayaran serta id paket.</li>
+      <li>Alur tip QRIS adalah pengecualiannya: alur itu berjalan dari aplikasi bank Anda ke kode QR merchant, dan Zendo tidak menjadi bagiannya sama sekali.</li>
+    </ul>
+    <p>Jika Anda tidak masuk, tidak ada data pribadi yang ditransfer ke luar negeri &mdash; mode hanya lokal menjaga semuanya di browser Anda, dan satu-satunya permintaan keluar adalah untuk halaman dan fontnya. <strong>Dengan memilih masuk untuk sinkronisasi cloud, Anda menyetujui data tersinkronisasi Anda diproses pada infrastruktur tersebut di luar Indonesia.</strong> Jika Anda lebih suka data tetap di dalam negeri, gunakan Zendo tanpa masuk.</p>
+  </section>
+
+  <section id="changes" aria-labelledby="changes-h">
+    <h2 id="changes-h">14. Perubahan kebijakan ini</h2>
+    <p>Ketika kebijakan ini berubah, kami memperbarui tanggal &ldquo;Terakhir diperbarui&rdquo; di bagian atas dan nomor versi di sebelahnya. Jika suatu perubahan bersifat material &mdash; sesuatu yang secara berarti memengaruhi apa yang kami kumpulkan atau siapa yang dapat membacanya &mdash; kami akan menampilkannya di aplikasi, bukan membiarkan Anda menyadari perubahan tanggalnya sendiri.</p>
+    <p>Versi saat ini adalah <strong>1.0</strong>, terakhir diperbarui <strong>2026-10-04</strong>.</p>
+  </section>
+
+  <section id="contact" aria-labelledby="contact-h">
+    <h2 id="contact-h">15. Kontak dan pengaduan</h2>
+    <p>Zendo dibangun dan dijalankan oleh satu pengembang, bukan perusahaan.</p>
+    <p>
+      <strong>Pengendali data pribadi:</strong>
+      <!-- TODO(owner): ganti identitas pengendali ini dengan nama dan alamat yang benar sebelum publikasi; JANGAN menambahkan "PT" atau nomor registrasi karena Zendo dijalankan oleh perorangan. -->
+      <span class="placeholder">Ardi Wiryawan</span>, pengembang perorangan (usaha perorangan), Surabaya, Jawa Timur, Indonesia. Email:
+      <!-- TODO(owner): ganti dengan alamat email resmi sebelum publikasi. -->
+      <a href="mailto:legal@zendo.app"><span class="placeholder">legal@zendo.app</span></a>.
+    </p>
+    <p>Tidak ada Data Protection Officer (DPO) yang terpisah. Menurut UU PDP, DPO hanya diwajibkan jika pemrosesan berisiko tinggi, berskala besar, atau melibatkan pemantauan sistematis atas data pribadi; Zendo tidak melakukan satu pun dari itu, sehingga alamat kontak ini adalah tempat setiap permintaan diterima dan ditangani.</p>
+    <p>
+      <strong>Kontak privasi dan perlindungan data:</strong>
+      <!-- TODO(owner): ganti dengan alamat email resmi sebelum publikasi. -->
+      <a href="mailto:legal@zendo.app"><span class="placeholder">legal@zendo.app</span></a>
+    </p>
+    <p>
+      <strong>Dukungan umum:</strong>
+      <!-- TODO(owner): ganti dengan alamat email resmi sebelum publikasi. -->
+      <a href="mailto:support@zendo.app"><span class="placeholder">support@zendo.app</span></a>
+    </p>
+    <p>Untuk permintaan penghapusan atau akses, tulis dari alamat email yang terkait dengan akun Zendo Anda bila memungkinkan, dan nyatakan dengan jelas apa yang Anda ingin dilakukan. Kami akan menanggapi dalam 3 x 24 jam dan akan benar-benar menghapus data dalam 30 hari sejak permintaan terverifikasi.</p>
+    <p><strong>Pengaduan.</strong> Jika Anda tidak puas dengan cara kami menangani permintaan Anda, Anda berhak mengajukan pengaduan kepada otoritas pengawas perlindungan data pribadi Indonesia &mdash; kementerian yang bertanggung jawab atas perlindungan data pribadi menurut UU PDP. Kami akan bekerja sama dengan proses tersebut.</p>
+  </section>
+
+</main>
+
+<footer class="site">
+  <nav class="langs" aria-label="Bahasa">
+    <a class="chip" href="/id/privacy.html" hreflang="id" lang="id" aria-current="page">Bahasa Indonesia</a>
+    <a class="chip" href="/privacy.html" hreflang="en" lang="en">English</a>
+    <a class="chip" href="/id/terms.html" lang="id">Ketentuan</a>
+    <a class="chip" href="/terms.html" hreflang="en" lang="en">Terms (EN)</a>
+  </nav>
+  <p><a href="/">Kembali ke Zendo</a></p>
+  <p>Kebijakan Privasi &middot; Versi 1.0 &middot; Terakhir diperbarui: 2026-10-04</p>
+</footer>
+
+</div>
+
+<script>
+/* Peningkatan progresif saja. Halaman ini lengkap dan benar tanpa JavaScript.
+   Skrip ini hanya menerapkan preferensi tema eksplisit yang disimpan browser. */
+(function () {
+  try {
+    var store = window.localStorage;
+    var KEY_THEME = "zendo_legal_theme";
+
+    var theme = null;
+    try { theme = store.getItem(KEY_THEME); } catch (e) { theme = null; }
+    if (theme === "dark" || theme === "light") {
+      document.documentElement.setAttribute("data-theme", theme);
+    }
+  } catch (e) {
+    /* Peningkatan gagal. Dokumen sudah sepenuhnya dapat dibaca. */
+  }
+})();
+</script>
+
+</body>
+</html>
