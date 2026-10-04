@@ -99,6 +99,43 @@ describe("computeFocusNotificationSchedule", () => {
     expect(out.map((n) => n.triggerTime)).toEqual([T0 + 25 * MIN, T0 + 30 * MIN]);
   });
 
+  describe("after a phase advance / pause-resume (regression)", () => {
+    // startTime is the CURRENT phase's start and currentPhaseIndex says which
+    // phase that is. The schedule must anchor there, not at index 0 — otherwise
+    // every boundary drifts by the elapsed time and is mislabeled.
+    it("break boundary stays anchored to the current phase start, not re-derived from index 0", () => {
+      const t1 = T0 + 50 * MIN; // focus 1 (50m) just completed → break 1 begins now.
+      const advanced = session({
+        startTime: new Date(t1).toISOString(),
+        currentPhaseIndex: 1
+      });
+      const out = computeFocusNotificationSchedule(advanced, t1);
+      expect(out.map((n) => n.triggerTime)).toEqual([
+        t1 + 10 * MIN, // break 1 ends  (T0+60)  — was wrongly T0+110 before the fix
+        t1 + 60 * MIN, // focus 2 ends  (T0+110)
+        t1 + 70 * MIN  // break 2 ends  (T0+120) = session complete
+      ]);
+      expect(out[0]).toMatchObject({ title: "Focus block" }); // break 1 → focus 2
+      expect(out[2]).toMatchObject({ title: "Session complete" });
+    });
+
+    it("in the middle of a break schedules the real break end, not a focus boundary", () => {
+      const t1 = T0 + 50 * MIN;
+      const inBreak = session({ startTime: new Date(t1).toISOString(), currentPhaseIndex: 1 });
+      const out = computeFocusNotificationSchedule(inBreak, t1 + 4 * MIN); // 4m into the 10m break
+      expect(out.map((n) => n.triggerTime)).toEqual([t1 + 10 * MIN, t1 + 60 * MIN, t1 + 70 * MIN]);
+    });
+
+    it("resume mid-phase keeps the boundary absolute (startTime rebased to now - phaseElapsed)", () => {
+      // 30m into a 50m focus phase, paused then resumed → startTime = now-30m.
+      const now = T0 + 120 * MIN;
+      const resumed = session({ startTime: new Date(now - 30 * MIN).toISOString(), currentPhaseIndex: 0 });
+      const out = computeFocusNotificationSchedule(resumed, now);
+      expect(out[0]?.triggerTime).toBe(now + 20 * MIN); // 20m of focus left, then break
+      expect(out[0]).toMatchObject({ title: "Break time" });
+    });
+  });
+
   describe("with a mocked clock", () => {
     afterEach(() => {
       vi.useRealTimers();

@@ -35,11 +35,19 @@ export function computeFocusNotificationSchedule(
   const start = new Date(session.startTime).getTime();
   if (Number.isNaN(start)) return [];
 
+  // `startTime` is the start of the CURRENT phase (advanceFocusPhase resets it)
+  // and `currentPhaseIndex` says which phase that is. Anchoring at index 0 would
+  // re-emit the whole phase pattern from the current start, so after any advance
+  // (or a pause/resume made after one) every boundary drifts by the elapsed time
+  // and is mislabeled — a "Break time" firing mid-focus and the real break
+  // boundary never scheduled. Walk from the current phase so boundaries stay
+  // absolute and correct.
+  const currentIndex = Math.max(0, Math.min(session.currentPhaseIndex ?? 0, phases.length - 1));
+
   const out: FocusScheduledNotification[] = [];
-  let elapsedSeconds = 0;
-  for (let i = 0; i < phases.length; i++) {
-    elapsedSeconds += (phases[i]?.plannedMinutes ?? 0) * 60;
-    const boundary = start + elapsedSeconds * 1000;
+  let boundary = start;
+  for (let i = currentIndex; i < phases.length; i++) {
+    boundary += (phases[i]?.plannedMinutes ?? 0) * 60 * 1000;
     if (boundary <= now) continue; // already crossed at this startTime — runTick catch-up handles it
     const nextPhase = phases[i + 1];
     out.push(
