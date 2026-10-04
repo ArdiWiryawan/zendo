@@ -1,15 +1,11 @@
 import { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, BookOpen, CalendarCheck, FileText, History, Search, Sparkles, Filter } from "lucide-react";
+import { ArrowLeft, BookOpen, CalendarCheck, FileText, History, Search, Filter } from "lucide-react";
 import { useMonkStore } from "../store/useMonkStore";
 import { useT, useLanguage } from "../i18n";
-import { getJournalAnswerItems } from "../i18n/prompts";
 import type { MessageKey } from "../i18n";
 import { getTodayDateString, formatHumanDate } from "../lib/date";
 import { routes } from "../constants/routes";
-import { DAILY_STATUS_LABELS, resolveDailyActivityStatus } from "../constants/dailyActivityStatus";
-import { FOCUS_PRESETS } from "../constants/focusPresets";
-import { getDailyActivity, getDailyHelperForDate, getFocusSummaryForDate, getLearningSummaryForDate } from "../lib/dailyActivity";
 import {
   Card,
   EmptyState,
@@ -21,11 +17,10 @@ import {
 } from "../components/ui";
 import JournalNotebook, { NotebookEditor } from "./JournalNotebook";
 import JournalPacks, { journalPackIcon } from "./JournalPacks";
-import { ZendoProModal } from "../components/ZendoProModal";
 import { groupPhotoRuns, renderBodyMarkdown, toPlainExcerpt } from "../lib/notebookMarkdown";
 import { filterReviewHistory, buildReviewHistory, type ReviewHistoryItem } from "../lib/reviewHistory";
 import { RestGlyph } from "../components/RestGlyph";
-import type { AppLanguage, EnergyLevel, TimelineStatus } from "../types/app";
+import type { EnergyLevel, TimelineStatus } from "../types/app";
 
 export function CalendarCell({
   date,
@@ -120,12 +115,28 @@ export function JournalLibraryScreen() {
   const categories = store.notebookCategories;
 
   const [libTab, setLibTab] = useState<"all" | "reflections" | "notebook" | "packs" | "learning">("all");
+  const [subview, setSubview] = useState<"reviews" | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [filterType, setFilterType] = useState<LibraryFilterType>("all");
   const [filterOpen, setFilterOpen] = useState(false);
   const [openPackSessionId, setOpenPackSessionId] = useState<string | null>(null);
   const [openLearningId, setOpenLearningId] = useState<string | null>(null);
   const learningSessions = [...store.learningSessions].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+
+  // Week review history. This used to live in the unreachable LibraryScreen(),
+  // so reviews could be written but never read back. It sits here now, on the
+  // screen the library route actually mounts.
+  // Reloaded when the store's review map or week plans change, so a review made
+  // from WeekScreen shows up here without a remount.
+  const reviewItems = useMemo(
+    () => buildReviewHistory(store.weeklyReviews, store.weeklyPlans),
+    [store.weeklyReviews, store.weeklyPlans]
+  );
+
+  const filteredReviews = useMemo(
+    () => filterReviewHistory(reviewItems, searchQuery),
+    [reviewItems, searchQuery]
+  );
 
   const catName = (id: string) => categories.find((c) => c.id === id)?.name ?? t("library.unknown");
 
@@ -219,6 +230,48 @@ export function JournalLibraryScreen() {
           ? t("library.learningSessionsCount", { n: learningSessions.length })
           : t("library.packSessionsCount", { n: packSessions.length });
 
+  if (subview === "reviews") {
+    return (
+      <>
+        <div className="flex items-center gap-3 mb-6">
+          <button
+            type="button"
+            onClick={() => { setSubview(null); setSearchQuery(""); }}
+            className="grid h-10 w-10 place-items-center rounded-full border border-monk-border bg-monk-surface text-monk-muted active:scale-95"
+            aria-label={t("library.aria.back")}
+          >
+            <ArrowLeft size={18} />
+          </button>
+          <div>
+            <h1 className="text-xl font-bold text-monk-text">{t("reviews.title")}</h1>
+            <p className="text-xs text-monk-muted">{t("reviews.desc")}</p>
+          </div>
+        </div>
+
+        <div className="space-y-4">
+          {/* Search only earns its space once there is more than one week to sift. */}
+          {reviewItems.length > 1 && (
+            <TextInput
+              placeholder={t("reviews.search")}
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
+          )}
+
+          <div className="space-y-3">
+            {reviewItems.length === 0 ? (
+              <EmptyState title={t("reviews.empty.title")} description={t("reviews.empty.desc")} />
+            ) : filteredReviews.length === 0 ? (
+              <EmptyState title={t("library.searchReflectionsEmpty")} description={t("library.searchReflectionsNoResult")} />
+            ) : (
+              filteredReviews.map((item) => <ReviewRow key={item.id} item={item} t={t} />)
+            )}
+          </div>
+        </div>
+      </>
+    );
+  }
+
   return (
     <>
       <PageHeader
@@ -227,15 +280,32 @@ export function JournalLibraryScreen() {
         rightSlot={<SettingsLink />}
       />
       <div className="flex rounded-xl bg-monk-soft p-1 mb-5 border border-monk-border/40 overflow-x-auto">
-        <button type="button" className={`flex-1 rounded-lg py-2 text-xs font-semibold tracking-wide transition whitespace-nowrap px-2.5 ${libTab === "all" ? "bg-monk-surface text-monk-text border border-monk-border-strong shadow-sm font-bold" : "text-monk-muted hover:text-monk-text"}`} onClick={() => setLibTab("all")}>{t("library.tab.all")}</button>
-        <button type="button" className={`flex-1 rounded-lg py-2 text-xs font-semibold tracking-wide transition whitespace-nowrap px-2.5 ${libTab === "reflections" ? "bg-monk-surface text-monk-text border border-monk-border-strong shadow-sm font-bold" : "text-monk-muted hover:text-monk-text"}`} onClick={() => setLibTab("reflections")}>{t("library.tab.reflections")}</button>
-        <button type="button" className={`flex-1 rounded-lg py-2 text-xs font-semibold tracking-wide transition whitespace-nowrap px-2.5 ${libTab === "notebook" ? "bg-monk-surface text-monk-text border border-monk-border-strong shadow-sm font-bold" : "text-monk-muted hover:text-monk-text"}`} onClick={() => setLibTab("notebook")}>{t("library.tab.notebook")}</button>
-        <button type="button" className={`flex-1 rounded-lg py-2 text-xs font-semibold tracking-wide transition whitespace-nowrap px-2.5 ${libTab === "learning" ? "bg-monk-surface text-monk-text border border-monk-border-strong shadow-sm font-bold" : "text-monk-muted hover:text-monk-text"}`} onClick={() => setLibTab("learning")}>{t("library.tab.learning")}</button>
-        <button type="button" className={`flex-1 rounded-lg py-2 text-xs font-semibold tracking-wide transition whitespace-nowrap px-2.5 ${libTab === "packs" ? "bg-monk-surface text-monk-text border border-monk-border-strong shadow-sm font-bold" : "text-monk-muted hover:text-monk-text"}`} onClick={() => setLibTab("packs")}>{t("library.tab.packs")}</button>
+        <button type="button" className={`flex-1 min-h-11 rounded-lg py-2 text-[10px] font-semibold leading-none transition whitespace-nowrap px-1 ${libTab === "all" ? "bg-monk-surface text-monk-text border border-monk-border-strong shadow-sm font-bold" : "text-monk-muted hover:text-monk-text"}`} onClick={() => setLibTab("all")}>{t("library.tab.all")}</button>
+        <button type="button" className={`flex-1 min-h-11 rounded-lg py-2 text-[10px] font-semibold leading-none transition whitespace-nowrap px-1 ${libTab === "reflections" ? "bg-monk-surface text-monk-text border border-monk-border-strong shadow-sm font-bold" : "text-monk-muted hover:text-monk-text"}`} onClick={() => setLibTab("reflections")}>{t("library.tab.reflections")}</button>
+        <button type="button" className={`flex-1 min-h-11 rounded-lg py-2 text-[10px] font-semibold leading-none transition whitespace-nowrap px-1 ${libTab === "notebook" ? "bg-monk-surface text-monk-text border border-monk-border-strong shadow-sm font-bold" : "text-monk-muted hover:text-monk-text"}`} onClick={() => setLibTab("notebook")}>{t("library.tab.notebook")}</button>
+        <button type="button" className={`flex-1 min-h-11 rounded-lg py-2 text-[10px] font-semibold leading-none transition whitespace-nowrap px-1 ${libTab === "learning" ? "bg-monk-surface text-monk-text border border-monk-border-strong shadow-sm font-bold" : "text-monk-muted hover:text-monk-text"}`} onClick={() => setLibTab("learning")}>{t("library.tab.learning")}</button>
+        <button type="button" className={`flex-1 min-h-11 rounded-lg py-2 text-[10px] font-semibold leading-none transition whitespace-nowrap px-1 ${libTab === "packs" ? "bg-monk-surface text-monk-text border border-monk-border-strong shadow-sm font-bold" : "text-monk-muted hover:text-monk-text"}`} onClick={() => setLibTab("packs")}>{t("library.tab.packs")}</button>
       </div>
       <div className="space-y-4 pb-8">
         {libTab === "all" ? (
           <div className="space-y-3.5">
+            {/* Week reviews: the read-back surface for past re-decisions. */}
+            <button
+              type="button"
+              onClick={() => setSubview("reviews")}
+              className="w-full text-left transition active:scale-[0.99]"
+            >
+              <Card className="p-4 border border-monk-border bg-monk-surface/40 hover:bg-monk-surface transition-colors">
+                <div className="flex items-center justify-between gap-3 text-monk-muted">
+                  <div className="flex items-center gap-3">
+                    <CalendarCheck size={16} />
+                    <span className="text-sm font-semibold">{t("reviews.title")}</span>
+                  </div>
+                  <span className="text-xs text-monk-text-soft">{t("reviews.count", { n: reviewItems.length })}</span>
+                </div>
+              </Card>
+            </button>
+
             {/* Search and Filter Row */}
             <div className="space-y-2">
               <div className="relative">
@@ -259,7 +329,7 @@ export function JournalLibraryScreen() {
                   aria-label={activeChip
                     ? `${t("library.filterButton")}: ${activeChip.label} (${activeChip.count})`
                     : t("library.filterButton")}
-                  className={`flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-[11px] font-semibold transition active:scale-95 border ${
+                  className={`flex min-h-9 items-center gap-1.5 rounded-lg px-2.5 py-1 text-[11px] font-semibold transition active:scale-95 border ${
                     filterType !== "all"
                       ? "border-monk-accent bg-monk-accent/15 text-monk-accent font-bold"
                       : "border-monk-border/60 bg-monk-soft/50 text-monk-muted hover:text-monk-text"
@@ -282,7 +352,7 @@ export function JournalLibraryScreen() {
                     type="button"
                     aria-pressed={filterType === chip.id}
                     onClick={() => setFilterType(chip.id)}
-                    className={`flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-[11px] font-semibold transition active:scale-95 border ${
+                    className={`flex min-h-9 items-center gap-1.5 rounded-lg px-2.5 py-1 text-[11px] font-semibold transition active:scale-95 border ${
                       filterType === chip.id
                         ? "border-monk-accent bg-monk-accent/15 text-monk-accent font-bold"
                         : "border-monk-border/60 bg-monk-soft/50 text-monk-muted hover:text-monk-text"
@@ -559,7 +629,6 @@ export function JournalLibraryScreen() {
 
 
 export function NotebookPage() {
-  const navigate = useNavigate();
   const t = useT();
   const [editing, setEditing] = useState(false);
   return (
@@ -570,16 +639,6 @@ export function NotebookPage() {
             <h1 className="font-handwriting text-[2rem] leading-none text-monk-text">{t("notebook.title")}</h1>
             <p className="mt-1 text-sm text-monk-muted">{t("notebook.subtitle")}</p>
           </div>
-          <div className="flex items-center gap-1 pt-1">
-            <button
-              type="button"
-              onClick={() => navigate(routes.library)}
-              className="flex min-h-10 items-center gap-1 rounded-full px-2.5 text-xs font-semibold text-monk-text-soft transition hover:text-monk-accent"
-            >
-              <BookOpen size={13} strokeWidth={1.5} />
-              {t("library.nav")}
-            </button>
-          </div>
         </div>
       )}
       <JournalNotebook onEditingChange={setEditing} />
@@ -589,31 +648,12 @@ export function NotebookPage() {
 
 
 export function PacksPage() {
-  const navigate = useNavigate();
   const t = useT();
   return (
     <>
       <PageHeader
         title={t("packs.title")}
         subtitle={t("packs.subtitle")}
-        rightSlot={
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => navigate(routes.library)}
-              className="inline-flex items-center gap-1 text-xs font-semibold text-monk-text-soft transition hover:text-monk-accent"
-            >
-              <BookOpen size={12} strokeWidth={1.5} /> {t("library.nav")}
-            </button>
-            <button
-              type="button"
-              onClick={() => navigate(routes.journal)}
-              className="inline-flex items-center gap-1 text-xs font-semibold text-monk-text-soft transition hover:text-monk-accent"
-            >
-              <FileText size={12} strokeWidth={1.5} /> {t("nav.journal")}
-            </button>
-          </div>
-        }
       />
       <JournalPacks />
     </>
@@ -684,538 +724,6 @@ function ReviewRow({ item, t }: { item: ReviewHistoryItem; t: (key: MessageKey, 
         </>
       )}
     </Card>
-  );
-}
-
-export function LibraryScreen() {
-  const store = useMonkStore();
-  const navigate = useNavigate();
-  const [subview, setSubview] = useState<"journal" | "learning" | "history" | "reviews" | null>(null);
-  const [activeTab, setActiveTab] = useState<"focus" | "drifts">("focus");
-  const [searchQuery, setSearchQuery] = useState("");
-  const [proModalOpen, setProModalOpen] = useState(false);
-  const t = useT();
-  const lang = useLanguage();
-  const dateLocale = lang === "id" ? "id-ID" : "en-US";
-
-  const filteredReflections = useMemo(() => {
-    return store.journalEntries.filter((j) => {
-      const q = searchQuery.toLowerCase();
-      return (
-        j.date.toLowerCase().includes(q) ||
-        (j.answers.whatMovedToday || "").toLowerCase().includes(q) ||
-        (j.answers.whatDistractedMe || "").toLowerCase().includes(q) ||
-        (j.answers.whatDidILearn || "").toLowerCase().includes(q)
-      );
-    }).sort((a, b) => b.date.localeCompare(a.date));
-  }, [store.journalEntries, searchQuery]);
-
-  const filteredFocus = useMemo(() => {
-    return store.focusSessions.filter((s) => {
-      if (!["completed", "ended_early"].includes(s.status)) return false;
-      const q = searchQuery.toLowerCase();
-      const goal = store.goals.find((g) => g.id === s.goalId);
-      const startIso = s.startedAt || s.createdAt || s.startTime;
-      return (
-        (goal?.title || "").toLowerCase().includes(q) ||
-        (s.note || "").toLowerCase().includes(q) ||
-        startIso.includes(q)
-      );
-    }).sort((a, b) => {
-      const aTime = a.startedAt || a.createdAt || a.startTime;
-      const bTime = b.startedAt || b.createdAt || b.startTime;
-      return bTime.localeCompare(aTime);
-    });
-  }, [store.focusSessions, store.goals, searchQuery]);
-
-  const filteredLearning = useMemo(() => {
-    return store.learningSessions.filter((l) => {
-      const q = searchQuery.toLowerCase();
-      const goal = store.goals.find((g) => g.id === l.relatedGoalId);
-      const startIso = l.startedAt || l.createdAt;
-      return (
-        (l.sourceTitle || "").toLowerCase().includes(q) ||
-        (l.lesson || "").toLowerCase().includes(q) ||
-        (l.actionIdea || "").toLowerCase().includes(q) ||
-        (goal?.title || "").toLowerCase().includes(q) ||
-        startIso.includes(q)
-      );
-    }).sort((a, b) => {
-      const aTime = a.startedAt || a.createdAt;
-      const bTime = b.startedAt || b.createdAt;
-      return bTime.localeCompare(aTime);
-    });
-  }, [store.learningSessions, store.goals, searchQuery]);
-
-  const filteredDrifts = useMemo(() => {
-    return store.relapseLogs.filter((r) => {
-      const q = searchQuery.toLowerCase();
-      return (
-        r.trigger.toLowerCase().includes(q) ||
-        (r.note || "").toLowerCase().includes(q) ||
-        (r.recoveryAction || "").toLowerCase().includes(q)
-      );
-    }).sort((a, b) => b.createdAt.localeCompare(a.createdAt));
-  }, [store.relapseLogs, searchQuery]);
-
-  // Reloaded when the store's review map or week plans change, so a review made
-  // from WeekScreen shows up here without a remount.
-  const reviewItems = useMemo(
-    () => buildReviewHistory(store.weeklyReviews, store.weeklyPlans),
-    [store.weeklyReviews, store.weeklyPlans]
-  );
-
-  const filteredReviews = useMemo(
-    () => filterReviewHistory(reviewItems, searchQuery),
-    [reviewItems, searchQuery]
-  );
-
-  if (subview === "journal") {
-    return (
-      <>
-        <div className="flex items-center gap-3 mb-6">
-          <button
-            type="button"
-            onClick={() => { setSubview(null); setSearchQuery(""); }}
-            className="grid h-10 w-10 place-items-center rounded-full border border-monk-border bg-monk-surface text-monk-muted active:scale-95"
-            aria-label={t("library.aria.back")}
-          >
-            <ArrowLeft size={18} />
-          </button>
-          <div>
-            <h1 className="text-xl font-bold text-monk-text">{t("library.subview.journal")}</h1>
-            <p className="text-xs text-monk-muted">{t("library.subview.journalDesc")}</p>
-          </div>
-        </div>
-
-        <div className="space-y-4">
-          <PrimaryButton onClick={() => navigate(routes.journal)}>
-            {t("library.writeJournal")}
-          </PrimaryButton>
-
-          <TextInput
-            placeholder={t("library.search.reflections")}
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-          />
-
-          <div className="space-y-3 pt-2">
-            {filteredReflections.length === 0 ? (
-              <EmptyState
-                title={searchQuery ? t("library.searchReflectionsEmpty") : t("library.journalEmpty")}
-                description={
-                  searchQuery
-                    ? t("library.searchReflectionsNoResult")
-                    : t("library.journalEmptyDesc")
-                }
-              />
-            ) : (
-              filteredReflections.map((j) => (
-                <Card key={j.id} className="p-4 bg-monk-surface/30">
-                  <div className="border-b border-monk-border/50 pb-3 mb-3">
-                    <div className="flex items-start justify-between gap-3">
-                      <div>
-                        <p className="text-xs font-bold text-monk-accent">{formatHumanDate(j.date)}</p>
-                        <p className="mt-1 text-xs font-bold uppercase tracking-wider text-monk-muted">
-                          {getDailyHelperForDate(store, j.date)}
-                        </p>
-                      </div>
-                      <span className="rounded-full border border-monk-border bg-monk-soft px-2 py-1 text-xs font-bold uppercase tracking-wider text-monk-muted">
-                        {DAILY_STATUS_LABELS[resolveDailyActivityStatus(getDailyActivity(store, j.date))]}
-                      </span>
-                    </div>
-                  </div>
-                  <div className="space-y-3">
-                    <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                      <div className="rounded-xl border border-monk-border bg-monk-bg p-3">
-                        <p className="text-xs font-bold uppercase tracking-wider text-monk-muted">{t("library.label.focus")}</p>
-                        <p className="mt-1 text-xs font-semibold leading-relaxed text-monk-text">{getFocusSummaryForDate(store, j.date)}</p>
-                      </div>
-                      <div className="rounded-xl border border-monk-border bg-monk-bg p-3">
-                        <p className="text-xs font-bold uppercase tracking-wider text-monk-muted">{t("library.label.learning")}</p>
-                        <p className="mt-1 text-xs font-semibold leading-relaxed text-monk-text">{getLearningSummaryForDate(store, j.date)}</p>
-                      </div>
-                    </div>
-                    <div className="space-y-2">
-                      {getJournalAnswerItems((store.appSettings.language ?? "id") as AppLanguage, j.answers, j.date).map((item) => (
-                        <div key={item.id}>
-                          <span className="block text-xs font-bold uppercase tracking-wider text-monk-muted">{item.question}</span>
-                          <p className="mt-0.5 text-xs font-medium leading-relaxed text-monk-text">{item.answer}</p>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </Card>
-              ))
-            )}
-          </div>
-        </div>
-      </>
-    );
-  }
-
-  if (subview === "learning") {
-    return (
-      <>
-        <div className="flex items-center gap-3 mb-6">
-          <button
-            type="button"
-            onClick={() => { setSubview(null); setSearchQuery(""); }}
-            className="grid h-10 w-10 place-items-center rounded-full border border-monk-border bg-monk-surface text-monk-muted active:scale-95"
-            aria-label={t("library.aria.back")}
-          >
-            <ArrowLeft size={18} />
-          </button>
-          <div>
-            <h1 className="text-xl font-bold text-monk-text">{t("library.subview.learning")}</h1>
-            <p className="text-xs text-monk-muted">{t("library.subview.learningDesc")}</p>
-          </div>
-        </div>
-
-        <div className="space-y-4">
-          <PrimaryButton onClick={() => navigate(routes.learn)}>
-            {t("library.addLearning")}
-          </PrimaryButton>
-
-          <TextInput
-            placeholder={t("library.search.learning")}
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-          />
-
-          <div className="space-y-3 pt-2">
-            {filteredLearning.length === 0 ? (
-              <EmptyState
-                title={searchQuery ? t("library.searchLearningEmpty") : t("library.learningEmpty")}
-                description={
-                  searchQuery
-                    ? t("library.searchReflectionsNoResult")
-                    : t("library.learningEmptyDesc")
-                }
-              />
-            ) : (
-              filteredLearning.map((l) => {
-                const goal = store.goals.find((g) => g.id === l.relatedGoalId);
-                const durationMinutes = Math.round(l.actualDurationSeconds / 60);
-                const parent = l.parentId ? store.learningSessions.find((s) => s.id === l.parentId) : null;
-                const linked = l.linkedSessionIds?.map((lid) => store.learningSessions.find((s) => s.id === lid)).filter(Boolean) ?? [];
-                return (
-                  <Card key={l.id} className="p-4 bg-monk-surface/30">
-                    <div className="flex justify-between items-start gap-2">
-                      <div>
-                        <p className="text-xs font-bold text-monk-accent">{formatHumanDate(l.startedAt.slice(0, 10))}</p>
-                        <p className="text-sm font-semibold text-monk-text mt-0.5">{l.sourceTitle || t("library.untitledNote")}</p>
-                        {l.chapter && <p className="text-xs text-monk-muted mt-0.5">{l.chapter}</p>}
-                      </div>
-                      <span className="text-xs font-bold text-monk-success bg-monk-success-soft border border-monk-success/30 px-2 py-0.5 rounded-full shrink-0">
-                        {t("library.mins", { n: durationMinutes })}
-                      </span>
-                    </div>
-                    <div className="flex flex-wrap items-center gap-1.5 mt-2">
-                      <span className="text-xs uppercase font-bold text-monk-accent bg-monk-accent-soft px-2 py-0.5 rounded border border-monk-accent/20">
-                        {l.sourceType.replace("_", " ")}
-                      </span>
-                      {goal && <span className="text-xs text-monk-muted bg-monk-soft px-2 py-0.5 rounded border border-monk-border">{goal.title}</span>}
-                      {parent && <span className="text-xs text-monk-text-soft bg-monk-soft px-2 py-0.5 rounded border border-monk-border">{t("library.under", { title: parent.sourceTitle || parent.lesson?.slice(0, 20) || parent.id.slice(0, 8) })}</span>}
-                    </div>
-                    {l.lesson && (
-                      <div className="mt-3 bg-monk-soft/50 rounded-xl p-3 border border-monk-border/30">
-                        <span className="text-xs font-bold text-monk-muted uppercase tracking-wider block">{t("library.lesson")}</span>
-                        <div className="text-xs leading-relaxed text-monk-text mt-0.5">{renderer(l.lesson)}</div>
-                      </div>
-                    )}
-                    {l.content && (
-                      <div className="mt-3 bg-monk-bg/60 rounded-xl p-3 border border-monk-border/30">
-                        <span className="text-xs font-bold text-monk-muted uppercase tracking-wider block">{t("library.notes")}</span>
-                        <div className="text-xs leading-6 text-monk-text mt-0.5">{renderer(l.content)}</div>
-                      </div>
-                    )}
-                    {l.actionIdea && (
-                      <div className="mt-3 bg-monk-accent-soft/30 rounded-xl p-3 border border-monk-accent/15">
-                        <span className="text-xs font-bold text-monk-accent uppercase tracking-wider block">{t("library.action")}</span>
-                        <div className="text-xs leading-relaxed text-monk-text-soft mt-0.5">{renderer(l.actionIdea)}</div>
-                      </div>
-                    )}
-                    {linked.length > 0 && (
-                      <div className="mt-3 flex flex-wrap gap-1.5">
-                        {linked.filter(Boolean).map((lnk: any) => (
-                          <span key={lnk?.id} className="text-xs text-monk-accent bg-monk-accent-soft px-2 py-0.5 rounded-full border border-monk-accent/20">
-                            {t("library.linked", { title: lnk?.sourceTitle || lnk?.lesson?.slice(0, 20) || lnk?.id?.slice(0, 8) })}
-                          </span>
-                        ))}
-                      </div>
-                    )}
-                  </Card>
-                );
-              })
-            )}
-          </div>
-        </div>
-      </>
-    );
-  }
-
-  if (subview === "history") {
-    return (
-      <>
-        <div className="flex items-center gap-3 mb-6">
-          <button
-            type="button"
-            onClick={() => { setSubview(null); setSearchQuery(""); }}
-            className="grid h-10 w-10 place-items-center rounded-full border border-monk-border bg-monk-surface text-monk-muted active:scale-95"
-            aria-label={t("library.aria.back")}
-          >
-            <ArrowLeft size={18} />
-          </button>
-          <div>
-            <h1 className="text-xl font-bold text-monk-text">{t("library.subview.history")}</h1>
-            <p className="text-xs text-monk-muted">{t("library.subview.historyDesc")}</p>
-          </div>
-        </div>
-
-        <div className="space-y-4">
-          <TextInput
-            placeholder={t("library.search.history")}
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-          />
-
-          <div className="flex gap-2">
-            {([
-              { id: "focus", label: t("library.focusSessionsCount", { n: filteredFocus.length }) },
-              { id: "drifts", label: t("library.driftLogsCount", { n: filteredDrifts.length }) }
-            ] as const).map((tab) => (
-              <button
-                key={tab.id}
-                type="button"
-                className={`flex-1 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition border ${
-                  activeTab === tab.id
-                    ? "border-monk-accent bg-monk-accent-soft text-monk-accent"
-                    : "border-monk-border bg-monk-surface text-monk-muted"
-                }`}
-                onClick={() => setActiveTab(tab.id)}
-              >
-                {tab.label}
-              </button>
-            ))}
-          </div>
-
-          <div className="space-y-3 pt-2">
-            {activeTab === "focus" && (
-              filteredFocus.length === 0 ? (
-                <EmptyState
-                  title={searchQuery ? t("library.searchSessionsEmpty") : t("library.focusSessionsEmpty")}
-                  description={
-                    searchQuery
-                      ? t("library.searchReflectionsNoResult")
-                      : t("library.focusSessionsEmptyDesc")
-                  }
-                  actionLabel={searchQuery ? undefined : t("library.startFocus")}
-                  onAction={searchQuery ? undefined : () => navigate(routes.focus)}
-                />
-              ) : (
-                filteredFocus.map((s) => {
-                  const goal = store.goals.find((g) => g.id === s.goalId);
-                  return (
-                    <Card key={s.id} className="p-4 bg-monk-surface/30 flex justify-between items-center">
-                      <div>
-                        <p className="text-xs font-bold text-monk-accent">{formatHumanDate(s.startTime.slice(0, 10))}</p>
-                        <p className="text-sm font-semibold mt-1">{goal?.title || t("library.focusSession")}</p>
-                        <p className="text-xs text-monk-muted mt-0.5 uppercase tracking-wider font-bold">
-                          {FOCUS_PRESETS[s.preset ?? s.timerMode ?? "deep_work"].shortLabel}
-                          {s.status === "ended_early" ? t("library.endedEarly") : ""}
-                        </p>
-                      </div>
-                      <div className="text-right">
-                        <p className="text-lg font-bold text-monk-success">{s.focusDurationMinutes ?? s.durationMinutes}m</p>
-                        <p className="text-xs text-monk-muted">{t("library.minutesBreak", { n: s.breakDurationMinutes ?? 0 })}</p>
-                      </div>
-                    </Card>
-                  );
-                })
-              )
-            )}
-
-            {activeTab === "drifts" && (
-              filteredDrifts.length === 0 ? (
-                <EmptyState
-                  title={searchQuery ? t("library.searchDriftsEmpty") : t("library.driftsEmpty")}
-                  description={
-                    searchQuery
-                      ? t("library.searchReflectionsNoResult")
-                      : t("library.driftsEmptyDesc")
-                  }
-                />
-              ) : (
-                filteredDrifts.map((r) => (
-                  <Card key={r.id} className="p-4 bg-monk-surface/30 border-monk-danger/20">
-                    <div className="border-b border-monk-border/50 pb-2 mb-2">
-                      <p className="text-xs font-bold text-monk-danger">{formatHumanDate(r.createdAt.slice(0, 10))}</p>
-                    </div>
-                    <div className="space-y-2">
-                      <div>
-                        <span className="text-xs font-bold text-monk-muted uppercase tracking-wider block">{t("library.trigger")}</span>
-                        <p className="text-xs font-semibold leading-relaxed text-monk-danger mt-0.5 uppercase tracking-wider">{r.trigger.replace("_", " ")}</p>
-                      </div>
-                      <div>
-                        <span className="text-xs font-bold text-monk-muted uppercase tracking-wider block">{t("library.notes")}</span>
-                        <p className="text-xs text-monk-text mt-0.5 leading-relaxed">{r.note || "-"}</p>
-                      </div>
-                      {r.recoveryAction && (
-                        <div className="bg-monk-soft/30 rounded-xl p-2.5 border border-monk-border/40 mt-1">
-                          <span className="text-xs font-bold text-monk-muted uppercase tracking-wider block">{t("library.recoveryPlan")}</span>
-                          <p className="text-xs text-monk-text-soft mt-0.5 leading-normal">{r.recoveryAction}</p>
-                        </div>
-                      )}
-                    </div>
-                  </Card>
-                ))
-              )
-            )}
-          </div>
-        </div>
-      </>
-    );
-  }
-
-  if (subview === "reviews") {
-    return (
-      <>
-        <div className="flex items-center gap-3 mb-6">
-          <button
-            type="button"
-            onClick={() => { setSubview(null); setSearchQuery(""); }}
-            className="grid h-10 w-10 place-items-center rounded-full border border-monk-border bg-monk-surface text-monk-muted active:scale-95"
-            aria-label={t("library.aria.back")}
-          >
-            <ArrowLeft size={18} />
-          </button>
-          <div>
-            <h1 className="text-xl font-bold text-monk-text">{t("reviews.title")}</h1>
-            <p className="text-xs text-monk-muted">{t("reviews.desc")}</p>
-          </div>
-        </div>
-
-        <div className="space-y-4">
-          {/* Search only earns its space once there is more than one week to sift. */}
-          {reviewItems.length > 1 && (
-            <TextInput
-              placeholder={t("reviews.search")}
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-            />
-          )}
-
-          <div className="space-y-3">
-            {reviewItems.length === 0 ? (
-              <EmptyState title={t("reviews.empty.title")} description={t("reviews.empty.desc")} />
-            ) : filteredReviews.length === 0 ? (
-              <EmptyState title={t("library.searchReflectionsEmpty")} description={t("library.searchReflectionsNoResult")} />
-            ) : (
-              filteredReviews.map((item) => <ReviewRow key={item.id} item={item} t={t} />)
-            )}
-          </div>
-        </div>
-      </>
-    );
-  }
-
-  return (
-    <>
-      <PageHeader
-        title={t("library.home.title")}
-        subtitle={t("library.home.subtitle")}
-        rightSlot={<SettingsLink onOpenPro={() => setProModalOpen(true)} />}
-      />
-      <div className="space-y-3">
-        <button
-          type="button"
-          onClick={() => setSubview("journal")}
-          className="w-full text-left transition active:scale-[0.99]"
-        >
-          <Card className="p-5 border border-monk-border/60 bg-monk-surface/20 hover:bg-monk-surface/50 transition-colors">
-            <div className="flex items-start gap-4">
-              <div className="grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-monk-accent/5 border border-monk-accent/15 text-monk-accent">
-                <FileText size={18} strokeWidth={1.5} />
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center justify-between gap-2">
-                  <p className="text-sm font-semibold text-monk-text">{t("library.reflections")}</p>
-                  <span className="text-xs font-bold text-monk-muted bg-monk-soft/80 px-2 py-0.5 rounded-full">
-                    {store.journalEntries.length}
-                  </span>
-                </div>
-                <p className="mt-1 text-xs text-monk-muted leading-relaxed">
-                  {t("library.reflectionsDesc")}
-                </p>
-              </div>
-            </div>
-          </Card>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => setSubview("learning")}
-          className="w-full text-left transition active:scale-[0.99]"
-        >
-          <Card className="p-5 border border-monk-border/60 bg-monk-surface/20 hover:bg-monk-surface/50 transition-colors">
-            <div className="flex items-start gap-4">
-              <div className="grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-monk-accent/5 border border-monk-accent/15 text-monk-accent">
-                <BookOpen size={18} strokeWidth={1.5} />
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center justify-between gap-2">
-                  <p className="text-sm font-semibold text-monk-text">{t("library.learningNotes")}</p>
-                  <span className="text-xs font-bold text-monk-muted bg-monk-soft/80 px-2 py-0.5 rounded-full">
-                    {store.learningSessions.length}
-                  </span>
-                </div>
-                <p className="mt-1 text-xs text-monk-muted leading-relaxed">
-                  {t("library.learningNotesDesc")}
-                </p>
-              </div>
-            </div>
-          </Card>
-        </button>
-
-        {/* Collapsible History Section */}
-        <button
-          type="button"
-          onClick={() => setSubview("history")}
-          className="w-full text-left transition active:scale-[0.99] mt-2"
-        >
-          <Card className="p-4 border border-monk-border bg-monk-surface/40 hover:bg-monk-surface transition-colors">
-            <div className="flex items-center justify-between gap-3 text-monk-muted">
-              <div className="flex items-center gap-3">
-                <History size={16} />
-                <span className="text-sm font-semibold">{t("library.historyLogs")}</span>
-              </div>
-              <span className="text-xs text-monk-text-soft">
-                {t("library.historyCounts", { focus: store.focusSessions.filter(s => ["completed", "ended_early"].includes(s.status)).length, drifts: store.relapseLogs.length })}
-              </span>
-            </div>
-          </Card>
-        </button>
-
-        {/* Week reviews: the read-back surface for past re-decisions. */}
-        <button
-          type="button"
-          onClick={() => setSubview("reviews")}
-          className="w-full text-left transition active:scale-[0.99]"
-        >
-          <Card className="p-4 border border-monk-border bg-monk-surface/40 hover:bg-monk-surface transition-colors">
-            <div className="flex items-center justify-between gap-3 text-monk-muted">
-              <div className="flex items-center gap-3">
-                <CalendarCheck size={16} />
-                <span className="text-sm font-semibold">{t("reviews.title")}</span>
-              </div>
-              <span className="text-xs text-monk-text-soft">{t("reviews.count", { n: reviewItems.length })}</span>
-            </div>
-          </Card>
-        </button>
-      </div>
-      <ZendoProModal isOpen={proModalOpen} onClose={() => setProModalOpen(false)} />
-    </>
   );
 }
 

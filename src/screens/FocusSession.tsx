@@ -217,9 +217,13 @@ export function FocusSessionPanel({
           color={ringColor}
           bgColor="rgb(var(--color-border))"
         >
-          <p className={`${compact ? "text-3xl" : "text-[44px]"} font-mono font-bold leading-none tracking-tight tabular-nums text-monk-text`}>
+          <p aria-hidden className={`${compact ? "text-3xl" : "text-[44px]"} font-mono font-bold leading-none tracking-tight tabular-nums text-monk-text`}>
             {formatTimer(remaining)}
           </p>
+          {/* Announce whole minutes only; a per-second live region would flood AT. */}
+          <span className="sr-only" role="timer" aria-live="polite" aria-atomic="true">
+            {Math.ceil(remaining / 60)} {t("focus.minutes")}
+          </span>
           <p className="mt-2 text-[10px] font-bold uppercase tracking-wider text-monk-muted">
             {isBreak ? t("focus.breakLeft") : t("focus.focusLeft")}
           </p>
@@ -326,7 +330,7 @@ export function FocusSessionPanel({
         <button
           type="button"
           aria-label={armedFor === "reset" ? t("focus.resetConfirmAria") : t("focus.resetAria")}
-          className={`min-h-12 min-w-12 rounded-monk border px-3 text-xs font-semibold transition active:scale-95 ${
+          className={`min-h-12 min-w-12 rounded-monk border px-3 text-xs font-semibold whitespace-nowrap transition active:scale-95 ${
             armedFor === "reset"
               ? "border-monk-danger/40 bg-monk-danger-soft text-monk-danger"
               : "border-monk-border text-monk-muted hover:border-monk-accent hover:text-monk-accent"
@@ -338,7 +342,7 @@ export function FocusSessionPanel({
         <button
           type="button"
           aria-label={armedFor === "end" ? t("focus.endConfirmAria") : t("focus.endAria")}
-          className={`min-h-12 min-w-12 rounded-monk border px-3 text-xs font-semibold transition active:scale-95 ${
+          className={`min-h-12 min-w-12 rounded-monk border px-3 text-xs font-semibold whitespace-nowrap transition active:scale-95 ${
             armedFor === "end"
               ? "border-monk-danger bg-monk-danger text-monk-bg"
               : "border-monk-danger/40 text-monk-danger hover:border-monk-danger"
@@ -579,6 +583,7 @@ export function FocusSessionStarter({ compact = false }: { compact?: boolean }) 
                 <button
                   key={item}
                   type="button"
+                  aria-pressed={isChecked}
                   onClick={() => toggleItem(item)}
                   className={`flex min-h-12 items-center gap-3 rounded-xl border p-3 text-left transition ${
                     isChecked

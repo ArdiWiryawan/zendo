@@ -274,6 +274,7 @@ export function WeeklyReviewModal({ isOpen, onClose, weeklyPlanId }: WeeklyRevie
         tabIndex={-1}
         role="dialog"
         aria-modal="true"
+        aria-labelledby="weekly-review-modal-title"
         className="relative flex flex-col w-full max-w-xl max-h-[92vh] rounded-monk-lg border border-monk-border/80 bg-monk-surface shadow-2xl overflow-hidden z-10"
       >
         {/* Header Bar */}
@@ -284,7 +285,7 @@ export function WeeklyReviewModal({ isOpen, onClose, weeklyPlanId }: WeeklyRevie
                 {showCompleted ? <Check size={15} /> : <Moon size={15} />}
               </span>
               <span className="text-xs font-semibold text-monk-muted">
-                {t(showCompleted ? "week.reviewDoneBadge" : "week.review.skip")}
+                {t(showCompleted ? "week.reviewDoneBadge" : "reviews.skippedLabel")}
               </span>
             </div>
           ) : (
@@ -319,7 +320,7 @@ export function WeeklyReviewModal({ isOpen, onClose, weeklyPlanId }: WeeklyRevie
           <button
             type="button"
             onClick={onClose}
-            aria-label="Close"
+            aria-label={t("weeklyReviewModal.close")}
             className="grid h-8 w-8 place-items-center rounded-full text-monk-muted hover:bg-monk-soft hover:text-monk-text transition"
           >
             <X size={18} />
@@ -341,7 +342,7 @@ export function WeeklyReviewModal({ isOpen, onClose, weeklyPlanId }: WeeklyRevie
                   {showCompleted ? <Check size={22} /> : <Moon size={20} />}
                 </span>
                 <div>
-                  <h3 className="text-xl font-bold tracking-tight text-monk-text">
+                  <h3 id="weekly-review-modal-title" className="text-xl font-bold tracking-tight text-monk-text">
                     {t(
                       showCompleted
                         ? "weeklyReviewModal.completedTitle"
@@ -449,7 +450,7 @@ export function WeeklyReviewModal({ isOpen, onClose, weeklyPlanId }: WeeklyRevie
                     {t("weeklyReviewModal.badge.prompt1")}
                   </span>
                 </div>
-                <h3 className="text-xl sm:text-2xl font-bold tracking-tight text-monk-text">
+                <h3 id="weekly-review-modal-title" className="text-xl sm:text-2xl font-bold tracking-tight text-monk-text">
                   {t("weeklyReviewModal.title.prompt1")}
                 </h3>
                 <div className="rounded-2xl border border-monk-border/60 bg-monk-soft/30 p-4 space-y-2">
@@ -487,7 +488,7 @@ export function WeeklyReviewModal({ isOpen, onClose, weeklyPlanId }: WeeklyRevie
                     {t("weeklyReviewModal.badge.prompt2")}
                   </span>
                 </div>
-                <h3 className="text-xl sm:text-2xl font-bold tracking-tight text-monk-text">
+                <h3 id="weekly-review-modal-title" className="text-xl sm:text-2xl font-bold tracking-tight text-monk-text">
                   {t("weeklyReviewModal.title.prompt2")}
                 </h3>
                 <div className="rounded-2xl border border-monk-border/60 bg-monk-soft/30 p-4 space-y-2">
@@ -525,7 +526,7 @@ export function WeeklyReviewModal({ isOpen, onClose, weeklyPlanId }: WeeklyRevie
                     {t("weeklyReviewModal.badge.prompt3")}
                   </span>
                 </div>
-                <h3 className="text-xl sm:text-2xl font-bold tracking-tight text-monk-text">
+                <h3 id="weekly-review-modal-title" className="text-xl sm:text-2xl font-bold tracking-tight text-monk-text">
                   {t("weeklyReviewModal.title.prompt3")}
                 </h3>
                 <div className="rounded-2xl border border-monk-border/60 bg-monk-soft/30 p-4 space-y-2">
@@ -563,7 +564,7 @@ export function WeeklyReviewModal({ isOpen, onClose, weeklyPlanId }: WeeklyRevie
                     {t("weeklyReviewModal.badge.prompt4")}
                   </span>
                 </div>
-                <h3 className="text-xl sm:text-2xl font-bold tracking-tight text-monk-text">
+                <h3 id="weekly-review-modal-title" className="text-xl sm:text-2xl font-bold tracking-tight text-monk-text">
                   {t("weeklyReviewModal.title.prompt4")}
                 </h3>
                 <div className="rounded-2xl border border-monk-border/60 bg-monk-soft/30 p-4 space-y-2">
@@ -691,7 +692,7 @@ export function WeeklyReviewModal({ isOpen, onClose, weeklyPlanId }: WeeklyRevie
                     {t("weeklyReviewModal.badge.prompt5")}
                   </span>
                 </div>
-                <h3 className="text-xl sm:text-2xl font-bold tracking-tight text-monk-text">
+                <h3 id="weekly-review-modal-title" className="text-xl sm:text-2xl font-bold tracking-tight text-monk-text">
                   {t("weeklyReviewModal.title.prompt5")}
                 </h3>
                 <div className="rounded-2xl border border-monk-border/60 bg-monk-soft/30 p-4 space-y-2">
@@ -730,7 +731,7 @@ export function WeeklyReviewModal({ isOpen, onClose, weeklyPlanId }: WeeklyRevie
                   </span>
                 </div>
                 <div>
-                  <h3 className="text-xl sm:text-2xl font-bold tracking-tight text-monk-text">
+                  <h3 id="weekly-review-modal-title" className="text-xl sm:text-2xl font-bold tracking-tight text-monk-text">
                     {t("weeklyReviewModal.title.step6")}
                   </h3>
                   <p className="mt-1 text-xs text-monk-muted leading-relaxed">

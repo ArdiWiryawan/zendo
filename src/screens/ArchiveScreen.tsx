@@ -27,15 +27,46 @@ export function SeasonArchiveList() {
   if (seasons.length === 0) {
     return (
       <>
-        <PageHeader title={t("seasons.title")} subtitle={t("seasons.subtitle")} />
-        <EmptyState title={t("seasons.empty.title")} description={t("seasons.empty.desc")} />
+        <PageHeader
+          title={t("seasons.title")}
+          subtitle={t("seasons.subtitle")}
+          rightSlot={
+            <button
+              type="button"
+              onClick={() => navigate(routes.today)}
+              className="grid h-10 w-10 place-items-center rounded-full border border-monk-border bg-monk-surface text-monk-muted active:scale-95"
+              aria-label={t("library.aria.back")}
+            >
+              <ArrowLeft size={18} />
+            </button>
+          }
+        />
+        <EmptyState
+          title={t("seasons.empty.title")}
+          description={t("seasons.empty.desc")}
+          actionLabel={t("seasons.backToday")}
+          onAction={() => navigate(routes.today)}
+        />
       </>
     );
   }
 
   return (
     <>
-      <PageHeader title={t("seasons.title")} subtitle={t("seasons.subtitle")} />
+      <PageHeader
+        title={t("seasons.title")}
+        subtitle={t("seasons.subtitle")}
+        rightSlot={
+          <button
+            type="button"
+            onClick={() => navigate(routes.today)}
+            className="grid h-10 w-10 place-items-center rounded-full border border-monk-border bg-monk-surface text-monk-muted active:scale-95"
+            aria-label={t("library.aria.back")}
+          >
+            <ArrowLeft size={18} />
+          </button>
+        }
+      />
       <div className="space-y-3">
         {seasons.map((season) => {
           const focus = selectSeasonFocusSummary(store, season.id);
@@ -236,23 +267,13 @@ export function SeasonArchiveDetail() {
 }
 
 export function ArchiveScreen() {
-  const navigate = useNavigate();
   const { seasonId } = useParams<{ seasonId: string }>();
   const isDetail = Boolean(seasonId);
-  const t = useT();
 
   // Route dispatcher: /seasons lists, /seasons/:id shows detail.
   return (
     <div className="space-y-5">
       {isDetail ? <SeasonArchiveDetail /> : <SeasonArchiveList />}
-      {!isDetail ? (
-        <div className="pt-2">
-          <GhostButton onClick={() => navigate(routes.today)}>
-            <ArrowLeft size={14} strokeWidth={1.5} />
-            {t("seasons.backToday")}
-          </GhostButton>
-        </div>
-      ) : null}
     </div>
   );
 }

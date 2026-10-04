@@ -199,6 +199,12 @@ export function WeekScreen() {
               </div>
             </Card>
             </motion.div>
+            {/* The daily loop must be reachable without hunting for one small
+                day cell: this primary action stays here whether or not today is
+                already planned; only its label changes. */}
+            <PrimaryButton onClick={() => navigate(routes.today)}>
+              {todayPlan ? t("week.openToday") : t("week.planToday")}
+            </PrimaryButton>
             <Card className="overflow-hidden p-4 sm:p-5">
               {/* Mobile: 7×44px + ring-offset overflows card; shrink + inset ring */}
               <div
@@ -268,7 +274,7 @@ export function WeekScreen() {
 
                   const DayInner = (
                     <>
-                      <div className={`grid min-h-11 min-w-11 shrink-0 place-items-center ${isToday || isEligible ? "cursor-pointer" : ""}`}>
+                      <div className={`grid min-w-0 place-items-center py-1.5 ${isToday || isEligible ? "cursor-pointer" : ""}`}>
                         <div
                           className={`grid h-9 w-9 sm:h-11 sm:w-11 place-items-center rounded-full border-2 text-[10px] sm:text-[11px] font-mono font-bold transition-colors ${circleClass} ${
                             isToday ? "ring-2 ring-inset ring-monk-accent/70" : ""
@@ -307,7 +313,6 @@ export function WeekScreen() {
                       <button
                         key={date}
                         type="button"
-                        role="listitem"
                         aria-label={label + (isEligible ? t("timeline.tapToLog") : "")}
                         title={isEligible ? t("timeline.tapToLog") : undefined}
                         onClick={() => (isToday ? navigate(routes.today) : setRetroDate(date))}
@@ -392,9 +397,6 @@ export function WeekScreen() {
               <Card className="p-4 border-monk-accent/30 bg-monk-accent-soft/40">
                 <p className="text-sm font-semibold">{t("week.todayOpenTitle")}</p>
                 <p className="mt-1 text-xs text-monk-muted">{t("week.todayOpenBody")}</p>
-                <PrimaryButton className="mt-4" onClick={() => navigate(routes.today)}>
-                  {t("week.planToday")}
-                </PrimaryButton>
               </Card>
             ) : null}
 

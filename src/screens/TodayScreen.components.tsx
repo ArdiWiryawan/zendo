@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useMonkStore } from "../store/useMonkStore";
 import { getTodayDateString } from "../lib/date";
-import { Card } from "../components/ui";
+import { Card, GhostButton } from "../components/ui";
 import { WhyEditor } from "../components/SeasonWidgets";
 import { ChevronRight, X } from "lucide-react";
 import { CORE_VALUES } from "../constants/whyValues";
@@ -351,22 +351,22 @@ export function GoalTasksCard({ goal, todayMainAction }: { goal: Goal; todayMain
         </p>
         <div className="flex items-center gap-2">
           {!isAddingProject && (
-            <button
+            <GhostButton
               type="button"
               onClick={() => setIsAddingProject(true)}
-              className="text-xs font-semibold text-monk-accent transition hover:underline active:scale-95"
+              className="text-xs font-semibold text-monk-accent enabled:hover:text-monk-accent"
             >
               {t("project.addNew")}
-            </button>
+            </GhostButton>
           )}
           {!isAdding && (
-            <button
+            <GhostButton
               type="button"
               onClick={() => setIsAdding(true)}
-              className="text-xs font-semibold text-monk-accent transition hover:underline active:scale-95"
+              className="text-xs font-semibold text-monk-accent enabled:hover:text-monk-accent"
             >
               {t("today.add")}
-            </button>
+            </GhostButton>
           )}
         </div>
       </div>

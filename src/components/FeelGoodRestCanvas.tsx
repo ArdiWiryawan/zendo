@@ -165,7 +165,7 @@ export function FeelGoodRestCanvas({ onOpenWeeklyReview, className = "" }: FeelG
               {t("rest.badge")}
             </span>
             <h3 className="mt-1.5 text-base font-bold text-monk-text tracking-tight">
-              {t("rest.title")}
+              {t("rest.badge")}
             </h3>
             <p className="mt-1 text-xs text-monk-muted leading-relaxed">
               {t("rest.subtitle")}
@@ -187,7 +187,7 @@ export function FeelGoodRestCanvas({ onOpenWeeklyReview, className = "" }: FeelG
                   type="button"
                   aria-pressed={active}
                   onClick={() => handleSetEnergy(lvl)}
-                  className={`flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-[11px] font-semibold transition active:scale-95 ${
+                  className={`flex min-h-11 items-center gap-1.5 rounded-lg border px-2.5 py-1 text-[11px] font-semibold transition active:scale-95 ${
                     active
                       ? "border-monk-accent bg-monk-accent/15 text-monk-text font-bold"
                       : "border-monk-border/60 bg-monk-soft/50 text-monk-muted hover:text-monk-text"
@@ -452,14 +452,14 @@ export function FeelGoodRestCanvas({ onOpenWeeklyReview, className = "" }: FeelG
       {/* Weekly review transition */}
       <Card className="flex flex-col items-center justify-between gap-3 border-monk-accent/30 bg-monk-accent-soft/20 p-4 sm:flex-row">
         <div className="min-w-0 text-center sm:text-left">
-          <p className="text-xs font-bold text-monk-text">{t("rest.reviewTitle")}</p>
+          <p className="text-xs font-bold text-monk-text">{t("week.review.title")}</p>
           <p className="mt-0.5 text-[11px] text-monk-muted">{t("rest.reviewBody")}</p>
         </div>
         <PrimaryButton
           onClick={onOpenWeeklyReview}
           className="flex w-full shrink-0 items-center justify-center gap-1.5 px-4 py-2 text-xs sm:w-auto"
         >
-          <span>{t("rest.reviewCta")}</span>
+          <span>{t("today.restRenewal.cta")}</span>
           <ArrowRight size={13} />
         </PrimaryButton>
       </Card>

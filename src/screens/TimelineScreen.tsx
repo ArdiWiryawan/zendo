@@ -101,9 +101,6 @@ function TimelineStats() {
               <p className="text-[11px] font-bold uppercase tracking-wider text-monk-muted">
                 {t("timeline.stats.focus")}
               </p>
-              <span className="text-[9px] font-mono font-medium text-monk-accent/80 bg-monk-accent/10 px-1.5 py-0.2 rounded border border-monk-accent/20">
-                Deep Work
-              </span>
             </div>
             <div className="mt-1 flex items-baseline gap-1">
               <span className="text-3xl sm:text-4xl font-mono font-bold text-monk-accent tabular-nums leading-none">
@@ -210,7 +207,7 @@ function DayCountsCard() {
           {missedCount > 0 ? (
             <span className="inline-flex items-center gap-1 rounded-lg border border-monk-border bg-monk-soft px-2 py-1 text-monk-muted">
               <span className="inline-block h-1.5 w-1.5 rounded-full bg-monk-muted" />
-              <span>{missedCount} {t("timeline.legend.missed")}</span>
+              <span>{missedCount} {t("week.missed")}</span>
             </span>
           ) : null}
         </div>
@@ -710,7 +707,7 @@ export default function TimelineScreen() {
 
       <div className="space-y-5">
         {/* View Switcher Tabs: Daily | Weekly | Monthly | Season with animated pill */}
-        <div className="relative flex rounded-2xl border border-monk-border/80 bg-monk-soft/50 p-1 text-xs font-semibold shadow-2xs">
+        <div role="tablist" aria-label={t("timeline.title")} className="relative flex rounded-2xl border border-monk-border/80 bg-monk-soft/50 p-1 text-xs font-semibold shadow-2xs">
           {tabItems.map((tab) => {
             const Icon = tab.icon;
             const isActive = viewMode === tab.key;
@@ -719,6 +716,8 @@ export default function TimelineScreen() {
               <button
                 key={tab.key}
                 type="button"
+                role="tab"
+                aria-selected={isActive}
                 onClick={() => setViewMode(tab.key)}
                 className={`relative flex-1 flex items-center justify-center gap-1.5 rounded-xl py-2 z-10 transition-colors active:scale-95 ${
                   isActive ? "text-monk-text font-bold" : "text-monk-muted hover:text-monk-text"
@@ -855,7 +854,7 @@ export default function TimelineScreen() {
                     className="inline-flex items-center gap-1 text-[11px] font-bold text-monk-accent hover:underline transition"
                   >
                     <RotateCcw size={11} />
-                    <span>Kembali ke minggu ini</span>
+                    <span>{t("timeline.month.backToCurrentWeek")}</span>
                   </button>
                 </div>
               ) : null}
@@ -928,7 +927,7 @@ export default function TimelineScreen() {
                             ) : isMissed ? (
                               <span className="inline-flex items-center gap-1 rounded-md border border-monk-danger/30 bg-monk-danger-soft px-1.5 py-0.5 text-[10px] font-bold text-monk-danger">
                                 <AlertTriangle size={11} />
-                                <span>{t("timeline.streak.missed")}</span>
+                                <span>{t("week.missed")}</span>
                               </span>
                             ) : (
                               <span className="rounded-md border border-monk-border bg-monk-surface px-1.5 py-0.5 text-[10px] font-semibold text-monk-muted">
@@ -944,7 +943,7 @@ export default function TimelineScreen() {
                           </div>
 
                           <p className="text-xs font-semibold text-monk-text mt-1 truncate max-w-xs">
-                            {dayPlan?.mainAction || goal?.keystoneAction || (isRest ? t("timeline.restDay") : t("timeline.noAction"))}
+                            {dayPlan?.mainAction || goal?.keystoneAction || (isRest ? t("rest.badge") : t("timeline.noAction"))}
                           </p>
                         </div>
                       </div>
@@ -961,7 +960,7 @@ export default function TimelineScreen() {
                           <button
                             type="button"
                             onClick={() => setRetroDate(dateStr)}
-                            className="inline-flex items-center gap-1 text-[11px] font-bold text-monk-accent hover:underline px-2.5 py-1 rounded-lg bg-monk-accent/10 border border-monk-accent/30 transition active:scale-95"
+                            className="inline-flex min-h-11 items-center gap-1 text-[11px] font-bold text-monk-accent hover:underline px-2.5 py-1 rounded-lg bg-monk-accent/10 border border-monk-accent/30 transition active:scale-95"
                           >
                             <Plus size={12} />
                             <span>{t("timeline.retroLog")}</span>
@@ -1076,7 +1075,7 @@ export default function TimelineScreen() {
                                   ? t("timeline.legend.relapse")
                                   : cellStatus === "not_started"
                                     ? t("timeline.legend.notStarted")
-                                    : t("timeline.legend.missed");
+                                    : t("week.missed");
                         const cellLabel = t("timeline.month.cellAria", {
                           date: formatHumanDate(cell.dateStr),
                           status: statusLabel,
@@ -1195,7 +1194,7 @@ export default function TimelineScreen() {
                         ) : inspectedStatus === "missed" || inspectedStatus === "relapse" ? (
                           <span className="inline-flex items-center gap-1 rounded-md bg-monk-danger-soft border border-monk-danger/30 px-2 py-0.5 text-[10px] font-bold text-monk-danger">
                             <X size={11} strokeWidth={3} aria-hidden="true" />
-                            <span>{t("timeline.streak.missed")}</span>
+                            <span>{t("week.missed")}</span>
                           </span>
                         ) : (
                           <span className="rounded-md border border-monk-border bg-monk-surface px-2 py-0.5 text-[10px] font-semibold text-monk-muted">
@@ -1222,7 +1221,7 @@ export default function TimelineScreen() {
                       <>
                         <div className="flex flex-wrap items-center justify-between gap-2 border-t border-monk-border/50 pt-2 text-xs">
                           <p className="text-monk-muted font-medium truncate max-w-xs">
-                            {inspectedPlan?.mainAction || goal?.keystoneAction || (inspectedStatus === "rest" ? t("timeline.restDay") : t("timeline.noAction"))}
+                            {inspectedPlan?.mainAction || goal?.keystoneAction || (inspectedStatus === "rest" ? t("rest.badge") : t("timeline.noAction"))}
                           </p>
                           {inspectedFocusMins > 0 ? (
                             <span className="font-mono text-xs font-bold text-monk-accent bg-monk-accent/15 px-2 py-0.5 rounded-md border border-monk-accent/30">
@@ -1254,7 +1253,7 @@ export default function TimelineScreen() {
                           <button
                             type="button"
                             onClick={() => navigate(routes.today)}
-                            className="w-full flex items-center justify-center gap-1.5 rounded-xl bg-monk-accent py-2 text-xs font-bold text-monk-bg shadow-sm active:scale-98 transition hover:bg-monk-accent/90"
+                            className="w-full flex min-h-11 items-center justify-center gap-1.5 rounded-xl bg-monk-accent py-2 text-xs font-bold text-monk-bg shadow-sm active:scale-98 transition hover:bg-monk-accent/90"
                           >
                             <span>{t("timeline.month.openTodayAction")}</span>
                             <ArrowRight size={13} />
@@ -1263,10 +1262,10 @@ export default function TimelineScreen() {
                           <button
                             type="button"
                             onClick={() => setRetroDate(selectedMonthDate)}
-                            className="w-full flex items-center justify-center gap-1.5 rounded-xl bg-monk-accent py-2 text-xs font-bold text-monk-bg shadow-sm active:scale-98 transition hover:bg-monk-accent/90"
+                            className="w-full flex min-h-11 items-center justify-center gap-1.5 rounded-xl bg-monk-accent py-2 text-xs font-bold text-monk-bg shadow-sm active:scale-98 transition hover:bg-monk-accent/90"
                           >
                             <Plus size={14} />
-                            <span>{t("timeline.retroLog")} - Catat Sesi Terlewat</span>
+                            <span>{t("timeline.retroLog")}</span>
                           </button>
                         ) : null}
                       </>
@@ -1291,7 +1290,7 @@ export default function TimelineScreen() {
                 </span>
                 <span className="inline-flex items-center gap-1 rounded-md bg-monk-danger-soft border border-monk-danger/30 px-2 py-0.5 font-semibold text-monk-danger">
                   <X size={10} strokeWidth={2.5} aria-hidden="true" />
-                  <span>{t("timeline.streak.missed")}</span>
+                  <span>{t("week.missed")}</span>
                 </span>
                 <span className="inline-flex items-center gap-1 rounded-md bg-monk-surface/40 border border-monk-border/50 px-2 py-0.5 font-semibold text-monk-muted">
                   <span>{t("week.upcoming")}</span>

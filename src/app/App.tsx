@@ -289,8 +289,8 @@ export default function App() {
         <Route path={routes.login} element={<LoginScreen />} />
         <Route path={routes.signup} element={<SignupScreen />} />
         <Route path={routes.library} element={<ProtectedMain><Suspense><JournalLibraryScreenLazy /></Suspense></ProtectedMain>} />
-        <Route path={routes.notebook} element={<ProtectedMain showNav={false}><Suspense><NotebookPageLazy /></Suspense></ProtectedMain>} />
-        <Route path={routes.guide} element={<ProtectedMain showNav={false}><Suspense><GuideScreenLazy /></Suspense></ProtectedMain>} />
+        <Route path={routes.notebook} element={<ProtectedMain><Suspense><NotebookPageLazy /></Suspense></ProtectedMain>} />
+        <Route path={routes.guide} element={<ProtectedMain><Suspense><GuideScreenLazy /></Suspense></ProtectedMain>} />
         <Route path={routes.packs} element={<ProtectedMain><Suspense><PacksPageLazy /></Suspense></ProtectedMain>} />
         <Route path="*" element={<Navigate to={routes.root} replace />} />
       </Routes>

@@ -26,9 +26,11 @@ describe("the How-Zendo-works guide is wired end to end", () => {
   });
 
   it("keeps the guide behind authentication like every other main screen", () => {
-    // showNav={false} makes it a focused full-screen view, matching /notebook.
+    // The guide mounts with the bottom nav, the same back-model as every other
+    // screen, so a deep link is never a dead end.
     const app = src("src/app/App.tsx");
-    expect(app).toMatch(/routes\.guide[\s\S]{0,80}showNav=\{false\}/);
+    expect(app).toMatch(/routes\.guide[\s\S]{0,80}ProtectedMain/);
+    expect(app).not.toMatch(/routes\.guide[\s\S]{0,80}showNav=\{false\}/);
   });
 });
 
