@@ -23,7 +23,7 @@ import { useMonkStore, normalizeAvailability } from "../store/useMonkStore";
 import { useT } from "../i18n";
 import type { MessageKey } from "../i18n";
 import type { GoalType, GoalWeekday } from "../types/app";
-import { PrimaryButton, SecondaryButton, GhostButton, TextInput, Textarea, CalmAlert, useCalmToast, useModalA11y } from "./ui";
+import { PrimaryButton, SecondaryButton, GhostButton, TextInput, CalmAlert, CalmDialog, useCalmToast, useModalA11y } from "./ui";
 import { hapticPress } from "../lib/haptics";
 import { GOAL_TEMPLATES, GoalBlueprintTemplate } from "../constants/goalTemplates";
 import { MAX_ACTIVE_GOAL_TRACKS } from "../lib/validation";
@@ -263,6 +263,11 @@ export function GoalBlueprintModal({ goalId, isOpen, onClose }: GoalBlueprintMod
   const [showTemplates, setShowTemplates] = useState(false);
   const [showAdvanced, setShowAdvanced] = useState(false);
 
+  // §release — releasing a goal from the season lives here now, as the modal's
+  // own escape hatch. `releaseOpen` drives the destructive CalmDialog.
+  const [releaseOpen, setReleaseOpen] = useState(false);
+  const [releaseNote, setReleaseNote] = useState("");
+
   // 4 Essential Pillars
   const [title, setTitle] = useState("");
   const [keystoneAction, setKeystoneAction] = useState("");
@@ -321,6 +326,8 @@ export function GoalBlueprintModal({ goalId, isOpen, onClose }: GoalBlueprintMod
       setShowConvert(false);
       setConvertNewGoal(false);
       setConvertGoalTitle(goal.desiredOutcome || "");
+      setReleaseOpen(false);
+      setReleaseNote("");
       setError("");
     }
   }, [goal, isOpen]);
@@ -337,6 +344,14 @@ export function GoalBlueprintModal({ goalId, isOpen, onClose }: GoalBlueprintMod
     open: isOpen,
     ref: modalRef,
     onClose: () => {
+      // The release dialog stacks on top and owns Escape while it is open:
+      // without this, its listener and ours both fire and the whole modal
+      // would close underneath the dialog.
+      if (releaseOpen) {
+        setReleaseOpen(false);
+        setReleaseNote("");
+        return;
+      }
       if (showTemplates) setShowTemplates(false);
       else if (showConvert) setShowConvert(false);
       else onClose();
@@ -843,6 +858,30 @@ export function GoalBlueprintModal({ goalId, isOpen, onClose }: GoalBlueprintMod
           ) : null}
         </div>
 
+        {/*
+          Release is an escape hatch, not a second primary action: it sits after
+          the goal's own content, tinted like the destructive confirm it opens,
+          so it never competes with Save. It is also the ONLY way to release a
+          goal now — TodayScreen no longer owns this control.
+        */}
+        <div className="border-t border-monk-border/60 px-5 py-3.5 sm:px-6">
+          <button
+            type="button"
+            onClick={() => {
+              hapticPress("light");
+              setReleaseNote("");
+              setReleaseOpen(true);
+            }}
+            aria-haspopup="dialog"
+            aria-label={`${t("release.triggerLabel")} — ${t("release.confirm")}`}
+            className="flex min-h-11 items-center gap-2 rounded-lg px-2.5 text-xs font-semibold text-monk-danger/80 transition hover:bg-monk-danger/10 hover:text-monk-danger"
+          >
+            <Trash2 size={14} />
+            <span>{t("release.triggerLabel")}</span>
+          </button>
+          <p className="mt-1 px-2.5 text-[10px] leading-4 text-monk-muted">{t("release.body")}</p>
+        </div>
+
         {/* Footer Actions */}
         <div className="border-t border-monk-border/60 bg-monk-surface px-5 py-3 sm:px-6 flex items-center justify-between gap-2.5">
           <GhostButton
@@ -864,6 +903,48 @@ export function GoalBlueprintModal({ goalId, isOpen, onClose }: GoalBlueprintMod
           </div>
         </div>
       </div>
+
+      {/*
+        CalmDialog hardcodes `fixed inset-0 z-[70]`, which is below this modal's
+        own `z-[80]` root, so it needs lifting to paint above the blueprint panel.
+        The wrapper must be mounted ONLY while the dialog is open: a bare
+        `fixed inset-0` wrapper is an invisible full-screen hit target that
+        swallows every click inside the modal — including the release button
+        that opens this dialog, making release unreachable.
+        Confirm closes the dialog, clears the note, fires the toast, then closes
+        the blueprint — a released goal no longer belongs to the season, so the
+        modal has nothing left to show.
+      */}
+      {releaseOpen ? (
+        <div className="fixed inset-0 z-[90]">
+          <CalmDialog
+            open
+            title={t("release.title", { goal: goal.title })}
+            description={t("release.body")}
+            confirmLabel={t("release.confirm")}
+            cancelLabel={t("release.cancel")}
+            danger
+            onConfirm={() => {
+              store.releaseGoalFromSeason(goal.id, releaseNote);
+              setReleaseOpen(false);
+              setReleaseNote("");
+              toast.show(t("release.done"));
+              onClose();
+            }}
+            onCancel={() => {
+              setReleaseOpen(false);
+              setReleaseNote("");
+            }}
+          >
+            <TextInput
+              label={t("release.noteLabel")}
+              placeholder={t("release.note")}
+              value={releaseNote}
+              onChange={(event) => setReleaseNote(event.target.value)}
+            />
+          </CalmDialog>
+        </div>
+      ) : null}
     </div>
   );
 }

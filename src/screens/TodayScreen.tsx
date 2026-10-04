@@ -10,7 +10,7 @@ import { getTodayDateString, addDaysToDate, getDaysPassed, getDaysLeft } from ".
 import { CORE_VALUES } from "../constants/whyValues";
 import { routes } from "../constants/routes";
 import { FOCUS_PRESETS, getPresetLabel } from "../constants/focusPresets";
-import { formatIntention, parseIntention } from "../lib/implementationIntention";
+import { formatIntention, parseIntention, stripIntentionTime } from "../lib/implementationIntention";
 import { playCompletionChime, playZenBell, unlockAudio } from "../lib/audio";
 import { loadLastFocus, saveLastFocus } from "../lib/storage";
 import { getCoachStep, dismissCoachStep } from "../lib/coach";
@@ -19,7 +19,6 @@ import { isRestSuggestionDismissed, dismissRestSuggestion, shouldSuggestRest } f
 import { shouldWarnMissTwice } from "../lib/focusStreak";
 import { selectTodayPlan, selectActiveGoals, selectCurrentWeeklyPlan, selectEnergyForDate, selectTodayLearningSessions, selectTotalFocusSecondsForDate } from "../store/selectors";
 import {
-  CalmDialog,
   Card,
   ChoiceChip,
   EmptyState,
@@ -34,7 +33,7 @@ import {
 import { FocusSessionPanel } from "../screens/FocusSession";
 import { CoachHint } from "./OnboardingSteps";
 import { WhyEditor } from "../components/SeasonWidgets";
-import { EnergyCheck, WhyStrip, GoalTasksCard, focusLinkClass, focusLinkMutedClass } from "./TodayScreen.components";
+import { EnergyCheck, WhyStrip, GoalTasksCard, derivePrimaryCTA, focusLinkClass, focusLinkMutedClass } from "./TodayScreen.components";
 import { GoalBlueprintModal } from "../components/GoalBlueprintModal";
 import { PracticesCard } from "../components/PracticesCard";
 import { WeeklyReviewModal } from "../components/WeeklyReviewModal";
@@ -399,8 +398,6 @@ export function TodayScreen() {
     energyLevel?: EnergyLevel;
     status?: "active" | "completed" | "planned" | "missed";
   }>(null);
-  const [releaseOpen, setReleaseOpen] = useState(false);
-  const [releaseNote, setReleaseNote] = useState("");
   const [blueprintGoalId, setBlueprintGoalId] = useState<string | null>(null);
   const [clarifyBannerDismissed, setClarifyBannerDismissed] = useState(false);
   const [proModalOpen, setProModalOpen] = useState(false);
@@ -477,6 +474,12 @@ export function TodayScreen() {
   const isDone = todayPlan?.status === "completed";
   const hasReflection = !!todayEntry?.answers.whatMovedToday?.trim();
   const dayClosed = hasReflection || closeDaySkipped;
+  // derivePrimaryCTA only distinguishes running/paused; narrow here so the wider
+  // FocusSessionStatus union ("ended_early" | "abandoned") doesn't leak into it.
+  const focusCTAStatus: "running" | "paused" | undefined =
+    activeSession?.status === "running" || activeSession?.status === "paused"
+      ? activeSession.status
+      : undefined;
   const energy = selectEnergyForDate(store, today);
   // Reentry banner renders when: season active, plan not completed, no reflection, offerable, and not dismissed.
   const reentryVisible =
@@ -795,6 +798,23 @@ export function TodayScreen() {
                 ) : null}
               </div>
 
+              {/* Daily Highlight — the one thing the day was chosen for. It is a
+                  separate field from the Main Action (DayPlan.highlight vs
+                  DayPlan.mainAction) and is edited in Morning Planning, so it gets
+                  its own labelled block here instead of being folded into the
+                  action. Hidden while the action form is open to keep the edit
+                  surface quiet. */}
+              {!isRest && todayPlan.highlight?.trim() && !editingAction ? (
+                <section aria-label={t("today.highlightLabel")} className="relative mt-4">
+                  <p className="text-xs font-bold uppercase tracking-wider text-monk-muted">
+                    {t("today.highlightLabel")}
+                  </p>
+                  <p className="mt-1 text-base font-semibold leading-relaxed text-monk-text">
+                    {todayPlan.highlight}
+                  </p>
+                </section>
+              ) : null}
+
               {/* Action Anchor Section — one flat block, not a card inside a card.
                   Hierarchy comes from type scale and a hairline rule, not from
                   another rounded border. */}
@@ -878,8 +898,12 @@ export function TodayScreen() {
                         onClick={() => {
                           const formatted = formatIntention(editWhen, editAction, editTime).trim();
                           hapticPress("medium");
+                          // This form edits ONLY the day's Main Action. It used to
+                          // also write setTodayHighlight(editAction...), which
+                          // silently overwrote the user's Daily Highlight with the
+                          // action text. Highlight is a separate field, edited in
+                          // Morning Planning.
                           store.setDayMainAction(today, formatted);
-                          store.setTodayHighlight(editAction.trim() || formatted);
                           setEditingAction(false);
                           toast.show(t("toast.intentionSaved"));
                         }}
@@ -902,26 +926,17 @@ export function TodayScreen() {
                     </p>
                   )
                 ) : (() => {
-                  const shown = parseIntention(todayPlan.mainAction || "");
-                  if (shown.when && shown.action) {
-                    return (
-                      <div className="space-y-1">
-                        {shown.time ? (
-                          <span className="inline-block rounded-md border border-monk-border bg-monk-surface px-2 py-0.5 text-xs font-mono font-semibold text-monk-text-soft">
-                            ⏰ {shown.time}
-                          </span>
-                        ) : null}
-                        <p className="text-xs text-monk-muted">{t("today.whenShown", { when: shown.when })}</p>
-                        <p className="text-lg font-bold leading-relaxed text-monk-text tracking-[-0.01em]">
-                          {shown.action}
-                        </p>
-                      </div>
-                    );
-                  }
-                  if (todayPlan.mainAction) {
+                  // The Main Action renders as plain text: the scheduled clock
+                  // time is deliberately NOT shown here. The action is the day's
+                  // one commitment; a time pill next to it read as a deadline and
+                  // pulled attention off the action itself. stripIntentionTime
+                  // drops any leading "at HH:MM" / time marker so only the words
+                  // the user wrote survive.
+                  const shown = stripIntentionTime(todayPlan.mainAction || "").trim();
+                  if (shown) {
                     return (
                       <p className="text-lg font-bold leading-relaxed text-monk-text tracking-[-0.01em]">
-                        {todayPlan.mainAction}
+                        {shown}
                       </p>
                     );
                   }
@@ -976,33 +991,69 @@ export function TodayScreen() {
                 })()}
 
                 {/* The one control that matters, full width so it reads as the
-                    strongest thing on the card. */}
+                    strongest thing on the card. Its label tracks the real state via
+                    derivePrimaryCTA so it can never disagree with what the tap
+                    does: on a running/paused session it says so, and once the day
+                    is complete it stops inviting another. */}
                 {!editingAction && !isRest ? (
+                  (() => {
+                    const primaryCTA = derivePrimaryCTA(focusCTAStatus, isDone);
+                    const primaryLabel =
+                      primaryCTA === "return"
+                        ? t("today.primary.returnToFocus")
+                        : primaryCTA === "resume"
+                          ? t("today.primary.resumeFocus")
+                          : primaryCTA === "completed"
+                            ? t("today.primary.completed")
+                            : t("today.completeCta");
+                    return (
+                      <button
+                        type="button"
+                        aria-label={isDone ? t("today.markIncomplete") : t("today.markComplete")}
+                        aria-pressed={isDone}
+                        className={`mt-2.5 flex min-h-12 w-full items-center justify-center gap-2 rounded-monk border text-base font-bold transition-all duration-200 ease-monk active:scale-[0.975] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-monk-accent focus-visible:ring-offset-2 focus-visible:ring-offset-monk-bg ${
+                          isDone
+                            ? "border-monk-success/40 bg-monk-success-soft text-monk-success"
+                            : "monk-btn-primary border-transparent bg-monk-accent text-monk-bg"
+                        }`}
+                        onClick={() => {
+                          unlockAudio();
+                          const willBeCompleted = !isDone;
+                          if (willBeCompleted) {
+                            hapticPress("success");
+                            playCompletionChime();
+                            if (todayPlan?.highlight?.trim()) toast.show(t("today.highlightDone"));
+                            else toast.show(t("today.mainActionDone"));
+                          } else {
+                            hapticPress("light");
+                          }
+                          store.toggleTodayCompletion();
+                        }}
+                      >
+                        <Check size={18} strokeWidth={2.6} />
+                        <span>{primaryLabel}</span>
+                      </button>
+                    );
+                  })()
+                ) : null}
+
+                {/* Five-minute quick start. Lowering the activation cost is the
+                    whole point: the research foundation's "just begin" principle —
+                    a smaller first step gets the session started, and starting is
+                    what the day actually needs. Deliberately a quiet secondary
+                    control so the primary CTA stays the only dominant one. */}
+                {!editingAction && !isRest && derivePrimaryCTA(focusCTAStatus, isDone) === "start" ? (
                   <button
                     type="button"
-                    aria-label={isDone ? t("today.markIncomplete") : t("today.markComplete")}
-                    aria-pressed={isDone}
-                    className={`mt-2.5 flex min-h-12 w-full items-center justify-center gap-2 rounded-monk border text-base font-bold transition-all duration-200 ease-monk active:scale-[0.975] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-monk-accent focus-visible:ring-offset-2 focus-visible:ring-offset-monk-bg ${
-                      isDone
-                        ? "border-monk-success/40 bg-monk-success-soft text-monk-success"
-                        : "monk-btn-primary border-transparent bg-monk-accent text-monk-bg"
-                    }`}
                     onClick={() => {
-                      unlockAudio();
-                      const willBeCompleted = !isDone;
-                      if (willBeCompleted) {
-                        hapticPress("success");
-                        playCompletionChime();
-                        if (todayPlan?.highlight?.trim()) toast.show(t("today.highlightDone"));
-                        else toast.show(t("today.mainActionDone"));
-                      } else {
-                        hapticPress("light");
-                      }
-                      store.toggleTodayCompletion();
+                      hapticPress("light");
+                      store.startFocusSession("custom", 5);
+                      navigate(routes.focus);
                     }}
+                    className="mt-2.5 flex min-h-11 w-full flex-col items-start justify-center rounded-xl border border-monk-border px-3 py-1.5 text-left transition duration-150 ease-monk hover:bg-monk-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-monk-accent/60"
                   >
-                    <Check size={18} strokeWidth={2.6} />
-                    <span>{isDone ? t("today.doneToday") : t("today.completeCta")}</span>
+                    <p className="text-sm font-semibold text-monk-text">{t("today.quickStart5")}</p>
+                    <p className="text-xs text-monk-muted">{t("today.quickStartSub")}</p>
                   </button>
                 ) : null}
               </div>
@@ -1022,18 +1073,6 @@ export function TodayScreen() {
                     >
                       <Sparkles size={14} className="shrink-0 text-monk-accent" />
                       <span>{t("blueprint.openButton")}</span>
-                    </button>
-                    <button
-                      type="button"
-                      className="flex min-h-11 items-center gap-2 rounded-lg px-3 text-sm font-semibold text-monk-text-soft transition duration-150 ease-monk hover:bg-monk-soft hover:text-monk-text"
-                      onClick={() => {
-                        hapticPress("light");
-                        setReleaseNote("");
-                        setReleaseOpen(true);
-                      }}
-                    >
-                      <Moon size={14} className="shrink-0 text-monk-muted" />
-                      <span>{t("release.triggerLabel")}</span>
                     </button>
                   </div>
                 ) : null}
@@ -1533,32 +1572,6 @@ export function TodayScreen() {
           </div>
         </div>
       ) : null}
-      <CalmDialog
-        open={releaseOpen}
-        title={goal && !isRest ? t("release.title", { goal: goal.title }) : ""}
-        description={t("release.body")}
-        confirmLabel={t("release.confirm")}
-        cancelLabel={t("release.cancel")}
-        danger
-        onConfirm={() => {
-          if (!goal) return;
-          store.releaseGoalFromSeason(goal.id, releaseNote);
-          setReleaseOpen(false);
-          setReleaseNote("");
-          toast.show(t("release.done"));
-        }}
-        onCancel={() => {
-          setReleaseOpen(false);
-          setReleaseNote("");
-        }}
-      >
-        <TextInput
-          label={t("release.noteLabel")}
-          placeholder={t("release.note")}
-          value={releaseNote}
-          onChange={(event) => setReleaseNote(event.target.value)}
-        />
-      </CalmDialog>
       <GoalBlueprintModal
         goalId={blueprintGoalId}
         isOpen={!!blueprintGoalId}
