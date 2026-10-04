@@ -776,16 +776,20 @@ export function TodayScreen() {
                 {t("today.statusLive", { status: statusLabel })}
               </span>
 
-              <div className="relative mt-2 min-w-0">
-                {/* Goal Title */}
-                <h2 className="text-lg font-semibold leading-tight tracking-tight text-monk-text">
+              <div className="relative mt-3 min-w-0">
+                {/* Goal Title — the card's headline. Larger and tighter than the
+                    section labels below so the eye lands here first. */}
+                <h2 className="text-xl font-semibold leading-tight tracking-[-0.015em] text-monk-text">
                   {isRest ? t("today.quietRecovery") : goal?.title ?? t("today.oneTheme")}
                 </h2>
 
-                {/* Identity Anchor (James Clear). One line only: the full sentence
-                    is a detail, and a hero that wraps three times is not a hero. */}
+                {/* Identity Anchor (James Clear). The WHY is the deepest part of the
+                    product, so it must never be *silently* cut: `truncate` used to
+                    end it in an ellipsis and hide the reason the day exists. It now
+                    clamps at two lines — long enough to read the sentence, short
+                    enough that the hero still doesn't wrap three times. */}
                 {!isRest && goal?.why ? (
-                  <p className="mt-1 truncate text-sm leading-5 font-medium italic text-monk-accent/90">
+                  <p className="mt-1.5 line-clamp-2 text-sm leading-relaxed font-medium italic text-monk-accent/90">
                     {t("today.identityBecoming", { why: goal.why })}
                   </p>
                 ) : null}
@@ -794,7 +798,7 @@ export function TodayScreen() {
               {/* Action Anchor Section — one flat block, not a card inside a card.
                   Hierarchy comes from type scale and a hairline rule, not from
                   another rounded border. */}
-              <div className="relative mt-4 border-t border-monk-border/50 pt-4">
+              <div className="relative mt-5 border-t border-monk-border/50 pt-5">
                 <div className="flex items-center justify-between gap-2 mb-2">
                   <div className="flex items-center gap-1.5">
                     <p className="text-xs font-bold uppercase tracking-wider text-monk-muted">
@@ -978,10 +982,10 @@ export function TodayScreen() {
                     type="button"
                     aria-label={isDone ? t("today.markIncomplete") : t("today.markComplete")}
                     aria-pressed={isDone}
-                    className={`mt-2 flex min-h-12 w-full items-center justify-center gap-2 rounded-monk border text-base font-bold transition-all duration-200 ease-monk active:scale-[0.975] ${
+                    className={`mt-2.5 flex min-h-12 w-full items-center justify-center gap-2 rounded-monk border text-base font-bold transition-all duration-200 ease-monk active:scale-[0.975] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-monk-accent focus-visible:ring-offset-2 focus-visible:ring-offset-monk-bg ${
                       isDone
                         ? "border-monk-success/40 bg-monk-success-soft text-monk-success"
-                        : "border-transparent bg-monk-accent text-monk-bg shadow-monk-accent-soft hover:brightness-105"
+                        : "monk-btn-primary border-transparent bg-monk-accent text-monk-bg"
                     }`}
                     onClick={() => {
                       unlockAudio();
