@@ -20,6 +20,7 @@ export const routes = {
   settings: "/settings",
   library: "/library",
   notebook: "/notebook",
+  guide: "/guide",
   packs: "/packs",
   login: "/login",
   signup: "/signup"

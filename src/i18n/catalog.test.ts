@@ -51,16 +51,123 @@ const keys = [
   "onboarding.season.customLabel",
   "onboarding.season.durationLabel",
   "onboarding.preview.highlight",
+  "onboarding.preview.body",
+  "onboarding.preview.step1Label",
+  "onboarding.preview.step1",
+  "onboarding.preview.step1Body",
+  "onboarding.preview.step2Label",
+  "onboarding.preview.step2",
+  "onboarding.preview.step2Body",
+  "onboarding.preview.step3Label",
+  "onboarding.preview.step3",
+  "onboarding.preview.step3Body",
+  "onboarding.preview.step4Label",
+  "onboarding.preview.step4",
+  "onboarding.preview.step4Body",
+  "onboarding.preview.coreHeading",
+  "onboarding.preview.coreBody",
+  "onboarding.preview.optionalHeading",
+  "onboarding.preview.optionalBody",
+  "settings.guide",
+  "settings.guideRow",
+  "settings.guideRowDesc",
+  "settings.guideOpen",
+  "guide.title",
+  "guide.subtitle",
+  "guide.back",
+  "guide.introHeading",
+  "guide.introBody",
+  "guide.coreHeading",
+  "guide.coreBody",
+  "guide.coreList",
+  "guide.optionalBody",
+  "guide.optionalNote",
+  "guide.flowHeading",
+  "guide.flowPlan",
+  "guide.flowPlanBody",
+  "guide.flowChoose",
+  "guide.flowChooseBody",
+  "guide.flowDo",
+  "guide.flowDoBody",
+  "guide.flowReflect",
+  "guide.flowReflectBody",
+  "guide.exampleLabel",
+  "guide.todayHeading",
+  "guide.highlightTitle",
+  "guide.highlightBody",
+  "guide.highlightExample",
+  "guide.mainActionTitle",
+  "guide.mainActionBody",
+  "guide.mainActionExample",
+  "guide.agendaTitle",
+  "guide.agendaBody",
+  "guide.agendaExample",
+  "guide.goalsHeading",
+  "guide.seasonTitle",
+  "guide.seasonBody",
+  "guide.seasonExample",
+  "guide.goalsTitle",
+  "guide.goalsBody",
+  "guide.goalsExample",
+  "guide.practicesTitle",
+  "guide.practicesBody",
+  "guide.practicesExample",
+  "guide.projectsHeading",
+  "guide.projectsTitle",
+  "guide.projectsBody",
+  "guide.projectsExample",
+  "guide.focusHeading",
+  "guide.focusTitle",
+  "guide.focusBody",
+  "guide.focusExample",
+  "guide.focusModesTitle",
+  "guide.focusModesBody",
+  "guide.focusModesExample",
+  "guide.notebookHeading",
+  "guide.notebookTitle",
+  "guide.notebookBody",
+  "guide.notebookExample",
+  "guide.journalHeading",
+  "guide.morningTitle",
+  "guide.morningBody",
+  "guide.morningExample",
+  "guide.reflectionTitle",
+  "guide.reflectionBody",
+  "guide.reflectionExample",
+  "guide.reviewHeading",
+  "guide.timelineTitle",
+  "guide.timelineBody",
+  "guide.timelineExample",
+  "guide.weeklyTitle",
+  "guide.weeklyBody",
+  "guide.weeklyExample",
+  "guide.footer",
 ] as const;
 
 describe("Today, rest, and streak translations", () => {
   it("provides nonempty, distinct Indonesian and English copy for representative user-facing messages", () => {
+    // Product vocabulary is deliberately shared across languages: Highlight,
+    // Main Action, Agenda, Season, Notebook and Focus appear untranslated in
+    // the screens themselves, so a "translated" guide term would teach a
+    // synonym the user never sees. These keys are allowed to be identical.
+    const sharedTerms = new Set([
+      "guide.highlightTitle",
+      "guide.mainActionTitle",
+      "guide.agendaTitle",
+      "guide.seasonTitle",
+      "guide.notebookHeading",
+      "guide.notebookTitle",
+      "guide.reviewHeading",
+      "guide.focusTitle",
+    ]);
     for (const key of keys) {
       expect(en[key], `English ${key}`).toBeTruthy();
       expect(id[key], `Indonesian ${key}`).toBeTruthy();
       expect(t("en", key), `English ${key}`).toBe(en[key]);
       expect(t("id", key), `Indonesian ${key}`).toBe(id[key]);
-      expect(t("id", key), `Indonesian ${key} must not leak English copy`).not.toBe(en[key]);
+      if (!sharedTerms.has(key)) {
+        expect(t("id", key), `Indonesian ${key} must not leak English copy`).not.toBe(en[key]);
+      }
     }
   });
 
@@ -80,6 +187,22 @@ describe("Today, rest, and streak translations", () => {
         for (const value of Object.values(vars)) expect(output).toContain(String(value));
         expect(output).not.toMatch(/\{[^{}]+\}/);
       }
+    }
+  });
+
+  it("teaches one name per concept: the guide and Today agree on the term", () => {
+    // The guide exists to teach the app's own vocabulary. When the two drift,
+    // the user is taught a word they never see. Highlight and Main Action are
+    // left untranslated in both languages and both surfaces must say the same.
+    // tests that scan the catalogs directly; this is the runtime half.
+    for (const [concept, uiKey] of [
+      ["guide.highlightTitle", "today.highlightLabel"],
+      ["guide.mainActionTitle", "today.actionHeading"],
+      ["guide.mainActionTitle", "planning.mainActionTitle"],
+      ["guide.agendaTitle", "today.agendaHeading"],
+    ] as const) {
+      expect(id[concept], `Indonesian guide vs ${uiKey}`).toBe(id[uiKey]);
+      expect(en[concept], `English guide vs ${uiKey}`).toBe(en[uiKey]);
     }
   });
 });

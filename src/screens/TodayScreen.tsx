@@ -601,6 +601,20 @@ export function TodayScreen() {
     }
     if (coachStep === "close") {
       document.getElementById("today-close")?.scrollIntoView({ behavior: "smooth", block: "start" });
+      return;
+    }
+    // Concept steps point at the thing the concept names, inside today's plan.
+    if (coachStep === "highlight") {
+      document.querySelector(".today-primary-anchor")?.scrollIntoView({ behavior: "smooth", block: "start" });
+      return;
+    }
+    if (coachStep === "mainAction") {
+      setEditingAction(true);
+      document.querySelector(".today-primary-anchor")?.scrollIntoView({ behavior: "smooth", block: "start" });
+      return;
+    }
+    if (coachStep === "agenda") {
+      setPlanningModalOpen(true);
     }
   };
 

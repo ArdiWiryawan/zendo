@@ -34,7 +34,7 @@ import {
   TextInput,
   Textarea,
 } from "../components/ui";
-import type { CoachStepId } from "../lib/coach";
+import { COACH_STEP_ORDER, type CoachStepId } from "../lib/coach";
 import type { Goal, SeasonDurationPreset } from "../types/app";
 
 export function ScreenIntro({ title, subtitle }: { title: string; subtitle: string }) {
@@ -638,11 +638,14 @@ export function TodayPreviewStep() {
   const navigate = useNavigate();
   const t = useT();
   const { createSeasonFromOnboarding } = useMonkStore();
+  // The four rows are the PLAN → CHOOSE → DO → REFLECT loop, in the same words
+  // the app itself uses (Highlight, Main Action, Agenda, Focus) so the first
+  // day does not feel like a different product.
   const steps = [
-    { label: t("onboarding.preview.step1"), icon: ListTodo },
-    { label: t("onboarding.preview.step2"), icon: ShieldCheck },
-    { label: t("onboarding.preview.step3"), icon: BookOpen },
-    { label: t("onboarding.preview.step4"), icon: Coffee },
+    { phase: t("onboarding.preview.step1Label"), label: t("onboarding.preview.step1"), body: t("onboarding.preview.step1Body"), icon: ListTodo },
+    { phase: t("onboarding.preview.step2Label"), label: t("onboarding.preview.step2"), body: t("onboarding.preview.step2Body"), icon: ShieldCheck },
+    { phase: t("onboarding.preview.step3Label"), label: t("onboarding.preview.step3"), body: t("onboarding.preview.step3Body"), icon: BookOpen },
+    { phase: t("onboarding.preview.step4Label"), label: t("onboarding.preview.step4"), body: t("onboarding.preview.step4Body"), icon: Coffee },
   ];
 
   return (
@@ -655,10 +658,22 @@ export function TodayPreviewStep() {
               <step.icon size={16} strokeWidth={2} />
             </div>
             <div className="flex-1">
-              <p className="font-semibold text-monk-text">{step.label}</p>
+              <p className="text-xs font-bold uppercase tracking-wide text-monk-accent">{step.phase}</p>
+              <p className="mt-0.5 font-semibold text-monk-text">{step.label}</p>
+              <p className="mt-0.5 text-sm leading-5 text-monk-muted">{step.body}</p>
             </div>
           </div>
         ))}
+      </Card>
+      <Card className="mt-4 space-y-3 p-4">
+        <div>
+          <p className="text-sm font-semibold text-monk-text">{t("onboarding.preview.coreHeading")}</p>
+          <p className="mt-1 text-sm leading-6 text-monk-muted">{t("onboarding.preview.coreBody")}</p>
+        </div>
+        <div>
+          <p className="text-sm font-semibold text-monk-text">{t("onboarding.preview.optionalHeading")}</p>
+          <p className="mt-1 text-sm leading-6 text-monk-muted">{t("onboarding.preview.optionalBody")}</p>
+        </div>
       </Card>
       <p className="mt-4 text-center text-xs leading-5 text-monk-muted">
         {t("onboarding.preview.highlight")}
@@ -677,6 +692,25 @@ export function TodayPreviewStep() {
   );
 }
 
+/** Every coach step id, in the order the engine prefers them. Derived from the
+ *  engine's own list so a new step is a data change in coach.ts + the catalogs,
+ *  never a component change here. */
+const COACH_STEP_IDS = COACH_STEP_ORDER;
+
+/** Per-step copy key prefix. `coach.<step>.title` etc. */
+const COACH_COPY_KEYS: Record<CoachStepId, { title: MessageKey; body: MessageKey; cta: MessageKey; dismiss: MessageKey }> =
+  Object.fromEntries(
+    COACH_STEP_IDS.map((step) => [
+      step,
+      {
+        title: `coach.${step}.title`,
+        body: `coach.${step}.body`,
+        cta: `coach.${step}.cta`,
+        dismiss: `coach.${step}.dismiss`
+      }
+    ])
+  ) as Record<CoachStepId, { title: MessageKey; body: MessageKey; cta: MessageKey; dismiss: MessageKey }>;
+
 export function CoachHint({
   step,
   onDismiss,
@@ -687,32 +721,13 @@ export function CoachHint({
   onCta?: () => void;
 }) {
   const t = useT();
+  const keys = COACH_COPY_KEYS[step];
   const copy = {
-    pickTheme: {
-      title: t("coach.pickTheme.title"),
-      body: t("coach.pickTheme.body"),
-      cta: t("coach.pickTheme.cta"),
-      dismiss: t("coach.pickTheme.dismiss")
-    },
-    intention: {
-      title: t("coach.intention.title"),
-      body: t("coach.intention.body"),
-      cta: t("coach.intention.cta"),
-      dismiss: t("coach.intention.dismiss")
-    },
-    focus: {
-      title: t("coach.focus.title"),
-      body: t("coach.focus.body"),
-      cta: t("coach.focus.cta"),
-      dismiss: t("coach.focus.dismiss")
-    },
-    close: {
-      title: t("coach.close.title"),
-      body: t("coach.close.body"),
-      cta: t("coach.close.cta"),
-      dismiss: t("coach.close.dismiss")
-    }
-  }[step];
+    title: t(keys.title),
+    body: t(keys.body),
+    cta: t(keys.cta),
+    dismiss: t(keys.dismiss)
+  };
 
   return (
     <Card className="border-monk-accent/20 bg-monk-soft/60 p-4">

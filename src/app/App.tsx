@@ -23,6 +23,7 @@ const RelapseScreenLazy = lazy(() => import("../screens/RelapseScreen").then(m =
 const SeasonEndScreenLazy = lazy(() => import("../screens/SeasonEndScreen").then(m => ({ default: m.SeasonEndScreen })));
 const JournalLibraryScreenLazy = lazy(() => import("../screens/LibraryScreen").then(m => ({ default: m.JournalLibraryScreen })));
 const NotebookPageLazy = lazy(() => import("../screens/LibraryScreen").then(m => ({ default: m.NotebookPage })));
+const GuideScreenLazy = lazy(() => import("../screens/GuideScreen"));
 const PacksPageLazy = lazy(() => import("../screens/LibraryScreen").then(m => ({ default: m.PacksPage })));
 const ArchiveScreenLazy = lazy(() => import("../screens/ArchiveScreen").then(m => ({ default: m.ArchiveScreen })));
 import { TodayScreen } from "../screens/TodayScreen";
@@ -289,6 +290,7 @@ export default function App() {
         <Route path={routes.signup} element={<SignupScreen />} />
         <Route path={routes.library} element={<ProtectedMain><Suspense><JournalLibraryScreenLazy /></Suspense></ProtectedMain>} />
         <Route path={routes.notebook} element={<ProtectedMain showNav={false}><Suspense><NotebookPageLazy /></Suspense></ProtectedMain>} />
+        <Route path={routes.guide} element={<ProtectedMain showNav={false}><Suspense><GuideScreenLazy /></Suspense></ProtectedMain>} />
         <Route path={routes.packs} element={<ProtectedMain><Suspense><PacksPageLazy /></Suspense></ProtectedMain>} />
         <Route path="*" element={<Navigate to={routes.root} replace />} />
       </Routes>

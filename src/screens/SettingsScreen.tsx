@@ -15,6 +15,7 @@ import {
   Calendar,
   Check,
   Cloud,
+  Compass,
   Crown,
   Download,
   FileJson,
@@ -592,6 +593,16 @@ export default function SettingsScreen() {
                 </GhostButton>
               </div>
             )}
+          </Card>
+        </motion.div>
+
+        {/* How Zendo works — persistent guide page (router hop, not an anchor) */}
+        <motion.div variants={sectionReveal} initial="hidden" whileInView="visible" viewport={{ once: true, amount: 0.2 }}>
+          <SectionHeader icon={Compass} label={tUI("settings.guide")} />
+          <Card className="p-0 overflow-hidden">
+            <SettingsRow icon={Compass} title={tUI("settings.guideRow")} description={tUI("settings.guideRowDesc")}>
+              <GhostButton onClick={() => navigate(routes.guide)}>{tUI("settings.guideOpen")}</GhostButton>
+            </SettingsRow>
           </Card>
         </motion.div>
 
