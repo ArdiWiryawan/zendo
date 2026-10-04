@@ -16,6 +16,22 @@ export const focusLinkClass =
 export const focusLinkMutedClass =
   "rounded-md text-sm font-medium text-monk-muted transition hover:underline active:scale-95";
 
+/** Maps the focus card's CTA into its label + action state. A "deferred" state
+ *  is intentionally absent — nothing in the card offers deferral, so a fifth
+ *  branch would be dead weight. First match wins; completed outranks a live
+ *  session, which outranks a paused one. Pure: reads no store, holds no state. */
+export type PrimaryCTA = "start" | "return" | "resume" | "completed";
+
+export function derivePrimaryCTA(
+  focusStatus: "running" | "paused" | undefined,
+  todayCompleted: boolean
+): PrimaryCTA {
+  if (todayCompleted) return "completed";
+  if (focusStatus === "running") return "return";
+  if (focusStatus === "paused") return "resume";
+  return "start";
+}
+
 export function EnergyCheck({ value, onChange, compact = false }: { value?: EnergyLevel; onChange: (value: EnergyLevel) => void; compact?: boolean }) {
   const t = useT();
   const store = useMonkStore();
