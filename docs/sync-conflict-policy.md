@@ -37,6 +37,24 @@ Fixes (with regression tests):
 spreading it must carry over *every* field the record owns. A field with no
 fallback is a field that gets deleted.
 
+### Structural guards (so the class cannot recur)
+
+Fixing the one literal only fixes the one literal. Two guards now make both
+failure modes impossible to reintroduce silently:
+
+1. **Rebuild is a spread first.** `createOrUpdateDayPlan` opens its literal with
+   `...existing` before the explicit fields. Any field added to `DayPlan` later
+   is carried by default; a forgotten `existing?.` fallback can no longer delete
+   it. A test seeds a field the literal has never heard of and proves a rebuild
+   keeps it (`useMonkStore.agenda.test.ts`).
+2. **The merge is exhaustively typed.** `syncMerge` declares one
+   `MERGE_STRATEGY` map `satisfies Record<keyof MonkMVPState, MergeStrategy>`,
+   and the array/scalar lists are derived from it. Adding a field to
+   `MonkMVPState` without classifying it is now a **compile error** — the class
+   that quietly dropped `appSettings` and `pastSeasons` from the merge. Both are
+   classified now (`scalar` / `array`); `isPro` and the other purchase fields are
+   marked `local` on purpose (device-local entitlement, never taken from remote).
+
 ### Closed gap: cleared days no longer resurrect
 
 `mergeRemoteState` previously had no `dayPlans` tombstone, so a *cleared* day

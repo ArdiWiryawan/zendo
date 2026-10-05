@@ -1364,6 +1364,12 @@ export const useMonkStore = create<MonkStore>()(
     const existing = findDayPlan(base, season.id, dateString);
     const timestamp = nowIso();
     const dayPlan: DayPlan = {
+      // Start from the row already on disk so a field added to `DayPlan` later
+      // is carried by default and cannot be silently dropped by this rebuild.
+      // Every explicit field below still wins; this is the net for the fields
+      // that are not listed. `{ ...undefined }` is `{}`, so a brand-new day is
+      // unaffected. That missing net is exactly how a rewrite erased the agenda.
+      ...existing,
       id: existing?.id ?? createId("day"),
       seasonId: season.id,
       weeklyPlanId: weeklyPlan.id,

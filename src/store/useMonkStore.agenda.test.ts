@@ -121,4 +121,29 @@ describe("agenda survives a DayPlan rewrite", () => {
   it("starts empty on a day that was never planned", () => {
     expect(storedAgenda("2099-01-01")).toBeUndefined();
   });
+
+  it("keeps a field the rebuild logic does not know about", () => {
+    // The generic form of the original bug: the rebuild is a hand-maintained
+    // field list, so any field missing from it is dropped. Seeding a field the
+    // literal has never heard of and rebuilding must leave it untouched — the
+    // spread over `existing` is what makes that hold for fields added later.
+    const seasonId = useMonkStore.getState().activeSeason?.id;
+    useMonkStore.setState((state) => ({
+      dayPlans: state.dayPlans.map((day) =>
+        day.seasonId === seasonId && day.date === DATE
+          ? ({ ...day, futureField: "keep-me" } as typeof day)
+          : day
+      ),
+    }));
+
+    useMonkStore.getState().createOrUpdateDayPlan(DATE, {
+      dayType: "goal",
+      goalId: "goal-1",
+    });
+
+    const stored = useMonkStore
+      .getState()
+      .dayPlans.find((day) => day.seasonId === seasonId && day.date === DATE);
+    expect((stored as { futureField?: string } | undefined)?.futureField).toBe("keep-me");
+  });
 });

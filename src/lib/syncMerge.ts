@@ -49,37 +49,66 @@ function mergeScalar<T extends HasUpdatedAt | null>(local: T, remote: T): T {
   return isNewer(remote, local) ? remote : local;
 }
 
+type MergeStrategy =
+  | "array" // id-keyed array, unioned by id keeping the newer updatedAt
+  | "scalar" // object carrying updatedAt, newer wins
+  | "custom" // handled by bespoke code below (tombstones, reminders, purchases, reviews)
+  | "local"; // deliberately local-only, never taken from remote
+
+/**
+ * How the merge treats each key of MonkMVPState. Typed as a Record over
+ * `keyof MonkMVPState` on purpose: adding a field to the state without
+ * classifying it here is a compile error. Twice now a new field silently fell
+ * out of the merge (dayPlans tombstones, appSettings) and looked like data loss
+ * on the next pull, because the lists below were hand-maintained.
+ */
+const MERGE_STRATEGY = {
+  userProfile: "scalar",
+  appSettings: "scalar",
+  activeSeason: "scalar",
+  pastSeasons: "array",
+  goals: "array",
+  goalTracks: "array",
+  badHabits: "array",
+  practices: "array",
+  practiceLogs: "array",
+  projects: "array",
+  weeklyPlans: "array",
+  dayPlans: "array",
+  dayPlanDeletedAt: "custom",
+  focusSessions: "array",
+  journalEntries: "array",
+  relapseLogs: "array",
+  timelineDays: "array",
+  notificationReminders: "array",
+  onboarding: "scalar",
+  learningSessions: "array",
+  timelineEvents: "array",
+  notebookCategories: "array",
+  notebookEntries: "array",
+  notebookDeletedAt: "custom",
+  notebookCategoryDeletedAt: "custom",
+  journalPacks: "array",
+  journalPackSessions: "array",
+  purchasedPackIds: "custom",
+  energyLogs: "array",
+  weeklyReviews: "custom",
+  isPro: "local",
+  proTier: "local",
+  proExpiresAt: "local",
+  proPurchasedAt: "local",
+  releasedSeasonGoals: "array",
+} satisfies Record<keyof MonkMVPState, MergeStrategy>;
+
 /** Array fields that carry `id` + `updatedAt` — unioned by id, newer wins. */
-const ARRAY_KEYS: (keyof MonkMVPState)[] = [
-  "goals",
-  "goalTracks",
-  "badHabits",
-  "practices",
-  "practiceLogs",
-  "projects",
-  "weeklyPlans",
-  "dayPlans",
-  "focusSessions",
-  "learningSessions",
-  "journalEntries",
-  "relapseLogs",
-  "timelineDays",
-  "timelineEvents",
-  "notebookCategories",
-  "notebookEntries",
-  "journalPacks",
-  "journalPackSessions",
-  "energyLogs",
-  "releasedSeasonGoals",
-  "notificationReminders",
-] as const;
+const ARRAY_KEYS = (Object.keys(MERGE_STRATEGY) as (keyof MonkMVPState)[]).filter(
+  (k) => MERGE_STRATEGY[k] === "array",
+);
 
 /** Scalar/state fields — newer updatedAt wins. */
-const SCALAR_KEYS: (keyof MonkMVPState)[] = [
-  "activeSeason",
-  "userProfile",
-  "onboarding",
-] as const;
+const SCALAR_KEYS = (Object.keys(MERGE_STRATEGY) as (keyof MonkMVPState)[]).filter(
+  (k) => MERGE_STRATEGY[k] === "scalar",
+);
 
 /**
  * Merge remote into local without clobbering newer local data.

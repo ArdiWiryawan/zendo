@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { mergeRemoteState } from "./syncMerge";
-import type { MonkMVPState, Goal } from "../types/app";
+import type { MonkMVPState, Goal, Season } from "../types/app";
 import { createInitialState, createDefaultOnboarding } from "../constants/defaultData";
 
 function mkState(goals: Partial<Goal>[] = []): MonkMVPState {
@@ -183,6 +183,76 @@ describe("mergeRemoteState", () => {
       const merged = mergeRemoteState(local, remote);
       expect(merged.onboarding.selectedFocusGoalIds).toEqual(["magang"]);
       expect(merged.onboarding.updatedAt).toBe("2026-08-02T10:00:00Z");
+    });
+  });
+
+  describe("appSettings (scalar, was never merged)", () => {
+    it("takes a newer remote appSettings over local", () => {
+      const local = mkState();
+      local.appSettings = { ...local.appSettings, theme: "dark", updatedAt: "2026-08-01T10:00:00Z" };
+      const remote = mkState();
+      remote.appSettings = { ...remote.appSettings, theme: "kyoto_moss", updatedAt: "2026-08-02T10:00:00Z" };
+
+      const merged = mergeRemoteState(local, remote);
+      expect(merged.appSettings.theme).toBe("kyoto_moss");
+    });
+
+    it("does not clobber a newer local appSettings with an older remote", () => {
+      const local = mkState();
+      local.appSettings = { ...local.appSettings, theme: "dark", updatedAt: "2026-08-03T10:00:00Z" };
+      const remote = mkState();
+      remote.appSettings = { ...remote.appSettings, theme: "kyoto_moss", updatedAt: "2026-08-02T10:00:00Z" };
+
+      const merged = mergeRemoteState(local, remote);
+      expect(merged.appSettings.theme).toBe("dark");
+    });
+  });
+
+  describe("pastSeasons (array, was never merged)", () => {
+    function mkSeason(id: string, name: string, updatedAt: string): Season {
+      return {
+        id,
+        name,
+        startDate: "2026-01-01",
+        endDate: "2026-01-30",
+        durationDays: 30,
+        status: "archived",
+        mode: "planning",
+        goalIds: [],
+        badHabitIds: [],
+        createdAt: "2026-01-01T00:00:00Z",
+        updatedAt,
+      };
+    }
+
+    it("unions both sides by id, newer updatedAt wins, remote-only arrives", () => {
+      const local = mkState();
+      local.pastSeasons = [
+        mkSeason("s1", "Local S1", "2026-08-02T10:00:00Z"),
+        mkSeason("s2", "Local S2", "2026-08-01T10:00:00Z"), // older
+      ];
+      const remote = mkState();
+      remote.pastSeasons = [
+        mkSeason("s2", "Remote S2", "2026-08-02T10:00:00Z"), // newer
+        mkSeason("s3", "Remote S3", "2026-08-01T10:00:00Z"), // remote-only
+      ];
+
+      const merged = mergeRemoteState(local, remote);
+      expect(merged.pastSeasons).toHaveLength(3);
+      expect(merged.pastSeasons.find((s) => s.id === "s1")?.name).toBe("Local S1");
+      expect(merged.pastSeasons.find((s) => s.id === "s2")?.name).toBe("Remote S2");
+      expect(merged.pastSeasons.find((s) => s.id === "s3")?.name).toBe("Remote S3");
+    });
+
+    it("does not clobber a newer local season with an older remote one", () => {
+      const local = mkState();
+      local.pastSeasons = [mkSeason("s1", "Local S1", "2026-08-03T10:00:00Z")];
+      const remote = mkState();
+      remote.pastSeasons = [mkSeason("s1", "Remote S1", "2026-08-01T10:00:00Z")];
+
+      const merged = mergeRemoteState(local, remote);
+      expect(merged.pastSeasons).toHaveLength(1);
+      expect(merged.pastSeasons[0].name).toBe("Local S1");
     });
   });
 });
