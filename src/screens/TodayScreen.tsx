@@ -1553,15 +1553,30 @@ export function TodayScreen() {
                   <span className="flex items-center gap-2">
                     <Clock size={15} className="text-monk-accent" />
                     <span>{t("today.agendaHeading")}</span>
-                    {todayPlan.timeBlocks && todayPlan.timeBlocks.length > 0 ? (
+                    {(todayPlan.timeBlocks?.length ?? 0) + (todayPlan.agenda?.length ?? 0) > 0 ? (
                       <span className="rounded-full bg-monk-soft px-2 py-0.5 font-mono text-[11px] text-monk-accent">
-                        {todayPlan.timeBlocks.length}
+                        {(todayPlan.timeBlocks?.length ?? 0) + (todayPlan.agenda?.length ?? 0)}
                       </span>
                     ) : null}
                   </span>
                   <ChevronRight size={16} className="transition-transform duration-200 group-open:rotate-90 text-monk-muted" />
                 </summary>
                 <div className="space-y-3 border-t border-monk-border p-4 pt-3">
+                  {todayPlan.agenda && todayPlan.agenda.length > 0 ? (
+                    <div className="space-y-1.5">
+                      <p className="text-[11px] font-medium uppercase tracking-wide text-monk-muted">
+                        {t("today.agendaListLabel")}
+                      </p>
+                      <ul className="space-y-1.5">
+                        {todayPlan.agenda.map((item, index) => (
+                          <li key={index} className="flex items-start gap-2 text-sm text-monk-text">
+                            <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-monk-accent" aria-hidden="true" />
+                            <span>{item}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  ) : null}
                   <DayTimeBlockVisualizer
                     compact
                     date={today}

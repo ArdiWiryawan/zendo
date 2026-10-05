@@ -1442,6 +1442,7 @@ export const en = {
   "today.actionHeading": "Main Action",
   "today.highlightHeading": "Highlight",
   "today.agendaHeading": "Agenda",
+  "today.agendaListLabel": "Planned",
   "practice.heading": "Practices",
   "practice.subtitle": "What you keep showing up for",
   "practice.empty": "Practices are the small things you repeat on purpose — a 10-minute walk, five minutes of breathing. Add one and it will simply be here each day.",

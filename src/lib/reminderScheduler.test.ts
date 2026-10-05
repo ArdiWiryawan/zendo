@@ -177,6 +177,7 @@ describe("selectEnabledReminders", () => {
     projects: [],
     weeklyPlans: [],
     dayPlans: [],
+    dayPlanDeletedAt: {},
     focusSessions: [],
     journalEntries: [],
     relapseLogs: [],

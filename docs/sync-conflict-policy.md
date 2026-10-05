@@ -37,11 +37,22 @@ Fixes (with regression tests):
 spreading it must carry over *every* field the record owns. A field with no
 fallback is a field that gets deleted.
 
-### Known gap (not the cause of this incident)
+### Closed gap: cleared days no longer resurrect
 
-`mergeRemoteState` has no `dayPlans` tombstone, so a *cleared* day can be
-resurrected by a later pull from a device that still holds the row. This is the
-opposite direction (data returns, not vanishes) and is out of scope here.
+`mergeRemoteState` previously had no `dayPlans` tombstone, so a *cleared* day
+could be resurrected by a later pull from a device that still held the row —
+the opposite direction from the incident above (data returns, not vanishes).
+
+`dayPlanDeletedAt` now mirrors the proven `notebookDeletedAt` mechanism:
+`clearDayPlan` tombstones the removed plan's id, the merge unions tombstones
+from both sides and drops any plan whose id is tombstoned (delete always wins
+over a stale resurrect, regardless of `updatedAt`), and `hydrate` purges
+tombstones older than 30 days. The filter runs **after** `dedupeDayPlans` so a
+tombstoned id cannot slip back in through the composite-key union.
+
+The agenda is also now visible on Today: the "Agenda" section used to render
+only time blocks, so a day planned with agenda items and no time blocks looked
+empty. It lists both and badges the combined count.
 
 ## 1. Sources of truth
 

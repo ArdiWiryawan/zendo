@@ -711,6 +711,12 @@ export type MonkMVPState = {
   projects: Project[];
   weeklyPlans: WeeklyPlan[];
   dayPlans: DayPlan[];
+  // Tombstones for cleared day plans (id → deletion time). Same semantics as
+  // notebookDeletedAt: a CLEARED day must survive multi-device merge even when
+  // another device still holds the row and re-uploads it. Delete always wins:
+  // any plan whose id appears here is dropped on merge and hidden at render,
+  // regardless of updatedAt recency. Pruned on hydrate (>30d).
+  dayPlanDeletedAt: Record<string, ISODateString>;
   focusSessions: FocusSession[];
   journalEntries: JournalEntry[];
   relapseLogs: RelapseLog[];

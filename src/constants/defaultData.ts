@@ -111,6 +111,7 @@ export function createInitialState(): MonkMVPState {
     projects: [],
     weeklyPlans: [],
     dayPlans: [],
+    dayPlanDeletedAt: {},
     focusSessions: [],
     journalEntries: [],
     relapseLogs: [],

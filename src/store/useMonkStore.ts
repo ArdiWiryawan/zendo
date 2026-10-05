@@ -340,6 +340,7 @@ function snapshot(state: MonkStore | MonkMVPState): MonkMVPState {  return {
     projects: state.projects ?? [],
     weeklyPlans: state.weeklyPlans,
     dayPlans: state.dayPlans,
+    dayPlanDeletedAt: state.dayPlanDeletedAt ?? {},
     focusSessions: state.focusSessions,
     journalEntries: state.journalEntries,
     relapseLogs: state.relapseLogs,
@@ -389,6 +390,14 @@ function pruneTombstonedEntries(entries: NotebookEntry[], deletedAt: Record<stri
   const tombstoned = new Set(Object.keys(deletedAt));
   if (tombstoned.size === 0) return entries;
   return entries.filter((e) => !tombstoned.has(e.id));
+}
+
+// DayPlan equivalent of pruneTombstonedEntries — a cleared day (id tombstoned)
+// must not be resurrected by a later hydrate/merge, so drop it unconditionally.
+function pruneTombstonedDayPlans(dayPlans: DayPlan[], deletedAt: Record<string, string>): DayPlan[] {
+  const tombstoned = new Set(Object.keys(deletedAt));
+  if (tombstoned.size === 0) return dayPlans;
+  return dayPlans.filter((p) => !tombstoned.has(p.id));
 }
 
 // Idempotent — a season is archived into pastSeasons at most once (by id), so
@@ -774,6 +783,11 @@ export const useMonkStore = create<MonkStore>()(
 
       // 2. Ensure Day Plans exist and are marked completed for dates with focus work
       let dayPlans = [...(stored.dayPlans || [])];
+      // DayPlan tombstones — same purge/prune contract as notebook entries: drop
+      // tombstones older than 30 days, and drop any plan they shadow (a cleared
+      // day must not come back on reload).
+      const dayPlanDeletedAt = purgeTombstones(stored.dayPlanDeletedAt ?? {});
+      dayPlans = pruneTombstonedDayPlans(dayPlans, dayPlanDeletedAt);
       const activeSeasonId = stored.activeSeason?.id;
 
       focusSessions.forEach((s) => {
@@ -860,6 +874,7 @@ export const useMonkStore = create<MonkStore>()(
         ...fresh,
         ...stored,
         dayPlans,
+        dayPlanDeletedAt,
         weeklyPlans,
         pastSeasons,
         journalPacks: fresh.journalPacks,
@@ -1451,6 +1466,9 @@ export const useMonkStore = create<MonkStore>()(
     let next: MonkMVPState = {
       ...snapshot(state),
       dayPlans,
+      // Tombstone the cleared plan so a device that still holds the row cannot
+      // resurrect it on a later merge (delete always wins).
+      dayPlanDeletedAt: { ...(state.dayPlanDeletedAt ?? {}), [existing.id]: nowIso() },
       focusSessions,
       learningSessions
     };
@@ -3212,6 +3230,7 @@ export const useMonkStore = create<MonkStore>()(
       projects: data.projects !== undefined ? data.projects : state.projects,
       weeklyPlans: data.weeklyPlans !== undefined ? data.weeklyPlans : state.weeklyPlans,
       dayPlans: data.dayPlans !== undefined ? data.dayPlans : state.dayPlans,
+      dayPlanDeletedAt: data.dayPlanDeletedAt !== undefined ? data.dayPlanDeletedAt : state.dayPlanDeletedAt,
       focusSessions: data.focusSessions !== undefined ? data.focusSessions : state.focusSessions,
       journalEntries: data.journalEntries !== undefined ? data.journalEntries : state.journalEntries,
       relapseLogs: data.relapseLogs !== undefined ? data.relapseLogs : state.relapseLogs,
@@ -3250,6 +3269,7 @@ export const useMonkStore = create<MonkStore>()(
         projects: state.projects,
         weeklyPlans: state.weeklyPlans,
         dayPlans: state.dayPlans,
+        dayPlanDeletedAt: state.dayPlanDeletedAt ?? {},
         focusSessions: state.focusSessions,
         journalEntries: state.journalEntries,
         relapseLogs: state.relapseLogs,

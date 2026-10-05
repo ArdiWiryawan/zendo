@@ -136,6 +136,20 @@ export function mergeRemoteState(local: MonkMVPState, remote: Partial<MonkMVPSta
     out.notebookEntries = (out.notebookEntries ?? []).filter((e) => !tombstoned.has(e.id));
   }
 
+  // dayPlanDeletedAt is the same monotonic tombstone map for cleared day plans
+  // (id → deletion ISO): a CLEARED day on ANY device must survive merges on
+  // every other device, so union both sides. This runs AFTER the dedupeDayPlans
+  // above — otherwise a tombstoned id could slip back in via the composite-key
+  // union. Delete always wins over a stale resurrect.
+  const ldt = local.dayPlanDeletedAt ?? {};
+  const rdt = remote.dayPlanDeletedAt;
+  if (rdt && typeof rdt === "object") out.dayPlanDeletedAt = { ...ldt, ...rdt };
+  else if (Object.keys(ldt).length > 0) out.dayPlanDeletedAt = { ...ldt };
+  const dayTombstoned = new Set(Object.keys(out.dayPlanDeletedAt ?? {}));
+  if (dayTombstoned.size > 0) {
+    out.dayPlans = (out.dayPlans ?? []).filter((p) => !dayTombstoned.has(p.id));
+  }
+
   // notebookCategoryDeletedAt is a monotonic tombstone map for deleted categories:
   const lct = local.notebookCategoryDeletedAt ?? {};
   const rct = remote.notebookCategoryDeletedAt;

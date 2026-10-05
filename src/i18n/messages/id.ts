@@ -1445,6 +1445,7 @@ export const id: Record<MessageKey, string> = {
   "today.actionHeading": "Main Action",
   "today.highlightHeading": "Highlight",
   "today.agendaHeading": "Agenda",
+  "today.agendaListLabel": "Rencana",
   "practice.heading": "Latihan",
   "practice.subtitle": "Yang terus kamu jalani",
   "practice.empty": "Latihan adalah hal-hal kecil yang kamu ulangi dengan sengaja — jalan 10 menit, tarik napas 5 menit. Tambahkan satu, dan ia akan ada di sini setiap hari.",
