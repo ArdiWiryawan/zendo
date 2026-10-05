@@ -3,6 +3,46 @@
 Status: current behavior documented + sprint-1 product decision.
 Sources: `src/main.tsx` (`initSync`), `src/lib/supabase.ts`, `src/lib/syncStatus.ts`, `src/lib/storage.ts`. `src/lib/firebaseSync.ts` is a REMOVED stub.
 
+## 0. Incident: the agenda that vanished (2026-10-05)
+
+Reported as "I planned my whole agenda and it disappeared, I had to start over".
+
+Root cause was **local, not sync**: `createOrUpdateDayPlan`
+(`src/store/useMonkStore.ts`) rebuilds the `DayPlan` object from a fixed field
+list. Every field carried an `existing?.` fallback except `agenda`, so any later
+call for the same date — the rest-day toggle, a Plan B switch, a status write,
+a journal entry, a weekly review — silently replaced the row without its agenda.
+The day still read as "planned"; only the agenda was gone. Sync then propagated
+the agenda-less row to every other device via LWW, which is why it looked like
+cloud loss.
+
+Fixes (with regression tests):
+
+- `createOrUpdateDayPlan` now carries `agenda` over like every other field
+  (`useMonkStore.agenda.test.ts`).
+- The "Change theme" undo no longer restores a 5-field subset — it carries
+  `agenda`, `highlight`, `timeBlocks`, `planningCompleted` too, so an undo of a
+  clear is not a partial re-create (`TodayScreen.tsx`).
+- Clearing every agenda row now persists the empty list; it previously skipped
+  the write, so the erased plan reappeared on reload
+  (`MorningPlanningModal.tsx`).
+- Committing the planning sheet with no active season now refuses with a toast
+  instead of showing success while every store write early-returned.
+- An unparseable `monk_mode_pwa_state_v1` is quarantined under
+  `monk_mode_pwa_state_v1__corrupt_backup` before `loadState` returns null.
+  Previously the store kept its initial state and the next write persisted that
+  over the user's data — a parse hiccup became permanent loss (`storage.ts`).
+
+**Invariant to preserve:** any store action that rebuilds a record rather than
+spreading it must carry over *every* field the record owns. A field with no
+fallback is a field that gets deleted.
+
+### Known gap (not the cause of this incident)
+
+`mergeRemoteState` has no `dayPlans` tombstone, so a *cleared* day can be
+resurrected by a later pull from a device that still holds the row. This is the
+opposite direction (data returns, not vanishes) and is out of scope here.
+
 ## 1. Sources of truth
 
 | Layer | Store | Shape |

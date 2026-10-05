@@ -1521,6 +1521,7 @@ export const id: Record<MessageKey, string> = {
   "planning.catPersonal": "Pribadi",
   "planning.exportIcs": "Unduh Kalender .ICS",
   "planning.downloadedIcs": "File kalender (.ics) berhasil diunduh",
+  "planning.noSeason": "Belum ada season aktif — selesaikan setup dulu sebelum planning harian.",
   "planning.commitButton": "Selesai Planning & Buka Fokus",
   "planning.totalScheduled": "{hours} jam terencana dalam {count} blok",
   "planning.strictGatedTitle": "Wajib Planning Dulu",

@@ -103,6 +103,21 @@ describe("storage", () => {
     expect(loadState()).toBeNull();
   });
 
+  it("keeps the unparseable raw state under a quarantine key", () => {
+    // A null from loadState makes `hydrate` no-op, so the store keeps its
+    // initial state and the next write persists that over the user's data. The
+    // raw string must survive somewhere recoverable instead of vanishing.
+    localStorage.setItem(STORAGE_KEY, "{not-json");
+    loadState();
+    expect(localStorage.getItem(`${STORAGE_KEY}__corrupt_backup`)).toBe("{not-json");
+  });
+
+  it("does not quarantine when the state parses", () => {
+    saveState(baseState());
+    loadState();
+    expect(localStorage.getItem(`${STORAGE_KEY}__corrupt_backup`)).toBeNull();
+  });
+
   it("saveState + loadState round-trips main state", () => {
     const state = baseState({ goals: [{ id: "g1" } as MonkMVPState["goals"][number]] });
     saveState(state);

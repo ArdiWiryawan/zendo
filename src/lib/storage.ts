@@ -91,6 +91,16 @@ export function loadState(): MonkMVPState | null {
       state = JSON.parse(raw) as MonkMVPState;
     } catch (error) {
       console.error("Failed to parse Zendo state", error);
+      // Quarantine instead of returning null silently. `hydrate` no-ops on a
+      // null, so the store keeps `createInitialState()` and the next write
+      // persists that empty state over the user's data — a parse hiccup became
+      // permanent, unrecoverable loss. Keeping the raw string means the app can
+      // still be recovered by hand.
+      try {
+        localStorage.setItem(`${STORAGE_KEY}__corrupt_backup`, raw);
+      } catch {
+        /* quota — nothing more we can do */
+      }
     }
   }
 

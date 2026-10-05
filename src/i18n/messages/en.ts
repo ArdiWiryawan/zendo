@@ -1518,6 +1518,7 @@ export const en = {
   "planning.catPersonal": "Personal",
   "planning.exportIcs": "Export .ICS Calendar",
   "planning.downloadedIcs": "Calendar file (.ics) downloaded",
+  "planning.noSeason": "No active season yet — finish setup before planning your day.",
   "planning.commitButton": "Commit Plan & Unlock Focus",
   "planning.totalScheduled": "{hours}h scheduled across {count} blocks",
   "planning.strictGatedTitle": "Morning Planning Required",

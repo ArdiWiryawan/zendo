@@ -101,6 +101,7 @@ type PickTodayInput = {
   energyLevel?: EnergyLevel;
   mainAction?: string;
   highlight?: string;
+  agenda?: string[];
   status?: DayStatus;
   planningCompleted?: boolean;
   timeBlocks?: TimeBlock[];
@@ -1356,6 +1357,12 @@ export const useMonkStore = create<MonkStore>()(
       goalId: input.dayType === "goal" ? input.goalId : undefined,
       mainAction: input.dayType === "goal" ? (input.mainAction !== undefined ? input.mainAction : (existing?.mainAction ?? goal?.keystoneAction)) : undefined,
       highlight: input.highlight !== undefined ? input.highlight : existing?.highlight,
+      // `agenda` was the one planning field with no `existing?.` fallback here,
+      // so every rebuild of this literal — rest-day toggle, Plan B switch,
+      // journal, weekly review — silently dropped the morning plan and the user
+      // had to redo it. Carried over like the fields above; only an explicit
+      // `agenda` replaces it.
+      agenda: input.agenda !== undefined ? input.agenda : (existing?.agenda ?? []),
       energyLevel: input.energyLevel ?? existing?.energyLevel,
       status: input.status ?? (existing?.status ?? (input.dayType === "rest" ? "rest" : "active")),
       planningCompleted: input.planningCompleted !== undefined ? input.planningCompleted : (existing?.planningCompleted ?? false),

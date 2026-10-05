@@ -340,13 +340,22 @@ export function MorningPlanningModal({
   };
 
   const handleCommitPlan = () => {
+    // Every store write below early-returns without an active season, so
+    // committing would close the sheet with a success toast while saving
+    // nothing. Refuse loudly instead of losing the plan on the way out.
+    if (!store.activeSeason) {
+      toast.show(t("planning.noSeason"));
+      return;
+    }
     hapticPress("heavy");
     playCompletionChime();
     const finalHighlight = dailyHighlight.trim();
     store.saveDayTimeBlocks(activeDate, timeBlocks, true, finalHighlight);
-    if (agenda.length > 0) {
-      store.setDayAgenda(activeDate, agenda);
-    }
+    // Unconditional: skipping the write when the list is empty meant clearing
+    // every agenda row committed the day but left yesterday's agenda in storage,
+    // so the plan the user just erased reappeared on reload. `saveDayTimeBlocks`
+    // above has already created the row this writes into.
+    store.setDayAgenda(activeDate, agenda);
     if (finalHighlight) {
       store.setTodayHighlight(finalHighlight);
     }

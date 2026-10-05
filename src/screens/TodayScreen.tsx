@@ -41,7 +41,7 @@ import { MorningPlanningModal } from "../components/MorningPlanningModal";
 import { DayTimeBlockVisualizer } from "../components/DayTimeBlockVisualizer";
 import { ZendoProModal } from "../components/ZendoProModal";
 import { FeelGoodRestCanvas } from "../components/FeelGoodRestCanvas";
-import type { EnergyLevel } from "../types/app";
+import type { EnergyLevel, TimeBlock } from "../types/app";
 
 function CloseDayCard({ onSkip }: { onSkip?: () => void }) {
   const navigate = useNavigate();
@@ -397,6 +397,14 @@ export function TodayScreen() {
     mainAction?: string;
     energyLevel?: EnergyLevel;
     status?: "active" | "completed" | "planned" | "missed";
+    // `clearDayPlan` drops the whole record, so undo must carry every field the
+    // user can lose — not just the five the old snapshot kept. Restoring a
+    // subset silently re-created the day with an empty agenda and no time
+    // blocks, which read as "my plan is gone, start over".
+    highlight?: string;
+    agenda?: string[];
+    timeBlocks?: TimeBlock[];
+    planningCompleted?: boolean;
   }>(null);
   const [blueprintGoalId, setBlueprintGoalId] = useState<string | null>(null);
   const [clarifyBannerDismissed, setClarifyBannerDismissed] = useState(false);
@@ -1201,6 +1209,10 @@ export function TodayScreen() {
                         mainAction: todayPlan.mainAction,
                         energyLevel: todayPlan.energyLevel,
                         status: restoreStatus,
+                        highlight: todayPlan.highlight,
+                        agenda: todayPlan.agenda,
+                        timeBlocks: todayPlan.timeBlocks,
+                        planningCompleted: todayPlan.planningCompleted,
                       });
                       store.clearDayPlan(today);
                     }}
@@ -1577,6 +1589,10 @@ export function TodayScreen() {
                   mainAction: undoPlan.mainAction,
                   energyLevel: undoPlan.energyLevel,
                   status: undoPlan.status,
+                  highlight: undoPlan.highlight,
+                  agenda: undoPlan.agenda,
+                  timeBlocks: undoPlan.timeBlocks,
+                  planningCompleted: undoPlan.planningCompleted,
                 });
                 setUndoPlan(null);
               }}
