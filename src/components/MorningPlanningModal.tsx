@@ -16,6 +16,7 @@ import {
   Briefcase,
   User,
   Download,
+  Upload,
   Tag,
   RotateCw
 } from "lucide-react";
@@ -26,6 +27,7 @@ import { getTodayDateString } from "../lib/date";
 import { hapticPress } from "../lib/haptics";
 import { playCompletionChime } from "../lib/audio";
 import { downloadIcsFile } from "../lib/ical";
+import { parseIcsForDate, inferCategory } from "../lib/icsParser";
 import { useCalmToast, PrimaryButton, SecondaryButton, useModalA11y } from "./ui";
 import type { TimeBlock, TimeBlockCategory } from "../types/app";
 
@@ -337,6 +339,103 @@ export function MorningPlanningModal({
     hapticPress("medium");
     downloadIcsFile(activeDate, timeBlocks, activeSeason?.name || "Zendo");
     toast.show(t("planning.downloadedIcs"));
+  };
+
+  // Commit the parsed calendar ONCE, from the reader callback. `setAgenda` /
+  // `setTimeBlocks` updater bodies must stay pure — React runs them twice under
+  // StrictMode, so a toast fired from inside one would show twice.
+  const applyParsedCalendar = (content: string) => {
+    const parsed = parseIcsForDate(content, activeDate);
+    const normalized = (s: string) => s.trim().toLowerCase();
+
+    // Append, never replace: the user may have typed plans before importing.
+    // A block is a duplicate only when both its start time and its title match.
+    const existingKeys = new Set(
+      timeBlocks.map((b) => `${b.startTime}|${normalized(b.title)}`)
+    );
+    const incoming: TimeBlock[] = [];
+    for (const item of parsed.items) {
+      const title = item.title.trim();
+      if (!title) continue;
+      const key = `${item.startTime}|${normalized(title)}`;
+      if (existingKeys.has(key)) continue;
+      existingKeys.add(key);
+      incoming.push({
+        id: `tb-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+        title,
+        startTime: item.startTime,
+        endTime: item.endTime,
+        category: inferCategory(item.title),
+        completed: false
+      });
+    }
+
+    const existingAgenda = new Set(agenda.map(normalized));
+    const newAgenda = agenda.slice();
+    for (const title of parsed.allDayTitles) {
+      const value = title.trim();
+      if (!value || existingAgenda.has(normalized(value))) continue;
+      if (newAgenda.length >= AGENDA_MAX) continue;
+      existingAgenda.add(normalized(value));
+      newAgenda.push(value);
+    }
+    const dropped = parsed.items.length + parsed.allDayTitles.length === 0 &&
+      parsed.totalEvents === 0;
+
+    if (dropped) {
+      // Nothing VEVENT-shaped in the file at all — unreadable, not a wrong day.
+      toast.show(t("planning.importIcsFailed"));
+      return;
+    }
+
+    const itemsForDay = parsed.items.length + parsed.allDayTitles.length;
+    if (itemsForDay === 0) {
+      // File parses, but holds no events for the modal's active date.
+      toast.show(t("planning.importIcsNoEvents"));
+      return;
+    }
+
+    if (incoming.length > 0) {
+      setTimeBlocks(
+        [...timeBlocks, ...incoming].sort((a, b) =>
+          a.startTime.localeCompare(b.startTime)
+        )
+      );
+    }
+    if (newAgenda.length !== agenda.length) {
+      setAgenda(newAgenda);
+    }
+
+    const capped = agenda.length + parsed.allDayTitles.length > AGENDA_MAX;
+    if (capped) {
+      toast.show(
+        t("planning.importIcsAgendaCapped", {
+          blocks: incoming.length,
+          max: AGENDA_MAX
+        })
+      );
+      return;
+    }
+    toast.show(
+      t("planning.importedIcs", {
+        blocks: incoming.length,
+        agenda: newAgenda.length - agenda.length
+      })
+    );
+  };
+
+  const handleImportIcsFile = (file: File) => {
+    hapticPress("medium");
+    const reader = new FileReader();
+    reader.onload = () => {
+      try {
+        applyParsedCalendar(String(reader.result ?? ""));
+      } catch {
+        toast.show(t("planning.importIcsFailed"));
+      }
+    };
+    reader.onerror = () => toast.show(t("planning.importIcsFailed"));
+    reader.readAsText(file);
   };
 
   const handleCommitPlan = () => {
@@ -826,6 +925,22 @@ export function MorningPlanningModal({
               <Download size={14} />
               <span>{t("planning.exportIcs")}</span>
             </SecondaryButton>
+            <label className="min-h-11 w-full cursor-pointer rounded-monk border border-monk-border bg-monk-soft px-3 py-2 text-xs font-semibold text-monk-text shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] transition duration-150 ease-monk inline-flex items-center justify-center gap-1.5 sm:w-auto hover:border-monk-border-strong hover:bg-monk-raised active:scale-[0.98] focus-within:outline-none focus-within:ring-2 focus-within:ring-monk-accent focus-within:ring-offset-2 focus-within:ring-offset-monk-bg">
+              <Upload size={14} />
+              <span>{t("planning.importIcs")}</span>
+              <input
+                type="file"
+                accept=".ics,.ical,text/calendar"
+                className="hidden"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  // Clear first: without this, re-picking the same file fires no
+                  // change event and the import silently does nothing.
+                  e.target.value = "";
+                  if (file) handleImportIcsFile(file);
+                }}
+              />
+            </label>
           </div>
         </motion.div>
       </div>
