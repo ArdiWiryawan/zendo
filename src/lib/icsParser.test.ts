@@ -452,18 +452,43 @@ describe("inferCategory", () => {
     expect(inferCategory("Email triage")).toBe("shallow");
   });
 
-  it("uses CATEGORIES as a fallback signal", () => {
+  it("uses CATEGORIES as an explicit declaration, outranking the title", () => {
+    // The file's own CATEGORIES is the author saying what the event is, so it
+    // beats a title guess — including a title that would match elsewhere.
     expect(inferCategory("Block 1", "REST")).toBe("rest");
+    expect(inferCategory("Deep work sprint", "MEETING")).toBe("shallow");
   });
 
-  it("defaults to deep_work", () => {
-    expect(inferCategory("Refactor auth module")).toBe("deep_work");
-    expect(inferCategory("")).toBe("deep_work");
-    expect(inferCategory(undefined as unknown as string)).toBe("deep_work");
+  it("does NOT default to deep_work", () => {
+    // This was the bug: deep_work was the fallback, so every unrecognized
+    // event — errands, appointments, admin — imported as deep work and a whole
+    // calendar read as focus time. An unknown event is `personal`, and deep
+    // work has to be named.
+    expect(inferCategory("Dokter gigi")).toBe("personal");
+    expect(inferCategory("Antar anak ke sekolah")).toBe("personal");
+    expect(inferCategory("Renovasi kamar")).toBe("personal");
+    expect(inferCategory("Olahraga sore")).toBe("personal");
+    expect(inferCategory("")).toBe("personal");
+    expect(inferCategory(undefined as unknown as string)).toBe("personal");
+  });
+
+  it("only calls it deep_work when the title says so", () => {
+    expect(inferCategory("Deep work: refactor the sync merge")).toBe("deep_work");
+    expect(inferCategory("Focus block")).toBe("deep_work");
+    expect(inferCategory("Ngoding fitur login")).toBe("deep_work");
+  });
+
+  it("routes the bulk of a real calendar to shallow", () => {
+    // Meetings, admin and coordination are what most events actually are.
+    expect(inferCategory("Standup pagi")).toBe("shallow");
+    expect(inferCategory("Review desain onboarding")).toBe("shallow");
+    expect(inferCategory("Ngobrol sama klien")).toBe("shallow");
+    expect(inferCategory("Cek invoice dan pajak")).toBe("shallow");
+    expect(inferCategory("Briefing vendor")).toBe("shallow");
   });
 
   it("first keyword group wins when several could match", () => {
-    // "break" (rest) beats nothing else here, but "lunch meeting" must be rest.
+    // "lunch" (rest) is checked before the shallow words in the title.
     expect(inferCategory("Lunch meeting with client")).toBe("rest");
     const expected: TimeBlockCategory = "rest";
     expect(inferCategory("Lunch meeting with client")).toBe(expected);
@@ -477,8 +502,8 @@ describe("inferCategory", () => {
   it("matches whole words, not substrings", () => {
     // Substring matching made "restaurant" hit "rest" and an imported dinner
     // booking landed as rest work; "breakout" hit "break" the same way.
-    expect(inferCategory("Restaurant reservation")).toBe("deep_work");
-    expect(inferCategory("Breakout room setup")).toBe("deep_work");
+    expect(inferCategory("Restaurant reservation")).toBe("personal");
+    expect(inferCategory("Breakout room setup")).toBe("personal");
     // The real keyword still matches as a standalone word.
     expect(inferCategory("Lunch")).toBe("rest");
   });

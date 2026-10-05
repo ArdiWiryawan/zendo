@@ -420,11 +420,13 @@ const CATEGORY_KEYWORDS: Array<{ category: TimeBlockCategory; keywords: string[]
     keywords: [
       "rest",
       "sleep",
+      "nap",
       "lunch",
       "dinner",
       "breakfast",
       "break",
-      "nap",
+      "coffee",
+      "kopi",
       "istirahat",
       "makan",
       "tidur",
@@ -438,14 +440,19 @@ const CATEGORY_KEYWORDS: Array<{ category: TimeBlockCategory; keywords: string[]
       "study",
       "learn",
       "course",
-      "read",
-      "reading",
       "lecture",
       "class",
+      "read",
+      "reading",
       "belajar",
       "kuliah",
       "kelas",
-      "baca"
+      "baca",
+      "kursus",
+      "tutorial",
+      "training",
+      "workshop",
+      "webinar"
     ]
   },
   {
@@ -454,21 +461,79 @@ const CATEGORY_KEYWORDS: Array<{ category: TimeBlockCategory; keywords: string[]
     // or "Deep work: refactor the sync merge" imports as admin off the word
     // "sync". It stays after learning so "Reading: Deep Work" (a book title)
     // still reads as learning, and after rest so "Lunch break" stays rest.
+    //
+    // The list is deliberately narrow. This group is the ONLY way an event is
+    // called deep work — see the fallback at the bottom of `inferCategory`.
     category: "deep_work",
-    keywords: ["deep work", "deepwork", "focus", "fokus"]
+    keywords: [
+      "deep work",
+      "deepwork",
+      "focus",
+      "fokus",
+      "coding",
+      "ngoding",
+      "refactor",
+      "implement",
+      "debug"
+    ]
   },
   {
+    // Meetings, admin and coordination — the bulk of a real calendar.
     category: "shallow",
-    keywords: ["meeting", "email", "admin", "call", "sync", "chat", "standup", "rapat"]
+    keywords: [
+      "meeting",
+      "meet",
+      "standup",
+      "sync",
+      "call",
+      "chat",
+      "email",
+      "admin",
+      "rapat",
+      "diskusi",
+      "ngobrol",
+      "review",
+      "briefing",
+      "interview",
+      "wawancara",
+      "presentasi",
+      "demo",
+      "koordinasi",
+      "laporan",
+      "update",
+      "follow up",
+      "followup",
+      "invoice",
+      "pajak",
+      "bayar",
+      "tagihan",
+      "cek"
+    ]
   }
 ];
 
 /**
  * Map a free-text event title + optional CATEGORIES to a TimeBlockCategory.
- * Order matters: the first group with a keyword hit wins, default deep_work.
+ *
+ * Order matters: the first group with a keyword hit wins. When nothing matches
+ * the answer is `personal`, NOT `deep_work`: an unrecognized calendar entry
+ * ("Dokter gigi", "Antar anak ke sekolah") is not evidence of depth, and
+ * defaulting to deep work labeled whole imported calendars as deep work — a
+ * day of errands read as a day of focus. Deep work must be named to be
+ * claimed. The user can still re-categorize any block in the planning sheet.
  */
 export function inferCategory(title: string, icsCategories?: string): TimeBlockCategory {
-  const haystack = `${title || ""} ${icsCategories || ""}`.toLowerCase();
+  // The file's own CATEGORIES property is an explicit statement by whoever
+  // wrote the event: if it names a category Zendo has, believe it. Checked
+  // first, because it is a declaration rather than a title guess.
+  const declared = (icsCategories || "").toLowerCase();
+  if (declared) {
+    for (const group of CATEGORY_KEYWORDS) {
+      if (group.keywords.some((keyword) => declared.includes(keyword))) return group.category;
+    }
+  }
+
+  const haystack = `${title || ""}`.toLowerCase();
 
   // Match whole words, not substrings: `includes` made "breakfast" hit the
   // "break" keyword and, worse, "restaurant" hit "rest" — an imported lunch
@@ -480,5 +545,5 @@ export function inferCategory(title: string, icsCategories?: string): TimeBlockC
     if (group.keywords.some(hasWord)) return group.category;
   }
 
-  return "deep_work";
+  return "personal";
 }
