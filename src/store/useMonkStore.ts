@@ -16,7 +16,6 @@ import {
   getTotalPlannedMinutes,
   summarizeFocusSession
 } from "../constants/focusPresets";
-import { resolveDailyActivityStatus } from "../constants/dailyActivityStatus";
 import {
   formatFocusSessionTimelineDescription,
   normalizeFocusSessionRecord,
@@ -33,6 +32,7 @@ import {
   isSeasonEnded,
   nowIso
 } from "../lib/date";
+import { resolveDayOutcome } from "../lib/dailyActivity";
 import { createId } from "../lib/ids";
 import { dedupeDayPlans, isNewerDayPlan } from "../lib/dayPlans";
 import { MAX_ACTIVE_GOAL_TRACKS, MAX_SEASON_GOALS, validateWeeklyAllocation } from "../lib/validation";
@@ -461,18 +461,12 @@ function getLearningSessionsForDay(state: MonkMVPState, dayPlan: DayPlan) {
 }
 
 function deriveTimelineStatus(state: MonkMVPState, dayPlan: DayPlan): TimelineStatus {
-  const relapses = state.relapseLogs.filter((log) => log.dayPlanId === dayPlan.id);
-  if (relapses.length > 0) return "relapse";
-  if (dayPlan.dayType === "rest" || dayPlan.status === "rest") return "rest";
-  if (dayPlan.status === "completed") return "completed";
+  const relapseCount = state.relapseLogs.filter((log) => log.dayPlanId === dayPlan.id).length;
   const focusSessions = getFocusSessionsForDay(state, dayPlan).filter(
     (session) => resolveFocusSessionStatus(session) === "completed" || session.status === "ended_early"
   );
   const learningSessions = getLearningSessionsForDay(state, dayPlan);
-  const status = resolveDailyActivityStatus({ focusSessions, learningSessions });
-  if (status !== "not_started") return status;
-  if (dayPlan.status === "missed") return "missed";
-  return "not_started";
+  return resolveDayOutcome({ plan: dayPlan, focusSessions, learningSessions, relapseCount });
 }
 
 function updatedTimelineDays(state: MonkMVPState, dayPlan: DayPlan): TimelineDay[] {
@@ -700,11 +694,46 @@ export const useMonkStore = create<MonkStore>()(
           const isPastDay = sessionDate && sessionDate !== todayDate;
           const isStale = (Date.now() - new Date(norm.updatedAt || norm.startTime).getTime()) > 3 * 60 * 60 * 1000;
           if (isPastDay || isStale) {
+            // The user's focus time was real; a stale session must not silently discard it.
+            // Prefer the last tick value the ticker persisted (it survives reload and a paused
+            // session, where wall-clock math would count the pause), then fall back to the wall
+            // clock. Clamp to the planned duration so a session left running for days cannot
+            // invent hours — same clamp idea as completeFocusSession.
+            const endedAt = norm.updatedAt || norm.startTime;
+            const wallClockSeconds = Math.floor(
+              (Date.parse(endedAt) - Date.parse(norm.startTime)) / 1000
+            );
+            const rawElapsedSeconds =
+              Number.isFinite(norm.elapsedSeconds) && (norm.elapsedSeconds as number) > 0
+                ? (norm.elapsedSeconds as number)
+                : Number.isFinite(wallClockSeconds) && wallClockSeconds > 0
+                  ? wallClockSeconds
+                  : 0;
+            const plannedSeconds = norm.plannedDurationMinutes
+              ? norm.plannedDurationMinutes * 60
+              : rawElapsedSeconds;
+            const elapsedSeconds = Math.min(plannedSeconds, rawElapsedSeconds);
+            // Mirror abandonFocusSession's field writes so downstream aggregation reads them the same way.
+            const summary = summarizeFocusSession(norm, endedAt, "ended_early", elapsedSeconds);
             return {
               ...norm,
               status: "ended_early" as const,
-              endedAt: norm.updatedAt || norm.startTime,
-              endTime: norm.updatedAt || norm.startTime
+              endedAt,
+              endTime: endedAt,
+              actualDurationSeconds: summary.completedDurationMinutes * 60,
+              totalDurationSeconds: summary.totalDurationSeconds,
+              focusDurationSeconds: summary.focusDurationSeconds,
+              breakDurationSeconds: summary.breakDurationSeconds,
+              segmentsCompleted: summary.segmentsCompleted,
+              durationMinutes: summary.focusDurationMinutes,
+              completedDurationMinutes: summary.completedDurationMinutes,
+              focusDurationMinutes: summary.focusDurationMinutes,
+              breakDurationMinutes: summary.breakDurationMinutes,
+              completedFocusBlocks: summary.completedFocusBlocks,
+              completedBreakBlocks: summary.completedBreakBlocks,
+              totalFocusBlocks: summary.totalFocusBlocks,
+              totalBreakBlocks: summary.totalBreakBlocks,
+              phases: summary.phases
             };
           }
         }
@@ -1867,7 +1896,14 @@ export const useMonkStore = create<MonkStore>()(
       currentPhaseIndex: 0,
       phases
     };
-    const dayPlan = { ...plan, status: "active" as const, updatedAt: timestamp };
+    // Starting real focus work promotes a day scheduled as Rest: the plan must
+    // stop claiming rest for the day the evidence already contradicts.
+    const dayPlan = {
+      ...plan,
+      dayType: (plan.dayType === "rest" ? "goal" : plan.dayType) as DayPlan["dayType"],
+      status: "active" as const,
+      updatedAt: timestamp
+    };
     set({
       focusSessions: [...state.focusSessions, session],
       dayPlans: allDayPlans.map((day) => (day.id === dayPlan.id ? dayPlan : day))
@@ -1882,7 +1918,11 @@ export const useMonkStore = create<MonkStore>()(
   tickFocusSession: (sessionId, elapsedSeconds) => {
     const current = snapshot(get());
     const session = current.focusSessions.find((s) => s.id === sessionId);
-    if (!session) return;
+    // Guard: a tick can land after the session already ended. `elapsedSeconds` here comes
+    // from the ticker, not from the completed session's frozen summary, so a post-end tick
+    // would overwrite the recorded duration and re-derive the timeline from a bogus value.
+    // Mirrors the guards in resetFocusSession / abandonFocusSession.
+    if (!session || (session.status !== "running" && session.status !== "paused")) return;
     const dayPlan = current.dayPlans.find((d) => d.id === session.dayPlanId);
     if (!dayPlan) return;
     set({
@@ -2117,9 +2157,14 @@ export const useMonkStore = create<MonkStore>()(
       focusSessions
     };
     const timelineStatus = deriveTimelineStatus(provisionalBase, plan);
+    // Never demote a completed day: a later partial session must not erase the
+    // completion that already happened.
     const dayPlan = {
       ...plan,
-      status: timelineStatus === "completed" ? ("completed" as const) : ("active" as const),
+      status:
+        plan.status === "completed" || timelineStatus === "completed"
+          ? ("completed" as const)
+          : ("active" as const),
       updatedAt: nowIso()
     };
     const base: MonkMVPState = {

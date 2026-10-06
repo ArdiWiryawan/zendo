@@ -1,6 +1,7 @@
-import type { MonkMVPState } from "../types/app";
+import type { MonkMVPState, TimelineStatus } from "../types/app";
 import { selectTodayPlan } from "../store/selectors";
 import { addDaysToDate, getTodayDateString } from "./date";
+import { getDailyStatusForDate } from "./dailyActivity";
 
 const DISMISS_KEY = "zendo_rest_suggestion_v1";
 const STREAK_DAYS = 5;
@@ -27,15 +28,22 @@ export function dismissRestSuggestion(date: string): void {
   }
 }
 
-function isGoalDay(plan: { dayType: string; status: string } | undefined): boolean {
+// `status` is the resolver's verdict for the date (getDailyStatusForDate); pass
+// it so a rest-scheduled day holding real focus evidence reads as a goal day.
+function isGoalDay(
+  plan: { dayType: string; status: string } | undefined,
+  status: TimelineStatus
+): boolean {
   if (!plan) return false;
+  if (status === "completed" || status === "partial") return true;
   if (plan.dayType !== "goal") return false;
   return ["active", "completed", "partial"].includes(plan.status);
 }
 
 export function shouldSuggestRest(store: MonkMVPState, today = getTodayDateString()): boolean {
+  const todayStatus = getDailyStatusForDate(store, today);
   const todayPlan = selectTodayPlan(store, today);
-  if (todayPlan?.dayType === "rest") return false;
+  if (todayStatus === "rest" || todayPlan?.dayType === "rest" && todayStatus !== "completed") return false;
   if (todayPlan?.status === "completed") return false;
   const todayEnergy = store.energyLogs.find((log) => log.date === today);
   if (todayEnergy?.level === "low") return true;
@@ -49,7 +57,7 @@ export function shouldSuggestRest(store: MonkMVPState, today = getTodayDateStrin
   for (let i = 1; i <= STREAK_DAYS; i++) {
     const date = addDaysToDate(today, -i);
     const plan = store.dayPlans.find((day) => day.date === date && (!seasonId || day.seasonId === seasonId));
-    if (!isGoalDay(plan)) return false;
+    if (!isGoalDay(plan, getDailyStatusForDate(store, date))) return false;
   }
   return true;
 }

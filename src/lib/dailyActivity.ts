@@ -1,4 +1,4 @@
-import type { MonkMVPState, RelapseLog, TimelineStatus } from "../types/app";
+import type { DayPlan, FocusSession, LearningSession, MonkMVPState, RelapseLog, TimelineStatus } from "../types/app";
 import { addDaysToDate, getTodayDateString, parseLocalDateKey } from "./date";
 import { differenceInCalendarDays } from "date-fns";
 import { resolveDailyActivityStatus, getDailyStatusHelper } from "../constants/dailyActivityStatus";
@@ -52,24 +52,66 @@ export function getDailyActivity(store: MonkMVPState, date: string) {
 
 export function getDailyStatusForDate(store: MonkMVPState, date: string): TimelineStatus {
   const seasonId = store.activeSeason?.id;
-  const day = store.timelineDays.find((item) => item.date === date && (!seasonId || item.seasonId === seasonId));
-  // Retro/plan-only states are authoritative: relapse, rest, and an explicitly
-  // logged-but-sessionless day (retro "Focus Goal" resolves 'partial' in the
-  // store, but no session exists to recompute from). Honor them verbatim.
-  if (day?.status === "relapse" || day?.status === "rest") return day.status;
+  // Minimal/older snapshots may omit arrays; read every one defensively.
+  const day = (store.timelineDays ?? []).find((item) => item.date === date && (!seasonId || item.seasonId === seasonId));
+  // A retro-logged relapse is authoritative: it is data nobody can recompute
+  // from sessions, so it wins outright.
+  if (day?.status === "relapse") return "relapse";
 
   const plan = store.dayPlans.find((p) => p.date === date && (!seasonId || p.seasonId === seasonId));
-  if (plan?.dayType === "rest" || plan?.status === "rest") return "rest";
-  if (plan?.status === "missed") return "missed";
+  const activity = getDailyActivity(store, date);
 
-  const core = getCoreDailyStatusForDate(store, date);
-  if (core === "completed" || plan?.status === "completed") return "completed";
-  if (core === "partial" || day?.status === "partial" || plan?.status === "partial") return "partial";
+  // Everything else — rest, completed, partial, missed — goes through the one
+  // shared resolver whose core rule is: evidence outranks the schedule.
+  const outcome = resolveDayOutcome({
+    plan,
+    focusSessions: activity.focusSessions,
+    learningSessions: activity.learningSessions,
+    relapseCount: (store.relapseLogs ?? []).filter((log) => log.date === date).length
+  });
+  if (outcome !== "not_started") return outcome;
+
+  // A persisted rest row with no evidence behind it is still rest — it just no
+  // longer outranks evidence, which the resolver already applied above.
+  if (day?.status === "rest") return "rest";
+  // A day the store explicitly recorded as completed or partial with no session
+  // to recompute from (retro "Focus Goal" logs no session) is still real.
+  if (day?.status === "completed") return "completed";
+  if (day?.status === "partial") return "partial";
 
   const today = getTodayDateString();
   if (date < today) {
     return "missed";
   }
+  return "not_started";
+}
+
+/**
+ * The single rule for "how did this day actually go?".
+ *
+ * Precedence, highest first: a logged relapse; the evidence itself
+ * (`resolveDailyActivityStatus` over the completed/ended-early sessions); then
+ * the schedule (`DayPlan`). Evidence outranking the schedule is the whole
+ * point — a day planned as Rest that really produced a focus session is a focus
+ * day, not a rest day.
+ */
+export function resolveDayOutcome(input: {
+  plan?: DayPlan;
+  focusSessions: FocusSession[];   // already filtered to completed + ended_early
+  learningSessions: LearningSession[];
+  relapseCount: number;
+}): TimelineStatus {
+  const { plan, focusSessions, learningSessions, relapseCount } = input;
+
+  if (relapseCount > 0) return "relapse";
+
+  const core = resolveDailyActivityStatus({ focusSessions, learningSessions });
+  if (core !== "not_started") return core;
+
+  if (plan?.dayType === "rest" || plan?.status === "rest") return "rest";
+  if (plan?.status === "completed") return "completed";
+  if (plan?.status === "partial") return "partial";
+  if (plan?.status === "missed") return "missed";
   return "not_started";
 }
 

@@ -14,7 +14,7 @@ import { formatIntention, parseIntention, stripIntentionTime } from "../lib/impl
 import { playCompletionChime, playZenBell, unlockAudio } from "../lib/audio";
 import { loadLastFocus, saveLastFocus } from "../lib/storage";
 import { getCoachStep, dismissCoachStep } from "../lib/coach";
-import { isCloseDaySkipped, skipCloseDay, getDayPart, isReentryDismissed, dismissReentry, isReentryChipHidden, hideReentryChip, shouldOfferReentry, isReentryAnswered, markReentryAnswered, getRelapseForDate, isNmt2Dismissed, dismissNmt2 } from "../lib/dailyActivity";
+import { isCloseDaySkipped, skipCloseDay, getDayPart, isReentryDismissed, dismissReentry, isReentryChipHidden, hideReentryChip, shouldOfferReentry, isReentryAnswered, markReentryAnswered, getRelapseForDate, isNmt2Dismissed, dismissNmt2, getDailyStatusForDate } from "../lib/dailyActivity";
 import { isRestSuggestionDismissed, dismissRestSuggestion, shouldSuggestRest } from "../lib/restSuggestion";
 import { shouldWarnMissTwice } from "../lib/focusStreak";
 import { selectTodayPlan, selectActiveGoals, selectCurrentWeeklyPlan, selectEnergyForDate, selectTodayLearningSessions, selectTotalFocusSecondsForDate } from "../store/selectors";
@@ -478,7 +478,9 @@ export function TodayScreen() {
   const goal = todayPlan?.goalId ? store.goals.find((item) => item.id === todayPlan.goalId) : undefined;
   const unclarifiedGoal = activeGoals.find((g) => !g.why || !g.obstacle);
   const daysLeft = getDaysLeft(season.endDate);
-  const isRest = todayPlan?.dayType === "rest";
+  // Evidence wins: a day scheduled rest that holds a completed focus session
+  // resolves "completed", so it is not rendered (or announced) as a rest day.
+  const isRest = todayPlan?.dayType === "rest" && getDailyStatusForDate(store, today) === "rest";
   const isDone = todayPlan?.status === "completed";
   const hasReflection = !!todayEntry?.answers.whatMovedToday?.trim();
   const dayClosed = hasReflection || closeDaySkipped;

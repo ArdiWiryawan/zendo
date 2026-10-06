@@ -8,7 +8,7 @@ import { getTodayDateString, datesInRange, formatHumanDate } from "../lib/date";
 import { routes } from "../constants/routes";
 import { DefenseChips } from "./TodayScreen";
 import { selectTodayPlan, selectActiveGoals, selectCurrentWeeklyPlan, selectEnergyForDate, selectTotalFocusSecondsForDate } from "../store/selectors";
-import { isRetroEligible } from "../lib/dailyActivity";
+import { isRetroEligible, getDailyStatusForDate } from "../lib/dailyActivity";
 import { computeWeeklyRhythm } from "../lib/rhythmAccounting";
 import { RetroLogModal } from "../components/RetroLogModal";
 import {
@@ -69,10 +69,14 @@ export function WeekScreen() {
     if (!weeklyPlan) return null;
     const seasonId = weeklyPlan.seasonId;
     const plans = weekDates.map((date) => store.dayPlans.find((d) => d.date === date && d.seasonId === seasonId));
-    const completed = plans.filter((p) => p?.status === "completed").length;
-    const partial = plans.filter((p) => p?.status === "partial").length;
-    const rest = plans.filter((p) => p?.dayType === "rest" || p?.status === "rest").length;
-    const missed = plans.filter((p) => p?.status === "missed" || p?.status === "relapse").length;
+    // Read every tally through the shared resolver so WeekScreen and
+    // TimelineScreen give the same date the same answer — a rest-scheduled day
+    // holding completed focus is a completed day on both screens.
+    const statuses = weekDates.map((date) => getDailyStatusForDate(store, date));
+    const completed = statuses.filter((s) => s === "completed").length;
+    const partial = statuses.filter((s) => s === "partial").length;
+    const rest = statuses.filter((s) => s === "rest").length;
+    const missed = statuses.filter((s) => s === "missed" || s === "relapse").length;
     const unhandled = plans.filter((p, i) => !p && weekDates[i] < today).length;
     // The rhythm is read from the plan, never invented: a plan with no
     // allocations is honestly 0 focus days, not a fallback "6" that hides a
@@ -218,10 +222,11 @@ export function WeekScreen() {
                   const dayNum = date.slice(8);
                   const isToday = date === today;
                   const isFuture = date > today;
-                  const status = dayPlan?.status ?? "not_started";
+                  // Same resolver as TimelineScreen — never the raw plan fields.
+                  const status = getDailyStatusForDate(store, date);
                   const isCompleted = status === "completed";
                   const isPartial = status === "partial";
-                  const isRest = dayPlan?.dayType === "rest" || status === "rest";
+                  const isRest = status === "rest";
                   const isRelapse = status === "relapse";
                   const isMissed = status === "missed";
                   const isEligible = isRetroEligible(date, status as TimelineStatus, today);
@@ -571,10 +576,7 @@ function WeekReviewCard({
     }));
   }, [weeklyPlan, store.focusSessions]);
   const [decisions, setDecisions] = useState<Record<string, WeekReviewDecision>>({});
-  const isTodayRest = useMonkStore((s) => {
-    const plan = s.dayPlans.find((d) => d.date === today && d.seasonId === weeklyPlan.seasonId);
-    return plan?.dayType === "rest" || plan?.status === "rest";
-  });
+  const isTodayRest = getDailyStatusForDate(store, today) === "rest";
   const isSunday = new Date(today + "T00:00:00").getDay() === 0;
   const weekEnded = remainingDays <= 1 || weekDates[weekDates.length - 1] <= today || isSunday;
   const shouldShow = isTodayRest || weekEnded || !!savedReview;

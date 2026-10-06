@@ -10,6 +10,7 @@
 // without timers.
 
 import { addDaysToDate, getTodayDateString } from "./date";
+import { getDailyStatusForDate } from "./dailyActivity";
 import { createDefaultReminders } from "../constants/defaultData";
 import { useMonkStore } from "../store/useMonkStore";
 import { t } from "../i18n";
@@ -107,6 +108,11 @@ export function computeNextFireTime(
 function isRestDay(state: MonkMVPState, date: string): boolean {
   const seasonId = state.activeSeason?.id;
   if (!seasonId) return false;
+  // Evidence wins: a day scheduled rest that holds a completed focus session
+  // resolves "completed", not "rest", so we never nudge rest on a worked day.
+  if (state.timelineDays || state.focusSessions) {
+    return getDailyStatusForDate(state, date) === "rest";
+  }
   const plan = state.dayPlans.find((p) => p.seasonId === seasonId && p.date === date);
   return !!plan && plan.dayType === "rest";
 }

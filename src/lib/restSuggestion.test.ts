@@ -7,6 +7,10 @@ function baseStore(): MonkMVPState {
     activeSeason: { id: "s1", status: "active", startDate: "2026-07-25", endDate: "2026-08-23", durationDays: 30 },
     dayPlans: [],
     energyLogs: [],
+    timelineDays: [],
+    focusSessions: [],
+    learningSessions: [],
+    relapseLogs: [],
   } as unknown as MonkMVPState;
 }
 

@@ -62,9 +62,12 @@ export function selectSeasonRhythmAccounting(
  */
 export function countSeasonDayPlans(state: MonkMVPState, seasonId: string) {
   const plans = state.dayPlans.filter((plan) => plan.seasonId === seasonId);
+  // Mutually exclusive: a completed plan is a completed day even if it was
+  // scheduled as rest, so `completed` and `rest` can never double-count the same
+  // plan and `accounted` can never exceed `planned`.
   const completed = plans.filter((plan) => plan.status === "completed").length;
   const rest = plans.filter(
-    (plan) => plan.status === "rest" || plan.dayType === "rest"
+    (plan) => plan.status !== "completed" && (plan.status === "rest" || plan.dayType === "rest")
   ).length;
   return { planned: plans.length, completed, rest, accounted: completed + rest };
 }
