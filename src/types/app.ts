@@ -512,6 +512,11 @@ export type JournalAnswers = {
   morningPages?: string;
 };
 
+/** Lifecycle of a reflection prompt for one journal entry. Optional on
+ *  JournalEntry so entries persisted before the reflection system existed still
+ *  load: absent means "no prompt ever assigned". */
+export type ReflectionStatus = "prompt_assigned" | "draft" | "submitted";
+
 export type JournalEntry = {
   id: string;
   seasonId: string;
@@ -520,6 +525,13 @@ export type JournalEntry = {
   date: DateOnlyString;
   answers: JournalAnswers;
   mood?: "calm" | "clear" | "tired" | "restless" | "focused";
+  /** Stable bank id (e.g. "A01"). Assignment is stable once made. */
+  promptId?: string;
+  /** Immutable snapshot of the question actually SHOWN, so history is never
+   *  re-labelled when copy or language changes. */
+  promptText?: string;
+  reflectionStatus?: ReflectionStatus;
+  submittedAt?: ISODateString;
   createdAt: ISODateString;
   updatedAt: ISODateString;
 };

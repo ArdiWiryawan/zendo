@@ -5,6 +5,7 @@ import { Moon, BookOpen, Check, ChevronDown, ChevronRight, Sun, Sparkles, Shield
 import { hapticPress } from "../lib/haptics";
 import { useMonkStore, goalEvidence } from "../store/useMonkStore";
 import { useT } from "../i18n";
+import { resolveReflectionPromptText, ensureReflectionPromptAssigned } from "../i18n/prompts";
 import { useCalmToast } from "../components/ui";
 import { getTodayDateString, addDaysToDate, getDaysPassed, getDaysLeft } from "../lib/date";
 import { CORE_VALUES } from "../constants/whyValues";
@@ -58,13 +59,21 @@ function CloseDayCard({ onSkip }: { onSkip?: () => void }) {
   const [tomorrow, setTomorrow] = useState("");
   const [error, setError] = useState("");
   const [saved, setSaved] = useState(false);
+  const lang = (store.appSettings.language ?? "id") as "en" | "id";
+  const assignedPrompt = resolveReflectionPromptText(store, today, lang);
+
+  // Assign the day's question once it has none; a no-op afterwards.
+  useEffect(() => {
+    ensureReflectionPromptAssigned(store, today, lang);
+  }, [today, lang, store.journalEntries, store.activeSeason]);
 
   return (
     <div id="today-close">
     <Card className="space-y-3 p-5">
       <div>
         <p className="text-xs font-bold uppercase tracking-widest text-monk-muted">{t("today.closeDay.title")}</p>
-        <p className="mt-1 text-sm font-semibold">{t("today.closeDay.prompt")}</p>
+        <p className="mt-1 text-[11px] text-monk-text-soft">{t("reflection.assignedHint")}</p>
+        <p className="mt-1 text-sm font-semibold">{assignedPrompt}</p>
       </div>
       <Textarea
         className="min-h-[80px]"

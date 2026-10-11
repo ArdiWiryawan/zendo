@@ -32,7 +32,7 @@ import {
   isSeasonEnded,
   nowIso
 } from "../lib/date";
-import { resolveDayOutcome } from "../lib/dailyActivity";
+import { FOCUS_DAY_THRESHOLD_MINUTES, resolveDayOutcome } from "../lib/dailyActivity";
 import { createId } from "../lib/ids";
 import { dedupeDayPlans, isNewerDayPlan } from "../lib/dayPlans";
 import { MAX_ACTIVE_GOAL_TRACKS, MAX_SEASON_GOALS, validateWeeklyAllocation } from "../lib/validation";
@@ -62,6 +62,7 @@ import type {
   GoalType,
   GoalWeekday,
   JournalAnswers,
+  JournalEntry,
   JournalPackAnswer,
   LearningSession,
   LearningSourceType,
@@ -190,7 +191,16 @@ type MonkActions = {
   removeFocusSession: (id: string) => void;
   removeTimelineEvent: (id: string) => void;
   addTimelineEvent: (event: TimelineEvent) => void;
-  saveJournalEntry: (answers: JournalAnswers, opts?: { date?: string; tab?: "morning" | "reflection" }) => void;
+  saveJournalEntry: (
+    answers: JournalAnswers,
+    opts?: { date?: string; tab?: "morning" | "reflection"; prompt?: { id: string; text: string } }
+  ) => void;
+  /**
+   * Assign the day's reflection prompt. This only records WHICH question was
+   * shown — it is not a journal write, so it deliberately touches neither
+   * `timelineDays` nor `timelineEvents` nor `journalCompleted`.
+   */
+  assignReflectionPrompt: (date: string, promptId: string, promptText: string) => void;
   saveRelapseLog: (input: RelapseInput) => void;
   archiveSeason: () => void;
   startNewSeason: () => void;
@@ -826,7 +836,7 @@ export const useMonkStore = create<MonkStore>()(
 
         let plan = dayPlans.find((p) => p.date === sessionDate && (p.seasonId === s.seasonId || !p.seasonId));
         const mins = s.focusDurationMinutes ?? s.completedDurationMinutes ?? s.durationMinutes ?? 0;
-        const shouldBeCompleted = mins >= 15 || s.status === "completed";
+        const shouldBeCompleted = mins >= FOCUS_DAY_THRESHOLD_MINUTES || s.status === "completed";
 
         if (!plan && activeSeasonId) {
           plan = {
@@ -1389,7 +1399,6 @@ export const useMonkStore = create<MonkStore>()(
     const season = base.activeSeason;
     const weeklyPlan = createdWeek.weeklyPlan;
     if (!season || !weeklyPlan) return;
-    const goal = input.goalId ? base.goals.find((item) => item.id === input.goalId) : undefined;
     const existing = findDayPlan(base, season.id, dateString);
     const timestamp = nowIso();
     const dayPlan: DayPlan = {
@@ -1405,7 +1414,12 @@ export const useMonkStore = create<MonkStore>()(
       date: dateString,
       dayType: input.dayType,
       goalId: input.dayType === "goal" ? input.goalId : undefined,
-      mainAction: input.dayType === "goal" ? (input.mainAction !== undefined ? input.mainAction : (existing?.mainAction ?? goal?.keystoneAction)) : undefined,
+      // The day owns its Main Action (§22), so this never falls back to the
+      // goal's keystone action — same rule as setDayMainAction. The keystone is a
+      // starting suggestion, not a value the day inherits forever; falling back
+      // here silently reverted a cleared-or-replaced day action to a stale
+      // goal-level string on the next rebuild of this literal.
+      mainAction: input.dayType === "goal" ? (input.mainAction !== undefined ? input.mainAction : existing?.mainAction) : undefined,
       highlight: input.highlight !== undefined ? input.highlight : existing?.highlight,
       // `agenda` was the one planning field with no `existing?.` fallback here,
       // so every rebuild of this literal — rest-day toggle, Plan B switch,
@@ -2270,7 +2284,18 @@ export const useMonkStore = create<MonkStore>()(
     const timelineStatus = deriveTimelineStatus(provisionalBase, plan);
     const dayPlan = {
       ...plan,
-      status: (summary.focusDurationMinutes >= 15 || timelineStatus === "completed") ? ("completed" as const) : plan.status,
+      // One threshold for "the day's work happened", shared with the Week screen
+      // and the hydrate backfill — never a bare `15` here.
+      // The plan does carry the verdict (as `toggleTodayCompletion`, the Today
+      // checkbox, does), because readers that ask the plan directly —
+      // `countSeasonDayPlans`, the Today screen's `dayClosed`/`isDone` — have no
+      // session evidence to fall back on. The failure the literal caused was that
+      // `>= 15` was stricter than the shared resolver, which calls anything under
+      // 30 minutes "partial": a 15-minute ended-early session stamped the plan
+      // "completed" while `resolveDayOutcome` read "partial", so plan and evidence
+      // disagreed and the cached status became the source of truth. The threshold
+      // now matches the one the app already uses to mean the same thing.
+      status: (summary.focusDurationMinutes >= FOCUS_DAY_THRESHOLD_MINUTES || timelineStatus === "completed") ? ("completed" as const) : plan.status,
       updatedAt: nowIso()
     };
     const base: MonkMVPState = {
@@ -2382,6 +2407,7 @@ export const useMonkStore = create<MonkStore>()(
       ...(existing?.answers ?? {}),
       ...answers
     };
+    const hasReflection = !!mergedAnswers.whatMovedToday?.trim();
     const entry = {
       id: existing?.id ?? createId("journal"),
       seasonId,
@@ -2389,6 +2415,16 @@ export const useMonkStore = create<MonkStore>()(
       dayPlanId: plan?.id,
       date,
       answers: mergedAnswers,
+      // Prompt identity is decided at assignment time and never regenerated, so
+      // history stays faithful. opts.prompt is only a first-save fallback.
+      promptId: existing?.promptId ?? opts?.prompt?.id,
+      promptText: existing?.promptText ?? opts?.prompt?.text,
+      reflectionStatus: hasReflection
+        ? ("submitted" as const)
+        : existing?.reflectionStatus,
+      submittedAt: hasReflection
+        ? existing?.submittedAt ?? timestamp
+        : existing?.submittedAt,
       createdAt: existing?.createdAt ?? timestamp,
       updatedAt: timestamp
     };
@@ -2398,7 +2434,6 @@ export const useMonkStore = create<MonkStore>()(
 
     // Create journal entry timeline event
     const lang = state.appSettings.language ?? "id";
-    const hasReflection = !!mergedAnswers.whatMovedToday?.trim();
     const hasMorningPages = !!mergedAnswers.morningPages?.trim();
     let eventTitle = t(lang, "timeline.wroteReflection");
     let eventDesc = "";
@@ -2456,6 +2491,50 @@ export const useMonkStore = create<MonkStore>()(
       journalEntries,
       timelineDays,
       timelineEvents: [...updatedEvents, event]
+    });
+  },
+
+  assignReflectionPrompt: (date, promptId, promptText) => {
+    const state = get();
+    const seasonId = state.activeSeason?.id ?? state.pastSeasons?.[0]?.id ?? "season_1";
+    const existing = state.journalEntries.find(
+      (entry) => (entry.seasonId === seasonId || !entry.seasonId) && entry.date === date
+    );
+
+    if (!existing) {
+      const timestamp = nowIso();
+      const entry: JournalEntry = {
+        id: createId("journal"),
+        seasonId,
+        date: date as DateOnlyString,
+        answers: {},
+        promptId,
+        promptText,
+        reflectionStatus: "prompt_assigned",
+        createdAt: timestamp,
+        updatedAt: timestamp
+      };
+      set({ journalEntries: [...state.journalEntries, entry] });
+      return;
+    }
+
+    // Assignment is stable: a prompt already recorded for the date wins, and a
+    // draft/submitted entry keeps its own status. Only the prompt fields move.
+    set({
+      journalEntries: state.journalEntries.map((entry) =>
+        entry.id === existing.id
+          ? {
+              ...entry,
+              promptId: entry.promptId ?? promptId,
+              promptText: entry.promptText ?? promptText,
+              reflectionStatus:
+                !entry.reflectionStatus || entry.reflectionStatus === "prompt_assigned"
+                  ? "prompt_assigned"
+                  : entry.reflectionStatus,
+              updatedAt: nowIso()
+            }
+          : entry
+      )
     });
   },
 

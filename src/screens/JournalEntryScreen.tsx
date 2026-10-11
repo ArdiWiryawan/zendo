@@ -3,7 +3,7 @@ import { useNavigate, useSearchParams, useBlocker } from "react-router-dom";
 import { BookOpen, FileText } from "lucide-react";
 import { useMonkStore } from "../store/useMonkStore";
 import { useT, type MessageKey } from "../i18n";
-import { getDailyJournalPromptForDate } from "../i18n/prompts";
+import { resolveReflectionPromptText, ensureReflectionPromptAssigned } from "../i18n/prompts";
 import {
   CalmAlert,
   CalmDialog,
@@ -112,7 +112,13 @@ export function JournalEntryScreen() {
     };
   }, [answers, tomorrow, journalDraftKey]);
 
-  const activePrompt = useMemo(() => getDailyJournalPromptForDate(lang, dateSeed), [lang, dateSeed]);
+  const activePrompt = useMemo(() => resolveReflectionPromptText(store, dateSeed, lang), [lang, dateSeed, store.journalEntries, store.activeSeason, store.appSettings.language]);
+
+  // Assign the day's question once it has none. Guarded inside the helper, so
+  // it is a no-op on every render after the first and never writes during render.
+  useEffect(() => {
+    ensureReflectionPromptAssigned(store, dateSeed, lang);
+  }, [dateSeed, lang, store.journalEntries, store.activeSeason]);
 
   const now = new Date();
   const isEvening = now.getHours() >= 17;
