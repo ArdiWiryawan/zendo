@@ -227,10 +227,10 @@ export function DayTimeBlockVisualizer({
                     ? "bg-monk-soft text-monk-text shadow-2xs"
                     : "text-monk-muted hover:text-monk-text"
                 }`}
-                title="Tampilan Agenda"
+                title={t("ui.viewAgenda")}
               >
                 <List size={12} strokeWidth={2.2} />
-                <span>Agenda</span>
+                <span>{t("ui.viewAgendaLabel")}</span>
               </button>
               <button
                 type="button"
@@ -240,10 +240,10 @@ export function DayTimeBlockVisualizer({
                     ? "bg-monk-soft text-monk-text shadow-2xs"
                     : "text-monk-muted hover:text-monk-text"
                 }`}
-                title="Tampilan Grid Jam"
+                title={t("ui.viewGrid")}
               >
                 <BarChart2 size={12} strokeWidth={2.2} className="rotate-90" />
-                <span>Ruler</span>
+                <span>{t("ui.viewGridLabel")}</span>
               </button>
             </div>
           ) : null}

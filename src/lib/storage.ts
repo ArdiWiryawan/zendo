@@ -112,7 +112,16 @@ export function loadState(): MonkMVPState | null {
   const learningSessionsRaw = localStorage.getItem("learningSessions");
   const timelineEventsRaw = localStorage.getItem("timelineEvents");
 
-  if (focusSessionsRaw) {
+  // The main blob is written FIRST and carries these three arrays too
+  // (`partialize` includes them), so it is the authoritative copy. The writer
+  // then sets the three satellites with no transaction, so a write interrupted
+  // between the two steps leaves a stale satellite — and letting a satellite
+  // override unconditionally here made that stale copy win on the next load,
+  // silently dropping the newest sessions. A satellite is now read only when the
+  // main blob predates it (the array is absent); once the main blob parsed, its
+  // copy wins. The satellites are still written and still read this way, so
+  // older clients that only know the satellites keep working.
+  if (!Array.isArray(state.focusSessions) && focusSessionsRaw) {
     try {
       state.focusSessions = JSON.parse(focusSessionsRaw);
     } catch (e) {
@@ -120,21 +129,25 @@ export function loadState(): MonkMVPState | null {
     }
   }
 
-  state.learningSessions = [];
-  if (learningSessionsRaw) {
-    try {
-      state.learningSessions = JSON.parse(learningSessionsRaw);
-    } catch (e) {
-      console.error("Failed to load learningSessions from separate key", e);
+  if (!Array.isArray(state.learningSessions)) {
+    state.learningSessions = [];
+    if (learningSessionsRaw) {
+      try {
+        state.learningSessions = JSON.parse(learningSessionsRaw);
+      } catch (e) {
+        console.error("Failed to load learningSessions from separate key", e);
+      }
     }
   }
 
-  state.timelineEvents = [];
-  if (timelineEventsRaw) {
-    try {
-      state.timelineEvents = JSON.parse(timelineEventsRaw);
-    } catch (e) {
-      console.error("Failed to load timelineEvents from separate key", e);
+  if (!Array.isArray(state.timelineEvents)) {
+    state.timelineEvents = [];
+    if (timelineEventsRaw) {
+      try {
+        state.timelineEvents = JSON.parse(timelineEventsRaw);
+      } catch (e) {
+        console.error("Failed to load timelineEvents from separate key", e);
+      }
     }
   }
 

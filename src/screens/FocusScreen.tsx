@@ -203,7 +203,11 @@ export default function FocusScreen() {
   if (!plan) {
     return (
       <>
-        <PageHeader title={t("focus.title")} subtitle={t("focus.chooseFirst")} />
+        {/* No subtitle here. The empty state below already names the next step
+            and offers the button for it; a header repeating "choose today first"
+            said the same thing a fourth time, and repetition at the point of
+            entry reads as pressure. */}
+        <PageHeader title={t("focus.title")} />
         <EmptyState
           title={t("focus.emptyTitle")}
           description={t("focus.emptyDesc")}

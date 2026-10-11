@@ -129,7 +129,10 @@ describe("storage", () => {
     expect(loaded!.timelineEvents).toEqual([]);
   });
 
-  it("separate keys override focusSessions and replace learning/timeline", () => {
+  it("separate keys are read only when the main blob omits the array", () => {
+    // The main blob is the authoritative copy: it is written first and contains
+    // all three arrays. Letting a satellite override unconditionally made the
+    // stale satellite left by an interrupted write win on the next load.
     const state = baseState({
       focusSessions: [{ id: "from-main" } as MonkMVPState["focusSessions"][number]],
       learningSessions: [{ id: "learn-main" } as MonkMVPState["learningSessions"][number]],
@@ -147,17 +150,35 @@ describe("storage", () => {
     );
 
     const loaded = loadState()!;
+    expect(loaded.focusSessions.map((s) => s.id)).toEqual(["from-main"]);
+    expect(loaded.learningSessions).toEqual([{ id: "learn-main" }]);
+    expect(loaded.timelineEvents.map((e) => e.id)).toEqual(["tl-main"]);
+  });
+
+  it("separate keys are the fallback for a legacy main blob that omits them", () => {
+    const legacy = baseState();
+    delete (legacy as Partial<MonkMVPState>).focusSessions;
+    delete (legacy as Partial<MonkMVPState>).learningSessions;
+    delete (legacy as Partial<MonkMVPState>).timelineEvents;
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(legacy));
+    localStorage.setItem("focusSessions", JSON.stringify([{ id: "from-key" }]));
+    localStorage.setItem("learningSessions", JSON.stringify([{ id: "learn-key" }]));
+    localStorage.setItem("timelineEvents", JSON.stringify([{ id: "tl-key" }]));
+
+    const loaded = loadState()!;
     expect(loaded.focusSessions.some((s) => s.id === "from-key")).toBe(true);
     expect(loaded.learningSessions).toEqual([{ id: "learn-key" }]);
     expect(loaded.timelineEvents.map((e) => e.id)).toContain("tl-key");
   });
 
-  it("learningSessions and timelineEvents reset to [] without separate keys", () => {
+  it("an absent array in the main blob is not resurrected from a stale satellite", () => {
     const state = baseState({
-      learningSessions: [{ id: "learn-main" } as MonkMVPState["learningSessions"][number]],
-      timelineEvents: [{ id: "tl-main" } as MonkMVPState["timelineEvents"][number]]
+      learningSessions: [],
+      timelineEvents: []
     });
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    localStorage.setItem("learningSessions", JSON.stringify([{ id: "stale-learn" }]));
+    localStorage.setItem("timelineEvents", JSON.stringify([{ id: "stale-tl" }]));
     const loaded = loadState()!;
     expect(loaded.learningSessions).toEqual([]);
     expect(loaded.timelineEvents).toEqual([]);

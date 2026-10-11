@@ -173,7 +173,7 @@ export function FocusPrepModal({
             <button
               type="button"
               onClick={onClose}
-              aria-label="Close"
+              aria-label={t("ui.close")}
               className="grid h-7 w-7 place-items-center rounded-lg text-monk-muted hover:bg-monk-soft hover:text-monk-text transition"
             >
               <X size={16} />
@@ -216,7 +216,7 @@ export function FocusPrepModal({
                 setSecondsLeft(300);
                 setIsRunning(false);
               }}
-              title="Reset 5m"
+              title={t("focusPrep.resetTimer")}
               className="grid h-8 w-8 place-items-center rounded-xl border border-monk-border bg-monk-surface text-monk-muted hover:text-monk-text transition"
             >
               <RotateCcw size={13} />
@@ -358,7 +358,7 @@ export function FocusPrepModal({
                   type="text"
                   value={intent}
                   onChange={(e) => setIntent(e.target.value)}
-                  placeholder="Define your single priority task..."
+                  placeholder={t("focusPrep.intentPlaceholder")}
                   className="w-full rounded-xl border border-monk-border bg-monk-surface px-3.5 py-2.5 text-sm font-semibold text-monk-text focus:border-monk-accent focus:outline-none"
                 />
                 <p className="text-[11px] text-monk-muted">

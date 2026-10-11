@@ -146,7 +146,7 @@ export function ZendoProModal({ isOpen, onClose }: ZendoProModalProps) {
           <button
             type="button"
             onClick={onClose}
-            aria-label="Tutup"
+            aria-label={t("pro.closeAria")}
             className="absolute top-4 right-4 grid h-8 w-8 place-items-center rounded-full text-monk-muted hover:text-monk-text hover:bg-monk-soft transition active:scale-90"
           >
             <X size={18} />
@@ -190,7 +190,7 @@ export function ZendoProModal({ isOpen, onClose }: ZendoProModalProps) {
             <div className="relative mx-auto w-full max-w-[280px] rounded-2xl bg-white p-2.5 shadow-lg border border-gray-200 overflow-hidden group">
               <img
                 src="/qris.jpeg"
-                alt="QRIS Resmi Ardi Wiryawan - Zendo"
+                alt={t("pro.qrisAlt")}
                 className="w-full h-auto object-contain rounded-xl select-none"
               />
             </div>
@@ -296,7 +296,7 @@ export function ZendoProModal({ isOpen, onClose }: ZendoProModalProps) {
                       step="1000"
                       value={customAmount}
                       onChange={(e) => setCustomAmount(e.target.value)}
-                      placeholder="Contoh: 30000"
+                      placeholder={t("pro.customAmountPlaceholder")}
                       className="flex-1 rounded-lg border border-monk-border bg-monk-surface px-3 py-1 text-xs font-mono text-monk-text focus:border-monk-accent focus:outline-none"
                       autoFocus
                     />

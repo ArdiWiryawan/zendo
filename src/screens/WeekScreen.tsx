@@ -8,7 +8,7 @@ import { getTodayDateString, datesInRange, formatHumanDate } from "../lib/date";
 import { routes } from "../constants/routes";
 import { DefenseChips } from "./TodayScreen";
 import { selectTodayPlan, selectActiveGoals, selectCurrentWeeklyPlan, selectEnergyForDate, selectTotalFocusSecondsForDate } from "../store/selectors";
-import { isRetroEligible, getDailyStatusForDate } from "../lib/dailyActivity";
+import { isRetroEligible, getDailyStatusForDate, FOCUS_DAY_THRESHOLD_MINUTES } from "../lib/dailyActivity";
 import { computeWeeklyRhythm } from "../lib/rhythmAccounting";
 import { RetroLogModal } from "../components/RetroLogModal";
 import {
@@ -76,8 +76,36 @@ export function WeekScreen() {
     const completed = statuses.filter((s) => s === "completed").length;
     const partial = statuses.filter((s) => s === "partial").length;
     const rest = statuses.filter((s) => s === "rest").length;
-    const missed = statuses.filter((s) => s === "missed" || s === "relapse").length;
+    // `statuses` resolves the WHOLE week, including days still ahead of `today`:
+    // `getDailyStatusForDate` never returns "missed" for a future date, so those
+    // days land on "not_started" and are not silently counted here.
+    //
+    // The two tallies must be disjoint, or the card double-counts a single day.
+    // `getDailyStatusForDate` answers "missed" for any elapsed day without
+    // evidence — including one that was never planned, since it has no plan to
+    // contradict. Claiming a day was "missed" when the user never planned it
+    // invents an obligation. So `missed` is restricted to days that really were
+    // planned, and a past day with no plan is only `unhandled`. Without this the
+    // four unplanned days below were counted in both lines.
+    const missed = weekDates.filter(
+      (date, i) => (statuses[i] === "missed" || statuses[i] === "relapse") && !!plans[i]
+    ).length;
     const unhandled = plans.filter((p, i) => !p && weekDates[i] < today).length;
+    // Days already accounted for out of days already lived: the neutral framing
+    // the rhythm card leads with. Rest is never a failed focus day here — a
+    // planned Rest day is accounted for the moment it is planned.
+    //
+    // `missed` is deliberately NOT counted as accounted-for. It was, and that is
+    // what made the card contradict itself: a planned day that did not happen was
+    // counted in the "day Tercatat" numerator AND rendered on the line below as
+    // "{n} belum tercatat", so the same day appeared in both buckets and the card
+    // could read "4/5 tercatat" beside "4 belum tercatat" — a sum of 8 over 5
+    // days. Accounted-for means the day has an outcome; a missed day's outcome is
+    // that it was missed, which the line below states.
+    const elapsedDays = weekDates.filter((date) => date <= today).length;
+    const accountedDays = statuses.filter(
+      (s) => s === "completed" || s === "partial" || s === "rest"
+    ).length;
     // The rhythm is read from the plan, never invented: a plan with no
     // allocations is honestly 0 focus days, not a fallback "6" that hides a
     // released goal's freed capacity. See computeWeeklyRhythm.
@@ -86,7 +114,7 @@ export function WeekScreen() {
     const focusDone = Math.max(
       completed,
       allocations.reduce((s, a) => s + a.completedCount, 0),
-      weekDates.filter((date) => selectTotalFocusSecondsForDate(store, date) >= 15 * 60).length
+      weekDates.filter((date) => selectTotalFocusSecondsForDate(store, date) >= FOCUS_DAY_THRESHOLD_MINUTES * 60).length
     );
     const energyCounts = weekDates.reduce((acc, date) => {
       const lvl = selectEnergyForDate(store, date);
@@ -94,8 +122,8 @@ export function WeekScreen() {
       return acc;
     }, {} as Record<EnergyLevel, number>);
     const energyTotal = Object.values(energyCounts).reduce((a, b) => a + b, 0);
-    return { completed, partial, rest, missed, unhandled, targetFocus, focusDone, energyCounts, energyTotal, rhythm, freeDays: rhythm.freeDays };
-  }, [weeklyPlan, weekDates, store.dayPlans, store.focusSessions, store.energyLogs]);
+    return { completed, partial, rest, missed, unhandled, elapsedDays, accountedDays, targetFocus, focusDone, energyCounts, energyTotal, rhythm, freeDays: rhythm.freeDays };
+  }, [weeklyPlan, weekDates, today, store.dayPlans, store.focusSessions, store.energyLogs]);
 
   const remainingDays = weekDates.filter((d) => d >= today).length;
 
@@ -155,11 +183,29 @@ export function WeekScreen() {
                 <div className="flex items-end justify-between gap-4">
                   <div>
                     <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-monk-muted/80">{t("week.rhythm")}</p>
-                    <p className="mt-2 text-3xl font-bold tabular-nums tracking-tight text-monk-accent">
-                      {stats.focusDone}
-                      <span className="text-lg font-semibold text-monk-muted/70">/{stats.targetFocus}</span>
-                    </p>
-                    <p className="mt-1 text-xs text-monk-muted/90">{t("week.focusComplete")}</p>
+                    {/* Focus completion and "days accounted for" are separate
+                        ideas and must stay distinguishable. A season with no
+                        focus allocation is honestly 0 planned focus days, so its
+                        denominator is 0: rendering "0/0" would be a
+                        divide-by-zero dressed as a grade. In that case the card
+                        leads with the accounted-for count instead. */}
+                    {stats.targetFocus > 0 ? (
+                      <>
+                        <p className="mt-2 text-3xl font-bold tabular-nums tracking-tight text-monk-accent">
+                          {stats.focusDone}
+                          <span className="text-lg font-semibold text-monk-muted/70">/{stats.targetFocus}</span>
+                        </p>
+                        <p className="mt-1 text-xs text-monk-muted/90">{t("week.focusComplete")}</p>
+                      </>
+                    ) : (
+                      <>
+                        <p className="mt-2 text-3xl font-bold tabular-nums tracking-tight text-monk-accent">
+                          {stats.accountedDays}
+                          <span className="text-lg font-semibold text-monk-muted/70">/{stats.elapsedDays}</span>
+                        </p>
+                        <p className="mt-1 text-xs text-monk-muted/90">{t("week.daysAccounted")}</p>
+                      </>
+                    )}
                   </div>
                   <div className="text-right text-[11px] text-monk-muted/80 space-y-1">
                     {/* Planned rest is rest, not an unfinished focus day: it is
@@ -168,7 +214,17 @@ export function WeekScreen() {
                     {stats.rhythm.restPlanned > 0 ? <p className="flex items-center gap-1.5 justify-end"><span className="h-1.5 w-1.5 rounded-full bg-monk-rest/70" />{t("week.restCount", { n: stats.rhythm.restPlanned })}</p> : null}
                     {stats.freeDays > 0 ? <p className="flex items-center gap-1.5 justify-end text-monk-accent"><span className="h-1.5 w-1.5 rounded-full bg-monk-accent/70" />{t("rhythm.freeDays", { n: stats.freeDays })}</p> : null}
                     {stats.partial > 0 ? <p className="flex items-center gap-1.5 justify-end"><span className="h-1.5 w-1.5 rounded-full bg-monk-accent/70" />{t("week.partialCount", { n: stats.partial })}</p> : null}
-                    {stats.missed + stats.unhandled > 0 ? <p className="flex items-center gap-1.5 justify-end text-monk-warning"><span className="h-1.5 w-1.5 rounded-full bg-monk-warning/70" />{stats.missed > 0 ? t("week.missedCount", { n: stats.missed }) + " " : ""}{stats.unhandled > 0 ? t("week.openMissed", { n: stats.unhandled }) : ""}</p> : null}
+                    {stats.missed + stats.unhandled > 0 ? (
+                      <p className="flex flex-col items-end gap-0.5 justify-end text-monk-muted/70">
+                        {/* Shown only when the headline is the focus fraction. On a
+                            season with no allocation the headline already IS
+                            "accounted/elapsed", so repeating it here printed the
+                            same pair twice. */}
+                        {stats.targetFocus > 0 ? <span className="text-monk-muted/60">{t("rhythm.accounted", { accounted: stats.accountedDays, elapsed: stats.elapsedDays })}</span> : null}
+                        {stats.missed > 0 ? <span>{t("week.notAccounted", { n: stats.missed })}</span> : null}
+                        {stats.unhandled > 0 ? <span className="text-monk-muted/60">{t("week.dayUnplanned", { n: stats.unhandled })}</span> : null}
+                      </p>
+                    ) : null}
                     <p className="text-monk-muted/60">{remainingDays === 1 ? t("week.daysLeft", { n: remainingDays }) : t("week.daysLeftPlural", { n: remainingDays })}</p>
                   </div>
                 </div>
@@ -177,7 +233,11 @@ export function WeekScreen() {
                   <motion.div
                     className="h-full rounded-full bg-gradient-to-r from-monk-accent to-monk-accent/80 shadow-[0_0_8px_rgb(var(--color-accent) / 0.4)]"
                     initial={{ width: 0 }}
-                    animate={{ width: `${Math.min(100, Math.round((stats.focusDone / Math.max(1, stats.targetFocus)) * 100))}%` }}
+                    animate={{ width: `${Math.min(100, Math.round(
+                      (stats.targetFocus > 0
+                        ? stats.focusDone / Math.max(1, stats.targetFocus)
+                        : stats.accountedDays / Math.max(1, stats.elapsedDays)) * 100
+                    ))}%` }}
                     transition={{ duration: 0.8, delay: 0.2, ease: [0.16, 1, 0.3, 1] }}
                   />
                 </div>
@@ -228,7 +288,12 @@ export function WeekScreen() {
                   const isPartial = status === "partial";
                   const isRest = status === "rest";
                   const isRelapse = status === "relapse";
-                  const isMissed = status === "missed";
+                  // "Missed" is a judgement about a commitment, so it is only
+                  // true when a plan existed to break. Without one this is the
+                  // same silent fallthrough the summary already calls "no plan",
+                  // and labelling it missed here contradicted that count two
+                  // rows above.
+                  const isMissed = status === "missed" && !!dayPlan;
                   const isEligible = isRetroEligible(date, status as TimelineStatus, today);
                   const energyLevel = selectEnergyForDate(store, date);
                   const energyDot =
@@ -560,7 +625,6 @@ function WeekReviewCard({
   onOpenFullReview?: () => void;
 }) {
   const t = useT();
-  const reviewWeek = useMonkStore((s) => s.reviewWeek);
   const skipWeekReview = useMonkStore((s) => s.skipWeekReview);
   const savedReview = useMonkStore((s) => s.weeklyReviews?.[weeklyPlan.id]);
 
@@ -595,8 +659,13 @@ function WeekReviewCard({
     }));
   };
 
+  // The inline card collects decisions only, but `reviewWeek` also writes the
+  // phase's reflection and energy. Submitting here would persist a review with
+  // those fields permanently absent — the data is then gone, because the modal's
+  // completed state hides the wizard that would ask for it again. Hand the
+  // decisions to the modal instead, which submits the full payload in one write.
   const submit = () => {
-    reviewWeek(weeklyPlan.id, decisions);
+    onOpenFullReview?.();
   };
 
   const counts = {
@@ -640,7 +709,7 @@ function WeekReviewCard({
 
           {savedReview.reflection?.wins ? (
             <div className="rounded-xl border border-monk-border/50 bg-monk-soft/20 p-3 text-xs text-monk-muted line-clamp-2">
-              <span className="font-semibold text-monk-text">Wins: </span>
+              <span className="font-semibold text-monk-text">{t("week.review.wins")}&nbsp;</span>
               {savedReview.reflection.wins}
             </div>
           ) : null}

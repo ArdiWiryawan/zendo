@@ -172,6 +172,45 @@ describe("planned rest is neutral in the rhythm ratio", () => {
     expect(restRate).toBe(100);
   });
 
+  it("does not count a day that was never planned as a miss", () => {
+    // The regression: `getDailyStatusForDate` returns "missed" for any elapsed
+    // day it has no evidence for, so a season with an empty calendar used to
+    // report every day as missed. The Week screen labelled the same days "no
+    // plan" while the Timeline counted them as failures.
+    const state = makeState({ durationDays: 7 });
+    const rhythm = selectSeasonRhythmAccounting(state, elapsedDatesOf(state));
+
+    expect(rhythm.missedDays).toBe(0);
+    expect(rhythm.accountedDays).toBe(0);
+    expect(rhythm.elapsedDays).toBe(7);
+    expect(rhythm.consistencyRate).toBe(0);
+  });
+
+  it("still counts a day as missed when a plan existed and went undone", () => {
+    // The other half of the rule: requiring a plan must not swallow real misses.
+    const state = makeState({
+      durationDays: 7,
+      goalDays: [0, 1, 2, 3, 4],
+      missedDays: [5, 6],
+    });
+    const rhythm = selectSeasonRhythmAccounting(state, elapsedDatesOf(state));
+
+    expect(rhythm.missedDays).toBe(2);
+    expect(rhythm.consistencyRate).toBe(71);
+  });
+
+  it("ignores a plan belonging to a different season", () => {
+    const state = makeState({ durationDays: 3 });
+    state.dayPlans.push({
+      ...makeDayPlan(datesInRange(START_DATE, 3)[1], "goal", "missed"),
+      seasonId: "some-other-season",
+    } as DayPlan);
+
+    const rhythm = selectSeasonRhythmAccounting(state, elapsedDatesOf(state));
+
+    expect(rhythm.missedDays).toBe(0);
+  });
+
   it("reports zero rather than dividing by zero when nothing has elapsed", () => {
     const state = makeState({ durationDays: 5 });
     const rhythm = selectSeasonRhythmAccounting(state, []);

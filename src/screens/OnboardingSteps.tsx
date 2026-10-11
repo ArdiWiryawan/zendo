@@ -766,7 +766,7 @@ export function PlanTomorrow({ goals }: { goals: ReturnType<typeof selectActiveG
       <Card className="bg-monk-surface border-monk-border">
         <div className="flex items-center justify-between">
           <div>
-            <p className="text-xs text-monk-text-soft uppercase tracking-wider font-semibold">Tomorrow's Focus</p>
+            <p className="text-xs text-monk-text-soft uppercase tracking-wider font-semibold">{t("today.planTomorrow.focusHeading")}</p>
             <p className="mt-1 font-semibold text-base">
               {tomorrowPlan.dayType === "rest" ? t("today.planTomorrow.quietRecovery") : goal?.title}
             </p>

@@ -497,7 +497,7 @@ export function GoalBlueprintModal({ goalId, isOpen, onClose }: GoalBlueprintMod
               <button
                 type="button"
                 onClick={onClose}
-                aria-label="Close"
+                aria-label={t("ui.close")}
                 className="grid h-7 w-7 place-items-center rounded-lg text-monk-muted hover:bg-monk-soft hover:text-monk-text transition"
               >
                 <X size={16} />

@@ -235,7 +235,11 @@ function TimelineEventRow({ event }: { event: TimelineEvent }) {
     ? store.journalEntries.find((entry) => entry.id === event.sourceId)
     : undefined;
   const journalLang = (store.appSettings.language ?? "id") as AppLanguage;
-  const journalItems = journalRecord ? getJournalAnswerItems(journalLang, journalRecord.answers, journalRecord.date) : [];
+  // Pass the stored prompt text so the timeline shows the question the user was
+  // actually asked, not one recomputed from the date after a prompt-bank change.
+  const journalItems = journalRecord
+    ? getJournalAnswerItems(journalLang, journalRecord.answers, journalRecord.date, journalRecord.promptText)
+    : [];
   const displayDescription = event.type === "focus_session" && normalizedFocusRecord
     ? formatFocusSessionTimelineDescription(normalizedFocusRecord, focusCompleted ? undefined : "saved")
     : event.type === "journal_entry" && journalItems.length > 0
@@ -873,7 +877,14 @@ export default function TimelineScreen() {
                 const isEligible = isRetroEligible(dateStr, status, today);
 
                 const isCompleted = status === "completed" || (isDateToday && dayPlan?.status === "completed");
-                const isRest = status === "rest" || dayPlan?.dayType === "rest";
+                // Read through the persisted record, not the `dayPlan` row: a
+                // day the user planned as Rest that produced a real Focus
+                // session is a Focus day, and `getDailyStatusForDate` already
+                // encodes that precedence. Re-deriving it here as
+                // `status === "rest" || dayPlan?.dayType === "rest"` let a
+                // single date render as Rest on this screen while WeekScreen
+                // read it as completed.
+                const isRest = status === "rest";
                 const isPartial = status === "partial";
                 const isMissed = (status === "missed" || status === "relapse" || (!isFuture && !dayPlan && !isDateToday));
 

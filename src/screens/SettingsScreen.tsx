@@ -231,7 +231,7 @@ export default function SettingsScreen() {
       "",
       "## Journal",
       ...journal.map(j => {
-        const items = getJournalAnswerItems(lang, j.answers, j.createdAt.slice(0, 10));
+        const items = getJournalAnswerItems(lang, j.answers, j.createdAt.slice(0, 10), j.promptText);
         return [
           `### ${j.createdAt.slice(0, 10)}`,
           ...items.map(item => `- **${item.question}**: ${item.answer}`)
@@ -420,13 +420,13 @@ export default function SettingsScreen() {
                 <div className="flex items-center gap-1.5">
                   <GhostButton
                     onClick={handleTestReminder}
-                    aria-label="Uji Pengingat"
-                    className="!min-h-7 !px-2.5 text-xs font-semibold text-monk-accent hover:bg-monk-accent/10"
+                    aria-label={tUI("settings.testReminderAria")}
+                    className="!min-h-11 !px-3 text-xs font-semibold text-monk-accent hover:bg-monk-accent/10"
                   >
                     <Bell className="w-3.5 h-3.5 mr-1" />
-                    Uji
+                    {tUI("settings.testReminder")}
                   </GhostButton>
-                  <GhostButton onClick={store.resetReminders} aria-label={tUI("settings.remindersResetAria")} className="!min-h-7 !px-2.5 text-xs">
+                  <GhostButton onClick={store.resetReminders} aria-label={tUI("settings.remindersResetAria")} className="!min-h-11 !px-3 text-xs">
                     <RotateCcw className="w-3.5 h-3.5 mr-1" />
                     {tUI("settings.remindersReset")}
                   </GhostButton>
@@ -445,7 +445,7 @@ export default function SettingsScreen() {
                           onChange={(e) => store.updateReminder(reminder.id, { time: e.target.value })}
                           disabled={!reminder.enabled}
                           aria-label={tUI(`reminder.${reminder.type}`)}
-                          className="min-h-7 rounded-monk border border-monk-border/40 bg-monk-soft px-2 py-1 text-xs text-monk-text outline-none transition focus:border-monk-accent disabled:opacity-40"
+                          className="min-h-11 rounded-monk border border-monk-border/40 bg-monk-soft px-2 py-1 text-xs text-monk-text outline-none transition focus:border-monk-accent disabled:opacity-40"
                         />
                         {reminder.type === "season_countdown" ? (
                           <span className="text-[10px] text-monk-muted">{tUI("reminder.season_countdownPrefix")} {reminder.daysBeforeSeasonEnd ?? 3} {tUI("reminder.season_countdownSuffix")}</span>
@@ -544,7 +544,7 @@ export default function SettingsScreen() {
                       };
                       reader.readAsText(file);
                     }} />
-                    <span className="inline-flex items-center justify-center min-h-10 min-w-10 text-monk-muted border border-monk-border rounded-full hover:border-monk-accent hover:text-monk-accent transition active:scale-95" aria-label={tUI("settings.importJsonAria")}>
+                    <span className="inline-flex items-center justify-center min-h-11 min-w-11 text-monk-muted border border-monk-border rounded-full hover:border-monk-accent hover:text-monk-accent transition active:scale-95" aria-label={tUI("settings.importJsonAria")}>
                       <Upload className="w-4 h-4" />
                     </span>
                   </label>
@@ -582,13 +582,13 @@ export default function SettingsScreen() {
             {session?.email ? (
               <div className="flex items-center justify-between mt-3 pt-2 border-t border-monk-border/30">
                 <p className="text-xs font-medium text-monk-text truncate">{session.email}</p>
-                <GhostButton onClick={handleLogout} className="text-xs !min-h-8 !px-3">
+                <GhostButton onClick={handleLogout} className="text-xs !min-h-11 !px-3">
                   {tUI("settings.logout")}
                 </GhostButton>
               </div>
             ) : (
               <div className="mt-3 pt-2 border-t border-monk-border/30">
-                <GhostButton onClick={() => navigate(routes.login)} className="text-xs !min-h-8 !px-3 w-full justify-center">
+                <GhostButton onClick={() => navigate(routes.login)} className="text-xs !min-h-11 !px-3 w-full justify-center">
                   {tUI("settings.connectAccount")}
                 </GhostButton>
               </div>
@@ -632,7 +632,7 @@ export default function SettingsScreen() {
                 target="_blank"
                 rel="noopener"
                 aria-label={tUI("settings.legalTermsAria")}
-                className="inline-flex min-h-8 shrink-0 items-center rounded-full border border-monk-border px-3 text-xs font-semibold text-monk-accent transition active:scale-95 hover:border-monk-accent/50 hover:bg-monk-accent/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-monk-accent"
+                className="inline-flex min-h-11 shrink-0 items-center rounded-full border border-monk-border px-3 text-xs font-semibold text-monk-accent transition active:scale-95 hover:border-monk-accent/50 hover:bg-monk-accent/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-monk-accent"
               >
                 {tUI("settings.legalOpen")}
               </a>
@@ -643,7 +643,7 @@ export default function SettingsScreen() {
                 target="_blank"
                 rel="noopener"
                 aria-label={tUI("settings.legalPrivacyAria")}
-                className="inline-flex min-h-8 shrink-0 items-center rounded-full border border-monk-border px-3 text-xs font-semibold text-monk-accent transition active:scale-95 hover:border-monk-accent/50 hover:bg-monk-accent/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-monk-accent"
+                className="inline-flex min-h-11 shrink-0 items-center rounded-full border border-monk-border px-3 text-xs font-semibold text-monk-accent transition active:scale-95 hover:border-monk-accent/50 hover:bg-monk-accent/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-monk-accent"
               >
                 {tUI("settings.legalOpen")}
               </a>
@@ -661,7 +661,7 @@ export default function SettingsScreen() {
             <SettingsRow icon={Trash2} title={tUI("settings.reset")} description={tUI("settings.resetDesc")} danger>
               <button
                 type="button"
-                className="shrink-0 text-xs font-bold text-monk-danger border border-monk-danger/30 hover:border-monk-danger bg-monk-danger/10 px-3 py-1.5 rounded-full transition active:scale-95"
+                className="inline-flex min-h-11 shrink-0 items-center text-xs font-bold text-monk-danger border border-monk-danger/30 hover:border-monk-danger bg-monk-danger/10 px-4 rounded-full transition active:scale-95"
                 onClick={() => setConfirmKind("wipe")}
               >
                 {tUI("settings.wipe")}
@@ -733,13 +733,18 @@ function MonkToggle({ checked, "aria-label": ariaLabel, onToggle }: { checked: b
       aria-checked={checked}
       aria-label={ariaLabel}
       onClick={onToggle}
-      className={`relative inline-flex h-6 w-[44px] shrink-0 items-center rounded-full transition-colors duration-200 active:scale-[0.97] ${
-        checked ? "bg-monk-accent" : "bg-monk-border-strong"
-      }`}
+      /* Hit area is a 44x44 target (WCAG 2.2 AA); -my-2.5 cancels the extra
+         height so the row keeps its original 24px-tall layout footprint.
+         The visible track stays 24px — the design is unchanged. */
+      className="relative -my-2.5 inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded-full transition duration-200 active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-monk-accent focus-visible:ring-offset-2 focus-visible:ring-offset-monk-bg"
     >
-      <span className={`inline-block h-4 w-4 rounded-full bg-monk-text shadow-sm transition-transform duration-200 ${
-        checked ? "translate-x-[22px]" : "translate-x-[3px]"
-      }`} />
+      <span className={`relative inline-flex h-6 w-[44px] items-center rounded-full transition-colors duration-200 ${
+        checked ? "bg-monk-accent" : "bg-monk-border-strong"
+      }`}>
+        <span className={`inline-block h-4 w-4 rounded-full bg-monk-text shadow-sm transition-transform duration-200 ${
+          checked ? "translate-x-[22px]" : "translate-x-[3px]"
+        }`} />
+      </span>
     </button>
   );
 }

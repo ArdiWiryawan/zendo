@@ -34,6 +34,7 @@ export function selectSeasonRhythmAccounting(
   store: MonkMVPState,
   passedDates: string[]
 ) {
+  const seasonId = store.activeSeason?.id;
   let focusDays = 0;
   let restDays = 0;
   let missedDays = 0;
@@ -42,7 +43,22 @@ export function selectSeasonRhythmAccounting(
     const status = getDailyStatusForDate(store, date);
     if (status === "completed") focusDays++;
     else if (status === "rest") restDays++;
-    else if (status === "missed" || status === "relapse") missedDays++;
+    else if (status === "relapse") missedDays++;
+    else if (status === "missed") {
+      // "Missed" only means something when there was something to miss. The
+      // status itself is bare — `getDailyStatusForDate` returns it for any
+      // elapsed day it has no evidence for, including one that was never
+      // planned — so the plan is what separates "you committed to this and did
+      // not do it" from "you never opened this day". Counting the second as a
+      // miss manufactured a failure out of an empty calendar, and it put this
+      // file at odds with the Week screen, which labels the same day "no plan".
+      // An unplanned day is a gap in the denominator, not a mark against the
+      // user, so it is left uncounted here.
+      const wasPlanned = store.dayPlans.some(
+        (plan) => plan.date === date && (!seasonId || plan.seasonId === seasonId)
+      );
+      if (wasPlanned) missedDays++;
+    }
   });
 
   const elapsedDays = passedDates.length;

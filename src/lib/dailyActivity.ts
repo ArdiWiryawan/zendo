@@ -8,6 +8,15 @@ import {
   normalizeFocusSessionRecord
 } from "../constants/focusSessionStatus";
 
+/**
+ * The one threshold that decides when a focus session counts as the day's work.
+ *
+ * Named rather than left as a bare `15 * 60` in two places, because the store
+ * and the Week screen must agree on it: while they were two independent
+ * literals, a day could be completed on one screen and still open on another.
+ */
+export const FOCUS_DAY_THRESHOLD_MINUTES = 15;
+
 export function getDailyActivity(store: MonkMVPState, date: string) {
   // Scope to the active season — a shared calendar date must not pull in a
   // previous season's day plans/sessions.
