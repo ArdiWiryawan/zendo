@@ -1,5 +1,6 @@
 import type { MonkMVPState, JournalAnswers, ParaType } from "../types/app";
 import { normalizeFocusSessionRecord, normalizeFocusTimelineEvents } from "../constants/focusSessionStatus";
+import { resolveActivityCategory } from "./activityCategory";
 
 export const STORAGE_KEY = "monk_mode_pwa_state_v1";
 export const JOURNAL_DRAFT_KEY = "monk_journal_draft_v1";
@@ -139,6 +140,26 @@ export function loadState(): MonkMVPState | null {
 
   state.focusSessions = (state.focusSessions ?? []).map((session) => normalizeFocusSessionRecord(session));
   state.timelineEvents = normalizeFocusTimelineEvents(state.timelineEvents ?? [], state.focusSessions);
+
+  // Resolve every persisted block's category at the single point where data
+  // enters the app. `JSON.parse(...) as MonkMVPState` is an unchecked cast: a
+  // category edited by hand, stored by a future build, or left behind by a
+  // rename is otherwise carried straight to the renderers and the ICS exporter
+  // as an id they cannot look up. Normalising here means every downstream
+  // reader sees a valid id and none of them needs its own fallback. The value
+  // is only corrected in memory; the stored record is left alone until the next
+  // write, so nothing is rewritten behind the user's back.
+  const plans = state.dayPlans;
+  if (Array.isArray(plans)) {
+    for (const plan of plans) {
+      const blocks = plan?.timeBlocks;
+      if (!Array.isArray(blocks)) continue;
+      for (const block of blocks) {
+        if (!block) continue;
+        block.category = resolveActivityCategory(block.category);
+      }
+    }
+  }
 
   return state;
 }

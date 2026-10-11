@@ -28,6 +28,7 @@ import { hapticPress } from "../lib/haptics";
 import { playCompletionChime } from "../lib/audio";
 import { downloadIcsFile } from "../lib/ical";
 import { parseIcsForDate, inferCategory } from "../lib/icsParser";
+import { resolveActivityCategory } from "../lib/activityCategory";
 import { useCalmToast, PrimaryButton, SecondaryButton, useModalA11y } from "./ui";
 import type { TimeBlock, TimeBlockCategory } from "../types/app";
 
@@ -42,42 +43,61 @@ const AGENDA_MAX = 12;
 
 const CATEGORY_CONFIG: Record<
   TimeBlockCategory,
-  { labelKey: MessageKey; icon: typeof Zap; colorClass: string; bgClass: string; borderClass: string }
+  {
+    labelKey: MessageKey;
+    icon: typeof Zap;
+    colorClass: string;
+    bgClass: string;
+    borderClass: string;
+    /**
+     * Category color as a standalone swatch. The icon already distinguishes the
+     * categories by shape, but a shape alone does not tell the user which color
+     * this category will wear in the timeline and in an exported calendar. The
+     * dot carries that mapping on unselected pills too, so the row reads as a
+     * legend rather than only revealing color after a choice is made.
+     */
+    dotClass: string;
+  }
 > = {
   deep_work: {
     labelKey: "planning.catDeep",
     icon: Zap,
     colorClass: "text-monk-cat-deep",
     bgClass: "bg-monk-cat-deep/10",
-    borderClass: "border-monk-cat-deep/30"
+    borderClass: "border-monk-cat-deep/30",
+    dotClass: "bg-monk-cat-deep"
   },
   learning: {
     labelKey: "planning.catLearning",
     icon: BookOpen,
     colorClass: "text-monk-cat-learning",
     bgClass: "bg-monk-cat-learning/10",
-    borderClass: "border-monk-cat-learning/30"
+    borderClass: "border-monk-cat-learning/30",
+    dotClass: "bg-monk-cat-learning"
   },
   shallow: {
     labelKey: "planning.catShallow",
     icon: Briefcase,
     colorClass: "text-monk-cat-shallow",
     bgClass: "bg-monk-cat-shallow/10",
-    borderClass: "border-monk-cat-shallow/30"
+    borderClass: "border-monk-cat-shallow/30",
+    dotClass: "bg-monk-cat-shallow"
   },
   rest: {
     labelKey: "planning.catRest",
     icon: Coffee,
     colorClass: "text-monk-cat-rest",
     bgClass: "bg-monk-cat-rest/10",
-    borderClass: "border-monk-cat-rest/30"
+    borderClass: "border-monk-cat-rest/30",
+    dotClass: "bg-monk-cat-rest"
   },
   personal: {
     labelKey: "planning.catPersonal",
     icon: User,
     colorClass: "text-monk-cat-personal",
     bgClass: "bg-monk-cat-personal/10",
-    borderClass: "border-monk-cat-personal/30"
+    borderClass: "border-monk-cat-personal/30",
+    dotClass: "bg-monk-cat-personal"
   }
 };
 
@@ -365,7 +385,7 @@ export function MorningPlanningModal({
         title,
         startTime: item.startTime,
         endTime: item.endTime,
-        category: inferCategory(item.title),
+        category: inferCategory(item.title, item.categories),
         completed: false
       });
     }
@@ -796,6 +816,10 @@ export function MorningPlanningModal({
                             : "border-monk-border bg-monk-surface text-monk-muted hover:text-monk-text"
                         }`}
                       >
+                        <span
+                          aria-hidden="true"
+                          className={`h-2 w-2 shrink-0 rounded-full ${cfg.dotClass}`}
+                        />
                         <Icon size={12} />
                         <span>{t(cfg.labelKey)}</span>
                       </button>
@@ -861,7 +885,7 @@ export function MorningPlanningModal({
               ) : (
                 <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
                   {timeBlocks.map((block) => {
-                    const cfg = CATEGORY_CONFIG[block.category] || CATEGORY_CONFIG.deep_work;
+                    const cfg = CATEGORY_CONFIG[resolveActivityCategory(block.category)];
                     const Icon = cfg.icon;
                     const durationText = formatHumanDuration(block.startTime, block.endTime, isId);
 

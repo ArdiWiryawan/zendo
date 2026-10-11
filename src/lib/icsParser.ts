@@ -5,7 +5,19 @@ import type { TimeBlockCategory } from "../types/app";
  */
 export type ParsedCalendar = {
   /** Timed VEVENTs on the requested date → time blocks. */
-  items: Array<{ title: string; startTime: string; endTime: string }>;
+  items: Array<{
+    title: string;
+    startTime: string;
+    endTime: string;
+    /**
+     * The VEVENT's CATEGORIES value, joined when the file states several.
+     * Carried through so `inferCategory` can honour a category the file itself
+     * declared instead of guessing from the title — its first parameter was
+     * always optional, but nothing ever passed it, so that branch was dead and
+     * every import fell back to title keyword matching.
+     */
+    categories?: string;
+  }>;
   /** All-day (VALUE=DATE) VEVENTs on the requested date → agenda lines. */
   allDayTitles: string[];
   /** VEVENT count in the file before date filtering. */
@@ -391,7 +403,14 @@ function collectEvent(
 
   if (endTime <= startTime) endTime = END_OF_DAY;
 
-  items.push({ title: cleanTitle, startTime, endTime });
+  // Omit the key entirely when the VEVENT declared no CATEGORIES, so a parsed
+  // item keeps exactly the shape it had before this field existed for every
+  // file that does not use the property.
+  items.push(
+    categories
+      ? { title: cleanTitle, startTime, endTime, categories }
+      : { title: cleanTitle, startTime, endTime }
+  );
 }
 
 /**

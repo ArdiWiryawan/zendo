@@ -5,6 +5,7 @@ import { useT, useLanguage, type MessageKey } from "../i18n";
 import { getTodayDateString, formatHumanDate } from "../lib/date";
 import { hapticPress } from "../lib/haptics";
 import { downloadIcsFile } from "../lib/ical";
+import { resolveActivityCategory } from "../lib/activityCategory";
 import { useCalmToast } from "./ui";
 import type { TimeBlock, TimeBlockCategory } from "../types/app";
 
@@ -292,7 +293,7 @@ export function DayTimeBlockVisualizer({
             const startM = parseTimeToMinutes(block.startTime);
             const endM = parseTimeToMinutes(block.endTime);
             const durationHours = ((endM - startM) / 60).toFixed(1);
-            const style = CATEGORY_STYLES[block.category] || CATEGORY_STYLES.deep_work;
+            const style = CATEGORY_STYLES[resolveActivityCategory(block.category)];
             const Icon = style.icon;
 
             return (
@@ -382,7 +383,7 @@ export function DayTimeBlockVisualizer({
                 const top = Math.max(0, (startM - START_HOUR * 60) * PIXELS_PER_MINUTE);
                 const height = Math.max(28, (endM - startM) * PIXELS_PER_MINUTE - 2);
 
-                const style = CATEGORY_STYLES[block.category] || CATEGORY_STYLES.deep_work;
+                const style = CATEGORY_STYLES[resolveActivityCategory(block.category)];
 
                 return (
                   <div

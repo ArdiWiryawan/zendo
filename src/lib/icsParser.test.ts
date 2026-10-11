@@ -420,8 +420,12 @@ describe("icsParser", () => {
 
     const result = parseIcsForDate(ics, "2026-10-05");
 
+    // The CATEGORIES property is carried through, not dropped. It is what makes
+    // the declared-category branch of inferCategory reachable: an event that
+    // says it is deep work should be imported as deep work rather than re-guessed
+    // from its title.
     expect(result.items).toEqual([
-      { title: "Deep Work: Coding API", startTime: "08:30", endTime: "10:30" }
+      { title: "Deep Work: Coding API", startTime: "08:30", endTime: "10:30", categories: "DEEP WORK" }
     ]);
     expect(result.totalEvents).toBe(1);
   });
