@@ -1,5 +1,10 @@
+import { useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import { motion, useReducedMotion } from "framer-motion";
-import { PrimaryButton } from "../components/ui";
+import { CalmAlert, PrimaryButton } from "../components/ui";
+import { routes } from "../constants/routes";
+import { useMonkStore } from "../store/useMonkStore";
+import type { MonkMVPState } from "../types/app";
 
 interface WelcomeScreenProps {
   onNext: () => void;
@@ -7,6 +12,32 @@ interface WelcomeScreenProps {
 
 export function WelcomeScreen({ onNext }: WelcomeScreenProps) {
   const reduce = useReducedMotion();
+  const navigate = useNavigate();
+  const importState = useMonkStore((state) => state.importState);
+  const [restoreError, setRestoreError] = useState<string | null>(null);
+
+  // Onboarding is reachable with data still available elsewhere (cloud row or
+  // a JSON export) — e.g. this browser's storage was cleared. Both recovery
+  // doors live here so nobody has to redo the setup while their season exists.
+  const restoreFromFile = (file: File) => {
+    const reader = new FileReader();
+    reader.onerror = () => setRestoreError("Could not read that file.");
+    reader.onload = (event) => {
+      try {
+        const data = JSON.parse(String(event.target?.result ?? ""));
+        if (!data || typeof data !== "object" || !(data.userProfile || data.activeSeason || data.goals)) {
+          setRestoreError("That file doesn't look like a Zendo backup.");
+          return;
+        }
+        importState(data as Partial<MonkMVPState>);
+        setRestoreError(null);
+        navigate(routes.root);
+      } catch {
+        setRestoreError("Could not read that file.");
+      }
+    };
+    reader.readAsText(file);
+  };
   // motivated motion: staggered reveal establishes calm cadence + hierarchy (icon > brand > headline > sub > CTA)
   const rise = (delay: number) =>
     reduce
@@ -61,6 +92,44 @@ export function WelcomeScreen({ onNext }: WelcomeScreenProps) {
         <p className="mt-2.5 text-xs text-monk-text-soft">
           Setup is auto-saved. Leave anytime, resume where you stopped.
         </p>
+
+        {restoreError ? (
+          <div className="mt-3 text-left">
+            <CalmAlert type="danger" title={restoreError} />
+          </div>
+        ) : null}
+
+        <div className="mt-4 border-t border-monk-border pt-3">
+          <p className="text-xs text-monk-text-soft">Already have a season?</p>
+          <div className="mt-1 flex items-center justify-center gap-3 text-xs">
+            <Link
+              to={routes.login}
+              className="inline-flex min-h-11 items-center font-semibold text-monk-accent hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-monk-accent focus-visible:ring-offset-2 focus-visible:ring-offset-monk-bg"
+            >
+              Sign in
+            </Link>
+            <span className="text-monk-muted/50" aria-hidden>
+              ·
+            </span>
+            <label className="inline-flex min-h-11 cursor-pointer items-center font-semibold text-monk-accent hover:underline focus-within:ring-2 focus-within:ring-monk-accent focus-within:ring-offset-2 focus-within:ring-offset-monk-bg rounded-sm">
+              Restore a backup
+              <input
+                type="file"
+                accept=".json"
+                className="hidden"
+                aria-label="Restore a Zendo backup file"
+                onChange={(event) => {
+                  const file = event.target.files?.[0];
+                  event.target.value = "";
+                  if (file) restoreFromFile(file);
+                }}
+              />
+            </label>
+          </div>
+          <p className="mt-1 text-[11px] leading-4 text-monk-muted/60">
+            Signing in pulls your season back from the cloud. A JSON backup file works offline.
+          </p>
+        </div>
       </motion.div>
     </div>
   );

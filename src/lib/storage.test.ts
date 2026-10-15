@@ -1,11 +1,15 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import type { MonkMVPState } from "../types/app";
+import { createInitialState } from "../constants/defaultData";
 import {
   STORAGE_KEY,
+  BACKUP_KEY,
   LAST_FOCUS_KEY,
   clearState,
+  hasMeaningfulState,
   loadLastFocus,
   loadState,
+  saveBackupState,
   saveLastFocus,
   saveState
 } from "./storage";
@@ -83,6 +87,45 @@ function baseState(overrides: Partial<MonkMVPState> = {}): MonkMVPState {
     } as unknown as MonkMVPState["onboarding"],
     ...overrides
   } as MonkMVPState;
+}
+
+/** The shape a real install has after onboarding: identity + season + records. */
+function meaningfulState(): MonkMVPState {
+  const state = createInitialState();
+  state.userProfile = {
+    id: "user_1",
+    onboardingCompleted: true,
+    activeSeasonId: "s1",
+    createdAt: "2026-10-01T00:00:00.000Z",
+    updatedAt: "2026-10-01T00:00:00.000Z"
+  };
+  state.activeSeason = {
+    id: "s1",
+    name: "Zendo Season I",
+    startDate: "2026-09-29",
+    endDate: "2026-12-27",
+    durationDays: 90,
+    status: "active",
+    mode: "planning",
+    goalIds: ["g1"],
+    badHabitIds: [],
+    createdAt: "2026-10-01T00:00:00.000Z",
+    updatedAt: "2026-10-01T00:00:00.000Z"
+  };
+  state.goals = [
+    {
+      id: "g1",
+      seasonId: "s1",
+      title: "Write every morning",
+      keystoneAction: "Open the notebook",
+      priority: 1,
+      weeklyTargetCount: 5,
+      status: "active",
+      createdAt: "2026-10-01T00:00:00.000Z",
+      updatedAt: "2026-10-01T00:00:00.000Z"
+    }
+  ];
+  return state;
 }
 
 describe("storage", () => {
@@ -194,6 +237,12 @@ describe("storage", () => {
     expect(loadState()).toBeNull();
   });
 
+  it("clearState removes the last-known-good snapshot too", () => {
+    saveBackupState(meaningfulState());
+    clearState();
+    expect(localStorage.getItem(BACKUP_KEY)).toBeNull();
+  });
+
   // Regression: `partialize` used to omit practices/practiceLogs, so hydrate's
   // `stored.practices ?? []` wiped a user's practices and their logged history
   // on every reload. This asserts the round-trip at the storage layer, which is
@@ -223,5 +272,70 @@ describe("storage", () => {
     expect(loadLastFocus()).toEqual({ preset: "custom", customMinutes: 5 });
     saveLastFocus("deep_work", 50.6);
     expect(loadLastFocus()).toEqual({ preset: "deep_work", customMinutes: 51 });
+  });
+});
+
+// 2026-10-15 incident: the origin's localStorage was emptied outside the app,
+// the app booted blank, showed onboarding, and its own next write persisted the
+// blank state — the season only survived in the cloud. These guards make that
+// class recoverable: a blank state cannot erase stored data, every boot keeps a
+// snapshot worth restoring, and loadState heals a blank/corrupt key from it.
+describe("data-loss guards", () => {
+  beforeEach(() => {
+    Object.defineProperty(globalThis, "localStorage", {
+      value: createMemoryStorage(),
+      configurable: true,
+      writable: true
+    });
+  });
+
+  it("hasMeaningfulState separates seed defaults from user data", () => {
+    expect(hasMeaningfulState(createInitialState())).toBe(false);
+    expect(hasMeaningfulState(meaningfulState())).toBe(true);
+    expect(hasMeaningfulState(null)).toBe(false);
+    expect(hasMeaningfulState(undefined)).toBe(false);
+  });
+
+  it("saveState refuses to overwrite stored data with a blank state", () => {
+    saveState(meaningfulState());
+    const before = localStorage.getItem(STORAGE_KEY);
+    saveState(createInitialState());
+    expect(localStorage.getItem(STORAGE_KEY)).toBe(before);
+    expect(loadState()!.goals.length).toBe(1);
+  });
+
+  it("saveState still writes a blank state when nothing is stored", () => {
+    saveState(createInitialState());
+    expect(localStorage.getItem(STORAGE_KEY)).not.toBeNull();
+    expect(loadState()).not.toBeNull();
+  });
+
+  it("saveBackupState ignores blank states", () => {
+    saveBackupState(createInitialState());
+    expect(localStorage.getItem(BACKUP_KEY)).toBeNull();
+  });
+
+  it("loadState heals from the snapshot when the main key is blank", () => {
+    localStorage.setItem(BACKUP_KEY, JSON.stringify(meaningfulState()));
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(createInitialState()));
+    const loaded = loadState()!;
+    expect(loaded.userProfile?.id).toBe("user_1");
+    expect(loaded.activeSeason?.id).toBe("s1");
+    expect(loaded.goals.map((g) => g.id)).toEqual(["g1"]);
+  });
+
+  it("loadState heals from the snapshot when the main key is missing", () => {
+    localStorage.setItem(BACKUP_KEY, JSON.stringify(meaningfulState()));
+    expect(loadState()!.activeSeason?.id).toBe("s1");
+  });
+
+  it("a meaningful main state always wins over the snapshot", () => {
+    const stored = meaningfulState();
+    stored.goals = [{ ...stored.goals[0], id: "g-main" }];
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(stored));
+    const snapshot = meaningfulState();
+    snapshot.goals = [{ ...snapshot.goals[0], id: "g-backup" }];
+    localStorage.setItem(BACKUP_KEY, JSON.stringify(snapshot));
+    expect(loadState()!.goals.map((g) => g.id)).toEqual(["g-main"]);
   });
 });

@@ -37,7 +37,7 @@ import { createId } from "../lib/ids";
 import { dedupeDayPlans, isNewerDayPlan } from "../lib/dayPlans";
 import { MAX_ACTIVE_GOAL_TRACKS, MAX_SEASON_GOALS, validateWeeklyAllocation } from "../lib/validation";
 import { parseIntention } from "../lib/implementationIntention";
-import { loadState } from "../lib/storage";
+import { loadState, saveBackupState, saveState } from "../lib/storage";
 import { stopMusic } from "../lib/focusMusic";
 import { syncFocusNotifications } from "../lib/focusNotifications";
 import { resolveLinkedNoteIds } from "../lib/notebookLinks";
@@ -696,6 +696,10 @@ export const useMonkStore = create<MonkStore>()(
   hydrate: () => {
     const stored = loadState();
     if (stored) {
+      // Boot-time snapshot: keep the last state that carried real user data so
+      // an emptied/broken main key can heal on the next boot instead of
+      // stranding the app on onboarding (see docs/data-recovery.md).
+      saveBackupState(stored);
       const todayDate = getTodayDateString();
       const focusSessions = (stored.focusSessions || []).map((session) => {
         const norm = normalizeFocusSessionRecord(session);
@@ -2603,7 +2607,7 @@ export const useMonkStore = create<MonkStore>()(
         : null,
       pastSeasons: nextPast,
       userProfile: state.userProfile
-        ? { ...state.userProfile, onboardingCompleted: false, activeSeasonId: undefined }
+        ? { ...state.userProfile, onboardingCompleted: false, activeSeasonId: undefined, updatedAt: timestamp }
         : null,
       onboarding: createDefaultOnboarding()
     });
@@ -3426,12 +3430,11 @@ export const useMonkStore = create<MonkStore>()(
         setItem: (name, value) => {
           if (typeof localStorage === "undefined") return;
           // zustand wraps persisted data as { state, version }; loadState expects the raw
-          // state object under STORAGE_KEY, so unwrap before writing.
+          // state object under STORAGE_KEY, so unwrap before writing. Writes route
+          // through saveState so the multi-key layout, normalization and the
+          // no-clobber guard live in one place.
           const state = ((value as { state?: MonkMVPState })?.state ?? value) as unknown as MonkMVPState;
-          localStorage.setItem(name, JSON.stringify(state));
-          if (state.focusSessions) localStorage.setItem("focusSessions", JSON.stringify(state.focusSessions));
-          if (state.learningSessions) localStorage.setItem("learningSessions", JSON.stringify(state.learningSessions));
-          if (state.timelineEvents) localStorage.setItem("timelineEvents", JSON.stringify(state.timelineEvents));
+          saveState(state);
         },
         removeItem: (name) => {
           if (typeof localStorage === "undefined") return;
