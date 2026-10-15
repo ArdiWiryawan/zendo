@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1040" height="205" viewBox="0 0 1040 205" role="img" aria-labelledby="title desc">
+<title id="title">Zendo — light wordmark</title><desc id="desc">Zendo wordmark with three stacked stones symbol.</desc>
+<g transform="translate(14 0) scale(0.78 0.78)"><g id="zendo-stacked-stones">
+      <path d="M 91 34 C 108 19, 143 11, 164 19 C 177 24, 176 36, 163 47 C 145 62, 114 72, 94 65 C 78 60, 78 46, 91 34 Z" fill="#FFFFFF"/>
+      <path d="M 45 99 C 63 79, 111 66, 153 71 C 177 74, 189 85, 180 99 C 166 122, 120 145, 79 144 C 51 143, 31 126, 45 99 Z" fill="#D1D5DB"/>
+      <path d="M 57 155 C 75 136, 122 130, 165 137 C 194 142, 211 157, 198 173 C 180 196, 136 215, 96 210 C 65 206, 42 180, 57 155 Z" fill="#6B7280"/>
+    </g></g>
+<text x="248" y="140" font-family="Inter, 'Inter Display', Arial, sans-serif" font-size="144" font-weight="650" letter-spacing="-4" fill="#FFFFFF">Zendo</text>
+
+</svg>

@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="250" height="235" viewBox="0 0 250 235" fill="none" role="img" aria-labelledby="title desc">
+<title id="title">Zendo symbol</title><desc id="desc">Three softly slanted stacked pebble forms.</desc>
+<g id="zendo-stacked-stones">
+      <path d="M 91 34 C 108 19, 143 11, 164 19 C 177 24, 176 36, 163 47 C 145 62, 114 72, 94 65 C 78 60, 78 46, 91 34 Z" fill="#FFFFFF"/>
+      <path d="M 45 99 C 63 79, 111 66, 153 71 C 177 74, 189 85, 180 99 C 166 122, 120 145, 79 144 C 51 143, 31 126, 45 99 Z" fill="#D1D5DB"/>
+      <path d="M 57 155 C 75 136, 122 130, 165 137 C 194 142, 211 157, 198 173 C 180 196, 136 215, 96 210 C 65 206, 42 180, 57 155 Z" fill="#6B7280"/>
+    </g>
+</svg>

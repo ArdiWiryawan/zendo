@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512" role="img" aria-labelledby="title">
+<title>Zendo app icon (dark)</title>
+<rect width="512" height="512" fill="#0F0F0F"/>
+<g transform="translate(76.80 87.55) scale(1.43360 1.52511)"><g id="zendo-stacked-stones">
+      <path d="M 91 34 C 108 19, 143 11, 164 19 C 177 24, 176 36, 163 47 C 145 62, 114 72, 94 65 C 78 60, 78 46, 91 34 Z" fill="#FFFFFF"/>
+      <path d="M 45 99 C 63 79, 111 66, 153 71 C 177 74, 189 85, 180 99 C 166 122, 120 145, 79 144 C 51 143, 31 126, 45 99 Z" fill="#F3F4F6"/>
+      <path d="M 57 155 C 75 136, 122 130, 165 137 C 194 142, 211 157, 198 173 C 180 196, 136 215, 96 210 C 65 206, 42 180, 57 155 Z" fill="#6B7280"/>
+    </g></g>
+</svg>

@@ -309,7 +309,9 @@ function Splash() {
       <div className="mb-5 grid h-16 w-16 place-items-center rounded-full border border-monk-border-strong bg-monk-surface">
         <span className="h-8 w-8 animate-monk-pulse rounded-full border-2 border-monk-accent" />
       </div>
-      <h1 className="text-4xl font-bold leading-[48px] tracking-tight">Zendo</h1>
+      <h1 className="mx-auto h-10 w-auto">
+        <img src="/brand/zendo-logo-horizontal-light.svg" alt="Zendo" className="mx-auto h-10 w-auto" />
+      </h1>
       <p className="mt-3 text-sm text-monk-muted">A quiet digital temple for focus.</p>
       <span className="sr-only">Loading your season…</span>
     </div>

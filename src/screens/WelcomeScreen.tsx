@@ -1,5 +1,4 @@
 import { motion, useReducedMotion } from "framer-motion";
-import { Feather } from "lucide-react";
 import { PrimaryButton } from "../components/ui";
 
 interface WelcomeScreenProps {
@@ -29,7 +28,7 @@ export function WelcomeScreen({ onNext }: WelcomeScreenProps) {
             transition={reduce ? undefined : { duration: 6, repeat: Infinity, ease: "easeInOut" }}
           />
           <div className="relative grid h-20 w-20 sm:h-24 sm:w-24 place-items-center rounded-full border border-monk-accent/20 bg-monk-soft text-monk-accent shadow-calm">
-            <Feather size={32} strokeWidth={1.25} />
+            <img src="/brand/zendo-symbol-light.svg" alt="" aria-hidden className="h-9 w-9 sm:h-11 sm:w-11" />
           </div>
         </motion.div>
 

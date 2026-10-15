@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { en } from "../i18n/messages/en";
 import { id } from "../i18n/messages/id";
@@ -134,6 +134,36 @@ describe("launcher icons are distinct real files", () => {
     expect(head[1]).toBe(0x00);
     expect(head[2]).toBe(0x01);
     expect(head[3]).toBe(0x00);
+  });
+});
+
+describe("every declared icon path resolves to a file on disk", () => {
+  const publicPath = (url: string) => `public/${url.replace(/^\//, "")}`;
+
+  it("manifest icon sources all exist", () => {
+    const manifest = JSON.parse(src("public/manifest.webmanifest")) as { icons: { src: string }[] };
+    expect(manifest.icons.length).toBeGreaterThan(0);
+    for (const icon of manifest.icons) expect(existsSync(publicPath(icon.src))).toBe(true);
+  });
+
+  it("brand and favicon assets all exist", () => {
+    const files = [
+      "public/favicon.svg",
+      "public/favicon-32.png",
+      "public/favicon.ico",
+      "public/apple-touch-icon.png",
+      "public/brand/zendo-logo-horizontal-light.svg",
+      "public/brand/zendo-symbol-light.svg"
+    ];
+    for (const file of files) expect(existsSync(file)).toBe(true);
+  });
+
+  it("every local href in index.html that names an image exists", () => {
+    const hrefs = src("index.html").match(/href="(\/[^"]+\.(?:svg|png|ico))"/g) ?? [];
+    expect(hrefs.length).toBeGreaterThan(0);
+    for (const href of hrefs) {
+      expect(existsSync(publicPath(href.slice(6, -1)))).toBe(true);
+    }
   });
 });
 

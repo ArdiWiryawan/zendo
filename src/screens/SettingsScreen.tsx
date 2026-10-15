@@ -113,7 +113,7 @@ export default function SettingsScreen() {
       try {
         new Notification("Zendo Monk Focus", {
           body: "Pengingat aktif — Waktunya kembali ke fokus utama hari ini.",
-          icon: "/icon-192.png"
+          icon: "/icons/icon-192.png"
         });
       } catch {
         /* ignore */
