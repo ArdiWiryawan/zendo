@@ -28,6 +28,7 @@ import {
   Scale,
   ShieldAlert,
   ShieldCheck,
+  Smartphone,
   Sparkles,
   Trash2,
   Upload,
@@ -38,6 +39,11 @@ import { ZendoProModal } from "../components/ZendoProModal";
 import { routes } from "../constants/routes";
 import { getDaysPassed } from "../lib/date";
 import { exportStateAsJson } from "../lib/storage";
+import {
+  buildLauncherSnapshot,
+  launcherSnapshotFileName,
+  serializeLauncherSnapshot,
+} from "../lib/launcherBridge";
 import { supabase as getSupabase } from "../lib/supabase";
 import { useSyncStatus, type SyncStatus } from "../lib/syncStatus";
 import { useMonkStore } from "../store/useMonkStore";
@@ -207,6 +213,27 @@ export default function SettingsScreen() {
     const link = document.createElement("a");
     link.href = url;
     link.download = `zendo-backup-${new Date().toISOString().slice(0, 10)}.json`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+  };
+
+  // One-way, by hand: a small snapshot in the exact shape Zendo Launcher reads
+  // with its system file picker. Not a sync and not a connection.
+  const downloadLauncherSnapshot = () => {
+    const snapshot = buildLauncherSnapshot({
+      dayPlans: store.dayPlans,
+      dayPlanDeletedAt: store.dayPlanDeletedAt,
+      goals: store.goals,
+    });
+    const blob = new Blob([serializeLauncherSnapshot(snapshot)], {
+      type: "application/json;charset=utf-8",
+    });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = launcherSnapshotFileName(snapshot.localDate);
     document.body.appendChild(link);
     link.click();
     link.remove();
@@ -490,6 +517,11 @@ export default function SettingsScreen() {
               </SettingsRow>
               <SettingsRow icon={HardDrive} title={tUI("settings.backup")} description={tUI("settings.backupDesc")}>
                 <GhostButton onClick={downloadBackup} aria-label={tUI("settings.downloadBackup")} className="shrink-0 !px-2 !min-h-10">
+                  <Download className="w-4 h-4" />
+                </GhostButton>
+              </SettingsRow>
+              <SettingsRow icon={Smartphone} title={tUI("settings.launcherBridge")} description={tUI("settings.launcherBridgeDesc")}>
+                <GhostButton onClick={downloadLauncherSnapshot} aria-label={tUI("settings.downloadLauncherBridgeAria")} className="shrink-0 !px-2 !min-h-10">
                   <Download className="w-4 h-4" />
                 </GhostButton>
               </SettingsRow>
