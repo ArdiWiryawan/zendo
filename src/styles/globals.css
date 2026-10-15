@@ -497,6 +497,7 @@ button {
   line-height: 24px;
   color: var(--notebook-text-body);
   padding-top: 4px; /* ponytail: align baseline to first rule line */
+  overflow-wrap: anywhere; /* long URLs must not spill out of the card */
   background-image: repeating-linear-gradient(
     transparent,
     transparent 23px,
@@ -542,6 +543,19 @@ button {
   color: rgb(var(--color-text-muted));
 }
 .md-para { margin: 0; line-height: 24px; }
+/* Long unbroken tokens (tracking URLs, ids) must wrap inside the page instead of
+   spilling past the sheet edge. `anywhere` also shrinks min-content, so a flex
+   row (task text) cannot force its item wider than the sheet. */
+.md-para,
+.md-list li,
+.md-task-text,
+.md-heading,
+.md-quote,
+.md-code-inline,
+.md-table th,
+.md-table td {
+  overflow-wrap: anywhere;
+}
 .md-heading { font-family: 'Caveat', cursive; font-size: 1.25rem; color: var(--notebook-text-title); margin: 0; line-height: 24px; }
 
 .md-quote { margin: 0; padding: 2px 0 2px 0.9em; border-left: 3px solid rgb(var(--color-accent)); color: var(--notebook-text-body); line-height: 24px; }
