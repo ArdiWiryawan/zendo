@@ -325,7 +325,8 @@ export function WhyCard() {
         <button
           type="button"
           onClick={() => setEditing(true)}
-          className="text-xs font-semibold text-monk-accent transition hover:opacity-80"
+          /* 44px hit area; -my-2 keeps the header row's visual height. */
+          className="-my-2 inline-flex min-h-11 shrink-0 items-center text-xs font-semibold text-monk-accent transition hover:opacity-80"
         >
           {t("why.editButton")}
         </button>

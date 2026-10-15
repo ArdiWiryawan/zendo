@@ -11,10 +11,13 @@ import type { EnergyLevel, Goal, GoalTask } from "../types/app";
 /** One treatment for every inline text action on the focus card. Edit, Add
  *  intention, Set action, Cancel and Save are all the same class of affordance,
  *  so they must not each invent their own size, weight and hover. */
+/* Inline text links that still need a real touch target: 44px tall hit area
+   (WCAG 2.2 SC 2.5.8 / the 44px recommendation) with -my-2 cancelling the
+   extra height so the surrounding rows keep their rhythm. */
 export const focusLinkClass =
-  "rounded-md text-sm font-semibold text-monk-accent transition hover:underline active:scale-95";
+  "-my-2 inline-flex min-h-11 items-center rounded-md text-sm font-semibold text-monk-accent transition hover:underline active:scale-95";
 export const focusLinkMutedClass =
-  "rounded-md text-sm font-medium text-monk-muted transition hover:underline active:scale-95";
+  "-my-2 inline-flex min-h-11 items-center rounded-md text-sm font-medium text-monk-muted transition hover:underline active:scale-95";
 
 /** Maps the focus card's CTA into its label + action state. A "deferred" state
  *  is intentionally absent — nothing in the card offers deferral, so a fifth
@@ -187,7 +190,8 @@ export function WhyStrip({ compact = false }: { compact?: boolean }) {
         <button
           type="button"
           onClick={() => setEditing(true)}
-          className="shrink-0 text-[10px] font-semibold text-monk-accent hover:underline"
+          /* 44px hit area; -my-2 keeps the strip's visual height unchanged. */
+          className="-my-2 inline-flex min-h-11 shrink-0 items-center text-[10px] font-semibold text-monk-accent hover:underline"
         >
           {t("why.editButton")}
         </button>
@@ -281,7 +285,7 @@ export function WhyStrip({ compact = false }: { compact?: boolean }) {
           <button
             type="button"
             onClick={() => setEditing(true)}
-            className="text-xs font-semibold text-monk-accent transition hover:opacity-80"
+            className="-my-2 inline-flex min-h-11 items-center text-xs font-semibold text-monk-accent transition hover:opacity-80"
           >
             {t("why.editButton")}
           </button>

@@ -685,7 +685,8 @@ export default function JournalNotebook({ onEditingChange, initialEntryId }: { o
                   type="button"
                   aria-pressed={isActive}
                   onClick={() => setFilterCat(isActive ? null : cat.id)}
-                  className="flex items-center gap-1.5 text-xs font-semibold active:scale-[0.97]"
+                  /* 44px hit area; -my-2.5 keeps the pill row's visual height close. */
+                  className="-my-2.5 flex min-h-11 items-center gap-1.5 text-xs font-semibold active:scale-[0.97]"
                   style={{
                     color: isActive ? `rgb(var(${token}))` : "rgb(var(--color-text-muted))"
                   }}
@@ -708,7 +709,7 @@ export default function JournalNotebook({ onEditingChange, initialEntryId }: { o
                     e.stopPropagation();
                     setCatMenu((cur) => (cur?.id === cat.id ? null : { id: cat.id, anchor: e.currentTarget }));
                   }}
-                  className={`relative grid h-5 w-5 shrink-0 place-items-center rounded-full transition after:absolute after:left-1/2 after:top-1/2 after:h-6 after:w-6 after:-translate-x-1/2 after:-translate-y-1/2 after:content-[''] ${menuOpen ? "bg-monk-soft text-monk-text" : "text-monk-text-soft hover:bg-monk-soft/60 hover:text-monk-text"}`}
+                  className={`relative grid h-6 w-6 shrink-0 place-items-center rounded-full transition after:absolute after:left-1/2 after:top-1/2 after:h-8 after:w-8 after:-translate-x-1/2 after:-translate-y-1/2 after:content-[''] ${menuOpen ? "bg-monk-soft text-monk-text" : "text-monk-text-soft hover:bg-monk-soft/60 hover:text-monk-text"}`}
                 >
                   <MoreVertical size={12} strokeWidth={2} />
                 </button>
@@ -2305,7 +2306,10 @@ export function NotebookEditor({
                           setCatId(cat.id);
                           markDirty();
                         }}
-                        className="flex items-center gap-1.5 text-xs font-medium active:scale-[0.97]"
+                        /* h-full makes the label fill the 28px pill instead of
+                           hugging a 16px text line — meets the WCAG 2.2 24px
+                           minimum without changing the pill's height. */
+                        className="flex h-full items-center gap-1.5 text-xs font-medium active:scale-[0.97]"
                       >
                         <span
                           className="h-1.5 w-1.5 rounded-full shrink-0"
@@ -2326,7 +2330,7 @@ export function NotebookEditor({
                           e.stopPropagation();
                           setCatMenu((cur) => (cur?.id === cat.id ? null : { id: cat.id, anchor: e.currentTarget }));
                         }}
-                        className={`ml-1 grid h-4 w-4 place-items-center rounded-full transition ${
+                        className={`relative ml-1 grid h-6 w-6 place-items-center rounded-full transition after:absolute after:left-1/2 after:top-1/2 after:h-8 after:w-8 after:-translate-x-1/2 after:-translate-y-1/2 after:content-[''] ${
                           menuOpen ? "bg-monk-soft text-monk-text" : "text-monk-text-soft hover:bg-monk-soft/60 hover:text-monk-text"
                         }`}
                       >

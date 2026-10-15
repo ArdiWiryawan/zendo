@@ -10,7 +10,7 @@ import { onboardingOrder, routes } from "../constants/routes";
 import { useMonkStore } from "../store/useMonkStore";
 import { playBreakChime, playFocusChime, playZenBell } from "../lib/audio";
 import { planFocusTick } from "../lib/focusTicker.worker";
-import { t as translate } from "../i18n";
+import { t as translate, useT } from "../i18n";
 
 // ponytail: TodayScreen + FocusScreen loaded eagerly (primary screens); others lazy-split
 const FocusScreen = lazy(() => import("../screens/FocusScreen"));
@@ -65,6 +65,14 @@ export default function App() {
       document.documentElement.setAttribute("data-theme", "dark");
     }
   }, [appTheme]);
+
+  // Keep <html lang> in step with the UI language. index.html ships lang="id"
+  // (the app default), but nothing updated it when the user switched to EN, so
+  // screen readers, browser translation prompts and hyphenation were told the
+  // page was Indonesian while it rendered English.
+  useEffect(() => {
+    document.documentElement.setAttribute("lang", lang === "en" ? "en" : "id");
+  }, [lang]);
 
   // Global payment / checkout return listener
   useEffect(() => {
@@ -368,6 +376,7 @@ function ProtectedMain({ children, allowEnded = false, showNav = true }: { child
 function OnboardingScreen({ path }: { path: string }) {
   const navigate = useNavigate();
   const store = useMonkStore();
+  const t = useT();
 
   const questionSteps = [
     routes.onboardingHabits,
@@ -409,10 +418,10 @@ function OnboardingScreen({ path }: { path: string }) {
 
   // phase labels mirror onboardingOrder phases only; do not drive order/navigation
   const phaseForStep = (stepPath: string): string | undefined => {
-    if (stepPath === routes.onboardingHabits || stepPath === routes.onboardingFriction) return "Clear";
-    if (stepPath === routes.onboardingGoals || stepPath === routes.onboardingSeason) return "Plan";
-    if (stepPath === routes.onboardingKeystone) return "Focus";
-    if (stepPath === routes.onboardingPreview) return "Review";
+    if (stepPath === routes.onboardingHabits || stepPath === routes.onboardingFriction) return t("onboarding.phase.clear");
+    if (stepPath === routes.onboardingGoals || stepPath === routes.onboardingSeason) return t("onboarding.phase.plan");
+    if (stepPath === routes.onboardingKeystone) return t("onboarding.phase.focus");
+    if (stepPath === routes.onboardingPreview) return t("onboarding.phase.review");
     return undefined;
   };
 

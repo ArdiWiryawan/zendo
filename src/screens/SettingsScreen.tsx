@@ -387,7 +387,7 @@ export default function SettingsScreen() {
                       key={tItem.id}
                       type="button"
                       onClick={() => store.updateSettings({ theme: tItem.id as AppTheme })}
-                      className={`flex items-center justify-between p-2.5 rounded-xl border text-left transition active:scale-95 ${
+                      className={`flex min-h-11 items-center justify-between p-2.5 rounded-xl border text-left transition active:scale-95 ${
                         active
                           ? "border-monk-accent bg-monk-accent-soft text-monk-accent font-bold ring-1 ring-monk-accent/30 shadow-xs"
                           : "border-monk-border/60 bg-monk-soft/40 text-monk-text hover:border-monk-border-strong hover:bg-monk-soft"
@@ -416,7 +416,9 @@ export default function SettingsScreen() {
                     key={code}
                     type="button"
                     onClick={() => store.updateSettings({ language: code })}
-                    className={`min-w-10 min-h-8 px-2 rounded-full text-xs font-semibold transition ${
+                    /* 44px target (WCAG 2.2 SC 2.5.8 / 44px rec); -my-2.5 keeps
+                       the settings row's height stable. */
+                    className={`-my-2.5 min-w-11 min-h-11 px-3 rounded-full text-xs font-semibold transition ${
                       lang === code
                         ? "bg-monk-surface text-monk-text border border-monk-border-strong shadow-sm"
                         : "text-monk-muted hover:text-monk-text"

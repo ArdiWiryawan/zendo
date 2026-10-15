@@ -308,7 +308,8 @@ function PackCard({
               store.startJournalPack(pack.id);
               onStart(pack.id);
             }}
-            className="shrink-0 rounded-monk bg-monk-accent px-3.5 py-2 text-xs font-semibold text-monk-bg transition active:scale-95 hover:opacity-90"
+            /* Primary CTA: 44px min height (WCAG 2.2 SC 2.5.8 / 44px rec). */
+            className="inline-flex min-h-11 shrink-0 items-center justify-center rounded-monk bg-monk-accent px-4 text-xs font-semibold text-monk-bg transition active:scale-95 hover:opacity-90"
           >
             {inProgress ? t("packs.continue") : completedCount > 0 ? t("packs.again") : t("packs.start")}
           </button>

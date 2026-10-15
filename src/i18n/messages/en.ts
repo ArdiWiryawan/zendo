@@ -1,4 +1,24 @@
 export const en = {
+  // First-run welcome. These were hardcoded English literals while the app
+  // defaults to Indonesian, so the very first screen a new user saw was the
+  // only screen that ignored the language setting.
+  "welcome.headline": "Make space for what matters.",
+  "welcome.subhead": "Choose fewer goals. Build quiet momentum. One season at a time.",
+  "welcome.timeNote": "About 8-12 minutes · progress saves as you go",
+  "welcome.begin": "Begin",
+  "welcome.autosave": "Setup is auto-saved. Leave anytime, resume where you stopped.",
+  "welcome.haveSeason": "Already have a season?",
+  "welcome.signIn": "Sign in",
+  "welcome.restore": "Restore a backup",
+  "welcome.restoreHint": "Signing in pulls your season back from the cloud. A JSON backup file works offline.",
+  "welcome.restoreAria": "Restore a Zendo backup file",
+  "welcome.errorRead": "Could not read that file.",
+  "welcome.errorNotBackup": "That file doesn't look like a Zendo backup.",
+  // Onboarding phase labels shown in the step progress header.
+  "onboarding.phase.clear": "Clear",
+  "onboarding.phase.plan": "Plan",
+  "onboarding.phase.focus": "Focus",
+  "onboarding.phase.review": "Review",
   "settings.title": "Settings",
   "settings.subtitle": "Make it a place you want to return to.",
   "settings.prefs": "Preferences",
@@ -524,7 +544,7 @@ export const en = {
   "week.emptyDesc": "Your weekly rhythm appears once a season is active.",
   "week.openToday": "Open Today",
   "week.rhythm": "Weekly rhythm",
-  "week.focusComplete": "focus days complete",
+  "week.focusComplete": "focus target met",
   "week.daysAccounted": "days accounted for, out of days elapsed",
   "week.restCount": "{n} rest",
   "week.partialCount": "{n} partial",

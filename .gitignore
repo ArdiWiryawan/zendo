@@ -157,6 +157,9 @@ today-screen.png
 # UI/UX audit screenshot output (regenerate via tools/audit/*.mjs)
 /audit/
 
+# Agent working memory + local session state. Not source; stays on the machine.
+.workbuddy-ai/
+
 # Generated audit state (seed-today.mjs writes these; never authored by hand)
 tools/audit/today-state.json
 tools/audit/today-storage.json

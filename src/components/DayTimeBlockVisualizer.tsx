@@ -252,7 +252,9 @@ export function DayTimeBlockVisualizer({
             <button
               type="button"
               onClick={handleExportIcs}
-              className="flex items-center gap-1 rounded-lg border border-monk-border bg-monk-surface px-2.5 py-1 text-[11px] font-semibold text-monk-muted hover:text-monk-text transition"
+              /* min-h-6 keeps this toolbar button at the WCAG 2.2 24px floor,
+                 matching the Agenda / Grid toggle beside it. */
+              className="flex min-h-6 items-center gap-1 rounded-lg border border-monk-border bg-monk-surface px-2.5 py-1 text-[11px] font-semibold text-monk-muted hover:text-monk-text transition"
               title={t("planning.exportIcs")}
             >
               <Download size={12} />

@@ -1,0 +1,26 @@
+import { mkdirSync } from "node:fs";
+import { chromium } from "playwright";
+import { state } from "./seed-fresh.mjs";
+const raw = process.argv[2] || "week";
+const route = "/" + raw.split(/[\\/]/).filter(Boolean).pop();
+const out = process.argv[3] || "zoom";
+const scrollY = Number(process.argv[4] || 0);
+const clipH = Number(process.argv[5] || 700);
+mkdirSync(`audit/${out}`, { recursive: true });
+const browser = await chromium.launch({ channel: "chrome" }).catch(() => chromium.launch());
+const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2 });
+const page = await ctx.newPage();
+await page.goto("http://localhost:5173/");
+await page.evaluate((s) => {
+  localStorage.setItem("monk_mode_pwa_state_v1", JSON.stringify(s));
+  localStorage.setItem("focusSessions", JSON.stringify(s.focusSessions || []));
+  localStorage.setItem("timelineEvents", JSON.stringify(s.timelineEvents || []));
+  localStorage.setItem("zendo_pwa_install_dismissed_v1", "1");
+}, state);
+await page.goto("http://localhost:5173" + route);
+await page.waitForTimeout(1200);
+await page.evaluate((y) => window.scrollTo(0, y), scrollY);
+await page.waitForTimeout(400);
+await page.screenshot({ path: `audit/${out}/${raw.replace(/\//g,"_")}-${scrollY}.png`, clip: { x: 0, y: 0, width: 390, height: clipH } });
+console.log("ok");
+await browser.close();

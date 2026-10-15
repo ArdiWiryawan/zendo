@@ -514,6 +514,12 @@ export function WeekScreen() {
                   const complete = allocation.completedCount >= allocation.targetCount;
                   const remaining = Math.max(0, allocation.targetCount - allocation.completedCount);
                   const behind = !complete && remaining > remainingDays;
+                  // Past the target, the raw pair rendered as an improper
+                  // fraction ("5/3") with a full bar — it read like a data
+                  // error. Cap the fraction at the target and surface the
+                  // surplus as a "+N" bonus: doing more than you planned is
+                  // never a failure, and the bar already says "target met".
+                  const surplus = Math.max(0, allocation.completedCount - allocation.targetCount);
 
                   return (
                     <motion.div key={allocation.goalId} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3, delay: index * 0.05 }}>
@@ -530,8 +536,9 @@ export function WeekScreen() {
                         </div>
                         <div className="shrink-0 text-right">
                           <p className={`font-mono text-sm tabular-nums font-bold ${complete ? "text-monk-success" : behind ? "text-monk-muted" : progress > 0 ? "text-monk-accent" : "text-monk-muted"}`}>
-                            {allocation.completedCount}
+                            {Math.min(allocation.completedCount, allocation.targetCount)}
                             <span className="font-semibold text-monk-muted/70">/{allocation.targetCount}</span>
+                            {surplus > 0 ? <span className="ml-1 text-[10px] font-semibold text-monk-success/80">+{surplus}</span> : null}
                           </p>
                           {progress > 0 ? (
                             <p className="mt-0.5 text-[10px] font-semibold uppercase tracking-wide text-monk-muted/80">
@@ -883,7 +890,10 @@ function GoalWhyInline({ goalId, why }: { goalId: string; why?: string }) {
         setDraft(why ?? "");
         setEditing(true);
       }}
-      className="mt-2 text-[11px] font-semibold text-monk-accent hover:underline"
+      /* 44px hit area (WCAG 2.2 SC 2.5.8 and the 44px recommendation); -my-2.5
+         cancels the extra height so the card keeps its visual rhythm. Same
+         pattern as MonkToggle. The label stays 11px. */
+      className="-my-2.5 inline-flex min-h-11 items-center text-[11px] font-semibold text-monk-accent hover:underline"
     >
       {why ? t("week.editGoalWhy") : t("week.addGoalWhy")}
     </button>
@@ -980,7 +990,7 @@ function WeeklyReviewCard({
           </p>
           <button
             type="button"
-            className="mt-2 text-[11px] font-semibold text-monk-accent hover:underline"
+            className="-my-2.5 inline-flex min-h-11 items-center text-[11px] font-semibold text-monk-accent hover:underline"
             onClick={() => navigate(routes.timeline)}
           >
             {t("week.review.revisitWhy")}

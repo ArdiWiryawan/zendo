@@ -308,7 +308,10 @@ function TimelineEventRow({ event }: { event: TimelineEvent }) {
                 type="button"
                 aria-label={t("timeline.deleteAria")}
                 title={t("timeline.deleteTitle")}
-                className="text-monk-muted/50 hover:text-monk-danger hover:bg-monk-danger/10 p-1 rounded-md transition active:scale-90 shrink-0"
+                /* 44px hit area (WCAG 2.2 SC 2.5.8 / 44px recommendation);
+                   -my-2.5 cancels the extra height so the card header keeps its
+                   rhythm. The icon stays 12px. */
+                className="-my-2.5 grid h-11 w-11 shrink-0 place-items-center rounded-md text-monk-muted/50 hover:text-monk-danger hover:bg-monk-danger/10 transition active:scale-90"
                 onClick={() => {
                   if (window.confirm(t("timeline.deleteConfirm"))) {
                     store.removeTimelineEvent(event.id);
@@ -723,7 +726,8 @@ export default function TimelineScreen() {
                 role="tab"
                 aria-selected={isActive}
                 onClick={() => setViewMode(tab.key)}
-                className={`relative flex-1 flex items-center justify-center gap-1.5 rounded-xl py-2 z-10 transition-colors active:scale-95 ${
+                /* 44px tab target (WCAG 2.2 SC 2.5.8 / 44px rec). */
+                className={`relative flex-1 flex min-h-11 items-center justify-center gap-1.5 rounded-xl py-2 z-10 transition-colors active:scale-95 ${
                   isActive ? "text-monk-text font-bold" : "text-monk-muted hover:text-monk-text"
                 }`}
               >

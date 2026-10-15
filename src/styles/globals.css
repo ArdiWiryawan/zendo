@@ -304,6 +304,16 @@ button {
   -webkit-tap-highlight-color: transparent;
 }
 
+/* A stock range input's box is ~6-20px tall and its thumb ~16px — below the
+   WCAG 2.2 SC 2.5.8 minimum target of 24px. A taller box enlarges the whole
+   clickable track (tapping anywhere on a range jumps the thumb there) without
+   touching the browser's own thumb rendering, which `accent-color` already
+   themes. Applies to the focus volume slider and the blueprint frequency
+   sliders alike. */
+input[type="range"] {
+  min-height: 44px;
+}
+
 @layer base {
   *:focus-visible {
     outline: 2px solid rgb(var(--color-accent));

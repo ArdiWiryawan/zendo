@@ -4,6 +4,7 @@ import { motion, useReducedMotion } from "framer-motion";
 import { CalmAlert, PrimaryButton } from "../components/ui";
 import { routes } from "../constants/routes";
 import { useMonkStore } from "../store/useMonkStore";
+import { useT } from "../i18n";
 import type { MonkMVPState } from "../types/app";
 
 interface WelcomeScreenProps {
@@ -15,25 +16,26 @@ export function WelcomeScreen({ onNext }: WelcomeScreenProps) {
   const navigate = useNavigate();
   const importState = useMonkStore((state) => state.importState);
   const [restoreError, setRestoreError] = useState<string | null>(null);
+  const t = useT();
 
   // Onboarding is reachable with data still available elsewhere (cloud row or
   // a JSON export) — e.g. this browser's storage was cleared. Both recovery
   // doors live here so nobody has to redo the setup while their season exists.
   const restoreFromFile = (file: File) => {
     const reader = new FileReader();
-    reader.onerror = () => setRestoreError("Could not read that file.");
+    reader.onerror = () => setRestoreError(t("welcome.errorRead"));
     reader.onload = (event) => {
       try {
         const data = JSON.parse(String(event.target?.result ?? ""));
         if (!data || typeof data !== "object" || !(data.userProfile || data.activeSeason || data.goals)) {
-          setRestoreError("That file doesn't look like a Zendo backup.");
+          setRestoreError(t("welcome.errorNotBackup"));
           return;
         }
         importState(data as Partial<MonkMVPState>);
         setRestoreError(null);
         navigate(routes.root);
       } catch {
-        setRestoreError("Could not read that file.");
+        setRestoreError(t("welcome.errorRead"));
       }
     };
     reader.readAsText(file);
@@ -72,13 +74,13 @@ export function WelcomeScreen({ onNext }: WelcomeScreenProps) {
           className="mx-auto max-w-[18ch] text-3xl sm:text-4xl md:text-5xl font-bold leading-tight tracking-tight outline-none focus:outline-none ring-0 focus:ring-0"
           {...rise(0.16)}
         >
-          Make space for what matters.
+          {t("welcome.headline")}
         </motion.h1>
         <motion.p className="mx-auto mt-3 sm:mt-5 max-w-xs text-sm sm:text-base leading-relaxed text-monk-muted" {...rise(0.24)}>
-          Choose fewer goals. Build quiet momentum. One season at a time.
+          {t("welcome.subhead")}
         </motion.p>
         <motion.p className="mx-auto mt-2.5 text-xs font-medium text-monk-text-soft" {...rise(0.32)}>
-          About 8-12 minutes · progress saves as you go
+          {t("welcome.timeNote")}
         </motion.p>
       </div>
 
@@ -87,10 +89,10 @@ export function WelcomeScreen({ onNext }: WelcomeScreenProps) {
           className="transition-transform hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.98]"
           onClick={onNext}
         >
-          Begin
+          {t("welcome.begin")}
         </PrimaryButton>
         <p className="mt-2.5 text-xs text-monk-text-soft">
-          Setup is auto-saved. Leave anytime, resume where you stopped.
+          {t("welcome.autosave")}
         </p>
 
         {restoreError ? (
@@ -100,24 +102,24 @@ export function WelcomeScreen({ onNext }: WelcomeScreenProps) {
         ) : null}
 
         <div className="mt-4 border-t border-monk-border pt-3">
-          <p className="text-xs text-monk-text-soft">Already have a season?</p>
+          <p className="text-xs text-monk-text-soft">{t("welcome.haveSeason")}</p>
           <div className="mt-1 flex items-center justify-center gap-3 text-xs">
             <Link
               to={routes.login}
               className="inline-flex min-h-11 items-center font-semibold text-monk-accent hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-monk-accent focus-visible:ring-offset-2 focus-visible:ring-offset-monk-bg"
             >
-              Sign in
+              {t("welcome.signIn")}
             </Link>
             <span className="text-monk-muted/50" aria-hidden>
               ·
             </span>
             <label className="inline-flex min-h-11 cursor-pointer items-center font-semibold text-monk-accent hover:underline focus-within:ring-2 focus-within:ring-monk-accent focus-within:ring-offset-2 focus-within:ring-offset-monk-bg rounded-sm">
-              Restore a backup
+              {t("welcome.restore")}
               <input
                 type="file"
                 accept=".json"
                 className="hidden"
-                aria-label="Restore a Zendo backup file"
+                aria-label={t("welcome.restoreAria")}
                 onChange={(event) => {
                   const file = event.target.files?.[0];
                   event.target.value = "";
@@ -127,7 +129,7 @@ export function WelcomeScreen({ onNext }: WelcomeScreenProps) {
             </label>
           </div>
           <p className="mt-1 text-[11px] leading-4 text-monk-muted/60">
-            Signing in pulls your season back from the cloud. A JSON backup file works offline.
+            {t("welcome.restoreHint")}
           </p>
         </div>
       </motion.div>

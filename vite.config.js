@@ -11,7 +11,13 @@ export default defineConfig({
                 "favicon.ico",
                 "apple-touch-icon.png",
                 "icons/icon-192.png",
-                "icons/icon-512.png"
+                "icons/icon-512.png",
+                "favicon.svg",
+                "favicon-32.png",
+                "icons/maskable-192.png",
+                "icons/maskable-512.png",
+                "brand/zendo-logo-horizontal-light.svg",
+                "brand/zendo-symbol-light.svg"
             ],
             devOptions: { enabled: true },
             manifest: {
