@@ -302,10 +302,17 @@ export function DayTimeBlockVisualizer({
               <div
                 key={block.id}
                 onClick={() => handleToggleBlock(block.id)}
-                className={`rounded-xl border ${style.border} border-l-[3px] ${style.borderL} bg-monk-surface-raised p-3 sm:p-3.5 transition-all shadow-xs cursor-pointer hover:border-monk-accent/40 ${
-                  block.completed ? "opacity-60 bg-monk-soft/50" : ""
+                /* Flat row with a hairline border and one thin category marker on
+                   the left edge. The block used to carry a full coloured border
+                   on every side plus a 3px coloured edge plus a raised surface,
+                   so a six-block day drew six coloured frames competing with the
+                   times and titles inside them. The category colour is still
+                   stated twice — marker and chip — but no longer shouts. */
+                className={`relative cursor-pointer overflow-hidden rounded-lg border border-monk-border/70 bg-monk-surface p-3 pl-3.5 transition-colors hover:border-monk-accent/40 sm:p-3.5 sm:pl-4 ${
+                  block.completed ? "opacity-55" : ""
                 }`}
               >
+                <span aria-hidden className={`absolute inset-y-0 left-0 w-0.5 ${style.dot}`} />
                 <div className="flex items-start justify-between gap-3">
                   <div className="space-y-1.5 flex-1 min-w-0">
                     {/* Category pill & time badge */}

@@ -1,8 +1,12 @@
 // Full-length screenshot of a single screen (no slicing) at high DPI.
-// Run: node tools/audit/fullshot.mjs <route> <tag> [width] [dsf] [expand]
+// Run: [SEED=<name>] node tools/audit/fullshot.mjs <route> <tag> [width] [dsf] [expand]
 //
 // `expand` clicks every collapsed disclosure row (aria-expanded="false") before
 // capturing, so the expanded state of a collapsible section can be documented.
+//
+// `SEED` picks the state module (`tools/audit/seed-<name>.mjs`, default `fresh`).
+// Use `SEED=today-normal` for a day that is planned but not started — no
+// completed focus sessions, no journal entry, no ticked agenda blocks.
 //
 // Two things a naive fullPage capture gets wrong on this app:
 //  1. Sections below the fold are revealed by an in-view animation, so they are
@@ -13,7 +17,6 @@
 //     boxes to the document bottom for the duration of the capture.
 import { mkdirSync } from "node:fs";
 import { chromium } from "playwright";
-import { state } from "./seed-fresh.mjs";
 
 // Route may arrive mangled by the shell's path conversion; keep only the last segment.
 const rawRoute = process.argv[2] || "settings";
@@ -22,6 +25,8 @@ const tag = process.argv[3] || "fullshot";
 const width = Number(process.argv[4] || 390);
 const dsf = Number(process.argv[5] || 2);
 const expand = (process.argv[6] || "") === "expand";
+const seedName = process.env.SEED || "fresh";
+const { state, extraLocalStorage } = await import(`./seed-${seedName}.mjs`);
 
 mkdirSync(`audit/${tag}`, { recursive: true });
 
@@ -32,12 +37,19 @@ const ctx = await browser.newContext({
 });
 const page = await ctx.newPage();
 await page.goto("http://localhost:5173/");
-await page.evaluate((s) => {
-  localStorage.setItem("monk_mode_pwa_state_v1", JSON.stringify(s));
-  localStorage.setItem("focusSessions", JSON.stringify(s.focusSessions || []));
-  localStorage.setItem("timelineEvents", JSON.stringify(s.timelineEvents || []));
-  localStorage.setItem("zendo_pwa_install_dismissed_v1", "1");
-}, state);
+await page.evaluate(
+  ({ s, extra }) => {
+    localStorage.setItem("monk_mode_pwa_state_v1", JSON.stringify(s));
+    localStorage.setItem("focusSessions", JSON.stringify(s.focusSessions || []));
+    localStorage.setItem("timelineEvents", JSON.stringify(s.timelineEvents || []));
+    localStorage.setItem("zendo_pwa_install_dismissed_v1", "1");
+    // Seeds may ship their own auxiliary keys (e.g. the coach dismiss flags),
+    // so a "settled account" state is expressed through the app's real storage
+    // instead of being hidden at capture time.
+    for (const [k, v] of Object.entries(extra || {})) localStorage.setItem(k, v);
+  },
+  { s: state, extra: extraLocalStorage }
+);
 await page.goto("http://localhost:5173" + route);
 await page.waitForTimeout(1600);
 
@@ -117,7 +129,7 @@ const name = route.replace(/\//g, "_").replace(/^_+/, "") || "root";
 const out = `audit/${tag}/${name}-full@${dsf}x.png`;
 await page.screenshot({ path: out, fullPage: true });
 console.log(
-  `${out}  css=${width}x${total}  px=${width * dsf}x${total * dsf}  ` +
+  `${out}  css=${width}x${total}  px=${width * dsf}x${total * dsf}  seed=${seedName}  ` +
     `details=${opened}  disclosures=${disclosures}  fixed=${fixedCount}  stillHidden=${hidden}`
 );
 await browser.close();

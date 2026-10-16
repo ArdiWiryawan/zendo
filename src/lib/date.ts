@@ -69,6 +69,21 @@ export function formatHumanDate(date: string) {
   return format(parseLocalDateKey(date), "MMM d");
 }
 
+/** Short weekday + day + month for a local date key, in the UI language
+ *  ("Jum, 16 Okt"). Matches the agenda block header, so a collapsible summary
+ *  and the panel it opens can report the same date without drifting. */
+export function formatShortDate(date: string, lang: "id" | "en" = "id") {
+  try {
+    return parseLocalDateKey(date).toLocaleDateString(lang === "id" ? "id-ID" : "en-US", {
+      weekday: "short",
+      day: "numeric",
+      month: "short"
+    });
+  } catch {
+    return date;
+  }
+}
+
 export function datesInRange(startDate: string, count: number) {
   return Array.from({ length: count }, (_, index) => addDaysToDate(startDate, index));
 }

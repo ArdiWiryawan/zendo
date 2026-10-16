@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, type ReactNode } from "react";
 import type { RelapseLog } from "../types/app";
 import { useNavigate } from "react-router-dom";
 import { Moon, BookOpen, Check, ChevronDown, ChevronRight, Sun, Sparkles, ShieldAlert, CircleDashed, Timer, Clock } from "lucide-react";
@@ -7,7 +7,7 @@ import { useMonkStore, goalEvidence } from "../store/useMonkStore";
 import { useT } from "../i18n";
 import { resolveReflectionPromptText, ensureReflectionPromptAssigned } from "../i18n/prompts";
 import { useCalmToast } from "../components/ui";
-import { getTodayDateString, addDaysToDate, getDaysPassed, getDaysLeft } from "../lib/date";
+import { getTodayDateString, addDaysToDate, getDaysPassed, getDaysLeft, formatShortDate } from "../lib/date";
 import { CORE_VALUES } from "../constants/whyValues";
 import { routes } from "../constants/routes";
 import { FOCUS_PRESETS, getPresetLabel } from "../constants/focusPresets";
@@ -344,6 +344,44 @@ function Nmt2Banner({
   );
 }
 
+/** One disclosure shell for every collapsible block on Today.
+ *
+ *  "Lainnya untuk hari ini", "Latihan" and "Agenda" are all the same affordance,
+ *  but each had grown its own padding, hover colour, chevron size and divider.
+ *  A single component keeps them identical. The caller supplies the meta chip
+ *  because only it knows what is worth reporting (a count, or a date + count).
+ *
+ *  Uncontrolled on purpose: all three start collapsed and the browser owns the
+ *  open state, exactly as before. */
+function CollapsibleSection({
+  icon,
+  label,
+  meta,
+  children
+}: {
+  icon?: ReactNode;
+  label: string;
+  meta?: ReactNode;
+  children: ReactNode;
+}) {
+  return (
+    <details className="group rounded-monk border border-monk-border bg-monk-surface transition-colors duration-200 ease-monk open:border-monk-border-strong">
+      <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3.5 text-sm font-semibold text-monk-text marker:content-none transition-colors hover:text-monk-accent [&::-webkit-details-marker]:hidden">
+        <span className="flex min-w-0 items-center gap-2">
+          {icon}
+          <span className="truncate">{label}</span>
+          {meta}
+        </span>
+        <ChevronRight
+          size={16}
+          className="shrink-0 text-monk-muted transition-transform duration-200 group-open:rotate-90"
+        />
+      </summary>
+      <div className="border-t border-monk-border/60">{children}</div>
+    </details>
+  );
+}
+
 export function TodayScreen() {
   const navigate = useNavigate();
   const store = useMonkStore();
@@ -500,6 +538,10 @@ export function TodayScreen() {
       ? activeSession.status
       : undefined;
   const energy = selectEnergyForDate(store, today);
+  // Counts both shapes of schedule: free-text agenda lines and structured time
+  // blocks. The collapsible summary reports it so a collapsed section still says
+  // how much is inside.
+  const agendaBlockCount = (todayPlan?.timeBlocks?.length ?? 0) + (todayPlan?.agenda?.length ?? 0);
   // Reentry banner renders when: season active, plan not completed, no reflection, offerable, and not dismissed.
   const reentryVisible =
     !!season &&
@@ -771,23 +813,23 @@ export function TodayScreen() {
           <>
             <div className="space-y-5">
             <div className="min-w-0 space-y-5">
-            <Card
-              important
+            {/* The hero is a flat surface with a single status hairline. It used
+                to stack three decorative layers — a per-state gradient, a raised
+                shadow, and an accent wash painted over both — which competed with
+                the one gold CTA that should be the loudest thing on the page.
+                Status now reads from the hairline and the border tone alone. */}
+            <div
               id="today-primary"
-              className={`today-primary-anchor relative overflow-hidden p-5 sm:p-6 transition-all duration-200 shadow-[inset_0_1px_0_rgb(var(--color-accent)/0.12)] ${
-                isDone
-                  ? "border-monk-success/35 bg-gradient-to-b from-monk-success-soft/25 via-monk-surface to-monk-surface"
-                  : isRest
-                    ? "border-monk-rest/25 bg-monk-surface"
-                    : "border-monk-border/80 bg-gradient-to-b from-monk-surface via-monk-surface to-monk-raised/40"
+              className={`today-primary-anchor relative overflow-hidden rounded-monk border bg-monk-surface p-5 transition-colors duration-200 sm:p-6 ${
+                isDone ? "border-monk-success/30" : isRest ? "border-monk-rest/25" : "border-monk-border-strong"
               }`}
             >
-              {!isDone && !isRest ? (
-                <div
-                  className="pointer-events-none absolute inset-0 bg-gradient-to-b from-monk-accent/[0.07] to-transparent"
-                  aria-hidden
-                />
-              ) : null}
+              <span
+                aria-hidden
+                className={`absolute inset-x-0 top-0 h-px ${
+                  isDone ? "bg-monk-success/45" : isRest ? "bg-monk-rest/35" : "bg-monk-accent/35"
+                }`}
+              />
 
               {/* Top Navigation & Status */}
               <div className="relative flex items-center gap-2">
@@ -1275,7 +1317,7 @@ export function TodayScreen() {
                   </button>
                 </div>
               </div>
-            </Card>
+            </div>
 
             {/* Primary zone — one CTA by day-part / state */}
             <div className="space-y-3">
@@ -1502,35 +1544,37 @@ export function TodayScreen() {
             </div>
             <div className="min-w-0 space-y-5">
             {/* Secondary — collapsed */}
-            <details className="group mt-5 rounded-monk border border-monk-border bg-monk-surface transition-all duration-200 ease-monk hover:border-monk-border-strong open:border-monk-border-strong">
-              <summary className="flex cursor-pointer list-none items-center justify-between p-4 text-sm font-semibold text-monk-muted hover:text-monk-text marker:content-none [&::-webkit-details-marker]:hidden">
-                <span>{t("today.moreForToday")}</span>
-                <ChevronRight size={16} className="transition-transform duration-200 group-open:rotate-90" />
-              </summary>
-              <div className="space-y-3 border-t border-monk-border px-4 pb-4 pt-3">
-                <DefenseChips compact />
+            {/* Secondary — collapsed. The rows are hairline-separated flat rows
+                rather than four bordered, filled boxes inside the section's own
+                bordered box. `mt-5` was dropped: the parent already spaces its
+                children, so it was doubling the gap before this section. */}
+            <CollapsibleSection label={t("today.moreForToday")}>
+              <div className="px-4 pb-3 pt-3">
+                <DefenseChips compact bare />
+              </div>
+              <div className="divide-y divide-monk-border/50 border-t border-monk-border/50 px-4">
                 <button
                   type="button"
-                  className="flex w-full items-center justify-between rounded-xl border border-monk-border bg-monk-soft px-3 py-2.5 text-left text-sm"
+                  className="flex w-full items-center justify-between gap-3 py-3 text-left text-sm text-monk-text transition-colors hover:text-monk-accent"
                   onClick={() => navigate(`${routes.journal}?tab=morning`)}
                 >
-                  <span className="flex items-center gap-2">
-                    <Sun size={14} className="text-monk-accent" />
-                    {t("today.check.morning")}
+                  <span className="flex min-w-0 items-center gap-2">
+                    <Sun size={14} className="shrink-0 text-monk-accent" />
+                    <span className="truncate">{t("today.check.morning")}</span>
                   </span>
-                  <span className="text-[11px] text-monk-muted">{hasMorningPages ? t("today.edit") : t("today.write")}</span>
+                  <span className="shrink-0 text-[11px] text-monk-muted">{hasMorningPages ? t("today.edit") : t("today.write")}</span>
                 </button>
                 {!isRest ? (
                   <button
                     type="button"
-                    className="flex w-full items-center justify-between rounded-xl border border-monk-border bg-monk-soft px-3 py-2.5 text-left text-sm"
+                    className="flex w-full items-center justify-between gap-3 py-3 text-left text-sm text-monk-text transition-colors hover:text-monk-accent"
                     onClick={() => navigate(routes.learn)}
                   >
-                    <span className="flex items-center gap-2">
-                      <BookOpen size={14} className="text-monk-accent" />
-                      {t("today.check.learn")}
+                    <span className="flex min-w-0 items-center gap-2">
+                      <BookOpen size={14} className="shrink-0 text-monk-accent" />
+                      <span className="truncate">{t("today.check.learn")}</span>
                     </span>
-                    <span className="text-[11px] text-monk-muted">
+                    <span className="shrink-0 text-[11px] text-monk-muted">
                       {hasLearning ? t("today.logged", { n: learningSessions.length }) : t("today.add")}
                     </span>
                   </button>
@@ -1538,41 +1582,47 @@ export function TodayScreen() {
                 {hasJournal && isDone ? (
                   <button
                     type="button"
-                    className="flex w-full items-center justify-between rounded-xl border border-monk-border bg-monk-soft px-3 py-2.5 text-left text-sm"
+                    className="flex w-full items-center justify-between gap-3 py-3 text-left text-sm text-monk-text transition-colors hover:text-monk-accent"
                     onClick={() => navigate(routes.journal)}
                   >
-                    <span>{t("today.editReflection")}</span>
-                    <span className="text-[11px] text-monk-muted">{t("today.open")}</span>
+                    <span className="truncate">{t("today.editReflection")}</span>
+                    <span className="shrink-0 text-[11px] text-monk-muted">{t("today.open")}</span>
                   </button>
                 ) : null}
                 <button
                   type="button"
-                  className="flex w-full items-center justify-between rounded-xl border border-monk-border bg-monk-soft px-3 py-2.5 text-left text-sm text-monk-muted"
+                  className="flex w-full items-center justify-between gap-3 py-3 text-left text-sm text-monk-muted transition-colors hover:text-monk-accent"
                   onClick={() => navigate(routes.relapse)}
                 >
-                  <span>{t("today.logDrift")}</span>
-                  <span className="text-[11px]">→</span>
+                  <span className="truncate">{t("today.logDrift")}</span>
+                  <ChevronRight size={14} className="shrink-0" aria-hidden />
                 </button>
               </div>
-            </details>
+            </CollapsibleSection>
 
             <PracticesCard />
 
             {!isRest ? (
-              <details className="group rounded-monk border border-monk-border bg-monk-surface transition-all duration-200 ease-monk hover:border-monk-border-strong open:border-monk-border-strong">
-                <summary className="flex cursor-pointer list-none items-center justify-between p-4 text-sm font-semibold text-monk-muted hover:text-monk-text marker:content-none [&::-webkit-details-marker]:hidden">
-                  <span className="flex items-center gap-2">
-                    <Clock size={15} className="text-monk-accent" />
-                    <span>{t("today.agendaHeading")}</span>
-                    {(todayPlan.timeBlocks?.length ?? 0) + (todayPlan.agenda?.length ?? 0) > 0 ? (
+              <CollapsibleSection
+                icon={<Clock size={15} className="shrink-0 text-monk-accent" />}
+                label={t("today.agendaHeading")}
+                /* The summary carries the date AND the block count: with the
+                   whole schedule collapsed, "Agenda" alone told the user nothing
+                   about which day they were opening or how much was in it. */
+                meta={
+                  <span className="flex shrink-0 items-center gap-1.5">
+                    <span className="text-[11px] font-medium text-monk-muted">
+                      {formatShortDate(today, store.appSettings.language === "en" ? "en" : "id")}
+                    </span>
+                    {agendaBlockCount > 0 ? (
                       <span className="rounded-full bg-monk-soft px-2 py-0.5 font-mono text-[11px] text-monk-accent">
-                        {(todayPlan.timeBlocks?.length ?? 0) + (todayPlan.agenda?.length ?? 0)}
+                        {agendaBlockCount}
                       </span>
                     ) : null}
                   </span>
-                  <ChevronRight size={16} className="transition-transform duration-200 group-open:rotate-90 text-monk-muted" />
-                </summary>
-                <div className="space-y-3 border-t border-monk-border p-4 pt-3">
+                }
+              >
+                <div className="space-y-3 p-4">
                   {todayPlan.agenda && todayPlan.agenda.length > 0 ? (
                     <div className="space-y-1.5">
                       <p className="text-[11px] font-medium uppercase tracking-wide text-monk-muted">
@@ -1594,7 +1644,7 @@ export function TodayScreen() {
                     onOpenPlanning={() => setPlanningModalOpen(true)}
                   />
                 </div>
-              </details>
+              </CollapsibleSection>
             ) : null}
             </div>
             </div>
@@ -1649,15 +1699,19 @@ export function TodayScreen() {
   );
 }
 
-/** Anti-goals + obstacles from season — soft defenses. */
-export function DefenseChips({ compact = false }: { compact?: boolean }) {
+/** Anti-goals + obstacles from season — soft defenses.
+ *
+ *  `bare` drops the Card wrapper so Today can nest it inside a section that is
+ *  already a bordered box (otherwise it renders a card inside a card). Week
+ *  keeps the default wrapped form. */
+export function DefenseChips({ compact = false, bare = false }: { compact?: boolean; bare?: boolean }) {
   const t = useT();
   const season = useMonkStore((s) => s.activeSeason);
   const anti = (season?.antiGoals ?? []).filter(Boolean).slice(0, compact ? 2 : 4);
   const obs = (season?.obstacles ?? []).filter(Boolean).slice(0, compact ? 2 : 4);
   if (!anti.length && !obs.length) return null;
-  return (
-    <Card className="p-4">
+  const body = (
+    <>
       <p className="text-[10px] font-bold uppercase tracking-widest text-monk-muted">
         {compact ? t("today.guardrails") : t("today.avoidWatch")}
       </p>
@@ -1691,8 +1745,9 @@ export function DefenseChips({ compact = false }: { compact?: boolean }) {
           </div>
         </div>
       ) : null}
-    </Card>
+    </>
   );
+  return bare ? body : <Card className="p-4">{body}</Card>;
 }
 
 

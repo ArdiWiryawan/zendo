@@ -52,80 +52,76 @@ export function EnergyCheck({ value, onChange, compact = false }: { value?: Ener
   };
 
   return (
-    <Card className="p-4">
+    <Card className={compact ? "p-4" : "p-5"}>
       <div className="mb-3 flex items-center justify-between gap-3">
-        <div>
-          <p className="font-semibold text-sm">{t("today.check.energy")}</p>
+        <div className="min-w-0">
+          <p className="text-sm font-semibold">{t("today.check.energy")}</p>
           <p className="mt-0.5 text-xs text-monk-muted">{t("today.energy.tank")}</p>
         </div>
         {value ? (
-          <span className={`rounded-full border px-2.5 py-1 text-xs font-bold uppercase tracking-wide ${
-            value === "high"
-              ? "border-monk-success/30 bg-monk-success-soft text-monk-success"
-              : value === "medium"
-              ? "border-monk-accent/30 bg-monk-accent-soft text-monk-accent"
-              : "border-monk-danger/30 bg-monk-danger-soft text-monk-danger"
-          }`}>
+          /* The readout states the level in words. It used to be tinted green /
+             amber / red, so one answer painted three competing status colours
+             onto the page; the words carry the meaning and the accent carries
+             the emphasis. */
+          <span className="shrink-0 rounded-full border border-monk-accent/30 bg-monk-accent-soft px-2.5 py-1 text-xs font-bold uppercase tracking-wide text-monk-accent">
             {labels[value]}
           </span>
         ) : null}
       </div>
-      <div className="grid grid-cols-3 gap-2">
+
+      {/* One segmented control instead of three independently coloured buttons.
+          The three options still read as three distinct choices; they no longer
+          each claim a semantic colour before the user has chosen anything. */}
+      <div role="group" aria-label={t("today.check.energy")} className="flex gap-2">
         {(["low", "medium", "high"] as EnergyLevel[]).map((level) => {
           const selected = value === level;
-          const tone =
-            level === "high"
-              ? selected
-                ? "border-monk-success bg-monk-success-soft text-monk-success"
-                : "border-monk-border text-monk-muted hover:border-monk-success/40"
-              : level === "medium"
-              ? selected
-                ? "border-monk-accent bg-monk-accent-soft text-monk-accent"
-                : "border-monk-border text-monk-muted hover:border-monk-accent/40"
-              : selected
-              ? "border-monk-danger bg-monk-danger-soft text-monk-danger"
-              : "border-monk-border text-monk-muted hover:border-monk-danger/40";
           return (
             <button
               key={level}
               type="button"
               aria-pressed={selected}
               onClick={() => onChange(level)}
-              className={`min-h-12 rounded-monk border text-sm font-semibold transition active:scale-95 ${tone}`}
+              className={`min-h-11 flex-1 rounded-monk border text-sm font-semibold transition active:scale-95 ${
+                selected
+                  ? "border-monk-accent bg-monk-accent-soft text-monk-accent"
+                  : "border-monk-border text-monk-muted hover:border-monk-border-strong hover:text-monk-text"
+              }`}
             >
               {labels[level]}
             </button>
           );
         })}
       </div>
-      {!compact ? (
-        <div className="mt-4">
-          <p className="mb-1.5 text-xs font-medium uppercase tracking-wider text-monk-muted">
-            {t("today.energy.trendTitle")}
-          </p>
-          <div className="flex items-end gap-1.5" aria-label={t("today.energy.trendAria")}>
-            {past7.map((date) => {
-              const log = store.energyLogs?.find((l) => l.date === date);
-              const isToday = date === today;
-              const h = log?.level === "high" ? "h-5" : log?.level === "medium" ? "h-3.5" : log?.level === "low" ? "h-2" : "h-1.5";
-              const color = log?.level === "high"
-                ? "bg-monk-success"
-                : log?.level === "medium"
-                ? "bg-monk-accent"
-                : log?.level === "low"
-                ? "bg-monk-danger"
-                : "bg-monk-border/40";
-              return (
-                <span
-                  key={date}
-                  title={`${date}${log ? ` · ${labels[log.level]}` : ""}`}
-                  className={`inline-block w-full rounded-sm ${h} ${color} ${isToday ? "ring-1 ring-monk-accent/50" : ""}`}
-                />
-              );
-            })}
-          </div>
+
+      {/* The 7-day trend is part of the module, not a wide-screen extra: it used
+          to be dropped in `compact` mode, which is exactly the mode the focus
+          state renders — so the history vanished on the days it was most useful. */}
+      <div className="mt-4">
+        <p className="mb-1.5 text-xs font-medium uppercase tracking-wider text-monk-muted">
+          {t("today.energy.trendTitle")}
+        </p>
+        <div className="flex items-end gap-1.5" aria-label={t("today.energy.trendAria")}>
+          {past7.map((date) => {
+            const log = store.energyLogs?.find((l) => l.date === date);
+            const isToday = date === today;
+            const h = log?.level === "high" ? "h-5" : log?.level === "medium" ? "h-3.5" : log?.level === "low" ? "h-2" : "h-1.5";
+            const color = log?.level === "high"
+              ? "bg-monk-success/80"
+              : log?.level === "medium"
+              ? "bg-monk-accent/80"
+              : log?.level === "low"
+              ? "bg-monk-danger/70"
+              : "bg-monk-border/40";
+            return (
+              <span
+                key={date}
+                title={`${date}${log ? ` · ${labels[log.level]}` : ""}`}
+                className={`inline-block w-full rounded-sm ${h} ${color} ${isToday ? "ring-1 ring-monk-accent/50" : ""}`}
+              />
+            );
+          })}
         </div>
-      ) : null}
+      </div>
     </Card>
   );
 }
@@ -180,12 +176,12 @@ export function WhyStrip({ compact = false }: { compact?: boolean }) {
 
   if (compact) {
     return (
-      <div className="rounded-monk border border-monk-accent/20 bg-monk-accent-soft/30 px-3.5 py-2 text-xs flex items-center justify-between gap-2">
-        <div className="flex items-center gap-1.5 min-w-0">
-          <span className="shrink-0 rounded bg-monk-accent/20 px-1.5 py-0.5 text-[9px] font-bold text-monk-accent">
+      <div className="flex items-center justify-between gap-2 rounded-monk border border-monk-border bg-monk-surface px-3.5 py-2">
+        <div className="flex min-w-0 items-center gap-1.5">
+          <span className="shrink-0 rounded bg-monk-accent/15 px-1.5 py-0.5 text-[9px] font-bold text-monk-accent">
             {t("why.badgeWhy")}
           </span>
-          <span className="truncate text-monk-muted">{primaryLine}</span>
+          <span className="truncate text-xs text-monk-muted">{primaryLine}</span>
         </div>
         <button
           type="button"
@@ -200,7 +196,7 @@ export function WhyStrip({ compact = false }: { compact?: boolean }) {
   }
 
   return (
-    <div className="rounded-monk border border-monk-accent/20 bg-monk-accent-soft/30 px-4 py-3 space-y-2">
+    <div className="rounded-monk border border-monk-border bg-monk-surface px-4 py-3">
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
@@ -210,13 +206,13 @@ export function WhyStrip({ compact = false }: { compact?: boolean }) {
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2">
-              <span className="rounded-full bg-monk-accent/20 px-2 py-0.5 text-[9px] font-bold text-monk-accent">
+              <span className="rounded bg-monk-accent/15 px-1.5 py-0.5 text-[9px] font-bold text-monk-accent">
                 {t("why.badgeWhy")}
               </span>
               <p className="text-[10px] font-bold uppercase tracking-widest text-monk-muted">{t("why.sectionTitle")}</p>
             </div>
             {intrinsicWhy ? (
-              <p className={`mt-1.5 text-sm font-semibold leading-snug text-monk-text ${open ? "" : "line-clamp-2"}`}>
+              <p className={`mt-1.5 text-sm font-medium leading-snug text-monk-text-soft ${open ? "" : "line-clamp-2"}`}>
                 {intrinsicWhy}
               </p>
             ) : null}
@@ -225,19 +221,20 @@ export function WhyStrip({ compact = false }: { compact?: boolean }) {
             {!open && (outcome || antiWhy) ? (
               <div className="mt-1.5 flex flex-wrap items-center gap-2 text-[11px] text-monk-muted">
                 {outcome ? (
-                  <span className="truncate text-monk-accent">{outcome}</span>
+                  <span className="truncate text-monk-accent/80">{outcome}</span>
                 ) : null}
                 {antiWhy && !outcome ? (
-                  <span className="truncate text-monk-warning/90">{antiWhy}</span>
+                  <span className="truncate text-monk-warning/80">{antiWhy}</span>
                 ) : null}
               </div>
             ) : null}
 
-            {/* Expanded 4-component view */}
+            {/* Expanded 4-component view — hairline-separated blocks, not a box
+                inside a box inside a box. */}
             {open ? (
-              <div className="mt-3 space-y-2 text-xs">
+              <div className="mt-3 space-y-2.5">
                 {outcome ? (
-                  <div className="rounded-xl border border-monk-accent/30 bg-monk-bg/60 p-2.5">
+                  <div>
                     <p className="text-[9px] font-bold uppercase tracking-wider text-monk-accent">
                       {t("why.badgeOutcome")}
                     </p>
@@ -246,7 +243,7 @@ export function WhyStrip({ compact = false }: { compact?: boolean }) {
                 ) : null}
 
                 {antiWhy ? (
-                  <div className="rounded-xl border border-monk-warning/25 bg-monk-warning/5 p-2.5">
+                  <div className="border-t border-monk-border/50 pt-2.5">
                     <p className="text-[9px] font-bold uppercase tracking-wider text-monk-warning">
                       {t("why.badgeAntiWhy")}
                     </p>
@@ -255,14 +252,14 @@ export function WhyStrip({ compact = false }: { compact?: boolean }) {
                 ) : null}
 
                 {why?.protectValues?.length ? (
-                  <div className="flex flex-wrap gap-1.5 pt-1">
+                  <div className="flex flex-wrap gap-1.5 border-t border-monk-border/50 pt-2.5">
                     {why.protectValues.map((id) => {
                       const v = CORE_VALUES.find((c) => c.id === id);
                       const valLabel = isId ? v?.labelId : v?.labelEn;
                       return (
                         <span
                           key={id}
-                          className="rounded-full border border-monk-border bg-monk-bg px-2 py-0.5 text-[10px] font-medium text-monk-muted"
+                          className="rounded-full border border-monk-border bg-monk-soft px-2 py-0.5 text-[10px] font-medium text-monk-muted"
                         >
                           {valLabel ?? v?.label ?? id}
                         </span>
@@ -281,7 +278,7 @@ export function WhyStrip({ compact = false }: { compact?: boolean }) {
       </button>
 
       {open ? (
-        <div className="flex justify-end pt-1">
+        <div className="flex justify-end border-t border-monk-border/50 pt-1">
           <button
             type="button"
             onClick={() => setEditing(true)}
@@ -410,11 +407,14 @@ export function GoalTasksCard({ goal, todayMainAction }: { goal: Goal; todayMain
       ) : null}
 
       {projectGroups.length > 0 ? (
-        <div className="space-y-2 pt-1">
+        <div className="space-y-3 pt-1">
           {projectGroups.map((group) => (
-            <div key={group.project?.id ?? "ungrouped"} className="space-y-1.5">
+            /* Hairline-separated rows. Each step used to be its own bordered,
+               rounded box, so a goal with five steps drew five nested outlines
+               inside the goal card. */
+            <div key={group.project?.id ?? "ungrouped"} className="divide-y divide-monk-border/40">
               {group.project ? (
-                <div className="flex items-center justify-between gap-2 border-b border-monk-border/40 pb-1">
+                <div className="flex items-center justify-between gap-2 pb-1.5">
                   <span className="flex min-w-0 items-center gap-1.5 text-xs font-semibold text-monk-text">
                     <span className="truncate">{group.project.title}</span>
                     <span className="font-mono text-xs text-monk-muted">
@@ -450,10 +450,8 @@ export function GoalTasksCard({ goal, todayMainAction }: { goal: Goal; todayMain
                 return (
                   <div
                     key={task.id}
-                    className={`flex items-center justify-between gap-2 rounded-lg border px-2.5 py-1.5 text-xs transition ${
-                      isCurrentMain
-                        ? "border-monk-accent/50 bg-monk-accent/10"
-                        : "border-monk-border/40 hover:bg-monk-soft/40"
+                    className={`flex items-center justify-between gap-2 py-1.5 text-xs transition ${
+                      isCurrentMain ? "bg-monk-accent/[0.08]" : ""
                     }`}
                   >
                     <div className="flex min-w-0 flex-1 items-center gap-2">
@@ -462,7 +460,7 @@ export function GoalTasksCard({ goal, todayMainAction }: { goal: Goal; todayMain
                         checked={task.completed}
                         onChange={() => store.toggleGoalTask(goal.id, task.id)}
                         aria-label={task.title}
-                        className="h-3.5 w-3.5 rounded border-monk-border text-monk-accent focus:ring-0 cursor-pointer"
+                        className="h-3.5 w-3.5 shrink-0 rounded border-monk-border text-monk-accent focus:ring-0 cursor-pointer"
                       />
                       <span
                         className={`min-w-0 truncate text-xs ${
@@ -476,13 +474,13 @@ export function GoalTasksCard({ goal, todayMainAction }: { goal: Goal; todayMain
                         {task.title}
                       </span>
                       {isCurrentMain && (
-                        <span className="shrink-0 rounded-full bg-monk-accent/20 px-1.5 py-0.2 text-xs font-bold text-monk-accent">
+                        <span className="shrink-0 rounded-full bg-monk-accent/20 px-1.5 py-0.5 text-[10px] font-bold text-monk-accent">
                           {t("today.tasks.todayActionTag")}
                         </span>
                       )}
                     </div>
 
-                    <div className="flex items-center gap-1 shrink-0">
+                    <div className="flex shrink-0 items-center gap-1">
                       {projects.length > 0 && (
                         <select
                           value={task.projectId ?? ""}

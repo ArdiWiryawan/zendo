@@ -165,24 +165,27 @@ export function PracticesCard() {
   };
 
   return (
-    <details className="group rounded-monk border border-monk-border bg-monk-surface transition-all duration-200 ease-monk hover:border-monk-border-strong open:border-monk-border-strong">
-      <summary className="flex cursor-pointer list-none items-center justify-between p-4 text-sm font-semibold text-monk-muted hover:text-monk-text marker:content-none [&::-webkit-details-marker]:hidden">
-        <span className="flex items-center gap-2">
-          <Repeat size={15} className="text-monk-accent" />
-          <span>{t("practice.heading")}</span>
+    <details className="group rounded-monk border border-monk-border bg-monk-surface transition-colors duration-200 ease-monk open:border-monk-border-strong">
+      <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3.5 text-sm font-semibold text-monk-text marker:content-none transition-colors hover:text-monk-accent [&::-webkit-details-marker]:hidden">
+        <span className="flex min-w-0 items-center gap-2">
+          <Repeat size={15} className="shrink-0 text-monk-accent" />
+          <span className="truncate">{t("practice.heading")}</span>
           {practices.length > 0 ? (
-            <span className="rounded-full bg-monk-soft px-2 py-0.5 font-mono text-[11px] text-monk-accent">
+            <span className="shrink-0 rounded-full bg-monk-soft px-2 py-0.5 font-mono text-[11px] text-monk-accent">
               {practices.length}
             </span>
           ) : null}
         </span>
-        <span className="flex items-center gap-2">
-          <span className="text-[11px] font-medium text-monk-muted">{t("practice.subtitle")}</span>
-          <span className="text-monk-muted transition-transform duration-200 group-open:rotate-90">›</span>
+        <span className="flex shrink-0 items-center gap-2">
+          <span className="hidden text-[11px] font-medium text-monk-muted sm:inline">{t("practice.subtitle")}</span>
+          <ChevronRight
+            size={16}
+            className="shrink-0 text-monk-muted transition-transform duration-200 group-open:rotate-90"
+          />
         </span>
       </summary>
 
-      <div className="space-y-3 border-t border-monk-border p-4 pt-3">
+      <div className="space-y-3 border-t border-monk-border/60 p-4">
         {practices.length === 0 && !adding ? (
           <p className="text-xs leading-relaxed text-monk-muted">{t("practice.empty")}</p>
         ) : null}
