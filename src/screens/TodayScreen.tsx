@@ -44,6 +44,13 @@ import { ZendoProModal } from "../components/ZendoProModal";
 import { FeelGoodRestCanvas } from "../components/FeelGoodRestCanvas";
 import type { EnergyLevel, TimeBlock } from "../types/app";
 
+/** One micro-label treatment for every labelled block on the focus card.
+ *  The card had grown three near-identical variants (tracking-widest vs
+ *  tracking-wider, bold vs semibold, muted vs text-soft), so the labels
+ *  competed with the values underneath them instead of framing them. A single
+ *  constant keeps every section label the same quiet size, weight and colour. */
+const cardLabelClass = "text-[11px] font-semibold uppercase tracking-[0.14em] text-monk-muted";
+
 function CloseDayCard({ onSkip }: { onSkip?: () => void }) {
   const navigate = useNavigate();
   const store = useMonkStore();
@@ -831,20 +838,23 @@ export function TodayScreen() {
                 }`}
               />
 
-              {/* Top Navigation & Status */}
-              <div className="relative flex items-center gap-2">
-                <p className="min-w-0 truncate text-xs font-bold uppercase tracking-widest text-monk-muted">
+              {/* Top Navigation & Status — eyebrow left, state right. The badge
+                  used to sit immediately beside the label, so a short eyebrow
+                  left a badge crowding the text; the two ends of one row read
+                  calmer and still pair label with state. */}
+              <div className="relative flex items-center justify-between gap-3">
+                <p className="min-w-0 truncate text-[11px] font-semibold uppercase tracking-[0.18em] text-monk-muted">
                   {isRest ? t("today.restDay") : t("today.todaysFocus")}
                 </p>
-                <span className={`shrink-0 inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-xs font-bold uppercase tracking-wider ${statusClass}`}>
+                <span className={`shrink-0 inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] ${statusClass}`}>
                   {isDone ? (
-                    <Check size={12} strokeWidth={2.5} />
+                    <Check size={11} strokeWidth={2.5} aria-hidden />
                   ) : activeSession ? (
-                    <Timer size={12} strokeWidth={2} />
+                    <Timer size={11} strokeWidth={2} aria-hidden />
                   ) : isRest ? (
-                    <Moon size={12} strokeWidth={2} />
+                    <Moon size={11} strokeWidth={2} aria-hidden />
                   ) : todayPlan?.status === "partial" ? (
-                    <CircleDashed size={12} strokeWidth={2} />
+                    <CircleDashed size={11} strokeWidth={2} aria-hidden />
                   ) : null}
                   <span>{statusLabel}</span>
                 </span>
@@ -854,10 +864,12 @@ export function TodayScreen() {
                 {t("today.statusLive", { status: statusLabel })}
               </span>
 
-              <div className="relative mt-3 min-w-0">
+              <div className="relative mt-3.5 min-w-0">
                 {/* Goal Title — the card's headline. Larger and tighter than the
-                    section labels below so the eye lands here first. */}
-                <h2 className="text-xl font-semibold leading-tight tracking-[-0.015em] text-monk-text">
+                    section labels below so the eye lands here first. `text-balance`
+                    splits a long goal into even lines, so a two-line title reads
+                    as one sentence instead of a widowed word. */}
+                <h2 className="text-balance break-words text-xl font-semibold leading-snug tracking-[-0.015em] text-monk-text">
                   {isRest ? t("today.quietRecovery") : goal?.title ?? t("today.oneTheme")}
                 </h2>
 
@@ -865,9 +877,11 @@ export function TodayScreen() {
                     product, so it must never be *silently* cut: `truncate` used to
                     end it in an ellipsis and hide the reason the day exists. It now
                     clamps at two lines — long enough to read the sentence, short
-                    enough that the hero still doesn't wrap three times. */}
+                    enough that the hero still doesn't wrap three times. Supporting
+                    text sits one step below the title in colour, not accent-bright:
+                    the goal is what the user reads first. */}
                 {!isRest && goal?.why ? (
-                  <p className="mt-1.5 line-clamp-2 text-sm leading-relaxed font-medium italic text-monk-accent/90">
+                  <p className="mt-1.5 line-clamp-2 break-words text-sm leading-relaxed text-monk-muted">
                     {t("today.identityBecoming", { why: goal.why })}
                   </p>
                 ) : null}
@@ -877,14 +891,32 @@ export function TodayScreen() {
                   separate field from the Main Action (DayPlan.highlight vs
                   DayPlan.mainAction) and is edited in Morning Planning, so it gets
                   its own labelled block here instead of being folded into the
-                  action. Hidden while the action form is open to keep the edit
-                  surface quiet. */}
+                  action. A hairline rail marks it as the day's chosen outcome
+                  without drawing a second card; its words sit one size below the
+                  Main Action so the two never compete. Hidden while the action
+                  form is open to keep the edit surface quiet. */}
               {!isRest && todayPlan.highlight?.trim() && !editingAction ? (
-                <section aria-label={t("today.highlightLabel")} className="relative mt-4">
-                  <p className="text-xs font-bold uppercase tracking-wider text-monk-muted">
-                    {t("today.highlightLabel")}
-                  </p>
-                  <p className="mt-1 text-base font-semibold leading-relaxed text-monk-text">
+                <section
+                  aria-label={t("today.highlightLabel")}
+                  className="relative mt-4 border-l-2 border-monk-accent/35 pl-3"
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <p className={cardLabelClass}>{t("today.highlightLabel")}</p>
+                    <button
+                      type="button"
+                      aria-label={`${t("today.edit")}: ${t("today.highlightLabel")}`}
+                      className={`${focusLinkMutedClass} px-1`}
+                      onClick={() => {
+                        hapticPress("light");
+                        // Highlight lives in Morning Planning; this opens that
+                        // same surface rather than growing a second edit form.
+                        setPlanningModalOpen(true);
+                      }}
+                    >
+                      {t("today.edit")}
+                    </button>
+                  </div>
+                  <p className="mt-1 break-words text-[0.95rem] font-medium leading-relaxed text-monk-muted">
                     {todayPlan.highlight}
                   </p>
                 </section>
@@ -892,11 +924,12 @@ export function TodayScreen() {
 
               {/* Action Anchor Section — one flat block, not a card inside a card.
                   Hierarchy comes from type scale and a hairline rule, not from
-                  another rounded border. */}
-              <div className="relative mt-5 border-t border-monk-border/50 pt-5">
-                <div className="flex items-center justify-between gap-2 mb-2">
-                  <div className="flex items-center gap-1.5">
-                    <p className="text-xs font-bold uppercase tracking-wider text-monk-muted">
+                  another rounded border. `Ubah` is a muted secondary control so the
+                  one gold button on the card stays the only loud thing here. */}
+              <div className="relative mt-4 border-t border-monk-border/50 pt-4">
+                <div className="mb-2 flex items-center justify-between gap-2">
+                  <div className="flex min-w-0 items-center gap-1.5">
+                    <p className={`min-w-0 truncate ${cardLabelClass}`}>
                       {isRest ? t("today.restNote") : t("today.actionHeading")}
                     </p>
                     {Boolean(
@@ -904,7 +937,7 @@ export function TodayScreen() {
                       todayPlan?.mainAction &&
                       todayPlan.mainAction.trim() === goal.obstacleMitigation.trim()
                     ) ? (
-                      <span className="rounded-full border border-monk-warning/40 bg-monk-warning/15 px-2 py-0.5 text-xs font-bold text-monk-warning">
+                      <span className="shrink-0 rounded-full border border-monk-warning/40 bg-monk-warning/15 px-2 py-0.5 text-[10px] font-semibold text-monk-warning">
                         {t("today.planBActiveBadge")}
                       </span>
                     ) : null}
@@ -912,7 +945,8 @@ export function TodayScreen() {
                   {!editingAction && !isRest ? (
                     <button
                       type="button"
-                      className={focusLinkClass}
+                      aria-label={`${t("today.edit")}: ${t("today.actionHeading")}`}
+                      className={`${focusLinkMutedClass} shrink-0 px-1 hover:text-monk-accent`}
                       onClick={() => {
                         hapticPress("light");
                         // Prefill from the DAY's own action only (§22). Seeding the
@@ -1010,7 +1044,7 @@ export function TodayScreen() {
                   const shown = stripIntentionTime(todayPlan.mainAction || "").trim();
                   if (shown) {
                     return (
-                      <p className="text-lg font-bold leading-relaxed text-monk-text tracking-[-0.01em]">
+                      <p className="break-words text-lg font-bold leading-relaxed tracking-[-0.01em] text-monk-text">
                         {shown}
                       </p>
                     );
@@ -1024,10 +1058,10 @@ export function TodayScreen() {
                             something the user chose — and now that clearing the day
                             no longer writes the keystone, this is what an unset day
                             actually shows. The label keeps the provenance visible. */}
-                        <div className="text-xs uppercase tracking-widest text-monk-text-soft font-mono">
+                        <div className="font-mono text-[10px] uppercase tracking-[0.14em] text-monk-text-soft">
                           {t("today.suggested")}
                         </div>
-                        <p className="text-base text-monk-muted leading-relaxed">
+                        <p className="break-words text-base leading-relaxed text-monk-muted">
                           {goal.keystoneAction}
                         </p>
                         <button
@@ -1086,7 +1120,7 @@ export function TodayScreen() {
                         type="button"
                         aria-label={isDone ? t("today.markIncomplete") : t("today.markComplete")}
                         aria-pressed={isDone}
-                        className={`mt-2.5 flex min-h-12 w-full items-center justify-center gap-2 rounded-monk border text-base font-bold transition-all duration-200 ease-monk active:scale-[0.975] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-monk-accent focus-visible:ring-offset-2 focus-visible:ring-offset-monk-bg ${
+                        className={`mt-3 flex min-h-12 w-full items-center justify-center gap-2 rounded-monk border text-base font-bold transition-all duration-200 ease-monk active:scale-[0.975] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-monk-accent focus-visible:ring-offset-2 focus-visible:ring-offset-monk-bg ${
                           isDone
                             ? "border-monk-success/40 bg-monk-success-soft text-monk-success"
                             : "monk-btn-primary border-transparent bg-monk-accent text-monk-bg"
@@ -1115,8 +1149,11 @@ export function TodayScreen() {
                 {/* Five-minute quick start. Lowering the activation cost is the
                     whole point: the research foundation's "just begin" principle —
                     a smaller first step gets the session started, and starting is
-                    what the day actually needs. Deliberately a quiet secondary
-                    control so the primary CTA stays the only dominant one. */}
+                    what the day actually needs. It is a borderless ghost row, not a
+                    second boxed panel, so the gold CTA stays the only dominant
+                    control while this stays one tap away. The negative margin keeps
+                    its text aligned with the action above it while the hover wash
+                    still has padding to breathe into. */}
                 {!editingAction && !isRest && derivePrimaryCTA(focusCTAStatus, isDone) === "start" ? (
                   <button
                     type="button"
@@ -1125,10 +1162,13 @@ export function TodayScreen() {
                       store.startFocusSession("custom", 5);
                       navigate(routes.focus);
                     }}
-                    className="mt-2.5 flex min-h-11 w-full flex-col items-start justify-center rounded-xl border border-monk-border px-3 py-1.5 text-left transition duration-150 ease-monk hover:bg-monk-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-monk-accent/60"
+                    className="-mx-2.5 mt-1 flex min-h-11 w-auto flex-col items-start justify-center rounded-lg px-2.5 py-1.5 text-left transition duration-150 ease-monk hover:bg-monk-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-monk-accent/60"
                   >
-                    <p className="text-sm font-semibold text-monk-text">{t("today.quickStart5")}</p>
-                    <p className="text-xs text-monk-muted">{t("today.quickStartSub")}</p>
+                    <span className="flex items-center gap-1.5 text-sm font-medium text-monk-text-soft">
+                      <Timer size={13} strokeWidth={2} className="shrink-0 text-monk-muted" aria-hidden />
+                      {t("today.quickStart5")}
+                    </span>
+                    <span className="mt-0.5 text-xs text-monk-muted">{t("today.quickStartSub")}</span>
                   </button>
                 ) : null}
               </div>
@@ -1194,11 +1234,15 @@ export function TodayScreen() {
                     todayPlan.mainAction.trim() === goal.obstacleMitigation.trim()
                   );
                   return (
-                    <div className="mt-4 flex items-center justify-between gap-2 rounded-xl border border-monk-warning/30 bg-monk-warning/10 px-3.5 py-2.5 transition">
-                      <span className="flex items-center gap-1.5 text-sm font-medium text-monk-text-soft">
-                        <ShieldAlert size={14} className="shrink-0 text-monk-warning" />
-                        <span aria-live="polite">
-                          {t("today.planBLabel")}
+                    <div className="mt-4 flex items-start justify-between gap-3 rounded-xl border border-monk-warning/30 bg-monk-warning/10 px-3.5 py-2.5 transition">
+                      <span className="flex min-w-0 items-start gap-1.5 text-sm font-medium text-monk-text-soft">
+                        <ShieldAlert size={14} className="mt-1 shrink-0 text-monk-warning" />
+                        {/* The key carries an `{action}` placeholder; rendering it
+                            bare printed a literal "{action}" in the details region.
+                            Clamped to two lines so a long fallback cannot turn the
+                            row into a paragraph. */}
+                        <span className="line-clamp-2 min-w-0 break-words" aria-live="polite">
+                          {t("today.planBLabel", { action: goal.obstacleMitigation.trim() })}
                         </span>
                       </span>
                       {isPlanBActive ? (
@@ -1212,7 +1256,7 @@ export function TodayScreen() {
                               mainAction: goal.keystoneAction || ""
                             });
                           }}
-                          className={focusLinkClass}
+                          className={`${focusLinkClass} shrink-0`}
                         >
                           {t("today.planBSwitchBack")}
                         </button>
@@ -1228,7 +1272,7 @@ export function TodayScreen() {
                             });
                             toast.show(t("today.planBToast"));
                           }}
-                          className="rounded-md text-sm font-semibold text-monk-warning transition hover:underline active:scale-95"
+                          className="-my-2 inline-flex min-h-11 shrink-0 items-center rounded-md text-sm font-semibold text-monk-warning transition hover:underline active:scale-95"
                         >
                           {t("today.planBActivate")}
                         </button>
@@ -1249,7 +1293,9 @@ export function TodayScreen() {
                 {!isDone ? (
                   <button
                     type="button"
-                    className="mt-3 text-xs font-semibold text-monk-muted transition hover:text-monk-accent hover:underline"
+                    /* 44px hit area; -mb-2 pays the extra height back so the
+                       disclosure's last row keeps its rhythm. */
+                    className="mt-3 -mb-2 inline-flex min-h-11 items-center text-xs font-semibold text-monk-muted transition hover:text-monk-accent hover:underline"
                     onClick={() => {
                       if (!todayPlan) return;
                       const restoreStatus =
@@ -1275,34 +1321,31 @@ export function TodayScreen() {
                 ) : null}
               </div>
 
-              {/* Bottom Meta & Progress Bar */}
-              <div className="mt-4 border-t border-monk-border/40 pt-4 flex flex-wrap items-center justify-between gap-x-3 gap-y-1.5 text-xs leading-4 text-monk-muted">
-                <div className="flex min-w-0 flex-wrap items-center gap-2">
-                  <span>{isRest ? t("today.protectRecovery") : t("today.stayWithOne")}</span>
-                  {focusMinutes > 0 ? (
-                    <span className="rounded-full border border-monk-border bg-monk-soft px-2 py-0.5 font-mono text-xs tabular-nums">
-                      {t("today.focusMinutes", { n: focusMinutes })}
-                    </span>
-                  ) : null}
-                  {hasLearning ? (
-                    <span className="rounded-full border border-monk-border bg-monk-soft px-2 py-0.5 font-mono text-xs tabular-nums">
-                      {t("today.learnCount", { n: learningSessions.length })}
-                    </span>
-                  ) : null}
-                </div>
+              {/* Bottom Meta — the day's closing line, the evidence chips, and the
+                  disclosure for everything below the fold. The toggle keeps a 44px
+                  touch target (it used to be 36px); `-my-3` pays that extra height
+                  back to the layout so the row still reads as one calm line. */}
+              <div className="relative mt-4 border-t border-monk-border/40 pt-3">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1.5 text-xs leading-4 text-monk-muted">
+                    <span className="min-w-0">{isRest ? t("today.protectRecovery") : t("today.stayWithOne")}</span>
+                    {focusMinutes > 0 ? (
+                      <span className="rounded-full border border-monk-border bg-monk-soft px-2 py-0.5 font-mono text-xs tabular-nums">
+                        {t("today.focusMinutes", { n: focusMinutes })}
+                      </span>
+                    ) : null}
+                    {hasLearning ? (
+                      <span className="rounded-full border border-monk-border bg-monk-soft px-2 py-0.5 font-mono text-xs tabular-nums">
+                        {t("today.learnCount", { n: learningSessions.length })}
+                      </span>
+                    ) : null}
+                  </div>
 
-                <div className="ml-auto flex items-center gap-2">
-                  {isDone ? (
-                    <p className="flex items-center gap-1.5 font-semibold text-monk-success">
-                      <span className="inline-block h-1.5 w-1.5 rounded-full bg-monk-success" aria-hidden />
-                      {t("today.movedQuiet")}
-                    </p>
-                  ) : null}
                   <button
                     type="button"
                     aria-expanded={cardDetailsOpen}
                     aria-controls="today-card-details"
-                    className="-mr-1 flex min-h-9 items-center gap-1 rounded-md px-2 text-xs font-bold uppercase tracking-wider text-monk-muted transition duration-150 ease-monk hover:bg-monk-soft hover:text-monk-accent"
+                    className="-my-3 -mr-1 flex min-h-11 shrink-0 items-center gap-1 rounded-md px-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-monk-muted transition duration-150 ease-monk hover:bg-monk-soft hover:text-monk-accent"
                     onClick={() => {
                       hapticPress("light");
                       setCardDetailsOpen((open) => !open);
@@ -1312,10 +1355,18 @@ export function TodayScreen() {
                     <ChevronDown
                       size={14}
                       strokeWidth={2.4}
+                      aria-hidden
                       className={`transition-transform duration-200 ${cardDetailsOpen ? "rotate-180" : ""}`}
                     />
                   </button>
                 </div>
+
+                {isDone ? (
+                  <p className="mt-2 flex items-center gap-1.5 text-xs leading-4 font-medium text-monk-success">
+                    <span className="inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-monk-success" aria-hidden />
+                    {t("today.movedQuiet")}
+                  </p>
+                ) : null}
               </div>
             </div>
 
