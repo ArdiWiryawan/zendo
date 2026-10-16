@@ -693,7 +693,8 @@ export function GoalBlueprintModal({ goalId, isOpen, onClose }: GoalBlueprintMod
                         max={7}
                         value={weeklyTargetCount}
                         onChange={(e) => setWeeklyTargetCount(Number(e.target.value))}
-                        className="w-full accent-monk-accent cursor-pointer"
+                        className="w-full"
+                        style={{ "--range-fill": `${((weeklyTargetCount - 1) / 6) * 100}%` } as React.CSSProperties}
                       />
                     </div>
                     {goalType === "frequency" ? (
@@ -708,7 +709,8 @@ export function GoalBlueprintModal({ goalId, isOpen, onClose }: GoalBlueprintMod
                           max={7}
                           value={outcomeFrequency}
                           onChange={(e) => setOutcomeFrequency(Number(e.target.value))}
-                          className="w-full accent-monk-accent cursor-pointer"
+                          className="w-full"
+                          style={{ "--range-fill": `${((outcomeFrequency - 1) / 6) * 100}%` } as React.CSSProperties}
                         />
                         <p className="mt-1 text-[10px] leading-4 text-monk-muted">
                           {t("blueprint.outcomeFrequencyHint")}

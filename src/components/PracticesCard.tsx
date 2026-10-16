@@ -490,7 +490,8 @@ export function PracticesCard() {
                   max={7}
                   value={targetDays}
                   onChange={(e) => setTargetDays(Number(e.target.value))}
-                  className="h-1 w-24 accent-monk-accent"
+                  className="w-24"
+                  style={{ "--range-fill": `${((targetDays - 1) / 6) * 100}%` } as React.CSSProperties}
                 />
                 <span className="font-mono text-monk-text-soft">{targetDays}</span>
               </label>

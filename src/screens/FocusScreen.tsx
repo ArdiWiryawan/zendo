@@ -354,7 +354,11 @@ export default function FocusScreen() {
             step={5}
             value={volume}
             onChange={(e) => handleVolumeChange(Number(e.target.value))}
-            className="w-full h-1.5 bg-monk-border rounded-lg appearance-none cursor-pointer accent-monk-accent"
+            /* The track, its fill and the thumb are drawn by the global
+               `input[type="range"]` rules; `--range-fill` is what paints the
+               filled portion out to the current level. */
+            className="w-full"
+            style={{ "--range-fill": `${volume}%` } as React.CSSProperties}
             aria-label={t("focus.audioVolumeAria")}
           />
           <span className="text-[11px] font-bold text-monk-text tabular-nums shrink-0 w-8 text-right">

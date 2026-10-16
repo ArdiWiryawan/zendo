@@ -305,13 +305,70 @@ button {
 }
 
 /* A stock range input's box is ~6-20px tall and its thumb ~16px — below the
-   WCAG 2.2 SC 2.5.8 minimum target of 24px. A taller box enlarges the whole
-   clickable track (tapping anywhere on a range jumps the thumb there) without
-   touching the browser's own thumb rendering, which `accent-color` already
-   themes. Applies to the focus volume slider and the blueprint frequency
-   sliders alike. */
+   WCAG 2.2 SC 2.5.8 minimum target of 24px. The input therefore keeps a 44px
+   tall but fully transparent hit area (tapping anywhere on it still jumps the
+   thumb there), while the visible slider is drawn by the rules below: a 6px
+   track, the accent-coloured fill up to the thumb, and a 20px thumb. The fill
+   reads the `--range-fill` custom property, which components set from their own
+   value — without it the track renders as a plain groove, so a value-less
+   slider still looks like a slider instead of an empty box. */
 input[type="range"] {
   min-height: 44px;
+  background: transparent;
+  -webkit-appearance: none;
+  appearance: none;
+  cursor: pointer;
+}
+
+input[type="range"]::-webkit-slider-runnable-track {
+  height: 6px;
+  border-radius: 9999px;
+  /* Two stops per colour: the fill edge is the thumb position, so the level is
+     readable at a glance without a separate progress element. */
+  background: linear-gradient(
+    to right,
+    rgb(var(--color-accent)) 0,
+    rgb(var(--color-accent)) var(--range-fill, 0%),
+    rgb(var(--color-border)) var(--range-fill, 0%),
+    rgb(var(--color-border)) 100%
+  );
+}
+
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 20px;
+  height: 20px;
+  /* Centre the 20px thumb on the 6px track: (6 - 20) / 2. */
+  margin-top: -7px;
+  border-radius: 9999px;
+  background: rgb(var(--color-accent));
+  /* A ring in the surrounding surface keeps the thumb legible when the fill
+     behind it is also accent-coloured (value at 100%). */
+  border: 2px solid rgb(var(--color-surface));
+  box-shadow: 0 1px 3px rgb(0 0 0 / 0.4);
+}
+
+input[type="range"]::-moz-range-track {
+  height: 6px;
+  border-radius: 9999px;
+  background: rgb(var(--color-border));
+}
+
+/* Firefox paints the filled portion for us; `--range-fill` is unused there. */
+input[type="range"]::-moz-range-progress {
+  height: 6px;
+  border-radius: 9999px;
+  background: rgb(var(--color-accent));
+}
+
+input[type="range"]::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  border-radius: 9999px;
+  background: rgb(var(--color-accent));
+  border: 2px solid rgb(var(--color-surface));
+  box-shadow: 0 1px 3px rgb(0 0 0 / 0.4);
 }
 
 @layer base {
