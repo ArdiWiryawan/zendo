@@ -203,33 +203,6 @@ export default function SettingsScreen() {
     toast.show(tUI("settings.importSuccess"));
   };
 
-  const downloadReminderIcs = () => {
-    const icsContent = [
-      "BEGIN:VCALENDAR",
-      "VERSION:2.0",
-      "PRODID:-//Zendo//Daily Reflection Reminder//EN",
-      "BEGIN:VEVENT",
-      "UID:zendo-daily-reflection-reminder@zendo.app",
-      "DTSTAMP:" + new Date().toISOString().replace(/[-:]/g, "").split(".")[0] + "Z",
-      "DTSTART;TZID=Asia/Jakarta:" + new Date().getFullYear() + "0101T210000",
-      "RRULE:FREQ=DAILY",
-      "SUMMARY:Zendo: Time to Reflect",
-      "DESCRIPTION:Open Zendo to log your daily focus reflection.",
-      "END:VEVENT",
-      "END:VCALENDAR"
-    ].join("\r\n");
-
-    const blob = new Blob([icsContent], { type: "text/calendar;charset=utf-8" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = "zendo_daily_reminder.ics";
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
-  };
-
   const downloadBackup = () => {
     const json = exportStateAsJson();
     const blob = new Blob([json], { type: "application/json" });
@@ -580,20 +553,6 @@ export default function SettingsScreen() {
               <Textarea readOnly value={exported} className="font-mono text-xs" />
             ) : null}
           </div>
-        </motion.section>
-
-        {/* ─── Calendar ─── */}
-        <motion.section variants={groupReveal} initial="hidden" whileInView="visible" viewport={{ once: true, amount: 0.15 }}>
-          <GroupLabel label={tUI("settings.group.calendar")} />
-          <Card className="overflow-hidden p-0">
-            {/* Honest copy: Zendo exports an .ics file. It does not connect to a
-                calendar account, so the row must not claim it does. */}
-            <SettingsRow icon={Calendar} title={tUI("settings.calendar")} description={tUI("settings.calendarDesc")}>
-              <button type="button" onClick={downloadReminderIcs} aria-label={tUI("settings.downloadIcsAria")} className={rowIconClass}>
-                <Download className="h-4 w-4" />
-              </button>
-            </SettingsRow>
-          </Card>
         </motion.section>
 
         {/* ─── Account ─── */}

@@ -33,14 +33,15 @@ preserved.
 | Theme shown as inline swatches instead of a grid of cards | One row: "Theme" + current palette name + 6 swatch dots, selected one ringed |
 | Reminder time reads as text, not a boxed input | `<input type="time">` styled borderless/muted in the description slot — still fully editable |
 | Reminders collapsed behind one row that reports a count | "Reminder schedule · 4 active" disclosure holding all five rows (`aria-expanded` + `aria-controls`) |
-| Section names | Appearance · Reminders · Data & backup · Calendar · Account · Season · About & privacy |
+| Section names | Appearance · Reminders · Data & backup · Account · Season · About & privacy |
 | Reset on its own, red only here | Standalone red-bordered card, no group label |
 | Support last and secondary | Standalone row with a heart, opening the existing QRIS modal |
 
 Progressive disclosure cut the page from **3506px to 2854px** at 390px — the
 collapsed palette grid was most of it. Collapsing the reminder schedule (below)
-took it to **2534px**, and expanding that section again measures **2996px**, i.e.
-the hidden block is 462px of the page.
+took it to **2534px** (expanding that section again measures **2996px**, i.e. the
+hidden block is 462px of the page), and removing the Calendar group took it to
+**2365px** — a 32% reduction overall.
 
 ## Collapsing the reminder schedule
 
@@ -78,8 +79,9 @@ invent functionality. Four reference elements would have done exactly that:
    `<MotionConfig reducedMotion="user">`, i.e. the OS preference. Adding this
    switch would be a control that changes nothing.
 2. **"Kalender terhubung · Pilih kalender yang digunakan".** Zendo has no calendar
-   integration; it downloads an `.ics` file you import yourself. The row keeps the
-   honest label "Calendar reminder" and its real description.
+   integration; it downloads an `.ics` file you import yourself. The row was kept
+   under the honest label "Calendar reminder" — and then **removed entirely at the
+   user's request**, see below.
 3. **Back arrow in the header.** Settings is a bottom-nav tab root. A back arrow
    there implies a parent screen that does not exist.
 4. **One merged "Privasi & ketentuan" row.** `settingsLegal.test.tsx` requires
@@ -88,6 +90,34 @@ invent functionality. Four reference elements would have done exactly that:
 
 Also skipped: the reference shows both a download icon *and* a chevron on the
 export rows. One action, one affordance — the chevron was dropped.
+
+## Removing the Calendar group
+
+The Calendar group (one row, "Calendar reminder" → a Download button) was
+**deleted** at the user's request: the agenda already offers this, so it was a
+duplicate.
+
+It was a duplicate in the weaker direction, too. The Settings row hand-built a
+`.ics` containing a single daily-reflection reminder, fixed at 21:00
+Asia/Jakarta, identical for every user and every day. The agenda exports the
+*real* thing — `MorningPlanningModal` and `DayTimeBlockVisualizer` both call
+`downloadIcsFile(activeDate, timeBlocks, seasonName)` from `src/lib/ical.ts`,
+which serialises the user's actual planned day. Nothing is lost by removing the
+Settings row; the only export that carried real information is still there.
+
+Removed with it:
+
+- the `downloadReminderIcs` handler (self-contained, used only by that row),
+- `settings.calendar`, `settings.calendarDesc`, `settings.group.calendar`,
+  `settings.downloadIcsAria`, and `settings.downloadIcs` (the last was already
+  unreferenced before this change),
+- the Calendar `<motion.section>`.
+
+The `Calendar` lucide import stays — the Season group still uses it for its two
+rows. `settings-smoke.mjs` gained two checks asserting the row's unique copy and
+its `.ics` button are gone, so the decision cannot be silently reversed.
+
+Page height: 2534px → **2365px** at 390px.
 
 ## Bug fixed
 
@@ -103,18 +133,19 @@ row now resolves the same way. Caught because the audit seed deliberately uses
 
 | File | Change |
 | --- | --- |
-| `src/screens/SettingsScreen.tsx` | Rebuilt: 7 groups, flat rows, collapsible reminder schedule, swatch row; all handlers unchanged |
-| `src/i18n/messages/en.ts` | +23 keys; shortened `subtitle`, `reset`, `resetDesc`, `backupDesc`, `dataJsonDesc` |
+| `src/screens/SettingsScreen.tsx` | Rebuilt: 6 groups, flat rows, collapsible reminder schedule, swatch row; all handlers unchanged |
+| `src/i18n/messages/en.ts` | +23 keys, −6 removed with the Calendar group; shortened `subtitle`, `reset`, `resetDesc`, `backupDesc`, `dataJsonDesc` |
 | `src/i18n/messages/id.ts` | Same keys in Indonesian; same copy shortened |
 | `tools/audit/fullshot.mjs` | Full-length single-image capture, with an `expand` mode that opens collapsed disclosures |
 | `tools/audit/overflow.mjs` | Horizontal-overflow + clipped-text probe |
-| `tools/audit/settings-smoke.mjs` | 24-check functional test of the Settings controls |
+| `tools/audit/settings-smoke.mjs` | 26-check functional test of the Settings controls |
 | `tools/audit/zoom.mjs` | Now takes a viewport width (was hardcoded to 390) |
 
 Dead code removed while in the file: `getDailyJournalPromptForDate` and
 `getJournalQuestionLabels` imports, an unused `labels` binding, the now-unused
-`Check` / `Scale` icon imports, and — with the full schedule collapse —
-`PRIMARY_REMINDER_TYPES` plus the `otherReminders` split.
+`Check` / `Scale` icon imports, `PRIMARY_REMINDER_TYPES` plus the `otherReminders`
+split (with the full schedule collapse), and `downloadReminderIcs` (with the
+Calendar group).
 
 One test-harness note: `settings-smoke.mjs` must call
 `ctx.grantPermissions(["notifications"], { origin: "http://localhost:5173" })`
@@ -132,9 +163,10 @@ bug, not an app bug.
   group labels, so `settings.legal` is no longer referenced. The Terms/Privacy
   links, `legalHref` helper and version pin are untouched and still tested.)
 - `npm run build` — succeeds; PWA service worker regenerated.
-- `tools/audit/settings-smoke.mjs` — **24/24**: palette sets and persists `theme`
+- `tools/audit/settings-smoke.mjs` — **26/26**: palette sets and persists `theme`
   + `data-theme`; the row names the current palette; language switch persists and
-  updates `<html lang>`; the reminder schedule starts collapsed and hides its rows;
+  updates `<html lang>`; the Calendar reminder row and its `.ics` button are
+  confirmed absent; the reminder schedule starts collapsed and hides its rows;
   it reports **"Off"** while the master switch is off and a live count
   (`"4 active"`) once it is on; expanding reveals every reminder, the seasonal
   rows, and the test/reset actions; reminder toggle persists; notifications toggle
@@ -160,11 +192,18 @@ bug, not an app bug.
 3. **`archiveSeason` has no confirmation dialog.** It preserves all progress, so
    it is not destructive and was left as-is; flagged because it ends the active
    season in one tap.
-4. **`settings.prefs`, `settings.data`, `settings.reminders`, `settings.legal`,
-   `settings.group.other`, `settings.exportSection`, `settings.exportSectionDesc`,
-   `settings.importSection`, `settings.importSectionDesc` are now unreferenced.**
-   Left in the catalog rather than deleted so nothing else that reads it breaks;
-   they can be pruned separately.
+4. **16 of the 90 `settings.*` keys are now unreferenced.** The redesign replaced
+   several surfaces with new keys and did not delete the old ones:
+   `settings.account`, `settings.danger`, `settings.data`, `settings.legal`,
+   `settings.legalDesc`, `settings.prefs`, `settings.reminders`, `settings.season`,
+   plus the pre-existing `settings.detoxAria`, `settings.downloadMd`,
+   `settings.guide`, `settings.guideOpen`, `settings.importJsonAria`,
+   `settings.launcherBridge`, `settings.launcherBridgeDesc`,
+   `settings.notificationsAria`. Left in the catalog rather than deleted so
+   nothing else that reads them breaks. `npm run audit:dead-keys` reports them —
+   note it exits 0 and has always found dead keys, so it is informational, not a
+   gate. `settings.paletteDesc` and the five Calendar keys *were* pruned here,
+   because those were keys this work added or orphaned outright.
 5. **`"system"` is still in `AppTheme`** but is not one of the six swatches. With
    the new resolution it now falls back to showing "Dark Monk" selected, which is
    what actually renders — but the stored value stays `"system"` until the user
@@ -172,8 +211,9 @@ bug, not an app bug.
 
 ## Screenshots
 
-- `audit/settings-collapsed/settings-full@2x.png` — 390px, full length, 2x, reminder schedule **collapsed** (2534px tall)
-- `audit/settings-expanded/settings-full@2x.png` — 390px, full length, 2x, reminder schedule **expanded** (2996px tall)
+- `audit/settings-no-calendar/settings-full@2x.png` — 390px, full length, 2x, current state after the Calendar group was removed (2365px tall)
+- `audit/settings-collapsed/settings-full@2x.png` — 390px, full length, 2x, reminder schedule **collapsed** (2534px tall, before the Calendar removal)
+- `audit/settings-expanded/settings-full@2x.png` — 390px, full length, 2x, reminder schedule **expanded** (2996px tall, before the Calendar removal)
 - `audit/settings-ref/settings-full@2x.png` — 390px, full length, 2x
 - `audit/settings-ref/settings-full@1x.png` — 390px, full length
 - `audit/settings-ref-desktop/settings-full@1x.png` — 1440px

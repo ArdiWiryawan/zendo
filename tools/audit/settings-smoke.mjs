@@ -54,6 +54,15 @@ check("language switch persists", afterLang.appSettings?.language === "en", `lan
 check("<html lang> follows the UI language", htmlLang === "en", `lang=${htmlLang}`);
 check("copy re-renders in English", await page.getByText("Appearance", { exact: true }).isVisible());
 
+// 2a. The Calendar group was removed on purpose: the agenda already exports the
+// real day plan as .ics (MorningPlanningModal / DayTimeBlockVisualizer), so the
+// Settings row was a second, weaker export of the same idea. This guards the
+// decision against a silent re-introduction.
+const icsCopy = await page.getByText("Download a .ics file for Google, Apple, or Outlook.", { exact: true }).count();
+const icsButton = await page.getByRole("button", { name: "Download .ics", exact: true }).count();
+check("calendar reminder row is gone", icsCopy === 0, `copy matches=${icsCopy}`);
+check("no orphaned .ics download button", icsButton === 0, `button matches=${icsButton}`);
+
 // 2b. Progressive disclosure: the whole reminder schedule is one summary row.
 // It is left expanded afterwards so the reminder-toggle check below can reach
 // the rows it needs.
