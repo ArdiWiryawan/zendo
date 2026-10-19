@@ -42,6 +42,7 @@ import { stopMusic } from "../lib/focusMusic";
 import { syncFocusNotifications } from "../lib/focusNotifications";
 import { resolveLinkedNoteIds } from "../lib/notebookLinks";
 import { computeWeeklyRhythm } from "../lib/rhythmAccounting";
+import { MAX_GOAL_WHYS, goalWhys } from "../lib/goalWhy";
 import { t } from "../i18n";
 import type {
   AppSettings,
@@ -81,6 +82,7 @@ import type {
   ReleasedSeasonGoal,
   Season,
   SeasonWhy,
+  GoalWhy,
   TimelineDay,
   TimelineStatus,
   PracticeHistoryScale,
@@ -207,6 +209,9 @@ type MonkActions = {
   resumeSeason: () => void;
   updateSeasonWhy: (why: SeasonWhy) => void;
   updateGoalWhy: (goalId: string, why: string) => void;
+  /** Append one reason to a goal. Ignores blanks, duplicates, and overflow. */
+  addGoalWhy: (goalId: string, text: string) => void;
+  removeGoalWhy: (goalId: string, whyId: string) => void;
   updateGoalBlueprint: (
     goalId: string,
     blueprint: {
@@ -216,6 +221,8 @@ type MonkActions = {
       type?: GoalType;
       outcomeFrequencyPerWeek?: number;
       why?: string;
+      /** Full replacement list. Takes precedence over `why` when supplied. */
+      whys?: GoalWhy[];
       desiredOutcome?: string;
       track?: string;
       tasks?: GoalTask[];
@@ -1247,23 +1254,31 @@ export const useMonkStore = create<MonkStore>()(
     const focusDrafts = onboarding.selectedFocusGoalIds
       .map((id) => onboarding.goalDrafts.find((goal) => goal.id === id))
       .filter((goal): goal is NonNullable<typeof goal> => Boolean(goal));
-    const goals: Goal[] = focusDrafts.map((draft, index) => ({
-      id: draft.id,
-      seasonId,
-      title: draft.title.trim(),
-      keystoneAction: onboarding.keystoneActions[draft.id]?.trim() || "Stay with one thing",
-      why: onboarding.goalWhys[draft.id]?.trim() || undefined,
-      desiredOutcome: onboarding.goalDesiredOutcomes?.[draft.id]?.trim() || undefined,
-      obstacle: parseIntention(onboarding.obstacleMitigations[draft.id] ?? "")?.when || undefined,
-      obstacleMitigation: parseIntention(onboarding.obstacleMitigations[draft.id] ?? "")?.action || undefined,
-      priority: (index + 1) as 1 | 2 | 3,
-      weeklyTargetCount:
-        onboarding.weeklyAllocations.find((allocation) => allocation.goalId === draft.id)
-          ?.targetCount ?? defaultWeeklyTargets(focusDrafts.map((goal) => goal.id))[index].targetCount,
-      status: "active",
-      createdAt: timestamp,
-      updatedAt: timestamp
-    }));
+    const goals: Goal[] = focusDrafts.map((draft, index) => {
+      const whyText = onboarding.goalWhys[draft.id]?.trim();
+      return {
+        id: draft.id,
+        seasonId,
+        title: draft.title.trim(),
+        keystoneAction: onboarding.keystoneActions[draft.id]?.trim() || "Stay with one thing",
+        why: whyText || undefined,
+        // Onboarding asks for one reason; it becomes the first entry of the list
+        // so the daily rotation and the reason editor work from day one.
+        whys: whyText
+          ? [{ id: createId("why"), text: whyText, createdAt: timestamp }]
+          : undefined,
+        desiredOutcome: onboarding.goalDesiredOutcomes?.[draft.id]?.trim() || undefined,
+        obstacle: parseIntention(onboarding.obstacleMitigations[draft.id] ?? "")?.when || undefined,
+        obstacleMitigation: parseIntention(onboarding.obstacleMitigations[draft.id] ?? "")?.action || undefined,
+        priority: (index + 1) as 1 | 2 | 3,
+        weeklyTargetCount:
+          onboarding.weeklyAllocations.find((allocation) => allocation.goalId === draft.id)
+            ?.targetCount ?? defaultWeeklyTargets(focusDrafts.map((goal) => goal.id))[index].targetCount,
+        status: "active",
+        createdAt: timestamp,
+        updatedAt: timestamp
+      };
+    });
     const badHabits: BadHabit[] = onboarding.selectedHabits.map((habit) => ({
       id: habit.id,
       seasonId,
@@ -1646,6 +1661,9 @@ export const useMonkStore = create<MonkStore>()(
           title: opts.newGoal.title.trim() || name,
           keystoneAction: name,
           why: opts.newGoal.why?.trim() || undefined,
+          whys: opts.newGoal.why?.trim()
+            ? [{ id: createId("why"), text: opts.newGoal.why.trim(), createdAt: now }]
+            : undefined,
           desiredOutcome: opts.newGoal.desiredOutcome?.trim() || undefined,
           priority: Math.min(3, state.goals.filter((g) => g.status === "active").length + 1) as 1 | 2 | 3,
           weeklyTargetCount,
@@ -2662,14 +2680,50 @@ export const useMonkStore = create<MonkStore>()(
   },
 
   updateGoalWhy: (goalId, why) => {
-    const state = get();
     const trimmed = why.trim();
+    const state = get();
     set({
-      goals: state.goals.map((g) =>
-        g.id === goalId
-          ? { ...g, why: trimmed || undefined, updatedAt: nowIso() }
-          : g
-      )
+      goals: state.goals.map((g) => {
+        if (g.id !== goalId) return g;
+        const list = goalWhys(g);
+        // Editing the compact field edits the FIRST reason and keeps the rest:
+        // a user who has written three reasons must not lose two by fixing a
+        // typo in the one the week card happened to show.
+        const next = trimmed
+          ? list.length > 0
+            ? [{ ...list[0], text: trimmed }, ...list.slice(1)]
+            : [{ id: createId("why"), text: trimmed, createdAt: nowIso() }]
+          : list.slice(1);
+        return { ...g, whys: next, why: next[0]?.text, updatedAt: nowIso() };
+      })
+    });
+  },
+
+  addGoalWhy: (goalId, text) => {
+    const trimmed = text.trim();
+    if (!trimmed) return;
+    const state = get();
+    set({
+      goals: state.goals.map((g) => {
+        if (g.id !== goalId) return g;
+        const list = goalWhys(g);
+        if (list.length >= MAX_GOAL_WHYS) return g;
+        // Same reason twice adds noise, not motivation.
+        if (list.some((item) => item.text.trim().toLowerCase() === trimmed.toLowerCase())) return g;
+        const next = [...list, { id: createId("why"), text: trimmed, createdAt: nowIso() }];
+        return { ...g, whys: next, why: next[0]?.text, updatedAt: nowIso() };
+      })
+    });
+  },
+
+  removeGoalWhy: (goalId, whyId) => {
+    const state = get();
+    set({
+      goals: state.goals.map((g) => {
+        if (g.id !== goalId) return g;
+        const next = goalWhys(g).filter((item) => item.id !== whyId);
+        return { ...g, whys: next, why: next[0]?.text, updatedAt: nowIso() };
+      })
     });
   },
 
@@ -2679,6 +2733,24 @@ export const useMonkStore = create<MonkStore>()(
     if (!existing) return;
     const updatedGoals = state.goals.map((g) => {
       if (g.id !== goalId) return g;
+      // Reasons are resolved once, before the object literal: `whys` is the
+      // source of truth, `why` its first entry, and both must agree on every
+      // write or older surfaces start showing a reason the user deleted.
+      const currentWhys = goalWhys(g);
+      let nextWhys: GoalWhy[] = g.whys ?? currentWhys;
+      if (blueprint.whys !== undefined) {
+        nextWhys = blueprint.whys
+          .map((item) => ({ ...item, text: item.text.trim() }))
+          .filter((item) => item.text.length > 0)
+          .slice(0, MAX_GOAL_WHYS);
+      } else if (blueprint.why !== undefined) {
+        const trimmed = blueprint.why.trim();
+        nextWhys = trimmed
+          ? currentWhys.length > 0
+            ? [{ ...currentWhys[0], text: trimmed }, ...currentWhys.slice(1)]
+            : [{ id: createId("why"), text: trimmed, createdAt: nowIso() }]
+          : currentWhys.slice(1);
+      }
       return {
         ...g,
         title: blueprint.title !== undefined ? (blueprint.title.trim() || g.title) : g.title,
@@ -2696,7 +2768,8 @@ export const useMonkStore = create<MonkStore>()(
                 : g.outcomeFrequencyPerWeek
               : undefined
             : g.outcomeFrequencyPerWeek,
-        why: blueprint.why !== undefined ? (blueprint.why.trim() || undefined) : g.why,
+        whys: nextWhys,
+        why: nextWhys[0]?.text,
         desiredOutcome: blueprint.desiredOutcome !== undefined ? (blueprint.desiredOutcome.trim() || undefined) : g.desiredOutcome,
         track: blueprint.track !== undefined ? (blueprint.track.trim() || undefined) : g.track,
         tasks: blueprint.tasks !== undefined ? blueprint.tasks : g.tasks,

@@ -17,18 +17,22 @@ import {
   ArrowDown,
   Pause,
   Play,
-  Trash2
+  Trash2,
+  Heart
 } from "lucide-react";
 import { useMonkStore, normalizeAvailability } from "../store/useMonkStore";
 import { selectCurrentWeeklyPlan } from "../store/selectors";
 import { useT } from "../i18n";
 import type { MessageKey } from "../i18n";
-import type { GoalType, GoalWeekday } from "../types/app";
+import type { GoalType, GoalWeekday, GoalWhy } from "../types/app";
 import { PrimaryButton, SecondaryButton, GhostButton, TextInput, CalmAlert, CalmDialog, useCalmToast, useModalA11y } from "./ui";
 import { ReleaseChoiceDialog } from "./ReleaseChoiceDialog";
 import { hapticPress } from "../lib/haptics";
 import { GOAL_TEMPLATES, GoalBlueprintTemplate } from "../constants/goalTemplates";
 import { MAX_ACTIVE_GOAL_TRACKS } from "../lib/validation";
+import { MAX_GOAL_WHYS, goalWhys } from "../lib/goalWhy";
+import { createId } from "../lib/ids";
+import { nowIso } from "../lib/date";
 
 interface GoalBlueprintModalProps {
   goalId: string | null;
@@ -285,7 +289,8 @@ export function GoalBlueprintModal({ goalId, isOpen, onClose }: GoalBlueprintMod
 
   // Additional settings
   const [track, setTrack] = useState("");
-  const [why, setWhy] = useState("");
+  const [whys, setWhys] = useState<GoalWhy[]>([]);
+  const [whyDraft, setWhyDraft] = useState("");
   const [desiredOutcome, setDesiredOutcome] = useState("");
   const [weeklyTargetCount, setWeeklyTargetCount] = useState(4);
   // §12-13: the goal's kind, and — only for `frequency` goals — the countable
@@ -321,7 +326,8 @@ export function GoalBlueprintModal({ goalId, isOpen, onClose }: GoalBlueprintMod
       setWhenWhere(goal.whenWhere || "");
       setDefinitionOfDone(goal.definitionOfDone || "");
       setTrack(goal.track || "");
-      setWhy(goal.why || "");
+      setWhys(goalWhys(goal));
+      setWhyDraft("");
       setDesiredOutcome(goal.desiredOutcome || "");
       setWeeklyTargetCount(goal.weeklyTargetCount || 4);
       setGoalType(goal.type ?? "achievement");
@@ -370,13 +376,31 @@ export function GoalBlueprintModal({ goalId, isOpen, onClose }: GoalBlueprintMod
   const handleApplyTemplate = (tpl: GoalBlueprintTemplate) => {
     hapticPress("medium");
     setTitle(tpl.title);
-    setWhy(tpl.why);
+    // A template's reason becomes the first reason; anything the user already
+    // wrote stays below it instead of being overwritten.
+    setWhys((prev) =>
+      prev.some((item) => item.text.trim().toLowerCase() === tpl.why.trim().toLowerCase())
+        ? prev
+        : [{ id: createId("why"), text: tpl.why, createdAt: nowIso() }, ...prev]
+    );
     setKeystoneAction(tpl.keystoneAction);
     setWeeklyTargetCount(tpl.weeklyTargetCount);
     setObstacleMitigation(tpl.obstacleMitigation);
     setShowTemplates(false);
     setError("");
     toast.show(t("blueprint.templateApplied", { name: tpl.category }));
+  };
+
+  const handleAddWhy = () => {
+    const value = whyDraft.trim();
+    if (!value || whys.length >= MAX_GOAL_WHYS) return;
+    if (whys.some((item) => item.text.trim().toLowerCase() === value.toLowerCase())) {
+      setWhyDraft("");
+      return;
+    }
+    hapticPress("light");
+    setWhys((prev) => [...prev, { id: createId("why"), text: value, createdAt: nowIso() }]);
+    setWhyDraft("");
   };
 
   const handleSave = () => {
@@ -404,7 +428,8 @@ export function GoalBlueprintModal({ goalId, isOpen, onClose }: GoalBlueprintMod
       weeklyTargetCount,
       type: goalType,
       outcomeFrequencyPerWeek: goalType === "frequency" ? outcomeFrequency : undefined,
-      why: why.trim() || undefined,
+      why: whys[0]?.text,
+      whys,
       desiredOutcome: desiredOutcome.trim() || undefined,
       obstacleMitigation: obstacleMitigation.trim() || undefined
     });
@@ -427,7 +452,7 @@ export function GoalBlueprintModal({ goalId, isOpen, onClose }: GoalBlueprintMod
     store.convertGoalToPractice(goal.id, {
       practiceName: title.trim() || goal.title,
       weeklyTargetCount,
-      newGoal: convertNewGoal ? { title: newGoalTitle, why: why.trim() || undefined } : undefined
+      newGoal: convertNewGoal ? { title: newGoalTitle, why: whys[0]?.text } : undefined
     });
     toast.show(
       lang === "en"
@@ -575,6 +600,73 @@ export function GoalBlueprintModal({ goalId, isOpen, onClose }: GoalBlueprintMod
                   className="bg-monk-surface text-sm"
                   onBlur={(e) => setDesiredOutcome(e.target.value.trim())}
                 />
+              </div>
+
+              {/* Reasons — the list the daily hero rotates through. */}
+              <div className="rounded-2xl border border-monk-border bg-monk-soft/30 p-3.5 space-y-2">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2 text-monk-text font-bold text-xs uppercase tracking-wider">
+                    <div className="grid h-5 w-5 place-items-center rounded bg-monk-cat-personal/20 text-monk-cat-personal">
+                      <Heart size={12} />
+                    </div>
+                    <span>{t("goalWhy.title")}</span>
+                  </div>
+                  <span className="text-[10px] font-semibold text-monk-muted">
+                    {t("goalWhy.count", { n: whys.length, max: MAX_GOAL_WHYS })}
+                  </span>
+                </div>
+                <p className="text-[11px] leading-relaxed text-monk-muted">{t("goalWhy.subtitle")}</p>
+
+                {whys.length > 0 ? (
+                  <ul className="space-y-1.5">
+                    {whys.map((item, index) => (
+                      <li
+                        key={item.id}
+                        className="flex items-start gap-2 rounded-lg border border-monk-border/50 bg-monk-surface/70 px-2.5 py-2"
+                      >
+                        <span className="mt-0.5 grid h-4 w-4 shrink-0 place-items-center rounded-full bg-monk-accent/15 text-[9px] font-bold text-monk-accent">
+                          {index + 1}
+                        </span>
+                        <p className="min-w-0 flex-1 whitespace-pre-wrap break-words text-[12px] leading-relaxed text-monk-text">
+                          {item.text}
+                        </p>
+                        <button
+                          type="button"
+                          onClick={() => setWhys((prev) => prev.filter((entry) => entry.id !== item.id))}
+                          aria-label={t("goalWhy.removeAria", { why: item.text })}
+                          className="grid h-6 w-6 shrink-0 place-items-center rounded text-monk-muted transition hover:bg-monk-danger/10 hover:text-monk-danger"
+                        >
+                          <Trash2 size={12} />
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                ) : null}
+
+                <div className="flex items-end gap-2">
+                  <TextInput
+                    value={whyDraft}
+                    onChange={(e) => setWhyDraft(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        handleAddWhy();
+                      }
+                    }}
+                    placeholder={t("goalWhy.placeholder")}
+                    disabled={whys.length >= MAX_GOAL_WHYS}
+                    className="min-w-0 flex-1 bg-monk-surface text-sm"
+                  />
+                  <GhostButton
+                    type="button"
+                    onClick={handleAddWhy}
+                    disabled={!whyDraft.trim() || whys.length >= MAX_GOAL_WHYS}
+                    className="shrink-0 px-3 text-xs"
+                  >
+                    <Plus size={13} />
+                    {t("goalWhy.addButton")}
+                  </GhostButton>
+                </div>
               </div>
 
               {/* Goal Track / Focus Area */}

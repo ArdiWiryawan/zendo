@@ -144,6 +144,22 @@ export type GoalTrack = {
   updatedAt: ISODateString;
 };
 
+/**
+ * One reason a goal matters.
+ *
+ * Goals used to carry a single `why` string, which made the deepest part of the
+ * product a one-shot field: once it was written (or skipped), the reason went
+ * stale and the goal started to feel hollow. A list lets the user keep adding
+ * the reason they discovered today — and lets the app resurface a different one
+ * each day instead of repeating the same sentence until it stops meaning
+ * anything.
+ */
+export type GoalWhy = {
+  id: string;
+  text: string;
+  createdAt: ISODateString;
+};
+
 export type Goal = {
   id: string;
   seasonId: string;
@@ -154,8 +170,14 @@ export type Goal = {
   track?: string;
   /** Subtasks breakdown for the goal */
   tasks?: GoalTask[];
-  /** Why this goal matters — short personal reason. */
+  /**
+   * Why this goal matters — the FIRST reason, mirrored for older surfaces and
+   * for payloads written before `whys` existed. New code reads `whys` through
+   * `lib/goalWhy.ts`; this field stays in sync on every write.
+   */
   why?: string;
+  /** All reasons this goal matters, oldest first. Optional for old payloads. */
+  whys?: GoalWhy[];
   /** Desired outcome: what gets better if this goal is finished. */
   desiredOutcome?: string;
   /** Implementation intention context (When & Where: e.g. "Tomorrow 08:30 at work desk") */

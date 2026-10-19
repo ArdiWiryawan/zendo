@@ -1,8 +1,10 @@
 import type { TimeBlock } from "../types/app";
 import {
+  TIME_BLOCK_CATEGORIES,
   activityCategoryColorName,
   activityCategoryHex,
-  resolveActivityCategory
+  resolveActivityCategory,
+  type ActivityCategory
 } from "./activityCategory";
 
 /**
@@ -92,6 +94,41 @@ function foldLine(line: string): string {
 const EVENT_STATUS = "STATUS:CONFIRMED";
 const EVENT_TRANSP = "TRANSP:OPAQUE";
 
+export type IcsCategoryGroup = {
+  category: ActivityCategory;
+  blocks: TimeBlock[];
+};
+
+/**
+ * Split a day's blocks into one group per category, in menu order.
+ *
+ * This exists because of a hard limit in Google Calendar: on ICS *import* it
+ * ignores a per-event `COLOR` and assigns one color to the whole calendar.
+ * The only way to get "green = rest, red = deep work" there is to import each
+ * category as its own calendar and pick that calendar's color — so the export
+ * needs the same split the user will perform by hand.
+ */
+export function groupTimeBlocksByCategory(timeBlocks: TimeBlock[]): IcsCategoryGroup[] {
+  const byCategory = new Map<ActivityCategory, TimeBlock[]>();
+  for (const block of timeBlocks || []) {
+    const category = resolveActivityCategory(block.category);
+    const bucket = byCategory.get(category);
+    if (bucket) bucket.push(block);
+    else byCategory.set(category, [block]);
+  }
+  return TIME_BLOCK_CATEGORIES.filter((category) => byCategory.has(category)).map((category) => ({
+    category,
+    blocks: byCategory.get(category) ?? []
+  }));
+}
+
+type IcsBuildOptions = {
+  /** Calendar display name. Google reads this as the calendar name on import. */
+  calendarName?: string;
+  /** When set, only blocks in this category are emitted. */
+  category?: ActivityCategory;
+};
+
 /**
  * Generate standard RFC 5545 iCalendar file content from TimeBlock[]
  *
@@ -105,14 +142,15 @@ const EVENT_TRANSP = "TRANSP:OPAQUE";
  *                             a vendor extension, so it is additive only.
  *
  * Neither is guaranteed on import: Google Calendar assigns color per calendar
- * and ignores an event's color on ICS import. That limitation is real and not
- * something a file can work around; the CATEGORIES property below still carries
- * the category text for clients that read it.
+ * and ignores an event's color on ICS import. `generateIcsContentForCategory`
+ * below is the workaround — one file per category, so each lands as its own
+ * calendar and the user sets one color per calendar.
  */
-export function generateIcsContent(
+function buildIcsContent(
   date: string,
   timeBlocks: TimeBlock[],
-  seasonTitle = "Zendo Focus"
+  seasonTitle: string,
+  options: IcsBuildOptions
 ): string {
   const now = new Date();
   // toISOString() is already UTC and already ends in "Z" once the separators
@@ -131,7 +169,13 @@ export function generateIcsContent(
       ? `${name};TZID=${tzid}:${icsDate}T${toIcsTime(time)}`
       : `${name}:${icsDate}T${toIcsTime(time)}`;
 
-  const events = (timeBlocks || []).map((block) => {
+  const blocksForCalendar = options.category
+    ? (timeBlocks || []).filter(
+        (block) => resolveActivityCategory(block.category) === options.category
+      )
+    : timeBlocks || [];
+
+  const events = blocksForCalendar.map((block) => {
     // Resolve before anything reads the category. An id from older state, a
     // hand-edited payload, or a future build used to reach
     // `block.category.replace(...)` and throw, aborting the export of every
@@ -180,10 +224,52 @@ export function generateIcsContent(
     "PRODID:-//Zendo//Focus Timeblocking//ID",
     "CALSCALE:GREGORIAN",
     "METHOD:PUBLISH",
-    `X-WR-CALNAME:${escapeIcsText(seasonTitle)} - ${date}`
+    `X-WR-CALNAME:${escapeIcsText(options.calendarName ?? `${seasonTitle} - ${date}`)}`
   ].map(foldLine);
 
   return [...header, ...events, "END:VCALENDAR"].join("\r\n");
+}
+
+export function generateIcsContent(
+  date: string,
+  timeBlocks: TimeBlock[],
+  seasonTitle = "Zendo Focus"
+): string {
+  return buildIcsContent(date, timeBlocks, seasonTitle, {});
+}
+
+/**
+ * One calendar per activity category.
+ *
+ * `label` is the already-translated category name, so the imported calendar
+ * reads in the user's language instead of showing `deep_work`.
+ */
+export function generateIcsContentForCategory(
+  date: string,
+  category: ActivityCategory,
+  timeBlocks: TimeBlock[],
+  seasonTitle = "Zendo Focus",
+  label?: string
+): string {
+  return buildIcsContent(date, timeBlocks, seasonTitle, {
+    category,
+    calendarName: `${seasonTitle} · ${label ?? category.replace(/_/g, " ")}`
+  });
+}
+
+/** Browser download for one already-serialized calendar. */
+function downloadIcsText(fileName: string, content: string): void {
+  const blob = new Blob([content], { type: "text/calendar;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.setAttribute("download", fileName);
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  // Revoking synchronously can cancel the download in some browsers; one turn
+  // of the event loop is enough for the click to be consumed.
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
 /**
@@ -195,14 +281,37 @@ export function downloadIcsFile(
   seasonTitle = "Zendo Focus"
 ): void {
   if (timeBlocks.length === 0) return;
-  const content = generateIcsContent(date, timeBlocks, seasonTitle);
-  const blob = new Blob([content], { type: "text/calendar;charset=utf-8" });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement("a");
-  link.href = url;
-  link.setAttribute("download", `zendo-plan-${date}.ics`);
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-  URL.revokeObjectURL(url);
+  downloadIcsText(`zendo-plan-${date}.ics`, generateIcsContent(date, timeBlocks, seasonTitle));
+}
+
+/**
+ * Downloads one .ics per category present in the day.
+ *
+ * All clicks fire synchronously inside the user's gesture: a stagger via
+ * `setTimeout` loses the activation and browsers then block every file after
+ * the first. Chrome may still ask "allow multiple downloads" — that prompt is
+ * the intended behaviour, not a bug.
+ *
+ * Returns how many files were queued, so the caller can tell the user what to
+ * expect. Names are deterministic (`zendo-2026-10-19-rest.ics`) so re-importing
+ * after an edit updates the same calendar instead of stacking duplicates.
+ */
+export function downloadIcsFilesByCategory(
+  date: string,
+  timeBlocks: TimeBlock[],
+  seasonTitle = "Zendo Focus",
+  labels: Partial<Record<ActivityCategory, string>> = {}
+): number {
+  const groups = groupTimeBlocksByCategory(timeBlocks);
+  for (const group of groups) {
+    const content = generateIcsContentForCategory(
+      date,
+      group.category,
+      group.blocks,
+      seasonTitle,
+      labels[group.category]
+    );
+    downloadIcsText(`zendo-${date}-${group.category}.ics`, content);
+  }
+  return groups.length;
 }

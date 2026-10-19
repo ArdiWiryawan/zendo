@@ -26,7 +26,7 @@ import { selectTodayPlan } from "../store/selectors";
 import { getTodayDateString } from "../lib/date";
 import { hapticPress } from "../lib/haptics";
 import { playCompletionChime } from "../lib/audio";
-import { downloadIcsFile } from "../lib/ical";
+import { CalendarExportModal } from "./CalendarExportModal";
 import { parseIcsForDate, inferCategory } from "../lib/icsParser";
 import { resolveActivityCategory } from "../lib/activityCategory";
 import { useCalmToast, PrimaryButton, SecondaryButton, useModalA11y } from "./ui";
@@ -167,6 +167,7 @@ export function MorningPlanningModal({
   const [targetDuration, setTargetDuration] = useState<number>(15 * 60);
   const [secondsRemaining, setSecondsRemaining] = useState<number>(15 * 60);
   const [timerRunning, setTimerRunning] = useState<boolean>(true);
+  const [exportOpen, setExportOpen] = useState<boolean>(false);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
 
   // Escape closes, Tab stays inside, focus returns to the opener on unmount.
@@ -357,8 +358,7 @@ export function MorningPlanningModal({
 
   const handleExportIcs = () => {
     hapticPress("medium");
-    downloadIcsFile(activeDate, timeBlocks, activeSeason?.name || "Zendo");
-    toast.show(t("planning.downloadedIcs"));
+    setExportOpen(true);
   };
 
   // Commit the parsed calendar ONCE, from the reader callback. `setAgenda` /
@@ -487,6 +487,7 @@ export function MorningPlanningModal({
   };
 
   return (
+    <>
     <AnimatePresence>
       <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/70 backdrop-blur-sm overflow-y-auto">
         <motion.div
@@ -969,5 +970,13 @@ export function MorningPlanningModal({
         </motion.div>
       </div>
     </AnimatePresence>
+    <CalendarExportModal
+      open={exportOpen}
+      onClose={() => setExportOpen(false)}
+      date={activeDate}
+      timeBlocks={timeBlocks}
+      seasonTitle={activeSeason?.name || "Zendo"}
+    />
+    </>
   );
 }

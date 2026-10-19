@@ -4,9 +4,8 @@ import { useMonkStore } from "../store/useMonkStore";
 import { useT, useLanguage, type MessageKey } from "../i18n";
 import { getTodayDateString, formatHumanDate } from "../lib/date";
 import { hapticPress } from "../lib/haptics";
-import { downloadIcsFile } from "../lib/ical";
 import { resolveActivityCategory } from "../lib/activityCategory";
-import { useCalmToast } from "./ui";
+import { CalendarExportModal } from "./CalendarExportModal";
 import type { TimeBlock, TimeBlockCategory } from "../types/app";
 
 interface DayTimeBlockVisualizerProps {
@@ -97,12 +96,12 @@ export function DayTimeBlockVisualizer({
 }: DayTimeBlockVisualizerProps) {
   const t = useT();
   const lang = useLanguage();
-  const toast = useCalmToast();
   const store = useMonkStore();
   const activeDate = date || getTodayDateString();
   const season = store.activeSeason;
 
   const [viewMode, setViewMode] = useState<"agenda" | "grid">("agenda");
+  const [exportOpen, setExportOpen] = useState(false);
   const canvasScrollRef = useRef<HTMLDivElement>(null);
 
   const dayPlan = store.dayPlans.find(
@@ -160,8 +159,7 @@ export function DayTimeBlockVisualizer({
 
   const handleExportIcs = () => {
     hapticPress("medium");
-    downloadIcsFile(activeDate, timeBlocks, season?.name || "Zendo");
-    toast.show(t("planning.downloadedIcs"));
+    setExportOpen(true);
   };
 
   const hoursArray = Array.from(
@@ -457,6 +455,14 @@ export function DayTimeBlockVisualizer({
           </div>
         </div>
       )}
+
+      <CalendarExportModal
+        open={exportOpen}
+        onClose={() => setExportOpen(false)}
+        date={activeDate}
+        timeBlocks={timeBlocks}
+        seasonTitle={season?.name || "Zendo"}
+      />
     </div>
   );
 }

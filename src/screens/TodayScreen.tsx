@@ -36,6 +36,8 @@ import { CoachHint } from "./OnboardingSteps";
 import { WhyEditor } from "../components/SeasonWidgets";
 import { EnergyCheck, WhyStrip, GoalTasksCard, derivePrimaryCTA, focusLinkClass, focusLinkMutedClass } from "./TodayScreen.components";
 import { GoalBlueprintModal } from "../components/GoalBlueprintModal";
+import { GoalWhySheet } from "../components/GoalWhySheet";
+import { goalWhys, goalWhyForDate } from "../lib/goalWhy";
 import { PracticesCard } from "../components/PracticesCard";
 import { WeeklyReviewModal } from "../components/WeeklyReviewModal";
 import { MorningPlanningModal } from "../components/MorningPlanningModal";
@@ -461,6 +463,7 @@ export function TodayScreen() {
     planningCompleted?: boolean;
   }>(null);
   const [blueprintGoalId, setBlueprintGoalId] = useState<string | null>(null);
+  const [whyGoalId, setWhyGoalId] = useState<string | null>(null);
   const [clarifyBannerDismissed, setClarifyBannerDismissed] = useState(false);
   const [proModalOpen, setProModalOpen] = useState(false);
   const [weeklyReviewModalOpen, setWeeklyReviewModalOpen] = useState(false);
@@ -530,7 +533,11 @@ export function TodayScreen() {
   }, [undoPlan]);
 
   const goal = todayPlan?.goalId ? store.goals.find((item) => item.id === todayPlan.goalId) : undefined;
-  const unclarifiedGoal = activeGoals.find((g) => !g.why || !g.obstacle);
+  // Today's reason rotates by date, so the same goal does not repeat one
+  // sentence until it stops meaning anything. Falls back to the first reason.
+  const goalWhyList = goalWhys(goal);
+  const todayWhy = goal ? goalWhyForDate(goal, today) : undefined;
+  const unclarifiedGoal = activeGoals.find((g) => goalWhys(g).length === 0 || !g.obstacle);
   const daysLeft = getDaysLeft(season.endDate);
   // Evidence wins: a day scheduled rest that holds a completed focus session
   // resolves "completed", so it is not rendered (or announced) as a rest day.
@@ -880,10 +887,28 @@ export function TodayScreen() {
                     enough that the hero still doesn't wrap three times. Supporting
                     text sits one step below the title in colour, not accent-bright:
                     the goal is what the user reads first. */}
-                {!isRest && goal?.why ? (
-                  <p className="mt-1.5 line-clamp-2 break-words text-sm leading-relaxed text-monk-muted">
-                    {t("today.identityBecoming", { why: goal.why })}
-                  </p>
+                {!isRest && goal ? (
+                  <div className="mt-1.5">
+                    {todayWhy ? (
+                      <p className="line-clamp-2 break-words text-sm leading-relaxed text-monk-muted">
+                        {t("today.identityBecoming", { why: todayWhy.text })}
+                      </p>
+                    ) : (
+                      <p className="text-sm leading-relaxed text-monk-muted">{t("goalWhy.emptyBody")}</p>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        hapticPress("light");
+                        setWhyGoalId(goal.id);
+                      }}
+                      className="mt-1 inline-flex min-h-8 items-center gap-1 rounded text-[11px] font-semibold text-monk-accent hover:underline"
+                    >
+                      {todayWhy
+                        ? t("goalWhy.seeAll", { n: goalWhyList.length })
+                        : t("goalWhy.addFirst")}
+                    </button>
+                  </div>
                 ) : null}
               </div>
 
@@ -1733,6 +1758,11 @@ export function TodayScreen() {
         goalId={blueprintGoalId}
         isOpen={!!blueprintGoalId}
         onClose={() => setBlueprintGoalId(null)}
+      />
+      <GoalWhySheet
+        goalId={whyGoalId ?? undefined}
+        open={!!whyGoalId}
+        onClose={() => setWhyGoalId(null)}
       />
       <WeeklyReviewModal
         isOpen={weeklyReviewModalOpen}

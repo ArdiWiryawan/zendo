@@ -6,10 +6,11 @@ import { useT } from "../i18n";
 import { selectActiveGoals, selectCurrentWeeklyPlan, selectEnergyForDate } from "../store/selectors";
 import { getTodayDateString, formatHumanDate } from "../lib/date";
 import { hapticPress } from "../lib/haptics";
+import { buildJournalRecap } from "../lib/journalRecap";
 import { useCalmToast, PrimaryButton, GhostButton, TextInput, Textarea, useModalA11y } from "./ui";
 import { REST_ACTIVITIES, REST_CATEGORIES, RestActivityCategory, RestActivityDef } from "../constants/restActivities";
 import { RestGlyph } from "./RestGlyph";
-import type { WeeklyReview, WeeklyReviewDecision, WeeklyReflectionAnswers, RestActivityItem, EnergyLevel } from "../types/app";
+import type { WeeklyReview, WeeklyReviewDecision, WeeklyReflectionAnswers, RestActivityItem, EnergyLevel, JournalEntry } from "../types/app";
 import type { MessageKey } from "../i18n";
 
 interface WeeklyReviewModalProps {
@@ -35,6 +36,22 @@ const REFLECTION_SECTIONS: { key: keyof WeeklyReflectionAnswers; labelKey: Messa
   { key: "organise", labelKey: "weeklyReviewModal.organiseLabel" },
   { key: "priorities", labelKey: "weeklyReviewModal.prioritiesLabel" }
 ];
+
+/**
+ * The journal recap is a step, not a detour: it sits right after "wins" so the
+ * user reads their own week before answering what worked. Step count is derived
+ * from this constant everywhere, because a hardcoded `/6` in the header and the
+ * dots was exactly the kind of drift that makes a wizard look broken.
+ */
+const TOTAL_STEPS = 7;
+
+const MOOD_EMOJI: Record<NonNullable<JournalEntry["mood"]>, string> = {
+  calm: "😌",
+  clear: "🧠",
+  tired: "😴",
+  restless: "🌀",
+  focused: "🎯"
+};
 
 const slideVariants = {
   enter: (dir: number) => ({
@@ -153,6 +170,22 @@ export function WeeklyReviewModal({ isOpen, onClose, weeklyPlanId }: WeeklyRevie
       completedCount: goalEvidence(store, allocation.goalId, { since, until }).length
     }));
   }, [targetWeeklyPlan, store.focusSessions]);
+
+  // The week's journal, read-only. Hooks stay above the early return so the
+  // modal's hook order never changes between "closed" and "open".
+  const journalRecap = useMemo(
+    () =>
+      targetWeeklyPlan
+        ? buildJournalRecap(
+            store.journalEntries,
+            targetWeeklyPlan.startDate,
+            targetWeeklyPlan.endDate,
+            lang,
+            targetWeeklyPlan.seasonId
+          )
+        : buildJournalRecap([], "0000-01-01", "0000-01-01", lang),
+    [store.journalEntries, targetWeeklyPlan, lang]
+  );
 
   if (!isOpen || !targetWeeklyPlan) return null;
 
@@ -291,10 +324,10 @@ export function WeeklyReviewModal({ isOpen, onClose, weeklyPlanId }: WeeklyRevie
           ) : (
             <div className="flex items-center gap-2">
               <span className="grid h-7 w-7 place-items-center rounded-lg bg-monk-accent-soft text-monk-accent text-xs font-bold">
-                {step}/6
+                {step}/{TOTAL_STEPS}
               </span>
               <span className="text-xs font-semibold text-monk-muted">
-                {t("weeklyReviewModal.stepOf", { current: step, total: 6 })}
+                {t("weeklyReviewModal.stepOf", { current: step, total: TOTAL_STEPS })}
               </span>
             </div>
           )}
@@ -302,7 +335,7 @@ export function WeeklyReviewModal({ isOpen, onClose, weeklyPlanId }: WeeklyRevie
           {/* Segmented Dots Indicator */}
           {!isSummary && (
             <div className="flex items-center gap-1.5" aria-hidden>
-              {[1, 2, 3, 4, 5, 6].map((i) => (
+              {Array.from({ length: TOTAL_STEPS }, (_, i) => i + 1).map((i) => (
                 <span
                   key={i}
                   className={`h-1.5 rounded-full transition-all duration-300 ${
@@ -397,6 +430,40 @@ export function WeeklyReviewModal({ isOpen, onClose, weeklyPlanId }: WeeklyRevie
                     );
                   })}
 
+                  {journalRecap.entryCount > 0 ? (
+                    <div className="rounded-2xl border border-monk-border/60 bg-monk-soft/25 p-3.5">
+                      <div className="flex items-center justify-between gap-2">
+                        <h4 className="text-xs font-bold uppercase tracking-wider text-monk-accent">
+                          {t("weeklyReviewModal.summaryJournal")}
+                        </h4>
+                        <span className="text-[10px] font-semibold text-monk-muted">
+                          {t("weeklyReviewModal.journalCount", {
+                            n: journalRecap.entryCount,
+                            total: journalRecap.dayCount
+                          })}
+                        </span>
+                      </div>
+                      <div className="mt-2 max-h-64 space-y-2 overflow-y-auto pr-1">
+                        {journalRecap.entries.map((entry) => (
+                          <div key={entry.id} className="rounded-xl bg-monk-surface/70 p-2.5">
+                            <p className="text-[10px] font-bold uppercase tracking-wide text-monk-muted">
+                              {formatHumanDate(entry.date)}
+                              {entry.mood ? ` · ${MOOD_EMOJI[entry.mood]}` : ""}
+                            </p>
+                            {entry.answers.map((answer) => (
+                              <p
+                                key={answer.id}
+                                className="mt-1 whitespace-pre-wrap text-[13px] leading-relaxed text-monk-text"
+                              >
+                                {answer.answer}
+                              </p>
+                            ))}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ) : null}
+
                   {existingReview?.restActivity && (
                     <div className="rounded-2xl border border-monk-border/60 bg-monk-soft/25 p-3.5">
                       <h4 className="text-xs font-bold uppercase tracking-wider text-monk-accent">
@@ -471,10 +538,103 @@ export function WeeklyReviewModal({ isOpen, onClose, weeklyPlanId }: WeeklyRevie
               </motion.div>
             )}
 
-            {/* Step 2: Challenges */}
+            {/* Step 2: Journal recap — the week in the user's own words.
+                Read-only on purpose: this is evidence, not another prompt. */}
             {step === 2 && (
               <motion.div
-                key="step-2"
+                key="step-2-journal"
+                custom={direction}
+                variants={slideVariants}
+                initial="enter"
+                animate="center"
+                exit="exit"
+                transition={{ duration: 0.22, ease: "easeOut" }}
+                className="space-y-4"
+              >
+                <div className="flex items-center gap-2">
+                  <span className="rounded-md bg-monk-cat-personal/15 px-2.5 py-0.5 text-[11px] font-bold tracking-wide text-monk-cat-personal">
+                    {t("weeklyReviewModal.badge.journal")}
+                  </span>
+                </div>
+                <h3 id="weekly-review-modal-title" className="text-xl sm:text-2xl font-bold tracking-tight text-monk-text">
+                  {t("weeklyReviewModal.title.journal")}
+                </h3>
+                <p className="text-sm leading-relaxed text-monk-muted">
+                  {t("weeklyReviewModal.subtitle.journal")}
+                </p>
+
+                {journalRecap.entryCount === 0 ? (
+                  <div className="rounded-2xl border border-dashed border-monk-border/70 bg-monk-soft/20 p-4">
+                    <p className="text-sm font-semibold text-monk-text">
+                      {t("weeklyReviewModal.journalEmptyTitle")}
+                    </p>
+                    <p className="mt-1 text-xs leading-relaxed text-monk-muted">
+                      {t("weeklyReviewModal.journalEmptyBody")}
+                    </p>
+                  </div>
+                ) : (
+                  <>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="rounded-full border border-monk-border/60 bg-monk-soft/40 px-2.5 py-1 text-[11px] font-semibold text-monk-text-soft">
+                        {t("weeklyReviewModal.journalCount", {
+                          n: journalRecap.entryCount,
+                          total: journalRecap.dayCount
+                        })}
+                      </span>
+                      {(Object.keys(journalRecap.moodCounts) as NonNullable<JournalEntry["mood"]>[]).map(
+                        (mood) => (
+                          <span
+                            key={mood}
+                            className="rounded-full border border-monk-border/60 bg-monk-surface px-2 py-0.5 text-[11px] text-monk-muted"
+                          >
+                            {MOOD_EMOJI[mood]} {journalRecap.moodCounts[mood]}
+                          </span>
+                        )
+                      )}
+                    </div>
+
+                    <div className="max-h-[46vh] space-y-2.5 overflow-y-auto pr-1">
+                      {journalRecap.entries.map((entry) => (
+                        <div
+                          key={entry.id}
+                          className="rounded-2xl border border-monk-border/60 bg-monk-soft/20 p-3.5"
+                        >
+                          <div className="flex items-center justify-between gap-2">
+                            <p className="text-[11px] font-bold uppercase tracking-wider text-monk-muted">
+                              {formatHumanDate(entry.date)}
+                            </p>
+                            {entry.mood ? (
+                              <span aria-hidden className="text-sm">
+                                {MOOD_EMOJI[entry.mood]}
+                              </span>
+                            ) : null}
+                          </div>
+                          {entry.answers.map((answer) => (
+                            <div key={answer.id} className="mt-2 first:mt-1.5">
+                              <p className="text-[11px] font-semibold leading-relaxed text-monk-accent">
+                                {answer.question}
+                              </p>
+                              <p className="mt-0.5 whitespace-pre-wrap text-[13px] leading-relaxed text-monk-text">
+                                {answer.answer}
+                              </p>
+                            </div>
+                          ))}
+                        </div>
+                      ))}
+                    </div>
+
+                    <p className="text-[11px] leading-relaxed text-monk-muted">
+                      {t("weeklyReviewModal.journalFootnote")}
+                    </p>
+                  </>
+                )}
+              </motion.div>
+            )}
+
+            {/* Step 3: Challenges */}
+            {step === 3 && (
+              <motion.div
+                key="step-3"
                 custom={direction}
                 variants={slideVariants}
                 initial="enter"
@@ -509,10 +669,10 @@ export function WeeklyReviewModal({ isOpen, onClose, weeklyPlanId }: WeeklyRevie
               </motion.div>
             )}
 
-            {/* Step 3: Weekly Lesson */}
-            {step === 3 && (
+            {/* Step 4: Weekly Lesson */}
+            {step === 4 && (
               <motion.div
-                key="step-3"
+                key="step-4"
                 custom={direction}
                 variants={slideVariants}
                 initial="enter"
@@ -547,10 +707,10 @@ export function WeeklyReviewModal({ isOpen, onClose, weeklyPlanId }: WeeklyRevie
               </motion.div>
             )}
 
-            {/* Step 4: Get Organised */}
-            {step === 4 && (
+            {/* Step 5: Get Organised */}
+            {step === 5 && (
               <motion.div
-                key="step-4"
+                key="step-5"
                 custom={direction}
                 variants={slideVariants}
                 initial="enter"
@@ -675,10 +835,10 @@ export function WeeklyReviewModal({ isOpen, onClose, weeklyPlanId }: WeeklyRevie
               </motion.div>
             )}
 
-            {/* Step 5: Set Priorities */}
-            {step === 5 && (
+            {/* Step 6: Set Priorities */}
+            {step === 6 && (
               <motion.div
-                key="step-5"
+                key="step-6"
                 custom={direction}
                 variants={slideVariants}
                 initial="enter"
@@ -713,10 +873,10 @@ export function WeeklyReviewModal({ isOpen, onClose, weeklyPlanId }: WeeklyRevie
               </motion.div>
             )}
 
-            {/* Step 6: Sharpen the Saw / Choose Rest Activity */}
-            {step === 6 && (
+            {/* Step 7: Sharpen the Saw / Choose Rest Activity */}
+            {step === 7 && (
               <motion.div
-                key="step-6"
+                key="step-7"
                 custom={direction}
                 variants={slideVariants}
                 initial="enter"
@@ -924,7 +1084,7 @@ export function WeeklyReviewModal({ isOpen, onClose, weeklyPlanId }: WeeklyRevie
             </GhostButton>
           )}
 
-          {step < 6 ? (
+          {step < TOTAL_STEPS ? (
             <PrimaryButton
               onClick={() => goToStep(step + 1)}
               className="flex items-center gap-1.5 text-xs font-semibold px-5 py-2"

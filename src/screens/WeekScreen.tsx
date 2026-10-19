@@ -26,6 +26,8 @@ import { ZendoProModal } from "../components/ZendoProModal";
 import { WeeklyReviewModal } from "../components/WeeklyReviewModal";
 import { RestGlyph } from "../components/RestGlyph";
 import { FreeDayDialog } from "../components/FreeDayDialog";
+import { GoalWhySheet } from "../components/GoalWhySheet";
+import { goalWhys, primaryGoalWhy } from "../lib/goalWhy";
 import type { EnergyLevel, TimelineStatus } from "../types/app";
 
 export function WeekScreen() {
@@ -527,8 +529,8 @@ export function WeekScreen() {
                       <div className="flex items-start justify-between gap-3">
                         <div className="min-w-0 flex-1">
                           <p className="text-sm font-semibold truncate">{goal?.title ?? t("week.goalFallback")}</p>
-                          {goal?.why ? (
-                            <p className="mt-1 text-xs text-monk-accent/90 line-clamp-2">{t("week.because", { why: goal.why })}</p>
+                          {primaryGoalWhy(goal) ? (
+                            <p className="mt-1 text-xs text-monk-accent/90 line-clamp-2">{t("week.because", { why: primaryGoalWhy(goal) ?? "" })}</p>
                           ) : null}
                           {goal?.keystoneAction ? (
                             <p className="mt-1 text-xs text-monk-muted line-clamp-2">{goal.keystoneAction}</p>
@@ -555,7 +557,7 @@ export function WeekScreen() {
                           style={{ width: `${progress}%` }}
                         />
                       </div>
-                      {goal ? <GoalWhyInline goalId={goal.id} why={goal.why} /> : null}
+                      {goal ? <GoalWhyInline goalId={goal.id} /> : null}
                     </Card>
                     </motion.div>
                   );
@@ -850,53 +852,26 @@ function ChoiceButton({
   );
 }
 
-function GoalWhyInline({ goalId, why }: { goalId: string; why?: string }) {
-  const updateGoalWhy = useMonkStore((s) => s.updateGoalWhy);
+function GoalWhyInline({ goalId }: { goalId: string }) {
   const t = useT();
-  const [editing, setEditing] = useState(false);
-  const [draft, setDraft] = useState(why ?? "");
-
-  if (editing) {
-    return (
-      <div className="mt-3 space-y-2 border-t border-monk-border/40 pt-3">
-        <TextInput
-          label={t("week.whyLabel")}
-          value={draft}
-          onChange={(e) => setDraft(e.target.value)}
-          placeholder={t("week.whyPlaceholder")}
-        />
-        <div className="flex gap-2">
-          <GhostButton className="flex-1 min-h-9 text-xs" onClick={() => setEditing(false)}>
-            {t("week.cancel")}
-          </GhostButton>
-          <PrimaryButton
-            className="flex-1 min-h-9 text-xs"
-            onClick={() => {
-              updateGoalWhy(goalId, draft);
-              setEditing(false);
-            }}
-          >
-            {t("week.save")}
-          </PrimaryButton>
-        </div>
-      </div>
-    );
-  }
+  const goal = useMonkStore((s) => s.goals.find((g) => g.id === goalId));
+  const [open, setOpen] = useState(false);
+  const count = goalWhys(goal).length;
 
   return (
-    <button
-      type="button"
-      onClick={() => {
-        setDraft(why ?? "");
-        setEditing(true);
-      }}
-      /* 44px hit area (WCAG 2.2 SC 2.5.8 and the 44px recommendation); -my-2.5
-         cancels the extra height so the card keeps its visual rhythm. Same
-         pattern as MonkToggle. The label stays 11px. */
-      className="-my-2.5 inline-flex min-h-11 items-center text-[11px] font-semibold text-monk-accent hover:underline"
-    >
-      {why ? t("week.editGoalWhy") : t("week.addGoalWhy")}
-    </button>
+    <>
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        /* 44px hit area (WCAG 2.2 SC 2.5.8 and the 44px recommendation); -my-2.5
+           cancels the extra height so the card keeps its visual rhythm. Same
+           pattern as MonkToggle. The label stays 11px. */
+        className="-my-2.5 inline-flex min-h-11 items-center text-[11px] font-semibold text-monk-accent hover:underline"
+      >
+        {count > 0 ? t("goalWhy.seeAll", { n: count }) : t("week.addGoalWhy")}
+      </button>
+      <GoalWhySheet goalId={goalId} open={open} onClose={() => setOpen(false)} />
+    </>
   );
 }
 
