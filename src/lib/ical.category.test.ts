@@ -70,4 +70,35 @@ describe("per-category calendar export", () => {
     expect(content).toContain("SUMMARY:Lunch");
     expect(content).toContain("SUMMARY:Errands");
   });
+
+  it("writes the target color into the calendar and every event description", () => {
+    const content = generateIcsContentForCategory(
+      "2026-10-19",
+      "rest",
+      blocks,
+      "Zendo",
+      "Istirahat",
+      { colorNote: "hijau (#6BB48B)" }
+    );
+
+    expect(content).toContain("X-WR-CALDESC:");
+    // Folded lines insert CRLF+space; unfold before asserting a full sentence.
+    const unfolded = content.replace(/\r\n /g, "");
+    expect(unfolded).toContain("set this calendar's color to hijau (#6BB48B)");
+    expect(unfolded).toContain("Set warna kalender ini: hijau (#6BB48B)");
+  });
+
+  it("optionally prefixes titles with the category emoji", () => {
+    const content = generateIcsContentForCategory(
+      "2026-10-19",
+      "rest",
+      blocks,
+      "Zendo",
+      "Istirahat",
+      { emoji: "🟢" }
+    );
+
+    expect(content).toContain("SUMMARY:🟢 Lunch");
+    expect(content).toContain("SUMMARY:🟢 Nap");
+  });
 });

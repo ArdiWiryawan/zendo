@@ -20,14 +20,16 @@ describe("calendar export modal", () => {
     { id: "b", title: "Lunch", startTime: "12:00", endTime: "13:00", category: "rest" }
   ];
 
-  it("explains the per-calendar limit and offers one file per category", () => {
+  it("warns that one calendar cannot hold several colors and offers one file per category", () => {
     const html = renderToString(
       <CalendarExportModal open onClose={() => {}} date="2026-10-19" timeBlocks={blocks} />
     );
     expect(html).toContain("Ekspor ke Kalender");
     expect(html).toContain("Unduh 2 file (1 per kategori)");
     expect(html).toContain("#6BB48B");
-    expect(html).toContain("Google Calendar mewarnai");
+    expect(html).toContain("Jangan impor semua file ke SATU kalender");
+    expect(html).toContain("Buat kalender");
+    expect(html).toContain("0/2 kalender siap");
   });
 
   it("shows an empty state instead of an export button with no blocks", () => {

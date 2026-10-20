@@ -43,6 +43,10 @@ type CategoryMeta = {
   darkText: boolean;
   /** i18n key for the human label. Lives here so UI maps stop restating it. */
   labelKey: string;
+  /** Single emoji used as a fallback marker where color cannot travel (ICS). */
+  emoji: string;
+  /** i18n key for the color name, so the export can say "set it to green". */
+  colorLabelKey: string;
 };
 
 /**
@@ -62,31 +66,41 @@ const CATEGORY_META: Record<ActivityCategory, CategoryMeta> = {
     hex: "#C46A5B",
     colorName: "indianred",
     darkText: false,
-    labelKey: "planning.catDeep"
+    labelKey: "planning.catDeep",
+    emoji: "🔴",
+    colorLabelKey: "planning.colorDeep"
   },
   learning: {
     hex: "#8B9DC4",
     colorName: "cornflowerblue",
     darkText: false,
-    labelKey: "planning.catLearning"
+    labelKey: "planning.catLearning",
+    emoji: "🔵",
+    colorLabelKey: "planning.colorLearning"
   },
   shallow: {
     hex: "#6B9AC4",
     colorName: "steelblue",
     darkText: false,
-    labelKey: "planning.catShallow"
+    labelKey: "planning.catShallow",
+    emoji: "🔷",
+    colorLabelKey: "planning.colorShallow"
   },
   rest: {
     hex: "#6BB48B",
     colorName: "mediumseagreen",
     darkText: false,
-    labelKey: "planning.catRest"
+    labelKey: "planning.catRest",
+    emoji: "🟢",
+    colorLabelKey: "planning.colorRest"
   },
   personal: {
     hex: "#C48BB4",
     colorName: "orchid",
     darkText: false,
-    labelKey: "planning.catPersonal"
+    labelKey: "planning.catPersonal",
+    emoji: "🟣",
+    colorLabelKey: "planning.colorPersonal"
   }
 };
 
@@ -132,4 +146,14 @@ export function activityCategoryHex(value: unknown): string {
 /** RFC 7986 CSS3 color name for a category. */
 export function activityCategoryColorName(value: unknown): string {
   return activityCategoryMeta(value).colorName;
+}
+
+/** Emoji fallback marker. Used when a client cannot carry per-event color. */
+export function activityCategoryEmoji(value: unknown): string {
+  return activityCategoryMeta(value).emoji;
+}
+
+/** i18n key naming the category's color ("green", "brick red"). */
+export function activityCategoryColorLabelKey(value: unknown): string {
+  return activityCategoryMeta(value).colorLabelKey;
 }

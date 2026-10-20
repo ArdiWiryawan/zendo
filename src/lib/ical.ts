@@ -2,6 +2,7 @@ import type { TimeBlock } from "../types/app";
 import {
   TIME_BLOCK_CATEGORIES,
   activityCategoryColorName,
+  activityCategoryEmoji,
   activityCategoryHex,
   resolveActivityCategory,
   type ActivityCategory
@@ -127,6 +128,10 @@ type IcsBuildOptions = {
   calendarName?: string;
   /** When set, only blocks in this category are emitted. */
   category?: ActivityCategory;
+  /** Emoji prepended to every SUMMARY. Fallback for clients without color. */
+  emoji?: string;
+  /** Human instruction written into the calendar description ("set to green"). */
+  colorNote?: string;
 };
 
 /**
@@ -182,14 +187,19 @@ function buildIcsContent(
     // other block in the day over one bad value.
     const categoryId = resolveActivityCategory(block.category);
     const uid = `${block.id || `${icsDate}-${block.startTime}-${block.title}`}-${icsDate}@zendo.app`;
-    const summary = escapeIcsText(block.title);
+    // The emoji is a fallback, not decoration: Google cannot color a single
+    // event from a file, so a title marker is the only thing that survives
+    // when the user keeps one calendar. It is opt-in so Apple users, who do
+    // get real colors, are not given noisy titles.
+    const summary = escapeIcsText(options.emoji ? `${options.emoji} ${block.title}` : block.title);
     // customCategory is a user's free-text tag ("Q3 planning"), a different kind
     // of thing from the category id. Prefer the tag as the human-facing label,
     // but never let it stand in for the category itself.
     const label = block.customCategory || categoryId.replace(/_/g, " ").toUpperCase();
     const category = escapeIcsText(label);
+    const colorLine = options.colorNote ? `\nSet warna kalender ini: ${options.colorNote}` : "";
     const description = escapeIcsText(
-      `[Zendo Plan] ${block.title}\nKategori: ${label}\nTanggal: ${date}`
+      `[Zendo Plan] ${block.title}\nKategori: ${label}\nTanggal: ${date}${colorLine}`
     );
 
     // Each entry is a complete content line. Building the DTSTART/DTEND lines
@@ -224,7 +234,10 @@ function buildIcsContent(
     "PRODID:-//Zendo//Focus Timeblocking//ID",
     "CALSCALE:GREGORIAN",
     "METHOD:PUBLISH",
-    `X-WR-CALNAME:${escapeIcsText(options.calendarName ?? `${seasonTitle} - ${date}`)}`
+    `X-WR-CALNAME:${escapeIcsText(options.calendarName ?? `${seasonTitle} - ${date}`)}`,
+    ...(options.colorNote
+      ? [`X-WR-CALDESC:${escapeIcsText(`Zendo · set this calendar's color to ${options.colorNote}`)}`]
+      : [])
   ].map(foldLine);
 
   return [...header, ...events, "END:VCALENDAR"].join("\r\n");
@@ -244,18 +257,32 @@ export function generateIcsContent(
  * `label` is the already-translated category name, so the imported calendar
  * reads in the user's language instead of showing `deep_work`.
  */
+export type CategoryIcsOptions = {
+  /** Prefix every title with the category emoji (visible where color is not). */
+  emoji?: string;
+  /** Human instruction for the calendar color, e.g. "green (#6BB48B)". */
+  colorNote?: string;
+};
+
 export function generateIcsContentForCategory(
   date: string,
   category: ActivityCategory,
   timeBlocks: TimeBlock[],
   seasonTitle = "Zendo Focus",
-  label?: string
+  label?: string,
+  options: CategoryIcsOptions = {}
 ): string {
   return buildIcsContent(date, timeBlocks, seasonTitle, {
     category,
-    calendarName: `${seasonTitle} · ${label ?? category.replace(/_/g, " ")}`
+    calendarName: `${seasonTitle} · ${label ?? category.replace(/_/g, " ")}`,
+    emoji: options.emoji,
+    colorNote: options.colorNote
   });
 }
+
+export type CategoryExportLabels = Partial<
+  Record<ActivityCategory, { label: string; colorNote?: string }>
+>;
 
 /** Browser download for one already-serialized calendar. */
 function downloadIcsText(fileName: string, content: string): void {
@@ -284,6 +311,30 @@ export function downloadIcsFile(
   downloadIcsText(`zendo-plan-${date}.ics`, generateIcsContent(date, timeBlocks, seasonTitle));
 }
 
+/** One category's file, for the step-by-step Google setup. */
+export function downloadIcsFileForCategory(
+  date: string,
+  category: ActivityCategory,
+  timeBlocks: TimeBlock[],
+  seasonTitle = "Zendo Focus",
+  labels: CategoryExportLabels = {},
+  options: { withEmoji?: boolean } = {}
+): void {
+  const meta = labels[category];
+  const content = generateIcsContentForCategory(
+    date,
+    category,
+    timeBlocks,
+    seasonTitle,
+    meta?.label,
+    {
+      emoji: options.withEmoji ? activityCategoryEmoji(category) : undefined,
+      colorNote: meta?.colorNote
+    }
+  );
+  downloadIcsText(`zendo-${date}-${category}.ics`, content);
+}
+
 /**
  * Downloads one .ics per category present in the day.
  *
@@ -300,18 +351,12 @@ export function downloadIcsFilesByCategory(
   date: string,
   timeBlocks: TimeBlock[],
   seasonTitle = "Zendo Focus",
-  labels: Partial<Record<ActivityCategory, string>> = {}
+  labels: CategoryExportLabels = {},
+  options: { withEmoji?: boolean } = {}
 ): number {
   const groups = groupTimeBlocksByCategory(timeBlocks);
   for (const group of groups) {
-    const content = generateIcsContentForCategory(
-      date,
-      group.category,
-      group.blocks,
-      seasonTitle,
-      labels[group.category]
-    );
-    downloadIcsText(`zendo-${date}-${group.category}.ics`, content);
+    downloadIcsFileForCategory(date, group.category, group.blocks, seasonTitle, labels, options);
   }
   return groups.length;
 }
