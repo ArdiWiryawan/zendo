@@ -130,18 +130,21 @@ clone off-screen yang tidak memengaruhi layout dokumen.
 - Setelah resize, jika caret Y absolut (`rect.top + caretOffsetTop`) melewati
   `window.innerHeight - EDITOR_SAFE_BOTTOM`, geser window seperlunya:
   `window.scrollBy({ top: delta, behavior: "auto" })`.
-- `EDITOR_SAFE_BOTTOM` ≈ tinggi toolbar aksi fixed + jarak aman (±150px), cukup
-  untuk toolbar editor dan fade nav.
+- `EDITOR_SAFE_BOTTOM = 160` (px). Angka ini = tinggi toolbar aksi fixed
+  (≈72px, satu baris tombol) + `env(safe-area-inset-bottom)` + satu baris teks
+  (24px) + margin. Konstanta diberi nama dan dikomentari di sumber agar tidak
+  jadi angka ajaib.
 - Geseran hanya dilakukan bila caret keluar zona aman — tidak pernah memaksa
   scroll saat user sengaja melihat bagian lain.
 
 **Perbaikan ikutan:**
 
 - `queueResize` tetap memakai `requestAnimationFrame` (kontrak post-commit).
-- Auto-page-break di `handleBodyKeyDown` diperbaiki menjadi berbasis ambang
-  tinggi halaman (`measuredHeight >= PAGE_BREAK_THRESHOLD`), atau dihapus bila
-  tidak dipakai. Keputusan: **perbaiki**, karena logika append halaman sudah ada
-  dan halaman tak terbatas panjang menyulitkan navigasi.
+- Auto-page-break di `handleBodyKeyDown` diperbaiki, bukan dihapus: ganti
+  kondisi `el.scrollHeight > el.clientHeight` dengan perbandingan tinggi hasil
+  pengukuran mirror terhadap `PAGE_BREAK_THRESHOLD = 1400` (px, ≈ 55 baris
+  aturan kertas). Saat ambang terlampaui dan caret berada di halaman terakhir,
+  Enter menambah halaman baru alih-alih menumpuk baris di satu halaman panjang.
 
 ---
 
