@@ -140,11 +140,14 @@ clone off-screen yang tidak memengaruhi layout dokumen.
 **Perbaikan ikutan:**
 
 - `queueResize` tetap memakai `requestAnimationFrame` (kontrak post-commit).
-- Auto-page-break di `handleBodyKeyDown` diperbaiki, bukan dihapus: ganti
-  kondisi `el.scrollHeight > el.clientHeight` dengan perbandingan tinggi hasil
-  pengukuran mirror terhadap `PAGE_BREAK_THRESHOLD = 1400` (px, ≈ 55 baris
-  aturan kertas). Saat ambang terlampaui dan caret berada di halaman terakhir,
-  Enter menambah halaman baru alih-alih menumpuk baris di satu halaman panjang.
+**Auto-page-break dihapus (revisi berbasis bukti).**
+
+Verifikasi browser menunjukkan lompatan terbesar (517px dalam satu keystroke) terjadi
+tepat ketika auto-page-break menambah halaman baru: halaman baru disisipkan di
+bawah sehingga caret melompat satu halaman penuh. Karena tujuan fitur ini justru
+menghilangkan lompatan, auto-page-break dihapus — halaman hanya ditambah lewat
+tombol "Tambah Halaman". `PAGE_BREAK_THRESHOLD` ikut dihapus karena tidak lagi
+dipakai.
 
 ---
 

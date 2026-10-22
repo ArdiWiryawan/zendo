@@ -15,6 +15,12 @@ import { InlinePhoto, PhotoLightbox, photoIdsInBody, useObjectUrl } from "../com
 import { ZendoProModal } from "../components/ZendoProModal";
 import NotebookDrawingPad from "../components/NotebookDrawingPad";
 import { findBacklinks, findRelatedNotes } from "../lib/notebookLinks";
+import { resolveInitialCategoryId, resolveInitialPara } from "../lib/notebookContext";
+import {
+  releaseTextareaMirror,
+  resizeTextarea,
+  syncTextarea
+} from "../lib/notebookTextarea";
 import { selectActiveGoals } from "../store/selectors";
 import {
   NOTEBOOK_DRAFT_KEY,
@@ -378,19 +384,12 @@ function CardThumb({ id }: { id: string }) {
   );
 }
 
-// Auto-grow a single-line textarea (title/body) to its content. Page scrolls;
-// no nested textarea scroll region.
-function resizeTextarea(el: HTMLTextAreaElement) {
-  el.style.height = "auto";
-  el.style.height = `${el.scrollHeight}px`;
-}
-
-// Resize after the new text has been committed to the DOM (rAF post-commit).
-// Doing it synchronously in onChange measures the OLD value, so a wrapped 2nd
-// line (or the tail of the body) would clip — the original occlusion bug.
+// Auto-grow handled by ../lib/notebookTextarea: the textarea is measured from an
+// off-screen mirror, never collapsed, so the document height (and window scroll
+// position) stays stable while typing.
 function queueResize(el: HTMLTextAreaElement | null) {
   if (!el) return;
-  requestAnimationFrame(() => resizeTextarea(el));
+  requestAnimationFrame(() => syncTextarea(el));
 }
 
 
@@ -534,6 +533,9 @@ export default function JournalNotebook({ onEditingChange, initialEntryId }: { o
       <NotebookEditor
         entry={editEntry}
         initialCategoryId={filterCat ?? undefined}
+        // Arsip adalah keranjang, bukan tujuan pembuatan: note baru tidak boleh
+        // lahir langsung tersembunyi.
+        initialPara={filterPara === "archive" ? undefined : filterPara ?? undefined}
         initialTemplate={selectedTemplate}
         onBack={goBackToList}
       />
@@ -576,7 +578,7 @@ export default function JournalNotebook({ onEditingChange, initialEntryId }: { o
         <div className="nb-spine" aria-hidden />
         <div className="nb-cover">
           <div>
-            <p className="nb-cover-title">{t("notebook.coverTitle")}</p>
+            <h1 className="nb-cover-title">{t("notebook.coverTitle")}</h1>
             <p className="nb-cover-sub">{todayLabel}</p>
           </div>
           <div className="flex items-center gap-3">
@@ -697,7 +699,7 @@ export default function JournalNotebook({ onEditingChange, initialEntryId }: { o
                   />
                   {cat.name}
                   {count > 0 ? (
-                    <span className="font-mono text-[10px] opacity-70">{count}</span>
+                    <span className="font-mono text-[11px] opacity-70">{count}</span>
                   ) : null}
                 </button>
                 <button
@@ -738,7 +740,7 @@ export default function JournalNotebook({ onEditingChange, initialEntryId }: { o
       {sorted.length === 0 ? (
         <div className="notebook-empty rounded-monk border border-monk-border bg-monk-surface/60 px-6 py-12 text-center flex flex-col items-center justify-center">
           <BookOpen size={40} className="mb-3 text-monk-text-soft opacity-30" strokeWidth={1.5} />
-          <p className="font-handwriting text-3xl text-monk-text-soft/70">
+          <p className="font-handwriting text-3xl text-monk-text-soft">
             {searchQuery || filterCat || filterPara ? t("notebook.empty.notFound") : t("notebook.empty.title")}
           </p>
           <p className="mx-auto mt-2 max-w-[240px] text-sm leading-6 text-monk-muted">
@@ -799,20 +801,20 @@ export default function JournalNotebook({ onEditingChange, initialEntryId }: { o
                     })()}
                   </div>
                   {entry.takeaway ? (
-                    <p className="mt-1.5 flex items-center gap-1.5 text-xs italic font-serif text-monk-accent/90 line-clamp-1">
+                    <p className="mt-1.5 flex items-center gap-1.5 text-xs italic font-serif text-monk-accent line-clamp-1">
                       <Sparkles size={11} className="shrink-0 text-monk-accent" />
                       <span className="truncate">{entry.takeaway}</span>
                     </p>
                   ) : null}
                   <div className="mt-3 flex flex-wrap items-center gap-1.5 text-[11px] text-monk-text-soft">
                     {entry.archivedAt ? (
-                      <span className="inline-flex items-center gap-1 rounded-full bg-monk-soft px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-monk-muted border border-monk-border/50">
+                      <span className="inline-flex items-center gap-1 rounded-full bg-monk-soft px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-monk-muted border border-monk-border/50">
                         <Archive size={10} strokeWidth={2} className="shrink-0" />
                         {t("notebook.archivedBadge")}
                       </span>
                     ) : null}
                     {entry.paraType ? (
-                      <span className="inline-flex items-center gap-1 rounded-full bg-monk-soft px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-monk-muted border border-monk-border/50">
+                      <span className="inline-flex items-center gap-1 rounded-full bg-monk-soft px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-monk-muted border border-monk-border/50">
                         {entry.paraType === "project" ? t("notebook.paraProjects") :
                          entry.paraType === "area" ? t("notebook.paraAreas") :
                          entry.paraType === "resource" ? t("notebook.paraResources") :
@@ -822,7 +824,7 @@ export default function JournalNotebook({ onEditingChange, initialEntryId }: { o
                     {entry.goalId ? (() => {
                       const g = store.goals.find((goal) => goal.id === entry.goalId);
                       return g ? (
-                        <span className="inline-flex items-center gap-1 rounded-full bg-monk-accent/10 px-2 py-0.5 text-[10px] font-semibold text-monk-accent border border-monk-accent/30">
+                        <span className="inline-flex items-center gap-1 rounded-full bg-monk-accent/10 px-2 py-0.5 text-[11px] font-semibold text-monk-accent border border-monk-accent/30">
                           <Target size={10} strokeWidth={2} className="shrink-0" />
                           <span>{g.track ? `${g.track} · ` : ""}{g.title}</span>
                         </span>
@@ -945,7 +947,7 @@ export default function JournalNotebook({ onEditingChange, initialEntryId }: { o
                   <p className="text-xs font-bold text-monk-text group-hover:text-monk-accent transition truncate">
                     {t(tmpl.titleKey)}
                   </p>
-                  <p className="text-[10px] text-monk-muted mt-0.5 truncate">
+                  <p className="text-[11px] text-monk-muted mt-0.5 truncate">
                     {lang === "id" ? tmpl.descId : tmpl.descEn}
                   </p>
                 </div>
@@ -1109,13 +1111,13 @@ export function NotebookEntryDetail({
         </button>
         <div className="flex min-w-0 items-center gap-2">
           {liveEntry.archivedAt ? (
-            <span className="inline-flex items-center gap-1 rounded-full bg-monk-soft px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-monk-muted border border-monk-border/50">
+            <span className="inline-flex items-center gap-1 rounded-full bg-monk-soft px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-monk-muted border border-monk-border/50">
               <Archive size={10} strokeWidth={2} className="shrink-0" />
               {t("notebook.archivedBadge")}
             </span>
           ) : null}
           {liveEntry.paraType ? (
-            <span className="inline-flex items-center gap-1 rounded-full bg-monk-soft px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-monk-muted border border-monk-border/50">
+            <span className="inline-flex items-center gap-1 rounded-full bg-monk-soft px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-monk-muted border border-monk-border/50">
               {liveEntry.paraType === "project" ? t("notebook.paraProjects") :
                liveEntry.paraType === "area" ? t("notebook.paraAreas") :
                liveEntry.paraType === "resource" ? t("notebook.paraResources") :
@@ -1125,14 +1127,14 @@ export function NotebookEntryDetail({
           {liveEntry.goalId ? (() => {
             const g = store.goals.find((goal) => goal.id === liveEntry.goalId);
             return g ? (
-              <span className="inline-flex items-center gap-1 rounded-full bg-monk-accent/10 px-2 py-0.5 text-[10px] font-semibold text-monk-accent border border-monk-accent/30 shrink-0">
+              <span className="inline-flex items-center gap-1 rounded-full bg-monk-accent/10 px-2 py-0.5 text-[11px] font-semibold text-monk-accent border border-monk-accent/30 shrink-0">
                 <Target size={10} strokeWidth={2} className="shrink-0" />
                 <span>{g.track ? `${g.track} · ` : ""}{g.title}</span>
               </span>
             ) : null;
           })() : null}
           <span
-            className="inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide"
+            className="inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-wide"
             style={{
               borderColor: `rgb(var(${token}) / 0.27)`,
               color: `rgb(var(${token}))`,
@@ -1306,7 +1308,7 @@ export function NotebookEntryDetail({
                     <Sparkles size={13} className="text-monk-accent" />
                     <span>{t("notebook.relatedTitle")}</span>
                   </h4>
-                  <span className="font-mono text-[10px] text-monk-muted">
+                  <span className="font-mono text-[11px] text-monk-muted">
                     {relatedNotes.length} {lang === "id" ? "terhubung" : "connected"}
                   </span>
                 </div>
@@ -1331,7 +1333,7 @@ export function NotebookEntryDetail({
                               "{r.note.takeaway}"
                             </p>
                           ) : (
-                            <p className="text-[11px] text-monk-muted/80 mt-0.5 truncate">
+                            <p className="text-[11px] text-monk-muted mt-0.5 truncate">
                               {toPlainExcerpt(r.note.body, 50) || t("notebook.noBody")}
                             </p>
                           )}
@@ -1423,11 +1425,13 @@ export function NotebookEntryDetail({
 export function NotebookEditor({
   entry,
   initialCategoryId,
+  initialPara,
   initialTemplate,
   onBack
 }: {
   entry: NotebookEntry | null;
   initialCategoryId?: string;
+  initialPara?: ParaType;
   initialTemplate?: ZenTemplate | null;
   onBack: () => void;
 }) {
@@ -1459,11 +1463,15 @@ export function NotebookEditor({
     if (initialTemplate) return initialTemplate.defaultTitle(lang);
     return "";
   });
-  const [paraType, setParaType] = useState<ParaType | undefined>(() => {
-    if (draftWins) return draft?.paraType;
-    if (entry?.paraType) return entry.paraType;
-    return initialTemplate?.defaultPara;
-  });
+  const [paraType, setParaType] = useState<ParaType | undefined>(() =>
+    resolveInitialPara({
+      draft: draft ? { paraType: draft.paraType } : null,
+      draftWins,
+      entry,
+      template: initialTemplate,
+      initialPara
+    })
+  );
   const activeGoals = selectActiveGoals(store);
   const [goalId, setGoalId] = useState<string | undefined>(() => {
     if (draftWins) return draft?.goalId;
@@ -1526,26 +1534,27 @@ export function NotebookEditor({
     markDirty();
     requestAnimationFrame(() => {
       if (el) {
-        resizeTextarea(el);
         const newPos = before.length + inserted.length;
         el.focus();
         el.setSelectionRange(newPos, newPos);
+        syncTextarea(el);
       }
     });
   };
 
-  const initialCat = useMemo(() => {
-    if (draftWins && draft?.categoryId && categories.some((c) => c.id === draft.categoryId)) {
-      return draft.categoryId;
-    }
-    if (entry?.categoryId && categories.some((c) => c.id === entry.categoryId)) {
-      return entry.categoryId;
-    }
-    if (initialCategoryId && categories.some((c) => c.id === initialCategoryId)) {
-      return initialCategoryId;
-    }
-    return categories[0]?.id ?? "cat_lainnya";
-  }, [categories, draft, draftWins, entry, initialCategoryId]);
+  const initialCat = useMemo(
+    () =>
+      resolveInitialCategoryId({
+        draft: draft ? { categoryId: draft.categoryId } : null,
+        draftWins,
+        entry,
+        template: initialTemplate,
+        initialCategoryId,
+        categories,
+        fallbackCategoryId: "cat_lainnya"
+      }),
+    [categories, draft, draftWins, entry, initialTemplate, initialCategoryId]
+  );
 
   const [catId, setCatId] = useState(initialCat);
 
@@ -1970,9 +1979,9 @@ export function NotebookEditor({
     setPageText(targetPage, nextText);
     markDirty();
     requestAnimationFrame(() => {
-      resizeTextarea(el);
       el.focus();
       el.setSelectionRange(newCursorPos, newCursorPos);
+      syncTextarea(el);
     });
   };
 
@@ -2013,8 +2022,6 @@ export function NotebookEditor({
 
   // Enter-autolist + Backspace-unlist: native-feel list continuation in the
   // textarea, keyed per page. Only setPageText + markDirty; save flow untouched.
-  // Plain Enter on a FULL last page (non-list line) appends a new page instead of
-  // inserting an invisible wrapped line the reader can't see.
   const handleBodyKeyDown = (i: number) => (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     const el = e.currentTarget;
     const pg = pages[i];
@@ -2026,23 +2033,15 @@ export function NotebookEditor({
 
     if (e.key === "Enter" && !e.shiftKey && !e.metaKey && !e.ctrlKey) {
       const marker = autolistMarker(line);
-      if (marker === null) {
-        // Plain line: auto-add only when the page is physically full AND it is
-        // the last page (never split mid-note) AND not composing (IME).
-        if (i === pages.length - 1 && el.scrollHeight > el.clientHeight && !e.nativeEvent.isComposing) {
-          e.preventDefault();
-          setPages((prev) => appendPage(prev));
-        }
-        return; // otherwise default Enter
-      }
+      if (marker === null) return; // plain line -> default Enter
       e.preventDefault();
       const next = `${pg.slice(0, s)}\n${marker}${pg.slice(en)}`;
       setPageText(i, next);
       markDirty();
       requestAnimationFrame(() => {
-        resizeTextarea(el);
         const c = s + 1 + marker.length;
         el.setSelectionRange(c, c);
+        syncTextarea(el);
       });
     } else if (e.key === "Backspace") {
       if (s !== lineStart + line.length) return; // not at line end
@@ -2051,8 +2050,8 @@ export function NotebookEditor({
       setPageText(i, pg.slice(0, lineStart) + pg.slice(s));
       markDirty();
       requestAnimationFrame(() => {
-        resizeTextarea(el);
         el.setSelectionRange(lineStart, lineStart);
+        syncTextarea(el);
       });
     }
   };
@@ -2125,6 +2124,34 @@ export function NotebookEditor({
     setConfirmKind("leave");
   }, [blocker.state, blocker.proceed]);
 
+  // Mirror pengukur adalah node di <body>: lepaskan saat editor unmount agar
+  // tidak menumpuk setiap kali note dibuka-tutup.
+  useEffect(() => {
+    const refs = bodyRefs;
+    return () => {
+      for (const el of refs.current) if (el) releaseTextareaMirror(el);
+    };
+  }, []);
+
+  // Tinggi bergantung pada lebar dan metrik font: ukur ulang setelah web font
+  // selesai dimuat dan saat viewport berubah (rotasi, resize, keyboard mobile).
+  useEffect(() => {
+    const remeasure = () => {
+      for (const el of bodyRefs.current) if (el) resizeTextarea(el);
+    };
+    void document.fonts?.ready.then(remeasure);
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    const onResize = () => {
+      if (timer) clearTimeout(timer);
+      timer = setTimeout(remeasure, 120);
+    };
+    window.addEventListener("resize", onResize);
+    return () => {
+      if (timer) clearTimeout(timer);
+      window.removeEventListener("resize", onResize);
+    };
+  }, [pages.length]);
+
   return (
     <div className="space-y-0 pb-36 scroll-mb-36">
       <div className="nb-editor-cover">
@@ -2136,7 +2163,7 @@ export function NotebookEditor({
           <ArrowLeft size={15} strokeWidth={1.5} />
           {t("notebook.back")}
         </button>
-        <div className="flex min-w-0 items-center gap-2 text-[10px] font-mono text-monk-text-soft">
+        <div className="flex min-w-0 items-center gap-2 text-[11px] font-mono text-monk-text-soft">
           <span className="min-w-0 flex-1 truncate text-sm font-semibold leading-snug text-monk-accent">
             {entry ? entry.title || t("notebook.untitled") : t("notebook.newNote")}
           </span>
@@ -2197,7 +2224,7 @@ export function NotebookEditor({
 
               {/* Active PARA badge if set */}
               {paraType ? (
-                <span className="shrink-0 rounded-full bg-monk-soft/80 border border-monk-border/40 px-2 py-0.5 text-[10px] font-semibold text-monk-muted uppercase tracking-wider">
+                <span className="shrink-0 rounded-full bg-monk-soft/80 border border-monk-border/40 px-2 py-0.5 text-[11px] font-semibold text-monk-muted uppercase tracking-wider">
                   {paraType === "project" ? t("notebook.paraProjects") :
                    paraType === "area" ? t("notebook.paraAreas") :
                    paraType === "resource" ? t("notebook.paraResources") :
@@ -2209,7 +2236,7 @@ export function NotebookEditor({
               {goalId ? (() => {
                 const g = store.goals.find((goal) => goal.id === goalId);
                 return g ? (
-                  <span className="shrink-0 flex items-center gap-1 rounded-full bg-monk-accent/10 border border-monk-accent/30 px-2 py-0.5 text-[10px] font-semibold text-monk-accent">
+                  <span className="shrink-0 flex items-center gap-1 rounded-full bg-monk-accent/10 border border-monk-accent/30 px-2 py-0.5 text-[11px] font-semibold text-monk-accent">
                     <Target size={10} strokeWidth={2} />
                     <span className="truncate max-w-[100px]">{g.title}</span>
                   </span>
@@ -2252,7 +2279,7 @@ export function NotebookEditor({
         ) : (
           <div className="mb-2 space-y-2.5 rounded-2xl border border-monk-border/60 bg-monk-soft/15 p-3">
             <div className="flex items-center justify-between pb-1 border-b border-monk-border/30">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-monk-muted">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-monk-muted">
                 {lang === "id" ? "Pengaturan Catatan" : "Note Details"}
               </span>
               <div className="flex items-center gap-2">
@@ -2263,7 +2290,7 @@ export function NotebookEditor({
                     markDirty();
                   }}
                   aria-pressed={isPinned}
-                  className={`flex h-6 items-center gap-1 rounded-full border px-2 text-[10px] font-medium transition ${
+                  className={`flex h-6 items-center gap-1 rounded-full border px-2 text-[11px] font-medium transition ${
                     isPinned
                       ? "border-monk-accent/40 bg-monk-accent-soft text-monk-accent font-semibold"
                       : "border-monk-border text-monk-muted hover:border-monk-accent hover:text-monk-accent"
@@ -2368,7 +2395,7 @@ export function NotebookEditor({
               </button>
             </div>
             <div className="flex items-center gap-1.5 overflow-x-auto pb-1 pt-0.5 scrollbar-none text-xs">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-monk-muted shrink-0 mr-1">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-monk-muted shrink-0 mr-1">
                 {t("notebook.paraLabel")}:
               </span>
               {(
@@ -2401,7 +2428,7 @@ export function NotebookEditor({
             </div>
             {activeGoals.length > 0 ? (
               <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5 text-xs">
-                <span className="shrink-0 text-[10px] font-bold uppercase tracking-wider text-monk-muted mr-1 flex items-center gap-1">
+                <span className="shrink-0 text-[11px] font-bold uppercase tracking-wider text-monk-muted mr-1 flex items-center gap-1">
                   <Target size={11} strokeWidth={2} />
                   <span>{t("notebook.goalLabel")}:</span>
                 </span>
@@ -2617,11 +2644,11 @@ export function NotebookEditor({
       {drawingPage !== null ? (
         <div className="mb-2.5 rounded-xl border border-monk-accent/40 bg-monk-surface/95 p-3 shadow-sm animate-scale-in">
           <div className="mb-2 flex items-center justify-between">
-            <span className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-monk-accent">
+            <span className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-monk-accent">
               <Palette size={12} />
               <span>{t("notebook.drawTitle")}</span>
             </span>
-            <span className="text-[10px] text-monk-muted">
+            <span className="text-[11px] text-monk-muted">
               {t("notebook.drawPageNote", { n: drawingPage + 1 })}
             </span>
           </div>
@@ -2636,7 +2663,7 @@ export function NotebookEditor({
       {/* Wiki-link autocomplete suggestions */}
       {linkSuggestions.length > 0 && (
         <div className="mb-2.5 flex items-center gap-1.5 overflow-x-auto rounded-xl border border-monk-accent/40 bg-monk-surface/95 p-1.5 shadow-sm scrollbar-none animate-scale-in">
-          <span className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-monk-accent pl-1.5 shrink-0">
+          <span className="flex items-center gap-1 text-[11px] font-bold uppercase tracking-wider text-monk-accent pl-1.5 shrink-0">
             <Link2 size={12} />
             <span>{t("notebook.suggestLink")}:</span>
           </span>
@@ -2692,7 +2719,7 @@ export function NotebookEditor({
                   onClick={() => requestDeletePage(i)}
                   aria-label={t("notebook.removePage")}
                   title={t("notebook.removePage")}
-                  className="flex items-center gap-1 rounded-md px-2 py-0.5 text-[11px] font-semibold text-monk-danger/80 transition hover:bg-monk-danger/10 hover:text-monk-danger active:scale-95"
+                  className="flex items-center gap-1 rounded-md px-2 py-0.5 text-[11px] font-semibold text-monk-danger transition hover:bg-monk-danger/10 hover:text-monk-danger active:scale-95"
                 >
                   <Trash2 size={11} strokeWidth={2} />
                   <span>{t("notebook.deleteSheet")}</span>
@@ -2748,7 +2775,7 @@ export function NotebookEditor({
                 <button
                   type="button"
                   onClick={cleanAllBlankPages}
-                  className="flex items-center gap-1 text-[10px] font-semibold text-monk-accent hover:underline px-2 py-0.5 rounded-md hover:bg-monk-accent-soft transition"
+                  className="flex items-center gap-1 text-[11px] font-semibold text-monk-accent hover:underline px-2 py-0.5 rounded-md hover:bg-monk-accent-soft transition"
                 >
                   <Sparkles size={11} />
                   <span>{lang === "id" ? "Bersihkan Lembar Kosong" : "Clean Empty Sheets"}</span>
@@ -2760,7 +2787,7 @@ export function NotebookEditor({
 
         {/* Core Takeaway */}
         <div className="my-3 rounded-xl border border-monk-border/50 bg-monk-soft/25 p-3 transition focus-within:border-monk-accent/50 focus-within:bg-monk-soft/40">
-          <label className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-monk-accent/90 mb-1.5">
+          <label className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-monk-accent mb-1.5">
             <Sparkles size={11} />
             <span>{t("notebook.takeawayLabel")}</span>
           </label>
@@ -2773,7 +2800,7 @@ export function NotebookEditor({
               queueResize(e.currentTarget);
             }}
             placeholder={t("notebook.takeawayPlaceholder")}
-            className="nb-takeaway-textarea w-full resize-none bg-transparent text-xs italic font-serif leading-relaxed text-monk-text placeholder:text-monk-text-soft/60 focus:outline-none"
+            className="nb-takeaway-textarea w-full resize-none bg-transparent text-xs italic font-serif leading-relaxed text-monk-text placeholder:text-monk-text-soft focus:outline-none"
           />
         </div>
 
@@ -2880,7 +2907,7 @@ export function NotebookEditor({
                 </div>
                 <div>
                   <p className="text-xs font-bold text-monk-text">{t(tmpl.titleKey)}</p>
-                  <p className="text-[10px] text-monk-muted">{lang === "id" ? tmpl.descId : tmpl.descEn}</p>
+                  <p className="text-[11px] text-monk-muted">{lang === "id" ? tmpl.descId : tmpl.descEn}</p>
                 </div>
               </div>
               <ArrowRight size={14} className="text-monk-muted" />
