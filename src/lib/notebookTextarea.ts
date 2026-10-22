@@ -128,8 +128,7 @@ export function resizeTextarea(el: HTMLTextAreaElement): number {
 
 /**
  * Satu pengukuran per keystroke: tulis tinggi lalu jaga caret tetap di atas
- * toolbar. Dipisah dari `resizeTextarea` + `keepCaretVisible` supaya mirror
- * tidak dipaint dua kali untuk input yang sama.
+ * toolbar. Satu paint mirror untuk dua pekerjaan.
  */
 export function syncTextarea(el: HTMLTextAreaElement): number {
   const caret = el.selectionStart ?? el.value.length;
@@ -161,15 +160,6 @@ function scrollCaretIntoView(el: HTMLTextAreaElement, caretTop: number): void {
     safeBottom: EDITOR_SAFE_BOTTOM
   });
   if (delta > 0) window.scrollBy({ top: delta, behavior: "auto" });
-}
-
-/** Versi publik: ukur posisi caret dulu, lalu geser window bila perlu. */
-export function keepCaretVisible(el: HTMLTextAreaElement): void {
-  if (typeof window === "undefined") return;
-  if (document.activeElement !== el) return;
-  const caret = el.selectionStart ?? el.value.length;
-  const { caretTop } = measureTextarea(el, el.value, caret);
-  scrollCaretIntoView(el, caretTop);
 }
 
 /** Lepas node mirror saat textarea unmount, agar tidak menumpuk di <body>. */
