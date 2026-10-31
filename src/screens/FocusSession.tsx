@@ -190,19 +190,19 @@ export function FocusSessionPanel({
       }`}
     >
       <div className="flex items-center justify-center gap-2">
-        <span className="rounded-full border border-monk-border bg-monk-bg px-2.5 py-1 text-[10px] font-bold uppercase tracking-widest text-monk-muted">
+        <span className="rounded-full border border-monk-border bg-monk-bg px-2.5 py-1 text-[11px] font-bold uppercase tracking-widest text-monk-muted">
           {modeLabel}
         </span>
         {isPaused ? (
-          <span className="rounded-full border border-monk-warning/40 bg-monk-warning-soft px-2.5 py-1 text-[10px] font-bold uppercase tracking-widest text-monk-warning">
+          <span className="rounded-full border border-monk-warning/40 bg-monk-warning-soft px-2.5 py-1 text-[11px] font-bold uppercase tracking-widest text-monk-warning">
             {t("focus.paused")}
           </span>
         ) : isBreak ? (
-          <span className="rounded-full border border-monk-rest/40 bg-monk-rest-soft px-2.5 py-1 text-[10px] font-bold uppercase tracking-widest text-monk-rest">
+          <span className="rounded-full border border-monk-rest/40 bg-monk-rest-soft px-2.5 py-1 text-[11px] font-bold uppercase tracking-widest text-monk-rest">
             {t("focus.break")}
           </span>
         ) : (
-          <span className="rounded-full border border-monk-accent/30 bg-monk-accent-soft px-2.5 py-1 text-[10px] font-bold uppercase tracking-widest text-monk-accent">
+          <span className="rounded-full border border-monk-accent/30 bg-monk-accent-soft px-2.5 py-1 text-[11px] font-bold uppercase tracking-widest text-monk-accent">
             {t("focus.focus")}
           </span>
         )}
@@ -224,7 +224,7 @@ export function FocusSessionPanel({
           <span className="sr-only" role="timer" aria-live="polite" aria-atomic="true">
             {Math.ceil(remaining / 60)} {t("focus.minutes")}
           </span>
-          <p className="mt-2 text-[10px] font-bold uppercase tracking-wider text-monk-muted">
+          <p className="mt-2 text-[11px] font-bold uppercase tracking-wider text-monk-muted">
             {isBreak ? t("focus.breakLeft") : t("focus.focusLeft")}
           </p>
         </CircularProgress>
@@ -251,7 +251,7 @@ export function FocusSessionPanel({
       ) : (
         <div className={`${compact ? "" : "mx-auto max-w-sm"} mb-5 text-left`}>
           <div className="rounded-2xl border border-monk-border bg-monk-bg p-4">
-            <p className="text-[10px] font-bold uppercase tracking-wider text-monk-muted">{t("focus.thisBlock")}</p>
+            <p className="text-[11px] font-bold uppercase tracking-wider text-monk-muted">{t("focus.thisBlock")}</p>
             {intention.when && intention.action ? (
               <div className="mt-1.5 space-y-1">
                 <p className="text-xs text-monk-muted">{t("today.whenShown", { when: intention.when })}</p>
@@ -278,7 +278,7 @@ export function FocusSessionPanel({
               >
                 {t("focus.distractionTap")}
                 {distractionCount > 0 ? (
-                  <span className="ml-1.5 text-monk-muted/80">· {t("focus.distractionsCount", { n: distractionCount })}</span>
+                  <span className="ml-1.5 text-monk-muted">· {t("focus.distractionsCount", { n: distractionCount })}</span>
                 ) : null}
               </button>
             </div>
@@ -287,7 +287,7 @@ export function FocusSessionPanel({
       )}
 
       <div className="mb-5">
-        <div className="mb-2 flex items-center justify-between text-[10px] font-bold uppercase tracking-wider text-monk-muted">
+        <div className="mb-2 flex items-center justify-between text-[11px] font-bold uppercase tracking-wider text-monk-muted">
           <span>{t("focus.session")}</span>
           <span className="tabular-nums">{Math.round(sessionProgress)}%</span>
         </div>
@@ -435,19 +435,19 @@ export function FocusSessionSummary({
       <div className="mt-5 grid grid-cols-3 gap-2">
         <div className="rounded-2xl border border-monk-border bg-monk-bg p-3">
           <p className="text-xl font-bold tabular-nums text-monk-text">{focusMinutes}m</p>
-          <p className="mt-1 text-[10px] font-bold uppercase tracking-wider text-monk-muted">
+          <p className="mt-1 text-[11px] font-bold uppercase tracking-wider text-monk-muted">
             {t("focus.summary.focus")}
           </p>
         </div>
         <div className="rounded-2xl border border-monk-border bg-monk-bg p-3">
           <p className="text-xl font-bold tabular-nums text-monk-text">{blocks}</p>
-          <p className="mt-1 text-[10px] font-bold uppercase tracking-wider text-monk-muted">
+          <p className="mt-1 text-[11px] font-bold uppercase tracking-wider text-monk-muted">
             {t("focus.summary.blocks")}
           </p>
         </div>
         <div className="rounded-2xl border border-monk-border bg-monk-bg p-3">
           <p className="text-xl font-bold tabular-nums text-monk-text">{distractions}</p>
-          <p className="mt-1 text-[10px] font-bold uppercase tracking-wider text-monk-muted">
+          <p className="mt-1 text-[11px] font-bold uppercase tracking-wider text-monk-muted">
             {t("focus.summary.distractions")}
           </p>
         </div>
@@ -455,13 +455,13 @@ export function FocusSessionSummary({
 
       {intention.when && intention.action ? (
         <div className="mt-4 space-y-0.5 rounded-2xl border border-monk-border bg-monk-bg p-3 text-left">
-          <p className="text-[10px] font-bold uppercase tracking-wider text-monk-muted">{t("focus.todaysAction")}</p>
+          <p className="text-[11px] font-bold uppercase tracking-wider text-monk-muted">{t("focus.todaysAction")}</p>
           <p className="text-xs text-monk-muted">{t("today.whenShown", { when: intention.when })}</p>
           <p className="text-sm font-semibold text-monk-text">{t("today.iWillShown", { action: intention.action })}</p>
         </div>
       ) : mainAction ? (
         <div className="mt-4 rounded-2xl border border-monk-border bg-monk-bg p-3 text-left">
-          <p className="text-[10px] font-bold uppercase tracking-wider text-monk-muted">{t("focus.todaysAction")}</p>
+          <p className="text-[11px] font-bold uppercase tracking-wider text-monk-muted">{t("focus.todaysAction")}</p>
           <p className="mt-1 text-sm font-semibold text-monk-text">{mainAction}</p>
         </div>
       ) : null}
@@ -469,7 +469,7 @@ export function FocusSessionSummary({
       {/* Quick Session Takeaway / Capture */}
       <div className="mt-4 rounded-2xl border border-monk-border/70 bg-monk-bg p-3 text-left space-y-2">
         <div className="flex items-center justify-between">
-          <p className="text-[10px] font-bold uppercase tracking-wider text-monk-muted flex items-center gap-1.5">
+          <p className="text-[11px] font-bold uppercase tracking-wider text-monk-muted flex items-center gap-1.5">
             {t("focus.insightLabel")}
           </p>
           {noteSaved ? (
@@ -546,8 +546,19 @@ export function FocusSessionStarter({ compact = false }: { compact?: boolean }) 
     unlockAudio();
     playZenBell();
     hapticPress("medium");
+    // Request must RESOLVE before the session runs: a fire-and-forget prompt the
+    // user answered late (or dismissed) left permission "default" at the first
+    // phase boundary — notify() no-ops on anything but "granted", so the very
+    // first break notification never appeared. Start the clock first (no await
+    // on the UI path), then settle permission in the background.
     if ("Notification" in window && Notification.permission === "default") {
-      Notification.requestPermission();
+      void Notification.requestPermission().then((permission) => {
+        if (permission !== "granted") return;
+        // Permission landed mid-session: re-arm the service-worker schedule so
+        // the remaining boundaries are covered by the OS too.
+        const session = useMonkStore.getState().focusSessions.find((s) => ["running", "paused"].includes(s.status));
+        if (session) void import("../lib/focusNotifications").then((m) => m.syncFocusNotifications(session));
+      });
     }
     saveLastFocus(selectedPreset, customMinutes);
     store.startFocusSession(selectedPreset, customMinutes);
@@ -571,7 +582,7 @@ export function FocusSessionStarter({ compact = false }: { compact?: boolean }) 
               <p className="text-sm font-bold text-monk-text">{t("focus.readyTitle")}</p>
               <p className="mt-1 text-xs text-monk-muted">{t("focus.readyDesc")}</p>
             </div>
-            <span className="rounded-full bg-monk-soft px-2.5 py-1 text-[10px] font-bold tabular-nums text-monk-muted">
+            <span className="rounded-full bg-monk-soft px-2.5 py-1 text-[11px] font-bold tabular-nums text-monk-muted">
               {checklistDone}/{checklistItems.length}
             </span>
           </div>
@@ -682,7 +693,7 @@ export function FocusSessionStarter({ compact = false }: { compact?: boolean }) 
                 <p className="text-sm font-semibold text-monk-text">{t(`focus.preset.${selectedPreset}.title` as MessageKey)}</p>
                 <p className="mt-1 text-xs leading-5 text-monk-muted">{t(`focus.preset.${selectedPreset}.summary` as MessageKey)}</p>
               </div>
-              <span className="shrink-0 rounded-full bg-monk-bg px-2.5 py-1 text-[10px] font-bold tabular-nums text-monk-accent">
+              <span className="shrink-0 rounded-full bg-monk-bg px-2.5 py-1 text-[11px] font-bold tabular-nums text-monk-accent">
                 {totalMinutes}m
               </span>
             </div>

@@ -123,14 +123,14 @@ function TimelineStats() {
 
         <div className="mt-4 border-t border-monk-border/60 pt-3 flex items-center justify-between">
           <div>
-            <p className="text-[10px] font-bold uppercase tracking-wider text-monk-muted">
+            <p className="text-[11px] font-bold uppercase tracking-wider text-monk-muted">
               {t("timeline.stats.consistency")}
             </p>
             <p className="text-sm font-semibold text-monk-text mt-0.5 tabular-nums">
               {t("timeline.stats.days", { n: rhythm.accountedDays, total: totalPassedDays })}
             </p>
             {rhythm.focusDays > 0 || rhythm.restDays > 0 ? (
-              <p className="mt-0.5 text-[10px] text-monk-muted tabular-nums">
+              <p className="mt-0.5 text-[11px] text-monk-muted tabular-nums">
                 {t("timeline.stats.daysBreakdown", { focus: rhythm.focusDays, rest: rhythm.restDays })}
               </p>
             ) : null}
@@ -179,11 +179,11 @@ function DayCountsCard() {
             {t("timeline.stats.days", { n: rhythm.accountedDays, total: passedCount })}
           </p>
           {completedCount > 0 || restCount > 0 ? (
-            <p className="mt-0.5 text-[10px] text-monk-muted tabular-nums">
+            <p className="mt-0.5 text-[11px] text-monk-muted tabular-nums">
               {t("timeline.stats.daysBreakdown", { focus: completedCount, rest: restCount })}
             </p>
           ) : null}
-          <p className="mt-0.5 text-[10px] text-monk-muted">
+          <p className="mt-0.5 text-[11px] text-monk-muted">
             {t("timeline.legend.scopeSeason")}
           </p>
         </div>
@@ -293,7 +293,7 @@ function TimelineEventRow({ event }: { event: TimelineEvent }) {
 
       {/* Content Card */}
       <div className="flex-1 pb-4 min-w-0">
-        <p className="mb-1 font-mono text-[10px] text-monk-muted tabular-nums">
+        <p className="mb-1 font-mono text-[11px] text-monk-muted tabular-nums">
           {timeLabel}
         </p>
 
@@ -311,7 +311,7 @@ function TimelineEventRow({ event }: { event: TimelineEvent }) {
                 /* 44px hit area (WCAG 2.2 SC 2.5.8 / 44px recommendation);
                    -my-2.5 cancels the extra height so the card header keeps its
                    rhythm. The icon stays 12px. */
-                className="-my-2.5 grid h-11 w-11 shrink-0 place-items-center rounded-md text-monk-muted/50 hover:text-monk-danger hover:bg-monk-danger/10 transition active:scale-90"
+                className="-my-2.5 grid h-11 w-11 shrink-0 place-items-center rounded-md text-monk-text-soft hover:text-monk-danger hover:bg-monk-danger/10 transition active:scale-90"
                 onClick={() => {
                   if (window.confirm(t("timeline.deleteConfirm"))) {
                     store.removeTimelineEvent(event.id);
@@ -333,7 +333,7 @@ function TimelineEventRow({ event }: { event: TimelineEvent }) {
             <div className="mt-2.5 space-y-2 border-t border-monk-border/40 pt-2.5">
               {journalItems.map((item) => (
                 <div key={item.id} className="rounded-lg bg-monk-soft/50 border border-monk-border/40 p-2">
-                  <p className="text-[10px] font-bold uppercase tracking-wider text-monk-text-soft">
+                  <p className="text-[11px] font-bold uppercase tracking-wider text-monk-text-soft">
                     {item.question}
                   </p>
                   <p className="mt-0.5 text-xs font-medium leading-relaxed text-monk-text">
@@ -559,8 +559,8 @@ export default function TimelineScreen() {
     // 1. Outside current month (adjacent month padding)
     if (!isCurrentMonth) {
       return {
-        tileClass: "bg-monk-soft/20 border-monk-border/30 text-monk-muted/50 hover:border-monk-border/60 hover:text-monk-muted transition",
-        numClass: "text-monk-muted/60 font-medium",
+        tileClass: "bg-monk-soft/20 border-monk-border/30 text-monk-text-soft hover:border-monk-border/60 hover:text-monk-muted transition",
+        numClass: "text-monk-text-soft font-medium",
         iconElement: null
       };
     }
@@ -589,8 +589,8 @@ export default function TimelineScreen() {
         };
       }
       return {
-        tileClass: "bg-monk-surface/40 border-monk-border/40 text-monk-muted/70 hover:border-monk-border-strong",
-        numClass: "text-monk-muted/80 font-medium",
+        tileClass: "bg-monk-surface/40 border-monk-border/40 text-monk-text-soft hover:border-monk-border-strong",
+        numClass: "text-monk-muted font-medium",
         iconElement: null
       };
     }
@@ -599,7 +599,7 @@ export default function TimelineScreen() {
     if (isFuture) {
       return {
         tileClass: "bg-monk-surface/40 border-monk-border/50 text-monk-muted hover:border-monk-border-strong",
-        numClass: "text-monk-muted/80 font-medium",
+        numClass: "text-monk-muted font-medium",
         iconElement: null
       };
     }
@@ -833,7 +833,7 @@ export default function TimelineScreen() {
                       {t("timeline.weekLabel", { n: selectedWeek })}
                     </p>
                     {selectedWeek === currentWeekNum ? (
-                      <span className="rounded-full bg-monk-accent/15 px-2 py-0.2 text-[9px] font-bold text-monk-accent border border-monk-accent/30">
+                      <span className="rounded-full bg-monk-accent/15 px-2 py-0.2 text-[10px] font-bold text-monk-accent border border-monk-accent/30">
                         {t("timeline.todayBadge")}
                       </span>
                     ) : null}
@@ -909,7 +909,7 @@ export default function TimelineScreen() {
                             ? "bg-monk-accent/20 border-monk-accent/50 text-monk-accent"
                             : "bg-monk-soft border-monk-border/70 text-monk-muted"
                         }`}>
-                          <span className="text-[10px] font-bold uppercase tracking-wider block leading-none">
+                          <span className="text-[11px] font-bold uppercase tracking-wider block leading-none">
                             {DOW[idx]}
                           </span>
                           <p className="text-xs font-mono font-bold text-monk-text mt-0.5 leading-none">
@@ -921,37 +921,37 @@ export default function TimelineScreen() {
                         <div className="min-w-0">
                           <div className="flex items-center gap-1.5 flex-wrap">
                             {isFuture ? (
-                              <span className="rounded-md border border-monk-border bg-monk-surface px-1.5 py-0.5 text-[10px] font-semibold text-monk-muted">
+                              <span className="rounded-md border border-monk-border bg-monk-surface px-1.5 py-0.5 text-[11px] font-semibold text-monk-muted">
                                 {t("week.upcoming")}
                               </span>
                             ) : isCompleted ? (
-                              <span className="inline-flex items-center gap-1 rounded-md border border-monk-success/30 bg-monk-success-soft px-1.5 py-0.5 text-[10px] font-bold text-monk-success">
+                              <span className="inline-flex items-center gap-1 rounded-md border border-monk-success/30 bg-monk-success-soft px-1.5 py-0.5 text-[11px] font-bold text-monk-success">
                                 <Check size={11} strokeWidth={2.5} />
                                 <span>{t("timeline.streak.completed")}</span>
                               </span>
                             ) : isRest ? (
-                              <span className="inline-flex items-center gap-1 rounded-md border border-monk-rest/30 bg-monk-rest-soft px-1.5 py-0.5 text-[10px] font-bold text-monk-rest">
+                              <span className="inline-flex items-center gap-1 rounded-md border border-monk-rest/30 bg-monk-rest-soft px-1.5 py-0.5 text-[11px] font-bold text-monk-rest">
                                 <Moon size={11} />
                                 <span>{t("timeline.streak.rest")}</span>
                               </span>
                             ) : isPartial ? (
-                              <span className="inline-flex items-center gap-1 rounded-md border border-monk-warning/30 bg-monk-warning-soft px-1.5 py-0.5 text-[10px] font-bold text-monk-warning">
+                              <span className="inline-flex items-center gap-1 rounded-md border border-monk-warning/30 bg-monk-warning-soft px-1.5 py-0.5 text-[11px] font-bold text-monk-warning">
                                 <Flame size={11} />
                                 <span>{t("timeline.streak.partial")}</span>
                               </span>
                             ) : isMissed ? (
-                              <span className="inline-flex items-center gap-1 rounded-md border border-monk-danger/30 bg-monk-danger-soft px-1.5 py-0.5 text-[10px] font-bold text-monk-danger">
+                              <span className="inline-flex items-center gap-1 rounded-md border border-monk-danger/30 bg-monk-danger-soft px-1.5 py-0.5 text-[11px] font-bold text-monk-danger">
                                 <AlertTriangle size={11} />
                                 <span>{t("week.missed")}</span>
                               </span>
                             ) : (
-                              <span className="rounded-md border border-monk-border bg-monk-surface px-1.5 py-0.5 text-[10px] font-semibold text-monk-muted">
+                              <span className="rounded-md border border-monk-border bg-monk-surface px-1.5 py-0.5 text-[11px] font-semibold text-monk-muted">
                                 {t("timeline.noAction")}
                               </span>
                             )}
 
                             {isDateToday ? (
-                              <span className="rounded-full bg-monk-accent/15 px-2 py-0.2 text-[9px] font-bold text-monk-accent border border-monk-accent/30">
+                              <span className="rounded-full bg-monk-accent/15 px-2 py-0.2 text-[10px] font-bold text-monk-accent border border-monk-accent/30">
                                 {t("timeline.todayBadge")}
                               </span>
                             ) : null}
@@ -1061,7 +1061,7 @@ export default function TimelineScreen() {
                 {DOW.map((d, i) => (
                   <span
                     key={i}
-                    className="text-[10px] font-bold uppercase tracking-wider text-monk-text-soft"
+                    className="text-[11px] font-bold uppercase tracking-wider text-monk-text-soft"
                   >
                     {d}
                   </span>
@@ -1166,15 +1166,15 @@ export default function TimelineScreen() {
                           {formattedDate}
                         </span>
                         {isDateToday ? (
-                          <span className="rounded-full bg-monk-accent/20 px-2 py-0.5 text-[9px] font-bold text-monk-accent border border-monk-accent/40 shrink-0">
+                          <span className="rounded-full bg-monk-accent/20 px-2 py-0.5 text-[10px] font-bold text-monk-accent border border-monk-accent/40 shrink-0">
                             {t("timeline.todayBadge")}
                           </span>
                         ) : isInspectedInSeason && dayNumber ? (
-                          <span className="rounded-full bg-monk-soft px-2 py-0.5 text-[9px] font-mono font-semibold text-monk-muted border border-monk-border/60 shrink-0">
+                          <span className="rounded-full bg-monk-soft px-2 py-0.5 text-[10px] font-mono font-semibold text-monk-muted border border-monk-border/60 shrink-0">
                             {t("timeline.month.seasonDayBadge", { day: dayNumber })}
                           </span>
                         ) : (
-                          <span className="rounded-full bg-monk-soft/50 px-2 py-0.5 text-[9px] font-semibold text-monk-muted/70 border border-monk-border/40 shrink-0">
+                          <span className="rounded-full bg-monk-soft/50 px-2 py-0.5 text-[10px] font-semibold text-monk-text-soft border border-monk-border/40 shrink-0">
                             {t("timeline.month.outOfSeason")}
                           </span>
                         )}
@@ -1183,36 +1183,36 @@ export default function TimelineScreen() {
                       {/* Status chip */}
                       <div className="flex items-center gap-1 shrink-0">
                         {!isInspectedInSeason ? (
-                          <span className="rounded-md border border-monk-border/60 bg-monk-surface px-2 py-0.5 text-[10px] font-semibold text-monk-muted">
+                          <span className="rounded-md border border-monk-border/60 bg-monk-surface px-2 py-0.5 text-[11px] font-semibold text-monk-muted">
                             {t("timeline.month.outOfSeason")}
                           </span>
                         ) : isFuture ? (
-                          <span className="inline-flex items-center gap-1 rounded-md border border-monk-border bg-monk-surface px-2 py-0.5 text-[10px] font-semibold text-monk-muted">
+                          <span className="inline-flex items-center gap-1 rounded-md border border-monk-border bg-monk-surface px-2 py-0.5 text-[11px] font-semibold text-monk-muted">
                             <Clock size={11} />
                             <span>{t("week.upcoming")}</span>
                           </span>
                         ) : inspectedStatus === "completed" ? (
-                          <span className="inline-flex items-center gap-1 rounded-md bg-monk-success-soft border border-monk-success/30 px-2 py-0.5 text-[10px] font-bold text-monk-success">
+                          <span className="inline-flex items-center gap-1 rounded-md bg-monk-success-soft border border-monk-success/30 px-2 py-0.5 text-[11px] font-bold text-monk-success">
                             <Check size={11} strokeWidth={2.5} />
                             <span>{t("timeline.streak.completed")}</span>
                           </span>
                         ) : inspectedStatus === "rest" ? (
-                          <span className="inline-flex items-center gap-1 rounded-md bg-monk-rest-soft border border-monk-rest/30 px-2 py-0.5 text-[10px] font-bold text-monk-rest">
+                          <span className="inline-flex items-center gap-1 rounded-md bg-monk-rest-soft border border-monk-rest/30 px-2 py-0.5 text-[11px] font-bold text-monk-rest">
                             <Moon size={11} />
                             <span>{t("timeline.streak.rest")}</span>
                           </span>
                         ) : inspectedStatus === "partial" ? (
-                          <span className="inline-flex items-center gap-1 rounded-md bg-monk-warning-soft border border-monk-warning/30 px-2 py-0.5 text-[10px] font-bold text-monk-warning">
+                          <span className="inline-flex items-center gap-1 rounded-md bg-monk-warning-soft border border-monk-warning/30 px-2 py-0.5 text-[11px] font-bold text-monk-warning">
                             <Flame size={11} />
                             <span>{t("timeline.streak.partial")}</span>
                           </span>
                         ) : inspectedStatus === "missed" || inspectedStatus === "relapse" ? (
-                          <span className="inline-flex items-center gap-1 rounded-md bg-monk-danger-soft border border-monk-danger/30 px-2 py-0.5 text-[10px] font-bold text-monk-danger">
+                          <span className="inline-flex items-center gap-1 rounded-md bg-monk-danger-soft border border-monk-danger/30 px-2 py-0.5 text-[11px] font-bold text-monk-danger">
                             <X size={11} strokeWidth={3} aria-hidden="true" />
                             <span>{t("week.missed")}</span>
                           </span>
                         ) : (
-                          <span className="rounded-md border border-monk-border bg-monk-surface px-2 py-0.5 text-[10px] font-semibold text-monk-muted">
+                          <span className="rounded-md border border-monk-border bg-monk-surface px-2 py-0.5 text-[11px] font-semibold text-monk-muted">
                             {t("timeline.noAction")}
                           </span>
                         )}
@@ -1352,7 +1352,7 @@ export default function TimelineScreen() {
                       <div key={group.date} className="space-y-3">
                         <div className="sticky top-0 z-10 bg-monk-bg/90 backdrop-blur-md pt-1.5 pb-1.5 -mx-1 px-1 flex items-center gap-2 border-b border-monk-border/40">
                           <p className="text-xs font-bold text-monk-accent uppercase tracking-wider">{groupTitle}</p>
-                          <span className="text-[10px] font-bold text-monk-muted bg-monk-surface border border-monk-border/50 px-1.5 py-0.5 rounded-full">
+                          <span className="text-[11px] font-bold text-monk-muted bg-monk-surface border border-monk-border/50 px-1.5 py-0.5 rounded-full">
                             {group.events.length}
                           </span>
                         </div>

@@ -178,10 +178,10 @@ export function ZendoProModal({ isOpen, onClose }: ZendoProModalProps) {
                 </span>
                 <div>
                   <p className="text-xs font-bold text-monk-text">ARDI WIRYAWAN, DIGITAL & KREATIF</p>
-                  <p className="text-[10px] text-monk-muted font-mono">NMID: ID1026507210023 · A01</p>
+                  <p className="text-[11px] text-monk-muted font-mono">NMID: ID1026507210023 · A01</p>
                 </div>
               </div>
-              <span className="text-[10px] font-bold text-monk-success border border-monk-success/30 bg-monk-success/10 px-2 py-0.5 rounded-full">
+              <span className="text-[11px] font-bold text-monk-success border border-monk-success/30 bg-monk-success/10 px-2 py-0.5 rounded-full">
                 QRIS Resmi
               </span>
             </div>
@@ -283,7 +283,7 @@ export function ZendoProModal({ isOpen, onClose }: ZendoProModalProps) {
                   <span className="text-xs font-bold text-monk-text">
                     {isId ? "Masukkan Nominal Kustom" : "Custom Amount"}
                   </span>
-                  <span className="text-[10px] text-monk-muted">
+                  <span className="text-[11px] text-monk-muted">
                     {isId ? "Min. Rp 1.000" : "Min. Rp 1,000"}
                   </span>
                 </div>

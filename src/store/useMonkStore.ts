@@ -181,7 +181,10 @@ type MonkActions = {
   completeTodayMainAction: () => void;
   startFocusSession: (preset?: FocusSessionPreset, customMinutes?: number) => FocusSession | undefined;
   tickFocusSession: (sessionId: string, elapsedSeconds: number) => void;
-  advanceFocusPhase: (sessionId: string) => void;
+  /** `nominalAt`: wall-clock ISO of the boundary actually crossed — the next
+   *  phase is anchored to it instead of "now", so late detection (frozen tab,
+   *  suspended worker) never shifts the rest of the schedule. */
+  advanceFocusPhase: (sessionId: string, nominalAt?: string) => void;
   resetFocusSession: (sessionId: string) => void;
   pauseFocusSession: (sessionId: string) => void;
   resumeFocusSession: (sessionId: string) => void;
@@ -1957,8 +1960,11 @@ export const useMonkStore = create<MonkStore>()(
     // Guard: a tick can land after the session already ended. `elapsedSeconds` here comes
     // from the ticker, not from the completed session's frozen summary, so a post-end tick
     // would overwrite the recorded duration and re-derive the timeline from a bogus value.
-    // Mirrors the guards in resetFocusSession / abandonFocusSession.
-    if (!session || (session.status !== "running" && session.status !== "paused")) return;
+    // Mirrors the guards in resetFocusSession / abandonFocusSession. PAUSED is rejected
+    // too: a paused session's elapsedSeconds is frozen on purpose — accepting ticks here
+    // let a stale in-flight tick (or a second tab that never saw the pause) keep growing
+    // the elapsed time of a session the user had stopped.
+    if (!session || session.status !== "running") return;
     const dayPlan = current.dayPlans.find((d) => d.id === session.dayPlanId);
     if (!dayPlan) return;
     set({
@@ -2013,7 +2019,7 @@ export const useMonkStore = create<MonkStore>()(
     void syncFocusNotifications(get().focusSessions.find((s) => s.id === sessionId));
   },
 
-  advanceFocusPhase: (sessionId) => {
+  advanceFocusPhase: (sessionId, nominalAt) => {
     const state = get();
     const session = state.focusSessions.find((s) => s.id === sessionId);
     // Idempotence guard: a tick (interval or visibilitychange) can fire twice for
@@ -2037,14 +2043,30 @@ export const useMonkStore = create<MonkStore>()(
     const currentPhase = updatedPhases[nextIndex];
     const completedFocusBlocks = updatedPhases.filter((phase) => phase.type === "focus" && phase.status === "completed").length;
     const completedBreakBlocks = updatedPhases.filter((phase) => phase.type === "break" && phase.status === "completed").length;
+    // Anchor the new phase to the boundary's NOMINAL instant when the caller
+    // carries one. Stamping "now" here used to re-anchor the clock to the late
+    // detection moment, so a 3-minute-late catch-up shifted every later
+    // boundary (and every later bell) by those same 3 minutes.
+    const nominalMs = nominalAt ? Date.parse(nominalAt) : NaN;
+    const anchorIso = Number.isFinite(nominalMs) && nominalMs < Date.now()
+      ? new Date(nominalMs).toISOString()
+      : nowIso();
+    // elapsedSeconds caches "how far into the new phase we already are" so a
+    // paused/resumed session restores correctly without wall-clock math.
+    const anchoredElapsed = Number.isFinite(nominalMs) && nominalMs < Date.now()
+      ? Math.min(
+          Math.max(0, Math.floor((Date.now() - nominalMs) / 1000)),
+          (currentPhase?.plannedMinutes ?? 0) * 60
+        )
+      : 0;
     set({
       focusSessions: state.focusSessions.map((session) =>
         session.id === sessionId
           ? {
               ...session,
-              startTime: nowIso(),
+              startTime: anchorIso,
               timerState: currentPhase?.type === "break" ? "break" : "work",
-              elapsedSeconds: 0,
+              elapsedSeconds: anchoredElapsed,
               currentPhaseIndex: nextIndex,
               phases: updatedPhases,
               completedFocusBlocks,

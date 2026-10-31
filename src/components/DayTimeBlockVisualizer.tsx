@@ -315,7 +315,7 @@ export function DayTimeBlockVisualizer({
                   <div className="space-y-1.5 flex-1 min-w-0">
                     {/* Category pill & time badge */}
                     <div className="flex items-center gap-2 flex-wrap">
-                      <span className={`inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider ${style.chipBg}`}>
+                      <span className={`inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-[11px] font-bold uppercase tracking-wider ${style.chipBg}`}>
                         <Icon size={11} strokeWidth={2.5} />
                         <span>{t(style.labelKey)}</span>
                       </span>
@@ -374,7 +374,7 @@ export function DayTimeBlockVisualizer({
                   className="absolute left-0 right-0 flex items-center pointer-events-none"
                   style={{ top }}
                 >
-                  <span className="w-12 text-[10px] font-mono font-medium text-monk-muted/70 tabular-nums">
+                  <span className="w-12 text-[11px] font-mono font-medium text-monk-text-soft tabular-nums">
                     {formattedHour}
                   </span>
                   <div className="flex-1 border-b border-monk-border/40" />
@@ -410,7 +410,7 @@ export function DayTimeBlockVisualizer({
                       </div>
 
                       <div className="flex items-center gap-1.5 shrink-0">
-                        <span className="font-mono text-[10px] font-bold text-monk-accent">
+                        <span className="font-mono text-[11px] font-bold text-monk-accent">
                           {block.startTime} - {block.endTime}
                         </span>
                         <div
@@ -426,7 +426,7 @@ export function DayTimeBlockVisualizer({
                     </div>
 
                     {height > 44 ? (
-                      <div className="flex items-center gap-2 text-[10px] text-monk-muted">
+                      <div className="flex items-center gap-2 text-[11px] text-monk-muted">
                         <span className={`font-semibold uppercase tracking-wider ${style.text}`}>
                           {t(style.labelKey)}
                         </span>
@@ -445,7 +445,7 @@ export function DayTimeBlockVisualizer({
                 className="absolute left-0 right-0 z-20 flex items-center pointer-events-none"
                 style={{ top: nowOffsetTop }}
               >
-                <div className="flex items-center gap-1 px-1 bg-monk-danger-soft border border-monk-danger/30 rounded text-[9px] font-bold text-monk-danger uppercase tracking-wider font-mono shadow-sm">
+                <div className="flex items-center gap-1 px-1 bg-monk-danger-soft border border-monk-danger/30 rounded text-[10px] font-bold text-monk-danger uppercase tracking-wider font-mono shadow-sm">
                   <span className="h-1.5 w-1.5 rounded-full bg-monk-danger animate-ping" />
                   <span>{t("timeline.daily.nowMarker")}</span>
                 </div>

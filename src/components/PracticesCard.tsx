@@ -266,7 +266,7 @@ export function PracticesCard() {
                         {periodLabel}
                       </span>
                       {atCurrentPeriod ? (
-                        <span className="text-[10px] text-monk-muted/70">
+                        <span className="text-[11px] text-monk-text-soft">
                           {scale === "month"
                             ? (lang === "en" ? "This month" : "Bulan ini")
                             : (lang === "en" ? "This week" : "Minggu ini")}
@@ -278,7 +278,7 @@ export function PracticesCard() {
                             hapticPress("light");
                             setAnchor(getTodayDateString());
                           }}
-                          className="text-[10px] font-medium text-monk-accent hover:underline"
+                          className="text-[11px] font-medium text-monk-accent hover:underline"
                         >
                           {scale === "month"
                             ? (lang === "en" ? "Back to this month" : "Kembali ke bulan ini")
@@ -343,10 +343,10 @@ export function PracticesCard() {
                           key={day.date}
                           title={day.date}
                           aria-label={`${day.date}${day.done ? "" : lang === "en" ? " not done" : " belum"}`}
-                          className={`grid h-6 flex-1 place-items-center rounded-md border font-mono text-[10px] ${
+                          className={`grid h-6 flex-1 place-items-center rounded-md border font-mono text-[11px] ${
                             day.done
                               ? "border-monk-success/40 bg-monk-success/15 text-monk-success"
-                              : "border-monk-border/60 bg-monk-surface text-monk-muted/40"
+                              : "border-monk-border/60 bg-monk-surface text-monk-text-soft"
                           }`}
                         >
                           {day.done ? <Check size={11} strokeWidth={3} /> : labels[index]}
@@ -379,7 +379,7 @@ export function PracticesCard() {
                               style={{ height: `${count === 0 ? 2 : Math.max(4, (count / peak) * 24)}px` }}
                             />
                           </span>
-                          <span className="font-mono text-[9px] text-monk-muted/70">
+                          <span className="font-mono text-[10px] text-monk-text-soft">
                             {WEEKDAY_NAMES[index].slice(0, 2)}
                           </span>
                         </span>
@@ -393,7 +393,7 @@ export function PracticesCard() {
                           : `Kamu biasanya hadir hari ${WEEKDAY_NAMES[view.modalWeekday]}.`}
                       </p>
                     ) : (
-                      <p className="text-[11px] leading-relaxed text-monk-muted/70">
+                      <p className="text-[11px] leading-relaxed text-monk-text-soft">
                         {lang === "en"
                           ? "Not enough yet to see a pattern — that is fine."
                           : "Belum cukup untuk melihat pola — tidak masalah."}
@@ -460,7 +460,7 @@ export function PracticesCard() {
                   hapticPress("medium");
                   store.removePractice(practice.id);
                 }}
-                className="grid h-7 w-7 shrink-0 place-items-center rounded-lg text-monk-muted/60 transition hover:bg-monk-soft hover:text-monk-danger"
+                className="grid h-7 w-7 shrink-0 place-items-center rounded-lg text-monk-text-soft transition hover:bg-monk-soft hover:text-monk-danger"
               >
                 <X size={13} />
               </button>
@@ -479,7 +479,7 @@ export function PracticesCard() {
                 if (e.key === "Escape") setAdding(false);
               }}
               placeholder={t("practice.namePlaceholder")}
-              className="w-full rounded-xl border border-monk-border bg-monk-surface px-3 py-2 text-sm text-monk-text placeholder:text-monk-muted/60 focus:border-monk-accent focus:outline-none"
+              className="w-full rounded-xl border border-monk-border bg-monk-surface px-3 py-2 text-sm text-monk-text placeholder:text-monk-text-soft focus:border-monk-accent focus:outline-none"
             />
             <div className="flex items-center justify-between gap-2">
               <label className="flex items-center gap-2 text-[11px] font-medium text-monk-muted">

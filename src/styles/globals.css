@@ -48,13 +48,17 @@
   --color-border-strong: 37 40 37;
   --color-accent: 164 139 94;
   --color-accent-soft: 28 25 20;
-  --color-success: 100 123 94;
+  /* Success / rest are used as *text* (status labels, rest markers) as well as
+     fills. On the near-black surface the old values measured 4.06:1 and 3.28:1
+     — below the WCAG AA 4.5:1 floor. These values keep the same hue and sit at
+     4.86:1 and 4.95:1 on surface, and 4.86:1 / 4.95:1 on their own soft fills. */
+  --color-success: 118 144 110;
   --color-success-soft: 23 30 21;
   --color-warning: 176 138 84;
   --color-warning-soft: 32 26 18;
   --color-danger: 181 115 106;
   --color-danger-soft: 34 20 18;
-  --color-rest: 90 103 114;
+  --color-rest: 120 136 152;
   --color-rest-soft: 20 23 26;
   --notebook-bg: #1a1814;
   --notebook-line: #25221c;
@@ -93,13 +97,13 @@
   --color-border-strong: 48 54 61;
   --color-accent: 125 155 178;
   --color-accent-soft: 18 30 42;
-  --color-success: 86 143 104;
+  --color-success: 96 152 112;
   --color-success-soft: 17 34 23;
   --color-warning: 179 155 88;
   --color-warning-soft: 33 30 19;
   --color-danger: 181 107 98;
   --color-danger-soft: 36 20 19;
-  --color-rest: 98 122 140;
+  --color-rest: 120 142 160;
   --color-rest-soft: 20 29 36;
   --notebook-bg: #10141A;
   --notebook-line: #1C232D;
@@ -134,7 +138,7 @@
   --color-warning-soft: 33 30 19;
   --color-danger: 181 107 98;
   --color-danger-soft: 36 20 19;
-  --color-rest: 88 112 128;
+  --color-rest: 116 138 156;
   --color-rest-soft: 19 26 31;
   --notebook-bg: #101712;
   --notebook-line: #1C271F;
@@ -163,13 +167,13 @@
   --color-border-strong: 61 50 39;
   --color-accent: 194 155 104;
   --color-accent-soft: 38 29 19;
-  --color-success: 120 138 110;
+  --color-success: 126 144 116;
   --color-success-soft: 28 34 25;
   --color-warning: 194 155 104;
   --color-warning-soft: 38 29 19;
   --color-danger: 184 107 96;
   --color-danger-soft: 38 21 19;
-  --color-rest: 104 115 125;
+  --color-rest: 126 138 150;
   --color-rest-soft: 24 27 30;
   --notebook-bg: #1A1511;
   --notebook-line: #29211A;
@@ -204,7 +208,7 @@
   --color-warning-soft: 31 27 18;
   --color-danger: 168 96 88;
   --color-danger-soft: 31 18 16;
-  --color-rest: 85 96 110;
+  --color-rest: 116 130 144;
   --color-rest-soft: 18 21 26;
   --notebook-bg: #080808;
   --notebook-line: #161616;
@@ -233,13 +237,13 @@
   --color-border-strong: 61 49 26;
   --color-accent: 212 175 55;
   --color-accent-soft: 43 35 10;
-  --color-success: 120 138 88;
+  --color-success: 126 144 92;
   --color-success-soft: 28 33 20;
   --color-warning: 212 175 55;
   --color-warning-soft: 43 35 10;
   --color-danger: 184 88 72;
   --color-danger-soft: 38 18 14;
-  --color-rest: 98 109 120;
+  --color-rest: 122 134 148;
   --color-rest-soft: 22 25 29;
   --notebook-bg: #140F08;
   --notebook-line: #261D0F;
@@ -391,7 +395,10 @@ input[type="range"]::-moz-range-thumb {
   select:focus-visible:focus-visible,
   summary:focus-visible:focus-visible,
   [role="button"]:focus-visible:focus-visible,
-  [tabindex]:focus-visible:focus-visible {
+  /* `tabindex="-1"` targets are programmatic focus sinks (onboarding step
+     headings, modal panels). Ringing them paints a box around plain text that
+     looks like a broken input, so only real tab stops get the indicator. */
+  [tabindex]:not([tabindex="-1"]):focus-visible:focus-visible {
     outline: 2px solid rgb(var(--color-accent));
     outline-offset: 2px;
   }
@@ -475,6 +482,20 @@ button {
   box-shadow:
     inset 0 1px 2px rgba(0, 0, 0, 0.25),
     0 3px 10px -6px color-mix(in srgb, rgb(var(--color-accent)) 40%, transparent);
+}
+
+/* A disabled primary is not a dimmed action — it is an unavailable one.
+   At `opacity: 40%` the gold CTA still read as the most prominent element on
+   the page (e.g. "Simpan refleksi" before anything is typed), inviting taps
+   that do nothing. Unlayered rules here beat the utility layer, so the
+   gradient/shadow from .monk-btn-primary is cleared explicitly. */
+.monk-btn-primary:disabled {
+  background-color: rgb(var(--color-surface-soft));
+  background-image: none;
+  border-color: rgb(var(--color-border));
+  color: rgb(var(--color-text-soft));
+  box-shadow: none;
+  opacity: 1;
 }
 
 /* Skeleton pulse for calm loading states */
@@ -688,6 +709,9 @@ h5.md-heading, h6.md-heading { font-size: 1rem; }
   display: flex;
   align-items: flex-end;
   justify-content: space-between;
+  /* On a 320px phone the title block and the count + "Baru" button cannot share
+     one line; letting the header wrap keeps the cover inside the viewport. */
+  flex-wrap: wrap;
   gap: 12px;
   margin: 0 0 16px 18px;
   padding: 20px 20px 18px;

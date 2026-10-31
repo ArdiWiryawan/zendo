@@ -2,9 +2,9 @@ import { createFocusPhases } from "../constants/focusPresets";
 import type { FocusSession } from "../types/app";
 
 export type FocusTickAction =
-  | { type: "advance" }
+  | { type: "advance"; /** Nominal wall-clock instant the boundary was crossed (startTime + elapsed planned phases). */ at?: string }
   | { type: "tick"; elapsedSeconds: number }
-  | { type: "complete" };
+  | { type: "complete"; /** Nominal wall-clock instant the session finished. */ at?: string };
 
 export type FocusTickBell = {
   title: string;
@@ -40,7 +40,17 @@ export function planFocusTick(session: FocusSession, now: number): FocusTickPlan
   let remaining = elapsed;
   let index = currentIndex;
   let crossed = 0;
+  // Wall-clock instant of each crossed boundary: startTime + every planned
+  // phase before it. When boundary detection is late (frozen tab, suspended
+  // worker, delayed catch-up), the advance must anchor the NEXT phase to this
+  // nominal instant instead of the late "now", or the whole schedule shifts by
+  // exactly the detection latency and every later bell rings late too.
+  const startMs = new Date(session.startTime).getTime();
+  let boundaryMs = startMs;
+  const crossedAt: string[] = [];
   while (index < phases.length - 1 && remaining >= (phases[index]?.plannedMinutes ?? 0) * 60) {
+    boundaryMs += (phases[index]?.plannedMinutes ?? 0) * 60 * 1000;
+    crossedAt.push(new Date(boundaryMs).toISOString());
     remaining -= (phases[index]?.plannedMinutes ?? 0) * 60;
     index++;
     crossed++;
@@ -48,9 +58,13 @@ export function planFocusTick(session: FocusSession, now: number): FocusTickPlan
 
   if (remaining >= (phases[index]?.plannedMinutes ?? 0) * 60) {
     // The last phase has also elapsed: cross whatever remains, then complete.
-    const advances = Array.from({ length: phases.length - 1 - currentIndex }, () => ({ type: "advance" as const }));
+    boundaryMs += (phases[index]?.plannedMinutes ?? 0) * 60 * 1000;
+    const advances = Array.from({ length: phases.length - 1 - currentIndex }, (_, i) => ({
+      type: "advance" as const,
+      at: crossedAt[i]
+    }));
     return {
-      actions: [...advances, { type: "complete" as const }],
+      actions: [...advances, { type: "complete" as const, at: new Date(boundaryMs).toISOString() }],
       bell: { title: "Session complete", body: "You did the work. Rest well.", vibrate: 300 }
     };
   }
@@ -58,7 +72,7 @@ export function planFocusTick(session: FocusSession, now: number): FocusTickPlan
   if (crossed > 0) {
     const settled = phases[index];
     return {
-      actions: Array.from({ length: crossed }, () => ({ type: "advance" as const })),
+      actions: crossedAt.map((at) => ({ type: "advance" as const, at })),
       bell: settled?.type === "break"
         ? { title: "Break time", body: "Step away and recharge.", vibrate: [200, 100, 200] }
         : { title: "Focus block", body: "Back to deep work. You've got this.", vibrate: [200, 100, 200] }

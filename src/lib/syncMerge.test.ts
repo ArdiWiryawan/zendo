@@ -256,3 +256,53 @@ describe("mergeRemoteState", () => {
     });
   });
 });
+
+describe("mergeRemoteState focusSessions pause guard", () => {
+  const PAUSED_AT = "2026-08-10T08:10:00.000Z";
+  const mkSession = (over: Record<string, unknown>) =>
+    ({
+      id: "fs1",
+      status: "running",
+      startTime: "2026-08-10T08:00:00.000Z",
+      elapsedSeconds: 300,
+      createdAt: "2026-08-10T08:00:00.000Z",
+      updatedAt: "2026-08-10T08:00:00.000Z",
+      ...over,
+    }) as any;
+
+  it("a running remote record whose clock predates the pause cannot resurrect the paused session", () => {
+    const local = mkState();
+    local.focusSessions = [
+      mkSession({ status: "paused", pausedAt: PAUSED_AT, elapsedSeconds: 600, updatedAt: PAUSED_AT }),
+    ];
+    // A second tab that never saw the pause: still ticking its running copy —
+    // its updatedAt is NEWER than the pause, so plain last-write-wins would
+    // take it. Its startTime is before pausedAt: it is the pre-pause clock.
+    const remote = mkState();
+    remote.focusSessions = [
+      mkSession({ status: "running", startTime: "2026-08-10T08:00:00.000Z", updatedAt: "2026-08-10T08:12:00.000Z" }),
+    ];
+
+    const merged = mergeRemoteState(local, remote);
+    const session = merged.focusSessions.find((s) => s.id === "fs1")!;
+    expect(session.status).toBe("paused");
+    expect(session.elapsedSeconds).toBe(600);
+  });
+
+  it("a genuine resume on another device (startTime after pausedAt) still wins", () => {
+    const local = mkState();
+    local.focusSessions = [
+      mkSession({ status: "paused", pausedAt: PAUSED_AT, elapsedSeconds: 600, updatedAt: PAUSED_AT }),
+    ];
+    const resumedAt = "2026-08-10T08:15:00.000Z"; // after the pause
+    const remote = mkState();
+    remote.focusSessions = [
+      mkSession({ status: "running", startTime: resumedAt, updatedAt: "2026-08-10T08:15:00.000Z" }),
+    ];
+
+    const merged = mergeRemoteState(local, remote);
+    const session = merged.focusSessions.find((s) => s.id === "fs1")!;
+    expect(session.status).toBe("running");
+    expect(session.startTime).toBe(resumedAt);
+  });
+});

@@ -4,10 +4,8 @@ import { createBrowserRouter, RouterProvider } from "react-router-dom";
 import App from "./app/App";
 import "./styles/globals.css";
 import { registerSW } from "virtual:pwa-register";
-import { getState, isSyncActive, setState, subscribeAuthState } from "./lib/supabase";
-import { useMonkStore } from "./store/useMonkStore";
-import { setSyncStatus } from "./lib/syncStatus";
-import { mergeRemoteState } from "./lib/syncMerge";
+import { startCloudSync } from "./lib/cloudSync";
+import { startCrossTabSync } from "./lib/crossTabSync";
 
 // Batch C: actually register the service worker (import alone is a no-op)
 registerSW({ immediate: true });
@@ -23,107 +21,5 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
   </React.StrictMode>
 );
 
-// Initialize Supabase sync after app renders (non-blocking)
-let lastPushState: ReturnType<typeof useMonkStore.getState> | null = null;
-
-async function initSync(): Promise<void> {
-  const pushState = async () => {
-    const state = useMonkStore.getState();
-    lastPushState = state;
-    if (!navigator.onLine) {
-      setSyncStatus("offline");
-      return;
-    }
-    try {
-      if (!(await isSyncActive())) {
-        // No account (or Supabase not configured) — sync is local-only.
-        setSyncStatus("offline");
-        return;
-      }
-      setSyncStatus("syncing");
-      await setState(state);
-      setSyncStatus("synced");
-    } catch {
-      setSyncStatus(navigator.onLine ? "error" : "offline");
-    }
-  };
-
-  const pullRemote = async () => {
-    if (!navigator.onLine) {
-      setSyncStatus("offline");
-      return;
-    }
-    try {
-      if (!(await isSyncActive())) {
-        setSyncStatus("offline");
-        return;
-      }
-      setSyncStatus("syncing");
-      const remote = await Promise.race([
-        getState(),
-        new Promise<null>((_, rej) => setTimeout(() => rej(new Error("timeout")), 3000))
-      ]);
-
-      if (remote && Object.keys(remote).length > 0) {
-        // Safety net: snapshot current local state before applying remote, so a
-        // bad sync can never silently destroy newer local data without recovery.
-        const before = useMonkStore.getState();
-        localStorage.setItem("zendo_state_backup_v1", JSON.stringify(before));
-        // Merge last-write-wins by updatedAt — a stale/empty remote must not
-        // clobber newer local goals/sessions/journal (the old spread did).
-        useMonkStore.setState((state) => mergeRemoteState(state, remote));
-      }
-      if (await isSyncActive()) setSyncStatus("synced");
-    } catch (err) {
-      console.warn("[supabase] offline mode", err);
-      setSyncStatus("offline");
-    }
-  };
-
-  const onOnline = () => {
-    void isSyncActive().then((active) => {
-      setSyncStatus(active ? "synced" : "offline");
-      // Reconnect may have accumulated offline edits; push them now (the
-      // debounced subscriber also fires on the next store change, but if the
-      // offline edits were already saved locally no change fires on reconnect).
-      if (active && lastPushState) void pushState();
-    });
-  };
-  const onOffline = () => setSyncStatus("offline");
-  window.addEventListener("online", onOnline);
-  window.addEventListener("offline", onOffline);
-
-  // Arm the debounced push only AFTER the initial pull settles (success or
-  // failure). Ordering matters: a store write during boot (e.g. recordOpen()
-  // runs on every mount and does set({appSettings})) would otherwise fire
-  // pushState 800ms later — shipping a state that hydrate() had not yet
-  // reconciled with the cloud row, and wiping it. Nothing can push during the
-  // pull window because the app has just started and holds no user edits yet.
-  // A future reader moving this back above `pullRemote()` reintroduces that bug.
-  let timer: ReturnType<typeof setTimeout> | null = null;
-  const armPush = () => {
-    useMonkStore.subscribe(() => {
-      if (timer) clearTimeout(timer);
-      timer = setTimeout(() => void pushState(), 800);
-    });
-  };
-
-  // Listen to Auth state changes to pull cloud data on login / reset on logout
-  subscribeAuthState((_event, session) => {
-    if (session?.user) {
-      void pullRemote();
-    } else {
-      setSyncStatus("offline");
-    }
-  });
-
-  try {
-    await pullRemote();
-  } finally {
-    // Offline boot: the pull rejects or returns early, but the subscription
-    // still arms here, so offline edits are pushed as soon as sync is possible.
-    armPush();
-  }
-}
-
-initSync();
+startCrossTabSync();
+startCloudSync();

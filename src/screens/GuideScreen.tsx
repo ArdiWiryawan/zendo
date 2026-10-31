@@ -74,7 +74,7 @@ function ConceptRow({ title, body, example }: Concept) {
     <div className="border-t border-monk-border/40 px-4 py-3 first:border-t-0">
       <h3 className="text-sm font-semibold text-monk-text">{t(title)}</h3>
       <p className="mt-1 text-sm leading-6 text-monk-muted">{t(body)}</p>
-      <p className="mt-1 text-xs leading-5 text-monk-muted/70">
+      <p className="mt-1 text-xs leading-5 text-monk-text-soft">
         {t("guide.exampleLabel")}: {t(example)}
       </p>
     </div>
@@ -137,7 +137,7 @@ export default function GuideScreen() {
           </section>
         ))}
 
-        <p className="px-1 text-xs leading-5 text-monk-muted/70">{t("guide.footer")}</p>
+        <p className="px-1 text-xs leading-5 text-monk-text-soft">{t("guide.footer")}</p>
       </div>
     </div>
   );

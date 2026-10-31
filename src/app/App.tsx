@@ -149,24 +149,54 @@ export default function App() {
   useEffect(() => {
     if (!ready) return;
 
-    const notify = (title: string, body: string) => {
+    const closeFocusNotifications = () => {
+      focusNotifRef.current?.close();
+      focusNotifRef.current = null;
+      const sw = navigator.serviceWorker;
+      if (sw?.controller) {
+        void sw.ready
+          .then((reg) => reg.getNotifications({ tag: "zendo-focus" }))
+          .then((list) => list.forEach((n) => n.close()))
+          .catch(() => {
+            /* ignore */
+          });
+      }
+    };
+
+    const notify = (title: string, body: string, vibrate?: number | number[]) => {
       if (typeof Notification === "undefined" || Notification.permission !== "granted") return;
       const isHidden = typeof document !== "undefined" && document.visibilityState === "hidden";
+      const options = {
+        body,
+        icon: "/apple-touch-icon.png",
+        tag: "zendo-focus",
+        // When hidden/backgrounded on desktop, silent MUST be false so OS plays audio chime!
+        // When visible in tab, in-app Web Audio plays Zen bell, so silent is true to prevent double audio.
+        silent: !isHidden,
+        requireInteraction: isHidden,
+        ...(vibrate !== undefined ? { vibrate } : {})
+      };
+      // Preferred path: the service worker registration. `new Notification()` is
+      // an illegal constructor inside an installed Android PWA — the old try/catch
+      // silently swallowed it, so the phone never saw a phase notification at
+      // all. registration.showNotification works everywhere permission is
+      // granted, foreground or background.
+      const sw = navigator.serviceWorker;
+      if (sw?.controller) {
+        void sw.ready
+          .then((reg) => reg.showNotification(title, options))
+          .catch(() => {
+            /* ignore */
+          });
+        return;
+      }
       try {
         // Replace rather than stack: without a stable tag (and without closing
         // the previous one) every phase boundary leaves an alert in the OS
         // notification centre, and it is still sitting there after the session
         // is ended early.
         focusNotifRef.current?.close();
-        focusNotifRef.current = new Notification(title, {
-          body,
-          icon: "/apple-touch-icon.png",
-          tag: "zendo-focus",
-          // When hidden/backgrounded on desktop, silent MUST be false so OS plays audio chime!
-          // When visible in tab, in-app Web Audio plays Zen bell, so silent is true to prevent double audio.
-          silent: !isHidden,
-          requireInteraction: isHidden,
-        });
+        focusNotifRef.current = new Notification(title, options);
       } catch {
         /* ignore */
       }
@@ -184,8 +214,7 @@ export default function App() {
       if (!active || active.status !== "running") {
         // Session gone or paused — clear any in-tab alert so an ended-early
         // session leaves nothing behind in the notification centre.
-        focusNotifRef.current?.close();
-        focusNotifRef.current = null;
+        closeFocusNotifications();
         return;
       }
       const fresh = active;
@@ -200,7 +229,10 @@ export default function App() {
         if (action.type === "tick") {
           tickFocusSession(fresh.id, action.elapsedSeconds);
         } else if (action.type === "advance") {
-          advanceFocusPhase(fresh.id);
+          // Pass the boundary's nominal instant so the next phase is anchored to
+          // the schedule, not to the (possibly late) detection moment — without
+          // this, every delayed catch-up shifts all later bells by the delay.
+          advanceFocusPhase(fresh.id, action.at);
           transitioned = true;
         } else {
           completeFocusSession(fresh.id, true);
@@ -225,7 +257,21 @@ export default function App() {
             playZenBell();
           }
           if ("vibrate" in navigator) navigator.vibrate(bell.vibrate);
-          notify(bell.title, bell.body);
+          notify(bell.title, bell.body, bell.vibrate);
+          // Belt and braces for the foreground tab: the OS notification is
+          // silent while the tab is visible (in-app chime covers audio), so an
+          // in-app banner is the only feedback that never gets throttled,
+          // suspended or permission-gated.
+          if (typeof document !== "undefined" && document.visibilityState === "visible") {
+            const lang = useMonkStore.getState().appSettings.language;
+            reminderToastRef.current?.show(
+              bell.title === "Break time"
+                ? lang === "en" ? "Break time — step away." : "Waktunya istirahat — tarik napas."
+                : bell.title === "Focus block"
+                  ? lang === "en" ? "Break over — back to focus." : "Istirahat selesai — kembali fokus."
+                  : lang === "en" ? "Session complete. Well done." : "Sesi selesai. Kerja bagus."
+            );
+          }
         }
       }
     };

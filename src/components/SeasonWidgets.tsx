@@ -154,7 +154,7 @@ export function FrictionWhy({ className = "" }: { className?: string }) {
     <div className={`rounded-xl border border-monk-accent/20 bg-monk-accent-soft/30 px-3.5 py-3 ${className}`}>
       <div className="flex items-center gap-1.5">
         <span className="h-1.5 w-1.5 rounded-full bg-monk-accent animate-pulse" />
-        <p className="text-[10px] font-bold uppercase tracking-widest text-monk-accent">{t("season.rememberWhy")}</p>
+        <p className="text-[11px] font-bold uppercase tracking-widest text-monk-accent">{t("season.rememberWhy")}</p>
       </div>
       {intrinsicWhy ? (
         <p className="mt-1 text-sm font-semibold leading-5 text-monk-text line-clamp-2">{intrinsicWhy}</p>
@@ -284,7 +284,7 @@ export function WhyCard() {
   if (editing) {
     return (
       <Card className="border-monk-accent/25 bg-monk-accent-soft/30 p-5">
-        <p className="mb-3 text-[10px] font-bold uppercase tracking-widest text-monk-accent">
+        <p className="mb-3 text-[11px] font-bold uppercase tracking-widest text-monk-accent">
           {hasWhy ? t("why.editButton") : t("why.sectionTitle")}
         </p>
         <WhyEditor
@@ -302,7 +302,7 @@ export function WhyCard() {
   if (!hasWhy) {
     return (
       <Card className="border-dashed border-monk-accent/30 bg-monk-accent-soft/20 p-5">
-        <p className="text-[10px] font-bold uppercase tracking-widest text-monk-accent">{t("why.sectionTitle")}</p>
+        <p className="text-[11px] font-bold uppercase tracking-widest text-monk-accent">{t("why.sectionTitle")}</p>
         <p className="mt-2 text-sm leading-6 text-monk-muted">
           {t("why.emptyDesc")}
         </p>
@@ -317,10 +317,10 @@ export function WhyCard() {
     <Card className="border-monk-accent/25 bg-monk-accent-soft/30 p-5 space-y-3">
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-center gap-2">
-          <span className="rounded-full bg-monk-accent/20 px-2 py-0.5 text-[10px] font-bold text-monk-accent">
+          <span className="rounded-full bg-monk-accent/20 px-2 py-0.5 text-[11px] font-bold text-monk-accent">
             {t("why.badgeWhy")}
           </span>
-          <p className="text-[10px] font-bold uppercase tracking-widest text-monk-muted">{t("why.sectionTitle")}</p>
+          <p className="text-[11px] font-bold uppercase tracking-widest text-monk-muted">{t("why.sectionTitle")}</p>
         </div>
         <button
           type="button"
@@ -338,7 +338,7 @@ export function WhyCard() {
 
       {outcome ? (
         <div className="rounded-xl border border-monk-accent/30 bg-monk-bg/60 p-3">
-          <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-monk-accent">
+          <div className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-monk-accent">
             <span>{t("why.badgeOutcome")}</span>
           </div>
           <p className="mt-1 text-sm leading-relaxed text-monk-text-soft">{outcome}</p>
@@ -347,7 +347,7 @@ export function WhyCard() {
 
       {antiWhy ? (
         <div className="rounded-xl border border-monk-warning/25 bg-monk-warning/5 p-3">
-          <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-monk-warning">
+          <div className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-monk-warning">
             <span>{t("why.badgeAntiWhy")}</span>
           </div>
           <p className="mt-1 text-xs leading-relaxed text-monk-text-soft">{antiWhy}</p>

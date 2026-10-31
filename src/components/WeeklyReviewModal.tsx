@@ -436,7 +436,7 @@ export function WeeklyReviewModal({ isOpen, onClose, weeklyPlanId }: WeeklyRevie
                         <h4 className="text-xs font-bold uppercase tracking-wider text-monk-accent">
                           {t("weeklyReviewModal.summaryJournal")}
                         </h4>
-                        <span className="text-[10px] font-semibold text-monk-muted">
+                        <span className="text-[11px] font-semibold text-monk-muted">
                           {t("weeklyReviewModal.journalCount", {
                             n: journalRecap.entryCount,
                             total: journalRecap.dayCount
@@ -446,7 +446,7 @@ export function WeeklyReviewModal({ isOpen, onClose, weeklyPlanId }: WeeklyRevie
                       <div className="mt-2 max-h-64 space-y-2 overflow-y-auto pr-1">
                         {journalRecap.entries.map((entry) => (
                           <div key={entry.id} className="rounded-xl bg-monk-surface/70 p-2.5">
-                            <p className="text-[10px] font-bold uppercase tracking-wide text-monk-muted">
+                            <p className="text-[11px] font-bold uppercase tracking-wide text-monk-muted">
                               {formatHumanDate(entry.date)}
                               {entry.mood ? ` · ${MOOD_EMOJI[entry.mood]}` : ""}
                             </p>
@@ -983,7 +983,7 @@ export function WeeklyReviewModal({ isOpen, onClose, weeklyPlanId }: WeeklyRevie
                               <Check size={12} strokeWidth={3} />
                             </span>
                           ) : (
-                            <span className="text-[10px] font-mono text-monk-muted">
+                            <span className="text-[11px] font-mono text-monk-muted">
                               ~{act.durationMin}m
                             </span>
                           )}

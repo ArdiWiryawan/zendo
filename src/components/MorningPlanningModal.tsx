@@ -609,7 +609,7 @@ export function MorningPlanningModal({
             <div className="rounded-monk border border-monk-accent/35 bg-monk-accent/[0.07] p-5 space-y-3.5 shadow-soft">
               <div className="flex flex-wrap items-baseline justify-between gap-3">
                 <div className="flex min-w-0 items-baseline gap-2">
-                  <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-monk-accent/80">
+                  <span className="text-[11px] font-bold uppercase tracking-[0.14em] text-monk-accent">
                     {t("planning.todayFocus")}
                   </span>
                 </div>
@@ -636,14 +636,14 @@ export function MorningPlanningModal({
                   value={dailyHighlight}
                   onChange={(e) => setDailyHighlight(e.target.value)}
                   placeholder={goal?.keystoneAction || t("planning.dailyHighlightPlaceholder")}
-                  className="w-full resize-y rounded-xl border border-monk-accent/25 bg-monk-surface/80 px-4 py-3.5 font-serif text-lg leading-relaxed text-monk-text placeholder:text-monk-muted/50 placeholder:italic focus:border-monk-accent focus:ring-1 focus:ring-monk-accent/30 focus:outline-none transition"
+                  className="w-full resize-y rounded-xl border border-monk-accent/25 bg-monk-surface/80 px-4 py-3.5 font-serif text-lg leading-relaxed text-monk-text placeholder:text-monk-text-soft placeholder:italic focus:border-monk-accent focus:ring-1 focus:ring-monk-accent/30 focus:outline-none transition"
                 />
               </div>
             </div>
 
             {/* Main Action — the next controllable step, and what Focus runs on */}
             <div className="rounded-monk border border-monk-border/80 bg-monk-soft/40 p-5 space-y-3">
-              <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-monk-muted">
+              <span className="text-[11px] font-bold uppercase tracking-[0.14em] text-monk-muted">
                 {t("planning.mainActionTitle")}
               </span>
               <p className="text-xs text-monk-muted/90 leading-relaxed">
@@ -654,7 +654,7 @@ export function MorningPlanningModal({
                 value={mainAction}
                 onChange={(e) => setMainAction(e.target.value)}
                 placeholder={goal?.keystoneAction || t("planning.mainActionPlaceholder")}
-                className="w-full rounded-xl border border-monk-border bg-monk-surface px-4 py-3 text-sm font-semibold text-monk-text placeholder:font-normal placeholder:text-monk-muted/50 focus:border-monk-accent focus:ring-1 focus:ring-monk-accent/30 focus:outline-none transition"
+                className="w-full rounded-xl border border-monk-border bg-monk-surface px-4 py-3 text-sm font-semibold text-monk-text placeholder:font-normal placeholder:text-monk-text-soft focus:border-monk-accent focus:ring-1 focus:ring-monk-accent/30 focus:outline-none transition"
               />
             </div>
 
@@ -835,7 +835,7 @@ export function MorningPlanningModal({
                       value={newCustomTag}
                       onChange={(e) => setNewCustomTag(e.target.value)}
                       placeholder={t("planning.customTagPlaceholder")}
-                      className="w-full rounded-xl border border-monk-border bg-monk-surface px-3 py-1.5 text-xs text-monk-text placeholder:text-monk-muted/50 focus:border-monk-accent focus:outline-none"
+                      className="w-full rounded-xl border border-monk-border bg-monk-surface px-3 py-1.5 text-xs text-monk-text placeholder:text-monk-text-soft focus:border-monk-accent focus:outline-none"
                     />
                   </div>
                   <button
@@ -862,7 +862,7 @@ export function MorningPlanningModal({
                     <button
                       type="button"
                       onClick={handleClearAllBlocks}
-                      className="text-[10px] text-monk-muted hover:text-monk-danger transition underline"
+                      className="text-[11px] text-monk-muted hover:text-monk-danger transition underline"
                     >
                       {t("planning.clearBlocks")}
                     </button>
@@ -904,10 +904,10 @@ export function MorningPlanningModal({
                               <span className="font-mono text-xs font-bold text-monk-text">
                                 {block.startTime} – {block.endTime}
                               </span>
-                              <span className="text-[10px] font-mono text-monk-muted">
+                              <span className="text-[11px] font-mono text-monk-muted">
                                 ({durationText})
                               </span>
-                              <span className={`rounded-md px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider ${cfg.bgClass} ${cfg.colorClass}`}>
+                              <span className={`rounded-md px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider ${cfg.bgClass} ${cfg.colorClass}`}>
                                 {block.customCategory || t(cfg.labelKey)}
                               </span>
                             </div>

@@ -26,6 +26,7 @@ import {
   Moon,
   Palette,
   RotateCcw,
+  RefreshCw,
   ShieldCheck,
   Smartphone,
   Trash2,
@@ -42,6 +43,7 @@ import {
   serializeLauncherSnapshot,
 } from "../lib/launcherBridge";
 import { supabase as getSupabase } from "../lib/supabase";
+import { syncNow } from "../lib/cloudSync";
 import { useSyncStatus, type SyncStatus } from "../lib/syncStatus";
 import { useMonkStore } from "../store/useMonkStore";
 import { useT } from "../i18n";
@@ -72,15 +74,16 @@ const groupReveal = {
 };
 
 // The six aesthetic palettes, in the order the design system lists them.
-// `accent` is the palette's own accent token, shown as the swatch so the choice
-// reads before the label does.
-const PALETTES: { id: AppTheme; name: string; accent: string }[] = [
-  { id: "dark", name: "Dark Monk", accent: "#A48B5E" },
-  { id: "sumi_ink", name: "Sumi Slate", accent: "#7D9BB2" },
-  { id: "kyoto_moss", name: "Kyoto Moss", accent: "#6E9B7B" },
-  { id: "wabi_sabi", name: "Wabi-Sabi", accent: "#C29B68" },
-  { id: "kurogane", name: "Kurogane", accent: "#B0B0B0" },
-  { id: "temple_gold", name: "Temple Gold", accent: "#D4AF37" },
+// A swatch is two colours, not one: the palette's page background with its
+// accent at the centre. A single accent dot made Dark Monk and Wabi-Sabi look
+// identical at 16px, so the choice could not be made by eye.
+const PALETTES: { id: AppTheme; name: string; accent: string; bg: string }[] = [
+  { id: "dark", name: "Dark Monk", accent: "#A48B5E", bg: "#080908" },
+  { id: "sumi_ink", name: "Sumi Slate", accent: "#7D9BB2", bg: "#0D1117" },
+  { id: "kyoto_moss", name: "Kyoto Moss", accent: "#6E9B7B", bg: "#090D0A" },
+  { id: "wabi_sabi", name: "Wabi-Sabi", accent: "#C29B68", bg: "#14110E" },
+  { id: "kurogane", name: "Kurogane", accent: "#B0B0B0", bg: "#000000" },
+  { id: "temple_gold", name: "Temple Gold", accent: "#D4AF37", bg: "#0C0A06" },
 ];
 
 /** Reminders are the longest block on the page, so the whole schedule sits
@@ -118,6 +121,7 @@ export default function SettingsScreen() {
   const [confirmKind, setConfirmKind] = useState<null | "import" | "wipe">(null);
   const [pendingImport, setPendingImport] = useState<Record<string, unknown> | null>(null);
   const [session, setSession] = useState<{ email?: string } | null>(null);
+  const [syncingNow, setSyncingNow] = useState(false);
   const [proModalOpen, setProModalOpen] = useState(false);
   const [scheduleOpen, setScheduleOpen] = useState(false);
   const syncStatus = useSyncStatus();
@@ -192,6 +196,25 @@ export default function SettingsScreen() {
     if (!sb?.auth) return;
     await sb.auth.signOut();
     setSession(null);
+  };
+
+  // Manual reconcile for the moment auto-sync is visibly stale: pull merges the
+  // other device's data, then the debounced push uploads this one's edits.
+  const handleSyncNow = async () => {
+    if (syncingNow) return;
+    setSyncingNow(true);
+    try {
+      await syncNow();
+      toast.show(
+        lang === "id" ? "Sinkronisasi selesai." : "Sync complete."
+      );
+    } catch {
+      toast.show(
+        lang === "id" ? "Sinkronisasi gagal — cek koneksi." : "Sync failed — check your connection."
+      );
+    } finally {
+      setSyncingNow(false);
+    }
   };
 
 
@@ -328,7 +351,7 @@ export default function SettingsScreen() {
             className={timeInputClass}
           />
           {reminder.type === "season_countdown" ? (
-            <span className="text-[10px] text-monk-muted">
+            <span className="text-[11px] text-monk-muted">
               {tUI("reminder.season_countdownPrefix")} {reminder.daysBeforeSeasonEnd ?? 3} {tUI("reminder.season_countdownSuffix")}
             </span>
           ) : null}
@@ -387,14 +410,19 @@ export default function SettingsScreen() {
                       className="-my-2 grid min-h-11 w-7 shrink-0 place-items-center rounded-full transition active:scale-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-monk-accent focus-visible:ring-offset-2 focus-visible:ring-offset-monk-surface"
                     >
                       <span
-                        className={`h-4 w-4 rounded-full border transition ${
+                        className={`grid h-[22px] w-[22px] place-items-center rounded-full border transition ${
                           active
                             ? "border-monk-accent ring-2 ring-monk-accent ring-offset-2 ring-offset-monk-surface"
-                            : "border-white/20"
+                            : "border-white/15"
                         }`}
-                        style={{ backgroundColor: item.accent }}
+                        style={{ backgroundColor: item.bg }}
                         aria-hidden
-                      />
+                      >
+                        <span
+                          className="h-2 w-2 rounded-full"
+                          style={{ backgroundColor: item.accent }}
+                        />
+                      </span>
                     </button>
                   );
                 })}
@@ -465,7 +493,7 @@ export default function SettingsScreen() {
             >
               <ChevronRight
                 size={16}
-                className={`text-monk-muted/50 transition-transform ${scheduleOpen ? "rotate-90" : ""}`}
+                className={`text-monk-text-soft transition-transform ${scheduleOpen ? "rotate-90" : ""}`}
                 aria-hidden
               />
             </SettingsRow>
@@ -568,14 +596,30 @@ export default function SettingsScreen() {
               ariaLabel={tUI("settings.connectAccount")}
             >
               <span className={`h-2 w-2 rounded-full ${syncDotColor(syncStatus, localOnly)}`} aria-hidden />
-              <ChevronRight size={16} className="text-monk-muted/50" aria-hidden />
+              <ChevronRight size={16} className="text-monk-text-soft" aria-hidden />
             </SettingsRow>
             {session?.email ? (
-              <SettingsRow title={session.email}>
-                <GhostButton onClick={handleLogout} className="!min-h-11 !px-3 text-xs">
-                  {tUI("settings.logout")}
-                </GhostButton>
-              </SettingsRow>
+              <>
+                <SettingsRow title={session.email}>
+                  <GhostButton onClick={handleLogout} className="!min-h-11 !px-3 text-xs">
+                    {tUI("settings.logout")}
+                  </GhostButton>
+                </SettingsRow>
+                <SettingsRow
+                  icon={RefreshCw}
+                  title={lang === "id" ? "Sinkronkan sekarang" : "Sync now"}
+                  description={
+                    lang === "id"
+                      ? "Tarik data dari perangkat lain, lalu kirim perubahan dari perangkat ini."
+                      : "Pull data from your other device, then push this one's changes."
+                  }
+                >
+                  <GhostButton onClick={handleSyncNow} className="!min-h-11 !px-3 text-xs" disabled={syncingNow}>
+                    <RefreshCw size={14} className={`mr-1.5 ${syncingNow ? "animate-spin" : ""}`} aria-hidden />
+                    {syncingNow ? (lang === "id" ? "Menyinkron…" : "Syncing…") : lang === "id" ? "Sinkron" : "Sync"}
+                  </GhostButton>
+                </SettingsRow>
+              </>
             ) : null}
           </Card>
         </motion.section>
@@ -595,7 +639,7 @@ export default function SettingsScreen() {
               description={tUI("seasons.settingsRowDesc")}
               onPress={() => navigate(routes.seasons)}
             >
-              <ChevronRight size={16} className="text-monk-muted/50" aria-hidden />
+              <ChevronRight size={16} className="text-monk-text-soft" aria-hidden />
             </SettingsRow>
           </Card>
         </motion.section>
@@ -610,7 +654,7 @@ export default function SettingsScreen() {
               description={tUI("settings.guideRowDesc")}
               onPress={() => navigate(routes.guide)}
             >
-              <ChevronRight size={16} className="text-monk-muted/50" aria-hidden />
+              <ChevronRight size={16} className="text-monk-text-soft" aria-hidden />
             </SettingsRow>
             {/* Marking the grey-mode guide complete is guide progress, not a
                 display mode — it lives here next to the guide, not in Appearance. */}
@@ -645,7 +689,7 @@ export default function SettingsScreen() {
                 {tUI("settings.legalOpen")}
               </a>
             </SettingsRow>
-            <p className="px-4 py-2.5 text-[10px] text-monk-muted/50">
+            <p className="px-4 py-2.5 text-[11px] text-monk-text-soft">
               {tUI("settings.legalVersion", { version: LEGAL_VERSION, date: LEGAL_UPDATED })}
             </p>
           </Card>
@@ -662,7 +706,7 @@ export default function SettingsScreen() {
               onPress={() => setConfirmKind("wipe")}
               ariaLabel={tUI("settings.wipe")}
             >
-              <ChevronRight size={16} className="text-monk-danger/50" aria-hidden />
+              <ChevronRight size={16} className="text-monk-danger" aria-hidden />
             </SettingsRow>
           </Card>
         </motion.section>
@@ -677,13 +721,13 @@ export default function SettingsScreen() {
               onPress={() => setProModalOpen(true)}
               ariaLabel={tUI("settings.supportAria")}
             >
-              <ChevronRight size={16} className="text-monk-muted/50" aria-hidden />
+              <ChevronRight size={16} className="text-monk-text-soft" aria-hidden />
             </SettingsRow>
           </Card>
         </motion.section>
 
         {/* About */}
-        <p className="pt-1 text-center text-xs text-monk-muted/50">{tUI("settings.about")}</p>
+        <p className="pt-1 text-center text-xs text-monk-text-soft">{tUI("settings.about")}</p>
       </div>
 
       <CalmDialog
@@ -726,7 +770,7 @@ export default function SettingsScreen() {
  *  boundary, so a rule or an icon chip would only add noise. */
 function GroupLabel({ label }: { label: string }) {
   return (
-    <p className="mb-2 px-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-monk-muted/80">
+    <p className="mb-2 px-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-monk-muted">
       {label}
     </p>
   );
@@ -799,7 +843,7 @@ function SettingsRow({
             strokeWidth={1.5}
             /* mt-0.5 keeps the glyph on the title's optical centre when the
                description wraps to three lines. */
-            className={`mt-0.5 shrink-0 ${danger ? "text-monk-danger/70" : "text-monk-muted/80"}`}
+            className={`mt-0.5 shrink-0 ${danger ? "text-monk-danger" : "text-monk-muted"}`}
             aria-hidden
           />
         ) : null}

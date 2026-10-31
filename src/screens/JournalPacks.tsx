@@ -170,7 +170,7 @@ function PackList({
 
       {inProgress.length ? (
         <section className="space-y-3">
-          <p className="text-[10px] font-bold uppercase tracking-widest text-monk-muted">{t("packs.continue")}</p>
+          <p className="text-[11px] font-bold uppercase tracking-widest text-monk-muted">{t("packs.continue")}</p>
           {inProgress.map((item) => (
             <PackCard
               key={item.pack.id}
@@ -185,7 +185,7 @@ function PackList({
 
       <section className="space-y-3">
         {inProgress.length ? (
-          <p className="text-[10px] font-bold uppercase tracking-widest text-monk-muted">{t("packs.all")}</p>
+          <p className="text-[11px] font-bold uppercase tracking-widest text-monk-muted">{t("packs.all")}</p>
         ) : null}
         {rest.map((item) => (
           <PackCard
@@ -246,12 +246,12 @@ function PackCard({
           <div className="flex flex-wrap items-center gap-2">
             <p className="font-semibold text-monk-text">{pack.title}</p>
             {locked ? (
-              <span className="inline-flex items-center gap-0.5 rounded-full border border-monk-accent/30 bg-monk-accent-soft px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-monk-accent">
+              <span className="inline-flex items-center gap-0.5 rounded-full border border-monk-accent/30 bg-monk-accent-soft px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-monk-accent">
                 <Lock size={9} /> {t("packs.premium")}
               </span>
             ) : null}
             {completedCount > 0 && !inProgress ? (
-              <span className="rounded-full border border-monk-success/30 bg-monk-success-soft px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-monk-success">
+              <span className="rounded-full border border-monk-success/30 bg-monk-success-soft px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-monk-success">
                 {t("packs.doneCount", { n: completedCount })}
               </span>
             ) : null}
@@ -550,7 +550,7 @@ function PackSession({ pack, onBack }: { pack: JournalPack; onBack: () => void }
       </div>
 
       <div>
-        <span className="text-[10px] font-bold uppercase tracking-wider text-monk-accent">
+        <span className="text-[11px] font-bold uppercase tracking-wider text-monk-accent">
           {pack.title}
         </span>
         <h2 className="mt-1 text-lg font-semibold leading-snug text-monk-text">
@@ -603,7 +603,7 @@ function PackSession({ pack, onBack }: { pack: JournalPack; onBack: () => void }
             </div>
             {drawingOpen ? (
               <div className="rounded-xl border border-monk-accent/40 bg-monk-surface/95 p-3 shadow-sm animate-scale-in">
-                <div className="mb-2 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-monk-accent">
+                <div className="mb-2 flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-monk-accent">
                   <Palette size={12} />
                   <span>{t("notebook.drawTitle")}</span>
                 </div>

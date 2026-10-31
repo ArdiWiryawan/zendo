@@ -110,7 +110,7 @@ export function WelcomeScreen({ onNext }: WelcomeScreenProps) {
             >
               {t("welcome.signIn")}
             </Link>
-            <span className="text-monk-muted/50" aria-hidden>
+            <span className="text-monk-text-soft" aria-hidden>
               ·
             </span>
             <label className="inline-flex min-h-11 cursor-pointer items-center font-semibold text-monk-accent hover:underline focus-within:ring-2 focus-within:ring-monk-accent focus-within:ring-offset-2 focus-within:ring-offset-monk-bg rounded-sm">
@@ -128,7 +128,7 @@ export function WelcomeScreen({ onNext }: WelcomeScreenProps) {
               />
             </label>
           </div>
-          <p className="mt-1 text-[11px] leading-4 text-monk-muted/60">
+          <p className="mt-1 text-[11px] leading-4 text-monk-text-soft">
             {t("welcome.restoreHint")}
           </p>
         </div>

@@ -10,7 +10,7 @@ export function DefenseChips({ compact = false }: { compact?: boolean }) {
   if (!anti.length && !obs.length) return null;
   return (
     <Card>
-      <p className="text-[10px] font-bold uppercase tracking-widest text-monk-muted">
+      <p className="text-[11px] font-bold uppercase tracking-widest text-monk-muted">
         {compact ? t("today.guardrails") : t("today.avoidWatch")}
       </p>
       {anti.length ? (

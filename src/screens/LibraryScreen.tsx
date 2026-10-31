@@ -280,11 +280,11 @@ export function JournalLibraryScreen() {
         rightSlot={<SettingsLink />}
       />
       <div className="flex rounded-xl bg-monk-soft p-1 mb-5 border border-monk-border/40 overflow-x-auto">
-        <button type="button" className={`flex-1 min-h-11 rounded-lg py-2 text-[10px] font-semibold leading-none transition whitespace-nowrap px-1 ${libTab === "all" ? "bg-monk-surface text-monk-text border border-monk-border-strong shadow-sm font-bold" : "text-monk-muted hover:text-monk-text"}`} onClick={() => setLibTab("all")}>{t("library.tab.all")}</button>
-        <button type="button" className={`flex-1 min-h-11 rounded-lg py-2 text-[10px] font-semibold leading-none transition whitespace-nowrap px-1 ${libTab === "reflections" ? "bg-monk-surface text-monk-text border border-monk-border-strong shadow-sm font-bold" : "text-monk-muted hover:text-monk-text"}`} onClick={() => setLibTab("reflections")}>{t("library.tab.reflections")}</button>
-        <button type="button" className={`flex-1 min-h-11 rounded-lg py-2 text-[10px] font-semibold leading-none transition whitespace-nowrap px-1 ${libTab === "notebook" ? "bg-monk-surface text-monk-text border border-monk-border-strong shadow-sm font-bold" : "text-monk-muted hover:text-monk-text"}`} onClick={() => setLibTab("notebook")}>{t("library.tab.notebook")}</button>
-        <button type="button" className={`flex-1 min-h-11 rounded-lg py-2 text-[10px] font-semibold leading-none transition whitespace-nowrap px-1 ${libTab === "learning" ? "bg-monk-surface text-monk-text border border-monk-border-strong shadow-sm font-bold" : "text-monk-muted hover:text-monk-text"}`} onClick={() => setLibTab("learning")}>{t("library.tab.learning")}</button>
-        <button type="button" className={`flex-1 min-h-11 rounded-lg py-2 text-[10px] font-semibold leading-none transition whitespace-nowrap px-1 ${libTab === "packs" ? "bg-monk-surface text-monk-text border border-monk-border-strong shadow-sm font-bold" : "text-monk-muted hover:text-monk-text"}`} onClick={() => setLibTab("packs")}>{t("library.tab.packs")}</button>
+        <button type="button" className={`flex-1 min-h-11 rounded-lg py-2 text-[11px] font-semibold leading-none transition whitespace-nowrap px-1 ${libTab === "all" ? "bg-monk-surface text-monk-text border border-monk-border-strong shadow-sm font-bold" : "text-monk-muted hover:text-monk-text"}`} onClick={() => setLibTab("all")}>{t("library.tab.all")}</button>
+        <button type="button" className={`flex-1 min-h-11 rounded-lg py-2 text-[11px] font-semibold leading-none transition whitespace-nowrap px-1 ${libTab === "reflections" ? "bg-monk-surface text-monk-text border border-monk-border-strong shadow-sm font-bold" : "text-monk-muted hover:text-monk-text"}`} onClick={() => setLibTab("reflections")}>{t("library.tab.reflections")}</button>
+        <button type="button" className={`flex-1 min-h-11 rounded-lg py-2 text-[11px] font-semibold leading-none transition whitespace-nowrap px-1 ${libTab === "notebook" ? "bg-monk-surface text-monk-text border border-monk-border-strong shadow-sm font-bold" : "text-monk-muted hover:text-monk-text"}`} onClick={() => setLibTab("notebook")}>{t("library.tab.notebook")}</button>
+        <button type="button" className={`flex-1 min-h-11 rounded-lg py-2 text-[11px] font-semibold leading-none transition whitespace-nowrap px-1 ${libTab === "learning" ? "bg-monk-surface text-monk-text border border-monk-border-strong shadow-sm font-bold" : "text-monk-muted hover:text-monk-text"}`} onClick={() => setLibTab("learning")}>{t("library.tab.learning")}</button>
+        <button type="button" className={`flex-1 min-h-11 rounded-lg py-2 text-[11px] font-semibold leading-none transition whitespace-nowrap px-1 ${libTab === "packs" ? "bg-monk-surface text-monk-text border border-monk-border-strong shadow-sm font-bold" : "text-monk-muted hover:text-monk-text"}`} onClick={() => setLibTab("packs")}>{t("library.tab.packs")}</button>
       </div>
       <div className="space-y-4 pb-8">
         {libTab === "all" ? (
@@ -337,7 +337,7 @@ export function JournalLibraryScreen() {
                 >
                   <Filter size={12} />
                   <span>{filterType === "all" ? t("library.filterButton") : activeChip?.label}</span>
-                  {activeChip && <span className="font-mono text-[10px] text-monk-muted/80">({activeChip.count})</span>}
+                  {activeChip && <span className="font-mono text-[11px] text-monk-muted">({activeChip.count})</span>}
                 </button>
               </div>
 
@@ -359,7 +359,7 @@ export function JournalLibraryScreen() {
                     }`}
                   >
                     <span>{chip.label}</span>
-                    <span className="font-mono text-[10px] text-monk-muted/80">({chip.count})</span>
+                    <span className="font-mono text-[11px] text-monk-muted">({chip.count})</span>
                   </button>
                 ))}
               </div>
@@ -396,7 +396,7 @@ export function JournalLibraryScreen() {
                       <div className="flex items-center justify-between gap-2">
                         <div className="flex items-center gap-2 min-w-0">
                           <span
-                            className={`rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider shrink-0 ${
+                            className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider shrink-0 ${
                               isNote
                                 ? "bg-monk-warning/15 text-monk-warning border border-monk-warning/30"
                                 : isReflection
@@ -407,12 +407,12 @@ export function JournalLibraryScreen() {
                             {isNote ? t("library.type.note") : isReflection ? t("library.type.reflection") : t("library.type.learning")}
                           </span>
                           {item.category ? (
-                            <span className="text-[10px] text-monk-muted truncate font-medium">
+                            <span className="text-[11px] text-monk-muted truncate font-medium">
                               • {item.category}
                             </span>
                           ) : null}
                         </div>
-                        <span className="text-[10px] text-monk-muted font-mono shrink-0">
+                        <span className="text-[11px] text-monk-muted font-mono shrink-0">
                           {formatHumanDate(item.date.slice(0, 10))}
                         </span>
                       </div>
@@ -427,7 +427,7 @@ export function JournalLibraryScreen() {
                         const g = store.goals.find((goal) => goal.id === item.raw.goalId);
                         return g ? (
                           <div className="pt-1">
-                            <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-monk-accent bg-monk-accent/10 px-2 py-0.5 rounded-full border border-monk-accent/20">
+                            <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-monk-accent bg-monk-accent/10 px-2 py-0.5 rounded-full border border-monk-accent/20">
                               {g.track ? `${g.track} · ` : ""}{g.title}
                             </span>
                           </div>
@@ -633,14 +633,11 @@ export function NotebookPage() {
   const [editing, setEditing] = useState(false);
   return (
     <div className="notebook-page-bg -mx-6 min-h-[calc(100dvh-120px)] px-6 pb-8 pt-2">
-      {!editing && (
-        <div className="mb-5 flex items-start justify-between gap-3">
-          <div>
-            <h1 className="font-handwriting text-[2rem] leading-none text-monk-text">{t("notebook.title")}</h1>
-            <p className="mt-1 text-sm text-monk-muted">{t("notebook.subtitle")}</p>
-          </div>
-        </div>
-      )}
+      {/* The binder cover below already names the notebook, so a second
+          "Notebook" heading directly above it was pure repetition. The cover
+          title is the page's h1 instead (JournalNotebook), and only the
+          one-line description survives here. */}
+      {!editing && <p className="mb-3 px-1 text-[13px] leading-5 text-monk-muted">{t("notebook.subtitle")}</p>}
       <JournalNotebook onEditingChange={setEditing} />
     </div>
   );
@@ -697,7 +694,7 @@ function ReviewRow({ item, t }: { item: ReviewHistoryItem; t: (key: MessageKey, 
       ) : (
         <>
           {decisions.total > 0 && (
-            <p className="mt-2 text-xs leading-relaxed text-monk-accent/90">
+            <p className="mt-2 text-xs leading-relaxed text-monk-accent">
               {t("week.review.summary", { cont: decisions.cont, adj: decisions.adj, rel: decisions.rel })}
             </p>
           )}

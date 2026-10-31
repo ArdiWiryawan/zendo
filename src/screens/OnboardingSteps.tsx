@@ -86,15 +86,18 @@ export function PatternAudit({ onNext }: { onNext: () => void }) {
         </span>
       </div>
       <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
-        {patternOptions.map((habit) => (
-          <ChoiceChip
-            key={habit.category}
-            label={habit.label}
-            icon={habit.icon}
-            selected={onboarding.selectedHabits.some((item) => item.category === habit.category)}
-            onClick={() => togglePattern(habit.category, habit.label)}
-          />
-        ))}
+        {patternOptions.map((habit) => {
+          const label = t(`pattern.${habit.category}` as MessageKey);
+          return (
+            <ChoiceChip
+              key={habit.category}
+              label={label}
+              icon={habit.icon}
+              selected={onboarding.selectedHabits.some((item) => item.category === habit.category)}
+              onClick={() => togglePattern(habit.category, label)}
+            />
+          );
+        })}
       </div>
       {otherHabit ? (
         <TextInput

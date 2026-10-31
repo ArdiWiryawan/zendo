@@ -89,14 +89,20 @@ export function SeasonArchiveList() {
                       {formatHumanDate(season.startDate)} – {formatHumanDate(season.endDate)}
                     </p>
                   </div>
-                  <span className="shrink-0 rounded-full border border-monk-border bg-monk-soft px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-monk-muted">
+                  <span className="shrink-0 rounded-full border border-monk-border bg-monk-soft px-2 py-0.5 text-[11px] font-bold uppercase tracking-wider text-monk-muted">
                     {t("seasons.durationDays", { n: season.durationDays })}
                   </span>
                 </div>
-                <p className="mt-2 flex items-center gap-1.5 text-xs text-monk-muted">
-                  <Timer size={12} strokeWidth={1.5} />
-                  {t("timeline.stats.focus")}: {focus.totalMinutes}m · {focus.count} {t("timeline.stats.sessions", { n: focus.count })}
-                </p>
+                {/* A zero metric ("0m · 0 sesi") reads as broken data rather
+                    than a quiet season. Show the line only when there is
+                    something to report. */}
+                {focus.count > 0 ? (
+                  <p className="mt-2 flex items-center gap-1.5 text-xs text-monk-muted">
+                    <Timer size={12} strokeWidth={1.5} />
+                    {t("timeline.stats.focus")}: {focus.totalMinutes}m · {focus.count}{" "}
+                    {t("timeline.stats.sessions", { n: focus.count })}
+                  </p>
+                ) : null}
               </button>
             </Card>
           );
@@ -242,7 +248,7 @@ export function SeasonArchiveDetail() {
                 <div key={group.date} className="space-y-2">
                   <div className="flex items-center gap-2 border-b border-monk-border/30 pb-1.5">
                     <p className="text-xs font-bold uppercase tracking-wider text-monk-accent">{formatHumanDate(group.date)}</p>
-                    <span className="rounded-full border border-monk-border/30 bg-monk-raised/60 px-1.5 py-0.5 text-[10px] font-bold text-monk-muted">
+                    <span className="rounded-full border border-monk-border/30 bg-monk-raised/60 px-1.5 py-0.5 text-[11px] font-bold text-monk-muted">
                       {group.events.length}
                     </span>
                   </div>

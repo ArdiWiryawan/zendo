@@ -230,39 +230,11 @@ export default function FocusScreen() {
   const currentSoundMeta = SOUNDSCAPES.find((s) => s.id === selectedSoundscape) ?? SOUNDSCAPES[0];
   const CurrentSoundIcon = soundscapeIcon(currentSoundMeta.icon);
 
-  return (
-    <>
-      <PageHeader
-        title={activeSession ? t("focus.inSession") : t("focus.title")}
-        subtitle={goal?.title ?? t("today.quietRecovery")}
-        rightSlot={
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => setProModalOpen(true)}
-              className="flex items-center gap-1.5 rounded-full border border-monk-warning/40 bg-monk-warning/10 px-3 py-1.5 text-xs font-bold text-monk-warning hover:bg-monk-warning/20 transition active:scale-95 shadow-sm"
-              aria-label={t("support.ariaLabel")}
-            >
-              <Heart size={13} className="text-monk-warning fill-monk-warning/20" />
-              <span>{t("support.label")}</span>
-            </button>
-            <button
-              type="button"
-              onClick={toggleMusicHandler}
-              className={`grid min-h-11 min-w-11 place-items-center rounded-full border transition duration-150 ease-monk active:scale-90 ${
-                musicOn
-                  ? "border-monk-accent/40 bg-monk-accent-soft text-monk-accent"
-                  : "border-monk-border bg-monk-surface text-monk-muted hover:border-monk-accent hover:text-monk-accent"
-              }`}
-              aria-label={musicOn ? t("focus.musicOff") : t("focus.musicOn")}
-            >
-              {musicOn ? <Volume2 size={18} strokeWidth={1.5} /> : <VolumeX size={18} strokeWidth={1.5} />}
-            </button>
-          </div>
-        }
-      />
-
-      {/* Soundscape Selector Bar with Instant Audio Preview & Volume Blend */}
+  /* Soundscape controls are secondary to starting a session: idle users
+     get the starter first and the mixer after it, so the primary action is
+     never pushed under the floating nav. During a session the compact mixer
+     stays at the top because adjusting sound is the live task. */
+  const soundscapeCard = (
       <div className="mb-5 rounded-2xl border border-monk-border bg-monk-surface p-3.5 shadow-sm space-y-3">
         {activeSession ? (
           <div className="flex items-center justify-between gap-2">
@@ -300,7 +272,7 @@ export default function FocusScreen() {
                   {t(soundNameKey(currentSoundMeta.id))}
                 </span>
                 {musicOn && (
-                  <span className="inline-flex items-center gap-1 text-[10px] text-monk-accent font-semibold px-2 py-0.5 rounded-full bg-monk-accent-soft border border-monk-accent/30">
+                  <span className="inline-flex items-center gap-1 text-[11px] text-monk-accent font-semibold px-2 py-0.5 rounded-full bg-monk-accent-soft border border-monk-accent/30">
                     <span className="flex gap-0.5 items-end h-2.5">
                       <span className="w-0.5 h-2 bg-monk-accent rounded-full animate-pulse" />
                       <span className="w-0.5 h-3 bg-monk-accent rounded-full animate-pulse delay-75" />
@@ -310,7 +282,7 @@ export default function FocusScreen() {
                   </span>
                 )}
               </div>
-              <p className="text-[11px] text-monk-muted truncate">
+              <p className="text-[11px] leading-4 text-monk-muted line-clamp-2">
                 {t(soundDescKey(currentSoundMeta.id))}
               </p>
             </div>
@@ -373,7 +345,7 @@ export default function FocusScreen() {
               <p className="text-[11px] font-semibold text-monk-muted">
                 {t("focus.audioTapToPreview")}
               </p>
-              <span className="text-[10px] text-monk-muted/80">
+              <span className="text-[11px] text-monk-muted">
                 {t("focus.audioBlendNote")}
               </span>
             </div>
@@ -405,7 +377,7 @@ export default function FocusScreen() {
                             {t(soundNameKey(sound.id))}
                           </p>
                         </div>
-                        <p className="text-[10px] text-monk-muted leading-tight mt-0.5 line-clamp-1">
+                        <p className="text-[11px] text-monk-muted leading-tight mt-0.5 line-clamp-1">
                           {t(soundDescKey(sound.id))}
                         </p>
                       </div>
@@ -418,7 +390,7 @@ export default function FocusScreen() {
                           <span className="w-0.5 h-1.5 bg-monk-accent rounded-full animate-pulse delay-150" />
                         </span>
                       ) : (
-                        <span className="text-[10px] text-monk-muted/70 flex items-center gap-0.5">
+                        <span className="text-[11px] text-monk-text-soft flex items-center gap-0.5">
                           <Play size={10} />
                           <span>{t("focus.audioPreview")}</span>
                         </span>
@@ -428,7 +400,7 @@ export default function FocusScreen() {
                 );
               })}
             </div>
-            <p className="text-[10px] text-monk-muted/80 pt-1 text-center">
+            <p className="text-[11px] text-monk-muted pt-1 text-center">
               {t("focus.audioBlendFootnote")}
             </p>
           </div>
@@ -436,10 +408,45 @@ export default function FocusScreen() {
         </>
         )}
       </div>
+  );
+
+  return (
+    <>
+      <PageHeader
+        title={activeSession ? t("focus.inSession") : t("focus.title")}
+        subtitle={goal?.title ?? t("today.quietRecovery")}
+        rightSlot={
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setProModalOpen(true)}
+              className="flex items-center gap-1.5 rounded-full border border-monk-warning/40 bg-monk-warning/10 px-3 py-1.5 text-xs font-bold text-monk-warning hover:bg-monk-warning/20 transition active:scale-95 shadow-sm"
+              aria-label={t("support.ariaLabel")}
+            >
+              <Heart size={13} className="text-monk-warning fill-monk-warning/20" />
+              <span>{t("support.label")}</span>
+            </button>
+            <button
+              type="button"
+              onClick={toggleMusicHandler}
+              className={`grid min-h-11 min-w-11 place-items-center rounded-full border transition duration-150 ease-monk active:scale-90 ${
+                musicOn
+                  ? "border-monk-accent/40 bg-monk-accent-soft text-monk-accent"
+                  : "border-monk-border bg-monk-surface text-monk-muted hover:border-monk-accent hover:text-monk-accent"
+              }`}
+              aria-label={musicOn ? t("focus.musicOff") : t("focus.musicOn")}
+            >
+              {musicOn ? <Volume2 size={18} strokeWidth={1.5} /> : <VolumeX size={18} strokeWidth={1.5} />}
+            </button>
+          </div>
+        }
+      />
+
+      {activeSession ? soundscapeCard : null}
 
       {!activeSession && plan.dayType === "goal" ? (
         <Card className="mb-5 border-monk-border bg-monk-soft p-4">
-          <p className="text-[10px] font-bold uppercase tracking-wide text-monk-muted">{t("focus.todaysAction")}</p>
+          <p className="text-[11px] font-bold uppercase tracking-wide text-monk-muted">{t("focus.todaysAction")}</p>
           {intention.when && intention.action ? (
             <div className="mt-1.5 space-y-0.5">
               <p className="text-xs text-monk-muted">{t("today.whenShown", { when: intention.when })}</p>
@@ -479,6 +486,7 @@ export default function FocusScreen() {
       ) : (
         <FocusSessionStarter />
       )}
+      {!activeSession ? soundscapeCard : null}
       <ZendoProModal isOpen={proModalOpen} onClose={() => setProModalOpen(false)} />
     </>
   );

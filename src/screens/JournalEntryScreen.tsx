@@ -262,7 +262,7 @@ export function JournalEntryScreen() {
           className="mt-4 space-y-3"
         >
           <div className="flex items-center justify-between px-1">
-            <span className="text-[10px] uppercase tracking-widest text-monk-text-soft font-mono">{t("journal.morningLabel")}</span>
+            <span className="text-[11px] uppercase tracking-widest text-monk-text-soft font-mono">{t("journal.morningLabel")}</span>
           </div>
           <textarea
             id="morningPages"
@@ -302,7 +302,7 @@ export function JournalEntryScreen() {
           )}
           <Card>
             <div className="mb-3 space-y-1">
-              <div className="text-[10px] uppercase tracking-widest text-monk-text-soft font-mono">{t("journal.promptChrome", { date: formatHumanDate(dateSeed) })}</div>
+              <div className="text-[11px] uppercase tracking-widest text-monk-text-soft font-mono">{t("journal.promptChrome", { date: formatHumanDate(dateSeed) })}</div>
               <label className="block font-semibold text-base leading-relaxed text-monk-text" htmlFor="whatMovedToday">
                 {activePrompt}
               </label>
@@ -426,7 +426,7 @@ export function JournalEntryScreen() {
             <FileText size={14} strokeWidth={1.5} className="text-monk-accent" />
           </div>
           <span className="block text-xs font-semibold text-monk-text mb-0.5">{t("journal.shortcut.notebook")}</span>
-          <span className="block text-[10px] text-monk-text-soft">{t("journal.shortcut.notebookDesc")}</span>
+          <span className="block text-[11px] text-monk-text-soft">{t("journal.shortcut.notebookDesc")}</span>
         </button>
         <button
           type="button"
@@ -437,7 +437,7 @@ export function JournalEntryScreen() {
             <BookOpen size={14} strokeWidth={1.5} className="text-monk-success" />
           </div>
           <span className="block text-xs font-semibold text-monk-text mb-0.5">{t("journal.shortcut.packs")}</span>
-          <span className="block text-[10px] text-monk-text-soft">{t("journal.shortcut.packsDesc")}</span>
+          <span className="block text-[11px] text-monk-text-soft">{t("journal.shortcut.packsDesc")}</span>
         </button>
       </div>
     </>

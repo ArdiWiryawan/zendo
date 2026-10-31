@@ -143,7 +143,7 @@ export function WhyStrip({ compact = false }: { compact?: boolean }) {
   if (editing) {
     return (
       <Card className="border-monk-accent/25 bg-monk-accent-soft/30 p-4">
-        <p className="mb-3 text-[10px] font-bold uppercase tracking-widest text-monk-accent">
+        <p className="mb-3 text-[11px] font-bold uppercase tracking-widest text-monk-accent">
           {hasWhy ? t("why.editButton") : t("why.sectionTitle")}
         </p>
         <WhyEditor
@@ -166,7 +166,7 @@ export function WhyStrip({ compact = false }: { compact?: boolean }) {
         onClick={() => setEditing(true)}
         className="w-full rounded-monk border border-dashed border-monk-accent/30 bg-monk-accent-soft/20 px-4 py-3 text-left transition active:scale-[0.99]"
       >
-        <p className="text-[10px] font-bold uppercase tracking-widest text-monk-accent">{t("why.sectionTitle")}</p>
+        <p className="text-[11px] font-bold uppercase tracking-widest text-monk-accent">{t("why.sectionTitle")}</p>
         <p className="mt-1 text-sm text-monk-muted">{t("why.emptyDesc")}</p>
       </button>
     );
@@ -178,7 +178,7 @@ export function WhyStrip({ compact = false }: { compact?: boolean }) {
     return (
       <div className="flex items-center justify-between gap-2 rounded-monk border border-monk-border bg-monk-surface px-3.5 py-2">
         <div className="flex min-w-0 items-center gap-1.5">
-          <span className="shrink-0 rounded bg-monk-accent/15 px-1.5 py-0.5 text-[9px] font-bold text-monk-accent">
+          <span className="shrink-0 rounded bg-monk-accent/15 px-1.5 py-0.5 text-[10px] font-bold text-monk-accent">
             {t("why.badgeWhy")}
           </span>
           <span className="truncate text-xs text-monk-muted">{primaryLine}</span>
@@ -187,7 +187,7 @@ export function WhyStrip({ compact = false }: { compact?: boolean }) {
           type="button"
           onClick={() => setEditing(true)}
           /* 44px hit area; -my-2 keeps the strip's visual height unchanged. */
-          className="-my-2 inline-flex min-h-11 shrink-0 items-center text-[10px] font-semibold text-monk-accent hover:underline"
+          className="-my-2 inline-flex min-h-11 shrink-0 items-center text-[11px] font-semibold text-monk-accent hover:underline"
         >
           {t("why.editButton")}
         </button>
@@ -206,10 +206,10 @@ export function WhyStrip({ compact = false }: { compact?: boolean }) {
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2">
-              <span className="rounded bg-monk-accent/15 px-1.5 py-0.5 text-[9px] font-bold text-monk-accent">
+              <span className="rounded bg-monk-accent/15 px-1.5 py-0.5 text-[10px] font-bold text-monk-accent">
                 {t("why.badgeWhy")}
               </span>
-              <p className="text-[10px] font-bold uppercase tracking-widest text-monk-muted">{t("why.sectionTitle")}</p>
+              <p className="text-[11px] font-bold uppercase tracking-widest text-monk-muted">{t("why.sectionTitle")}</p>
             </div>
             {intrinsicWhy ? (
               <p className={`mt-1.5 text-sm font-medium leading-snug text-monk-text-soft ${open ? "" : "line-clamp-2"}`}>
@@ -221,10 +221,10 @@ export function WhyStrip({ compact = false }: { compact?: boolean }) {
             {!open && (outcome || antiWhy) ? (
               <div className="mt-1.5 flex flex-wrap items-center gap-2 text-[11px] text-monk-muted">
                 {outcome ? (
-                  <span className="truncate text-monk-accent/80">{outcome}</span>
+                  <span className="truncate text-monk-accent">{outcome}</span>
                 ) : null}
                 {antiWhy && !outcome ? (
-                  <span className="truncate text-monk-warning/80">{antiWhy}</span>
+                  <span className="truncate text-monk-warning">{antiWhy}</span>
                 ) : null}
               </div>
             ) : null}
@@ -235,7 +235,7 @@ export function WhyStrip({ compact = false }: { compact?: boolean }) {
               <div className="mt-3 space-y-2.5">
                 {outcome ? (
                   <div>
-                    <p className="text-[9px] font-bold uppercase tracking-wider text-monk-accent">
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-monk-accent">
                       {t("why.badgeOutcome")}
                     </p>
                     <p className="mt-0.5 text-xs text-monk-text-soft leading-relaxed">{outcome}</p>
@@ -244,7 +244,7 @@ export function WhyStrip({ compact = false }: { compact?: boolean }) {
 
                 {antiWhy ? (
                   <div className="border-t border-monk-border/50 pt-2.5">
-                    <p className="text-[9px] font-bold uppercase tracking-wider text-monk-warning">
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-monk-warning">
                       {t("why.badgeAntiWhy")}
                     </p>
                     <p className="mt-0.5 text-xs text-monk-text-soft leading-relaxed">{antiWhy}</p>
@@ -259,7 +259,7 @@ export function WhyStrip({ compact = false }: { compact?: boolean }) {
                       return (
                         <span
                           key={id}
-                          className="rounded-full border border-monk-border bg-monk-soft px-2 py-0.5 text-[10px] font-medium text-monk-muted"
+                          className="rounded-full border border-monk-border bg-monk-soft px-2 py-0.5 text-[11px] font-medium text-monk-muted"
                         >
                           {valLabel ?? v?.label ?? id}
                         </span>
@@ -437,7 +437,7 @@ export function GoalTasksCard({ goal, todayMainAction }: { goal: Goal; todayMain
                       type="button"
                       aria-label={`${t("dialog.delete")}: ${group.project!.title}`}
                       onClick={() => store.removeProject(group.project!.id)}
-                      className="text-monk-muted/60 hover:text-monk-danger p-0.5 transition"
+                      className="text-monk-text-soft hover:text-monk-danger p-0.5 transition"
                     >
                       <X size={12} strokeWidth={2.5} aria-hidden="true" />
                     </button>
@@ -474,7 +474,7 @@ export function GoalTasksCard({ goal, todayMainAction }: { goal: Goal; todayMain
                         {task.title}
                       </span>
                       {isCurrentMain && (
-                        <span className="shrink-0 rounded-full bg-monk-accent/20 px-1.5 py-0.5 text-[10px] font-bold text-monk-accent">
+                        <span className="shrink-0 rounded-full bg-monk-accent/20 px-1.5 py-0.5 text-[11px] font-bold text-monk-accent">
                           {t("today.tasks.todayActionTag")}
                         </span>
                       )}
@@ -512,7 +512,7 @@ export function GoalTasksCard({ goal, todayMainAction }: { goal: Goal; todayMain
                         type="button"
                         aria-label={t("today.tasks.deleteAria", { title: task.title })}
                         onClick={() => store.deleteGoalTask(goal.id, task.id)}
-                        className="text-monk-muted/60 hover:text-monk-danger p-0.5 transition"
+                        className="text-monk-text-soft hover:text-monk-danger p-0.5 transition"
                       >
                         <X size={12} strokeWidth={2.5} aria-hidden="true" />
                       </button>
@@ -561,7 +561,7 @@ export function GoalTasksCard({ goal, todayMainAction }: { goal: Goal; todayMain
         <button
           type="button"
           onClick={() => setIsAdding(true)}
-          className="w-full text-center py-1.5 text-xs text-monk-muted/80 hover:text-monk-accent border border-dashed border-monk-border/60 rounded-lg transition"
+          className="w-full text-center py-1.5 text-xs text-monk-muted hover:text-monk-accent border border-dashed border-monk-border/60 rounded-lg transition"
         >
           {t("today.tasks.breakIntoSteps")}
         </button>

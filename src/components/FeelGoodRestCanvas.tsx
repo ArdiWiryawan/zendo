@@ -161,7 +161,7 @@ export function FeelGoodRestCanvas({ onOpenWeeklyReview, className = "" }: FeelG
             <Moon size={22} strokeWidth={2} />
           </div>
           <div className="min-w-0 flex-1">
-            <span className="rounded-md border border-monk-rest/40 bg-monk-rest-soft px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-monk-rest">
+            <span className="rounded-md border border-monk-rest/40 bg-monk-rest-soft px-2 py-0.5 text-[11px] font-bold uppercase tracking-wider text-monk-rest">
               {t("rest.badge")}
             </span>
             <h3 className="mt-1.5 text-base font-bold text-monk-text tracking-tight">
@@ -206,7 +206,7 @@ export function FeelGoodRestCanvas({ onOpenWeeklyReview, className = "" }: FeelG
       {stage === "check_in" && !showResults ? (
         <Card className="p-5">
           <div className="flex items-center justify-between gap-3">
-            <p className="text-[10px] font-bold uppercase tracking-widest text-monk-muted">
+            <p className="text-[11px] font-bold uppercase tracking-widest text-monk-muted">
               {t("rest.questionOf", { current: step + 1, total: REST_QUESTIONS.length })}
             </p>
             <div className="flex items-center gap-1" aria-hidden="true">
@@ -317,7 +317,7 @@ export function FeelGoodRestCanvas({ onOpenWeeklyReview, className = "" }: FeelG
                           {rec.activity.title[lang]}
                         </p>
                         {rec.activity.durationMin ? (
-                          <span className="shrink-0 font-mono text-[10px] text-monk-muted">
+                          <span className="shrink-0 font-mono text-[11px] text-monk-muted">
                             ~{rec.activity.durationMin}m
                           </span>
                         ) : null}
@@ -409,7 +409,7 @@ export function FeelGoodRestCanvas({ onOpenWeeklyReview, className = "" }: FeelG
                 )}
               </div>
               <div className="min-w-0 flex-1">
-                <p className="text-[10px] font-bold uppercase tracking-widest text-monk-muted">
+                <p className="text-[11px] font-bold uppercase tracking-widest text-monk-muted">
                   {t("rest.selected")}
                 </p>
                 <p className="mt-0.5 truncate text-xs font-bold text-monk-text">

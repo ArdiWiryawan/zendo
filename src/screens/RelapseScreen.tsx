@@ -97,7 +97,7 @@ export function RelapseScreen() {
       </Card>
       {obstacles.length ? (
         <Card className="mt-4 p-4">
-          <p className="text-[10px] font-bold uppercase tracking-widest text-monk-muted">{t("relapse.knownObstacles")}</p>
+          <p className="text-[11px] font-bold uppercase tracking-widest text-monk-muted">{t("relapse.knownObstacles")}</p>
           <div className="mt-2 flex flex-wrap gap-1.5">
             {obstacles.map((item) => (
               <button

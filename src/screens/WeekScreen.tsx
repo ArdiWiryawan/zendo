@@ -184,7 +184,7 @@ export function WeekScreen() {
               <div className="relative">
                 <div className="flex items-end justify-between gap-4">
                   <div>
-                    <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-monk-muted/80">{t("week.rhythm")}</p>
+                    <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-monk-muted">{t("week.rhythm")}</p>
                     {/* Focus completion and "days accounted for" are separate
                         ideas and must stay distinguishable. A season with no
                         focus allocation is honestly 0 planned focus days, so its
@@ -195,7 +195,7 @@ export function WeekScreen() {
                       <>
                         <p className="mt-2 text-3xl font-bold tabular-nums tracking-tight text-monk-accent">
                           {stats.focusDone}
-                          <span className="text-lg font-semibold text-monk-muted/70">/{stats.targetFocus}</span>
+                          <span className="text-lg font-semibold text-monk-text-soft">/{stats.targetFocus}</span>
                         </p>
                         <p className="mt-1 text-xs text-monk-muted/90">{t("week.focusComplete")}</p>
                       </>
@@ -203,13 +203,13 @@ export function WeekScreen() {
                       <>
                         <p className="mt-2 text-3xl font-bold tabular-nums tracking-tight text-monk-accent">
                           {stats.accountedDays}
-                          <span className="text-lg font-semibold text-monk-muted/70">/{stats.elapsedDays}</span>
+                          <span className="text-lg font-semibold text-monk-text-soft">/{stats.elapsedDays}</span>
                         </p>
                         <p className="mt-1 text-xs text-monk-muted/90">{t("week.daysAccounted")}</p>
                       </>
                     )}
                   </div>
-                  <div className="text-right text-[11px] text-monk-muted/80 space-y-1">
+                  <div className="text-right text-[11px] text-monk-muted space-y-1">
                     {/* Planned rest is rest, not an unfinished focus day: it is
                         stated from the plan, so a released goal reads as a 6→5
                         shrink here instead of silently disappearing. */}
@@ -217,17 +217,17 @@ export function WeekScreen() {
                     {stats.freeDays > 0 ? <p className="flex items-center gap-1.5 justify-end text-monk-accent"><span className="h-1.5 w-1.5 rounded-full bg-monk-accent/70" />{t("rhythm.freeDays", { n: stats.freeDays })}</p> : null}
                     {stats.partial > 0 ? <p className="flex items-center gap-1.5 justify-end"><span className="h-1.5 w-1.5 rounded-full bg-monk-accent/70" />{t("week.partialCount", { n: stats.partial })}</p> : null}
                     {stats.missed + stats.unhandled > 0 ? (
-                      <p className="flex flex-col items-end gap-0.5 justify-end text-monk-muted/70">
+                      <p className="flex flex-col items-end gap-0.5 justify-end text-monk-text-soft">
                         {/* Shown only when the headline is the focus fraction. On a
                             season with no allocation the headline already IS
                             "accounted/elapsed", so repeating it here printed the
                             same pair twice. */}
-                        {stats.targetFocus > 0 ? <span className="text-monk-muted/60">{t("rhythm.accounted", { accounted: stats.accountedDays, elapsed: stats.elapsedDays })}</span> : null}
+                        {stats.targetFocus > 0 ? <span className="text-monk-text-soft">{t("rhythm.accounted", { accounted: stats.accountedDays, elapsed: stats.elapsedDays })}</span> : null}
                         {stats.missed > 0 ? <span>{t("week.notAccounted", { n: stats.missed })}</span> : null}
-                        {stats.unhandled > 0 ? <span className="text-monk-muted/60">{t("week.dayUnplanned", { n: stats.unhandled })}</span> : null}
+                        {stats.unhandled > 0 ? <span className="text-monk-text-soft">{t("week.dayUnplanned", { n: stats.unhandled })}</span> : null}
                       </p>
                     ) : null}
-                    <p className="text-monk-muted/60">{remainingDays === 1 ? t("week.daysLeft", { n: remainingDays }) : t("week.daysLeftPlural", { n: remainingDays })}</p>
+                    <p className="text-monk-text-soft">{remainingDays === 1 ? t("week.daysLeft", { n: remainingDays }) : t("week.daysLeftPlural", { n: remainingDays })}</p>
                   </div>
                 </div>
 
@@ -336,19 +336,19 @@ export function WeekScreen() {
                     ? "bg-monk-danger/10 border-monk-danger/40 text-monk-danger"
                     : isMissed
                     ? isEligible
-                      ? "bg-monk-text-soft/5 border-dashed border-monk-accent/60 text-monk-text-soft/50"
-                      : "bg-monk-text-soft/5 border-monk-text-soft/25 text-monk-text-soft/50"
+                      ? "bg-monk-text-soft/5 border-dashed border-monk-accent/60 text-monk-text-soft"
+                      : "bg-monk-text-soft/5 border-monk-text-soft/25 text-monk-text-soft"
                     : isEligible
                     ? "bg-monk-soft border-dashed border-monk-accent/60 text-monk-warning"
                     : isFuture
-                    ? "bg-transparent border-monk-border/30 text-monk-text-soft/40"
+                    ? "bg-transparent border-monk-border/30 text-monk-text-soft"
                     : "bg-monk-soft border-monk-border text-monk-text-soft";
 
                   const DayInner = (
                     <>
                       <div className={`grid min-w-0 place-items-center py-1.5 ${isToday || isEligible ? "cursor-pointer" : ""}`}>
                         <div
-                          className={`grid h-9 w-9 sm:h-11 sm:w-11 place-items-center rounded-full border-2 text-[10px] sm:text-[11px] font-mono font-bold transition-colors ${circleClass} ${
+                          className={`grid h-9 w-9 sm:h-11 sm:w-11 place-items-center rounded-full border-2 text-[11px] sm:text-[11px] font-mono font-bold transition-colors ${circleClass} ${
                             isToday ? "ring-2 ring-inset ring-monk-accent/70" : ""
                           }`}
                         >
@@ -368,13 +368,20 @@ export function WeekScreen() {
                           )}
                         </div>
                       </div>
-                      <span className={`text-[10px] sm:text-[11px] font-semibold uppercase tracking-wide ${
-                        isToday ? "text-monk-accent" : "text-monk-text-soft/60"
+                      <span className={`text-[11px] sm:text-[11px] font-semibold uppercase tracking-wide ${
+                        isToday ? "text-monk-accent" : "text-monk-text-soft"
                       }`}>
                         {weekday.slice(0, 2)}
                       </span>
                       {isToday ? (
-                        <span className="text-[9px] font-bold uppercase tracking-wide text-monk-accent">{t("week.today")}</span>
+                        /* Seven day columns leave ~43px each on a 390px phone;
+                           "HARI INI" needs ~48px and wrapped onto two lines,
+                           knocking the energy dot out of alignment. The ring +
+                           accent weekday already mark today on phones, so the
+                           word only renders where it fits. */
+                        <span className="hidden whitespace-nowrap text-[10px] font-bold uppercase tracking-wide text-monk-accent sm:block">
+                          {t("week.today")}
+                        </span>
                       ) : null}
                       <span className={`h-1.5 w-1.5 rounded-full ${energyDot}`} aria-hidden="true" />
                     </>
@@ -386,6 +393,7 @@ export function WeekScreen() {
                         key={date}
                         type="button"
                         aria-label={label + (isEligible ? t("timeline.tapToLog") : "")}
+                        aria-current={isToday ? "date" : undefined}
                         title={isEligible ? t("timeline.tapToLog") : undefined}
                         onClick={() => (isToday ? navigate(routes.today) : setRetroDate(date))}
                         className="flex min-w-0 flex-1 flex-col items-center gap-1 rounded-xl py-1 transition active:scale-95"
@@ -403,7 +411,7 @@ export function WeekScreen() {
                 })}
               </div>
 
-              <div className="mt-4 flex flex-wrap items-center gap-x-3.5 gap-y-1.5 text-[11px] text-monk-text-soft/80">
+              <div className="mt-4 flex flex-wrap items-center gap-x-3.5 gap-y-1.5 text-[11px] text-monk-text-soft">
                 <span className="flex items-center gap-1.5 font-medium text-monk-success">
                   <Check size={12} strokeWidth={2.5} />
                   <span>{t("week.legendDone")}</span>
@@ -416,7 +424,7 @@ export function WeekScreen() {
                   <Moon size={12} strokeWidth={2} />
                   <span>{t("week.legendRest")}</span>
                 </span>
-                <span className="flex items-center gap-1.5 text-monk-accent/80">
+                <span className="flex items-center gap-1.5 text-monk-accent">
                   <Pencil size={10} strokeWidth={2.5} />
                   <span>{t("week.tapHint")}</span>
                 </span>
@@ -448,7 +456,7 @@ export function WeekScreen() {
                 <Card className="relative p-5 bg-monk-surface/30 backdrop-blur-sm shadow-[inset_0_1px_0_rgba(255,255,255,0.03),0_2px_10px_rgba(0,0,0,0.25)] border-monk-border/30 overflow-hidden">
                   <div className="absolute inset-0 bg-gradient-to-br from-monk-accent/[0.02] to-transparent pointer-events-none" />
                   <div className="relative">
-                    <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-monk-muted/70">{t("week.wrap.title")}</p>
+                    <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-monk-text-soft">{t("week.wrap.title")}</p>
                     <div className="mt-3 space-y-2">
                       <p className="text-sm font-semibold text-monk-text/95">{t("week.wrap.focus", { n: focusMinutes })}</p>
                       <p className="text-sm text-monk-muted/90">{t("week.wrap.held", { n: heldDays })}</p>
@@ -456,7 +464,7 @@ export function WeekScreen() {
                     {stats.focusDone === 0 && stats.rest > 0 ? (
                       <p className="mt-2 text-sm text-monk-muted/90">{t("week.softWin.held")}</p>
                     ) : null}
-                    <p className="mt-3 text-sm text-monk-accent/90 font-medium">{wrapWin}</p>
+                    <p className="mt-3 text-sm text-monk-accent font-medium">{wrapWin}</p>
                     {stats.partial > 0 || (stats.focusDone === 0 && stats.rest > 0) ? (
                       <p className="mt-1 text-xs text-monk-muted/90">{t("week.softWin.body")}</p>
                     ) : null}
@@ -530,7 +538,7 @@ export function WeekScreen() {
                         <div className="min-w-0 flex-1">
                           <p className="text-sm font-semibold truncate">{goal?.title ?? t("week.goalFallback")}</p>
                           {primaryGoalWhy(goal) ? (
-                            <p className="mt-1 text-xs text-monk-accent/90 line-clamp-2">{t("week.because", { why: primaryGoalWhy(goal) ?? "" })}</p>
+                            <p className="mt-1 text-xs text-monk-accent line-clamp-2">{t("week.because", { why: primaryGoalWhy(goal) ?? "" })}</p>
                           ) : null}
                           {goal?.keystoneAction ? (
                             <p className="mt-1 text-xs text-monk-muted line-clamp-2">{goal.keystoneAction}</p>
@@ -539,11 +547,11 @@ export function WeekScreen() {
                         <div className="shrink-0 text-right">
                           <p className={`font-mono text-sm tabular-nums font-bold ${complete ? "text-monk-success" : behind ? "text-monk-muted" : progress > 0 ? "text-monk-accent" : "text-monk-muted"}`}>
                             {Math.min(allocation.completedCount, allocation.targetCount)}
-                            <span className="font-semibold text-monk-muted/70">/{allocation.targetCount}</span>
-                            {surplus > 0 ? <span className="ml-1 text-[10px] font-semibold text-monk-success/80">+{surplus}</span> : null}
+                            <span className="font-semibold text-monk-text-soft">/{allocation.targetCount}</span>
+                            {surplus > 0 ? <span className="ml-1 text-[11px] font-semibold text-monk-success">+{surplus}</span> : null}
                           </p>
                           {progress > 0 ? (
-                            <p className="mt-0.5 text-[10px] font-semibold uppercase tracking-wide text-monk-muted/80">
+                            <p className="mt-0.5 text-[11px] font-semibold uppercase tracking-wide text-monk-muted">
                               {complete ? t("week.statusMet") : t("week.statusProgress")}
                             </p>
                           ) : null}
@@ -688,8 +696,8 @@ function WeekReviewCard({
       <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}>
         <Card className="p-5 space-y-3">
           <div className="flex items-center justify-between">
-            <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-monk-muted/80">{t("week.review.title")}</p>
-            <span className="rounded-full border border-monk-success/40 bg-monk-success-soft px-2.5 py-0.5 text-[10px] font-bold text-monk-success">
+            <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-monk-muted">{t("week.review.title")}</p>
+            <span className="rounded-full border border-monk-success/40 bg-monk-success-soft px-2.5 py-0.5 text-[11px] font-bold text-monk-success">
               {t("week.reviewDoneBadge")}
             </span>
           </div>
@@ -697,7 +705,7 @@ function WeekReviewCard({
           {savedReview.skipped ? (
             <p className="text-sm text-monk-muted">{t("week.review.skip")}</p>
           ) : (
-            <p className="text-sm text-monk-accent/90 font-medium">
+            <p className="text-sm text-monk-accent font-medium">
               {t("week.review.summary", {
                 cont: savedReview.decisions ? Object.values(savedReview.decisions).filter((d) => d.action === "continue").length : 0,
                 adj: savedReview.decisions ? Object.values(savedReview.decisions).filter((d) => d.action === "adjust").length : 0,
@@ -743,7 +751,7 @@ function WeekReviewCard({
     <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}>
       <Card className="relative p-5 bg-monk-surface/30 border-monk-accent/20">
         <div className="flex items-center justify-between mb-3">
-          <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-monk-accent">{t("week.review.title")}</p>
+          <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-monk-accent">{t("week.review.title")}</p>
           {onOpenFullReview && (
             <button
               type="button"
@@ -837,7 +845,7 @@ function ChoiceButton({
       ? "bg-monk-success/15 border-monk-success/50 text-monk-success"
       : tone === "accent"
       ? "bg-monk-accent/15 border-monk-accent/50 text-monk-accent"
-      : "bg-monk-soft/60 border-monk-border/60 text-monk-text-soft/80";
+      : "bg-monk-soft/60 border-monk-border/60 text-monk-text-soft";
   return (
     <button
       type="button"
@@ -929,7 +937,7 @@ function WeeklyReviewCard({
 
   return (
     <Card className="border-monk-accent/25 bg-monk-accent-soft/20 p-5">
-      <p className="text-[10px] font-bold uppercase tracking-widest text-monk-accent">
+      <p className="text-[11px] font-bold uppercase tracking-widest text-monk-accent">
         {weekEnded ? t("week.review.title") : t("week.review.almost")}
       </p>
       <p className="mt-2 text-sm font-semibold text-monk-text">
@@ -959,7 +967,7 @@ function WeeklyReviewCard({
 
       {why?.identity || why?.consequenceOfInaction ? (
         <div className="mt-4 rounded-xl border border-monk-border/70 bg-monk-bg/50 p-3">
-          <p className="text-[10px] font-bold uppercase tracking-wider text-monk-muted">{t("week.review.stillTrue")}</p>
+          <p className="text-[11px] font-bold uppercase tracking-wider text-monk-muted">{t("week.review.stillTrue")}</p>
           <p className="mt-1 text-sm leading-5 text-monk-text line-clamp-3">
             {why.identity || why.consequenceOfInaction}
           </p>

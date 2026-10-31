@@ -131,7 +131,7 @@ function GoalTrackManager({
               type="button"
               onClick={() => { hapticPress("light"); onSelectTrack(item.name); }}
               aria-pressed={selectedTrack === item.name}
-              className={`rounded-lg px-2 py-0.5 text-[10px] font-semibold transition active:scale-95 border ${
+              className={`rounded-lg px-2 py-0.5 text-[11px] font-semibold transition active:scale-95 border ${
                 selectedTrack === item.name
                   ? "border-monk-accent bg-monk-accent/15 text-monk-accent font-bold"
                   : "border-monk-border/60 bg-monk-surface text-monk-muted hover:text-monk-text"
@@ -145,7 +145,7 @@ function GoalTrackManager({
 
       {/* Manager */}
       <div className="space-y-1.5 border-t border-monk-border/50 pt-2">
-        <span className="block text-[10px] font-bold uppercase tracking-wider text-monk-muted">
+        <span className="block text-[11px] font-bold uppercase tracking-wider text-monk-muted">
           {lang === "en" ? "Tracks this season" : "Track musim ini"}
         </span>
 
@@ -164,7 +164,7 @@ function GoalTrackManager({
               key={item.id}
               className="flex items-center gap-1.5 rounded-lg border border-monk-border/60 bg-monk-surface px-2 py-1.5"
             >
-              <span className="w-5 shrink-0 font-mono text-[10px] tabular-nums text-monk-muted">
+              <span className="w-5 shrink-0 font-mono text-[11px] tabular-nums text-monk-muted">
                 {String(index + 1).padStart(2, "0")}
               </span>
               <input
@@ -555,14 +555,14 @@ export function GoalBlueprintModal({ goalId, isOpen, onClose }: GoalBlueprintMod
                   >
                     <div className="flex items-center justify-between">
                       <span className="text-xs font-bold text-monk-text">{tpl.title}</span>
-                      <span className="rounded-full bg-monk-accent/15 px-2 py-0.5 text-[10px] font-bold text-monk-accent">
+                      <span className="rounded-full bg-monk-accent/15 px-2 py-0.5 text-[11px] font-bold text-monk-accent">
                         {tpl.category}
                       </span>
                     </div>
                     <p className="text-[11px] text-monk-muted leading-relaxed">
                       <span className="font-semibold text-monk-text-soft">{tpl.keystoneAction}</span>
                     </p>
-                    <p className="text-[10px] text-monk-muted/80 line-clamp-1 italic">
+                    <p className="text-[11px] text-monk-muted line-clamp-1 italic">
                       &quot;{tpl.why}&quot;
                     </p>
                   </button>
@@ -611,7 +611,7 @@ export function GoalBlueprintModal({ goalId, isOpen, onClose }: GoalBlueprintMod
                     </div>
                     <span>{t("goalWhy.title")}</span>
                   </div>
-                  <span className="text-[10px] font-semibold text-monk-muted">
+                  <span className="text-[11px] font-semibold text-monk-muted">
                     {t("goalWhy.count", { n: whys.length, max: MAX_GOAL_WHYS })}
                   </span>
                 </div>
@@ -624,7 +624,7 @@ export function GoalBlueprintModal({ goalId, isOpen, onClose }: GoalBlueprintMod
                         key={item.id}
                         className="flex items-start gap-2 rounded-lg border border-monk-border/50 bg-monk-surface/70 px-2.5 py-2"
                       >
-                        <span className="mt-0.5 grid h-4 w-4 shrink-0 place-items-center rounded-full bg-monk-accent/15 text-[9px] font-bold text-monk-accent">
+                        <span className="mt-0.5 grid h-4 w-4 shrink-0 place-items-center rounded-full bg-monk-accent/15 text-[10px] font-bold text-monk-accent">
                           {index + 1}
                         </span>
                         <p className="min-w-0 flex-1 whitespace-pre-wrap break-words text-[12px] leading-relaxed text-monk-text">
@@ -771,7 +771,7 @@ export function GoalBlueprintModal({ goalId, isOpen, onClose }: GoalBlueprintMod
                           </button>
                         ))}
                       </div>
-                      <p className="mt-1.5 text-[10px] leading-4 text-monk-muted">
+                      <p className="mt-1.5 text-[11px] leading-4 text-monk-muted">
                         {t(`blueprint.typeHint.${goalType}` as MessageKey)}
                       </p>
                     </div>
@@ -804,7 +804,7 @@ export function GoalBlueprintModal({ goalId, isOpen, onClose }: GoalBlueprintMod
                           className="w-full"
                           style={{ "--range-fill": `${((outcomeFrequency - 1) / 6) * 100}%` } as React.CSSProperties}
                         />
-                        <p className="mt-1 text-[10px] leading-4 text-monk-muted">
+                        <p className="mt-1 text-[11px] leading-4 text-monk-muted">
                           {t("blueprint.outcomeFrequencyHint")}
                         </p>
                       </div>
@@ -857,7 +857,7 @@ export function GoalBlueprintModal({ goalId, isOpen, onClose }: GoalBlueprintMod
                           className="min-h-9 flex-1 rounded-lg border border-monk-border bg-monk-surface px-2 text-xs text-monk-text focus:border-monk-accent focus:outline-none"
                         />
                       </div>
-                      <p className="mt-1 text-[10px] leading-4 text-monk-muted">
+                      <p className="mt-1 text-[11px] leading-4 text-monk-muted">
                         {t("blueprint.availabilityHint")}
                       </p>
                     </div>
@@ -871,7 +871,7 @@ export function GoalBlueprintModal({ goalId, isOpen, onClose }: GoalBlueprintMod
                         placeholder={t("blueprint.planBPlaceholder")}
                         className="bg-monk-surface text-xs"
                       />
-                      <p className="mt-1 text-[10px] text-monk-muted">{t("blueprint.planBHint")}</p>
+                      <p className="mt-1 text-[11px] text-monk-muted">{t("blueprint.planBHint")}</p>
                     </div>
                   </div>
                 ) : null}
@@ -907,7 +907,7 @@ export function GoalBlueprintModal({ goalId, isOpen, onClose }: GoalBlueprintMod
                   placeholder={goal.title}
                   className="bg-monk-surface text-sm"
                 />
-                <p className="mt-1 text-[10px] text-monk-muted">
+                <p className="mt-1 text-[11px] text-monk-muted">
                   {lang === "en"
                     ? `${weeklyTargetCount} days a week — the same rhythm this goal had.`
                     : `${weeklyTargetCount} hari per minggu — ritme yang sama seperti goal ini.`}
@@ -974,12 +974,12 @@ export function GoalBlueprintModal({ goalId, isOpen, onClose }: GoalBlueprintMod
             }}
             aria-haspopup="dialog"
             aria-label={`${t("release.triggerLabel")} — ${t("release.confirm")}`}
-            className="flex min-h-11 items-center gap-2 rounded-lg px-2.5 text-xs font-semibold text-monk-danger/80 transition hover:bg-monk-danger/10 hover:text-monk-danger"
+            className="flex min-h-11 items-center gap-2 rounded-lg px-2.5 text-xs font-semibold text-monk-danger transition hover:bg-monk-danger/10 hover:text-monk-danger"
           >
             <Trash2 size={14} />
             <span>{t("release.triggerLabel")}</span>
           </button>
-          <p className="mt-1 px-2.5 text-[10px] leading-4 text-monk-muted">{t("release.body")}</p>
+          <p className="mt-1 px-2.5 text-[11px] leading-4 text-monk-muted">{t("release.body")}</p>
         </div>
 
         {/* Footer Actions */}

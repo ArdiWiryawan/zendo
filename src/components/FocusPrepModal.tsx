@@ -187,7 +187,7 @@ export function FocusPrepModal({
             <span className="font-mono text-2xl font-bold tracking-tight text-monk-text">
               {timeFormatted}
             </span>
-            <span className="rounded-full bg-monk-accent/15 px-2 py-0.5 text-[10px] font-bold text-monk-accent">
+            <span className="rounded-full bg-monk-accent/15 px-2 py-0.5 text-[11px] font-bold text-monk-accent">
               5:00 Ritual
             </span>
           </div>

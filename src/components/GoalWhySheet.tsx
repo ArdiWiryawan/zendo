@@ -111,7 +111,7 @@ export function GoalWhySheet({ open, onClose, goalId }: GoalWhySheetProps) {
                   key={item.id}
                   className="flex items-start gap-2.5 rounded-2xl border border-monk-border/60 bg-monk-soft/20 px-3.5 py-3"
                 >
-                  <span className="mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded-full bg-monk-accent/15 text-[10px] font-bold text-monk-accent">
+                  <span className="mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded-full bg-monk-accent/15 text-[11px] font-bold text-monk-accent">
                     {index + 1}
                   </span>
                   <p className="min-w-0 flex-1 whitespace-pre-wrap break-words text-[13px] leading-relaxed text-monk-text">
@@ -138,7 +138,7 @@ export function GoalWhySheet({ open, onClose, goalId }: GoalWhySheetProps) {
               <label htmlFor="goal-why-input" className="text-[11px] font-bold uppercase tracking-wider text-monk-muted">
                 {t("goalWhy.addLabel")}
               </label>
-              <span className="text-[10px] font-semibold text-monk-muted">
+              <span className="text-[11px] font-semibold text-monk-muted">
                 {t("goalWhy.count", { n: whys.length, max: MAX_GOAL_WHYS })}
               </span>
             </div>

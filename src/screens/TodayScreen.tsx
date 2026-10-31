@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo, type ReactNode } from "react";
+import { useEffect, useState, useMemo, useRef, type ReactNode } from "react";
 import type { RelapseLog } from "../types/app";
 import { useNavigate } from "react-router-dom";
 import { Moon, BookOpen, Check, ChevronDown, ChevronRight, Sun, Sparkles, ShieldAlert, CircleDashed, Timer, Clock } from "lucide-react";
@@ -32,6 +32,7 @@ import {
   Textarea,
 } from "../components/ui";
 import { FocusSessionPanel } from "../screens/FocusSession";
+import { motion, useReducedMotion } from "framer-motion";
 import { CoachHint } from "./OnboardingSteps";
 import { WhyEditor } from "../components/SeasonWidgets";
 import { EnergyCheck, WhyStrip, GoalTasksCard, derivePrimaryCTA, focusLinkClass, focusLinkMutedClass } from "./TodayScreen.components";
@@ -396,6 +397,7 @@ export function TodayScreen() {
   const store = useMonkStore();
   const t = useT();
   const toast = useCalmToast();
+  const prefersReducedMotion = useReducedMotion() ?? false;
   const season = store.activeSeason!;
   const [today, setToday] = useState(() => getTodayDateString());
 
@@ -473,6 +475,12 @@ export function TodayScreen() {
    *  open state would greet the user with the long card they collapsed yesterday,
    *  which is exactly the height this redesign removes. */
   const [cardDetailsOpen, setCardDetailsOpen] = useState(false);
+  // React 18 has no `inert` prop; the attribute is set imperatively so the
+  // collapsed details region stays out of the tab order and a11y tree.
+  const detailsRef = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    if (detailsRef.current) detailsRef.current.inert = !cardDetailsOpen;
+  }, [cardDetailsOpen]);
 
   const savedReview = weeklyPlan ? store.weeklyReviews?.[weeklyPlan.id] : undefined;
 
@@ -778,7 +786,7 @@ export function TodayScreen() {
               <div className="min-w-0 flex-1">
                 <div className="flex flex-wrap items-center gap-2">
                   <p className="text-sm font-bold text-monk-text">{t("blueprint.clarifyPromptTitle")}</p>
-                  <span className="rounded-md border border-monk-accent/30 bg-monk-surface/90 px-2 py-0.5 text-[10px] font-semibold text-monk-accent">
+                  <span className="rounded-md border border-monk-accent/30 bg-monk-surface/90 px-2 py-0.5 text-[11px] font-semibold text-monk-accent">
                     {unclarifiedGoal.title}
                   </span>
                 </div>
@@ -831,9 +839,14 @@ export function TodayScreen() {
                 to stack three decorative layers — a per-state gradient, a raised
                 shadow, and an accent wash painted over both — which competed with
                 the one gold CTA that should be the loudest thing on the page.
-                Status now reads from the hairline and the border tone alone. */}
-            <div
+                Status now reads from the hairline and the border tone alone.
+                Entrance is a critically-damped spring (no overshoot): the card
+                settles where it belongs instead of landing on the page. */}
+            <motion.div
               id="today-primary"
+              initial={prefersReducedMotion ? { opacity: 0 } : { opacity: 0, y: 14 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ type: "spring", bounce: 0, duration: 0.45 }}
               className={`today-primary-anchor relative overflow-hidden rounded-monk border bg-monk-surface p-5 transition-colors duration-200 sm:p-6 ${
                 isDone ? "border-monk-success/30" : isRest ? "border-monk-rest/25" : "border-monk-border-strong"
               }`}
@@ -853,7 +866,17 @@ export function TodayScreen() {
                 <p className="min-w-0 truncate text-[11px] font-semibold uppercase tracking-[0.18em] text-monk-muted">
                   {isRest ? t("today.restDay") : t("today.todaysFocus")}
                 </p>
-                <span className={`shrink-0 inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] ${statusClass}`}>
+                {/* Keyed by the state it describes: when the day's state changes
+                    (active → done, → partial) the badge re-mounts and cross-fades
+                    in place instead of snapping. No exit animation — the old
+                    state must never linger beside the new one. */}
+                <motion.span
+                  key={statusLabel}
+                  initial={prefersReducedMotion ? { opacity: 0 } : { opacity: 0, scale: 0.94 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ type: "spring", bounce: 0, duration: 0.28 }}
+                  className={`shrink-0 inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.12em] ${statusClass}`}
+                >
                   {isDone ? (
                     <Check size={11} strokeWidth={2.5} aria-hidden />
                   ) : activeSession ? (
@@ -864,7 +887,7 @@ export function TodayScreen() {
                     <CircleDashed size={11} strokeWidth={2} aria-hidden />
                   ) : null}
                   <span>{statusLabel}</span>
-                </span>
+                </motion.span>
               </div>
 
               <span className="sr-only" aria-live="polite" id="today-status-live">
@@ -962,7 +985,7 @@ export function TodayScreen() {
                       todayPlan?.mainAction &&
                       todayPlan.mainAction.trim() === goal.obstacleMitigation.trim()
                     ) ? (
-                      <span className="shrink-0 rounded-full border border-monk-warning/40 bg-monk-warning/15 px-2 py-0.5 text-[10px] font-semibold text-monk-warning">
+                      <span className="shrink-0 rounded-full border border-monk-warning/40 bg-monk-warning/15 px-2 py-0.5 text-[11px] font-semibold text-monk-warning">
                         {t("today.planBActiveBadge")}
                       </span>
                     ) : null}
@@ -1083,7 +1106,7 @@ export function TodayScreen() {
                             something the user chose — and now that clearing the day
                             no longer writes the keystone, this is what an unset day
                             actually shows. The label keeps the provenance visible. */}
-                        <div className="font-mono text-[10px] uppercase tracking-[0.14em] text-monk-text-soft">
+                        <div className="font-mono text-[11px] uppercase tracking-[0.14em] text-monk-text-soft">
                           {t("today.suggested")}
                         </div>
                         <p className="break-words text-base leading-relaxed text-monk-muted">
@@ -1141,11 +1164,16 @@ export function TodayScreen() {
                             ? t("today.primary.completed")
                             : t("today.completeCta");
                     return (
-                      <button
+                      <motion.button
                         type="button"
                         aria-label={isDone ? t("today.markIncomplete") : t("today.markComplete")}
                         aria-pressed={isDone}
-                        className={`mt-3 flex min-h-12 w-full items-center justify-center gap-2 rounded-monk border text-base font-bold transition-all duration-200 ease-monk active:scale-[0.975] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-monk-accent focus-visible:ring-offset-2 focus-visible:ring-offset-monk-bg ${
+                        /* Feedback lives on the press, not the release: whileTap
+                           starts the instant the finger lands and a spring carries
+                           it back if the press is cancelled mid-way. */
+                        whileTap={prefersReducedMotion ? undefined : { scale: 0.97 }}
+                        transition={{ type: "spring", bounce: 0, duration: 0.2 }}
+                        className={`mt-3 flex min-h-12 w-full items-center justify-center gap-2 rounded-monk border text-base font-bold transition-colors duration-200 ease-monk focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-monk-accent focus-visible:ring-offset-2 focus-visible:ring-offset-monk-bg ${
                           isDone
                             ? "border-monk-success/40 bg-monk-success-soft text-monk-success"
                             : "monk-btn-primary border-transparent bg-monk-accent text-monk-bg"
@@ -1166,7 +1194,7 @@ export function TodayScreen() {
                       >
                         <Check size={18} strokeWidth={2.6} />
                         <span>{primaryLabel}</span>
-                      </button>
+                      </motion.button>
                     );
                   })()
                 ) : null}
@@ -1199,8 +1227,24 @@ export function TodayScreen() {
               </div>
 
               {/* Everything below the fold of the day's one action. Always in the
-                  DOM (so aria-controls resolves) but hidden until asked for. */}
-              <div id="today-card-details" hidden={!cardDetailsOpen} className="mt-4">
+                  DOM (so aria-controls resolves) but collapsed until asked for.
+                  The expand is a critically-damped spring that can be grabbed and
+                  reversed mid-flight — the card never locks input during the
+                  transition. `inert` (via ref; React 18 lacks the prop) keeps the
+                  collapsed content out of the tab order and the a11y tree, which
+                  the old `hidden` attribute used to do for free. */}
+              <motion.div
+                ref={detailsRef}
+                id="today-card-details"
+                initial={false}
+                animate={{
+                  height: cardDetailsOpen ? "auto" : 0,
+                  opacity: cardDetailsOpen ? 1 : 0,
+                  marginTop: cardDetailsOpen ? 16 : 0
+                }}
+                transition={prefersReducedMotion ? { duration: 0.15 } : { type: "spring", bounce: 0, duration: 0.38 }}
+                style={{ overflow: "hidden" }}
+              >
                 {goal ? (
                   <div className="mt-4 flex flex-wrap gap-2">
                     <button
@@ -1343,8 +1387,8 @@ export function TodayScreen() {
                   >
                     {t("today.changeTheme")}
                   </button>
-                ) : null}
-              </div>
+                  ) : null}
+              </motion.div>
 
               {/* Bottom Meta — the day's closing line, the evidence chips, and the
                   disclosure for everything below the fold. The toggle keeps a 44px
@@ -1355,14 +1399,24 @@ export function TodayScreen() {
                   <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1.5 text-xs leading-4 text-monk-muted">
                     <span className="min-w-0">{isRest ? t("today.protectRecovery") : t("today.stayWithOne")}</span>
                     {focusMinutes > 0 ? (
-                      <span className="rounded-full border border-monk-border bg-monk-soft px-2 py-0.5 font-mono text-xs tabular-nums">
+                      <motion.span
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        transition={{ delay: 0.12, duration: 0.3 }}
+                        className="rounded-full border border-monk-border bg-monk-soft px-2 py-0.5 font-mono text-xs tabular-nums"
+                      >
                         {t("today.focusMinutes", { n: focusMinutes })}
-                      </span>
+                      </motion.span>
                     ) : null}
                     {hasLearning ? (
-                      <span className="rounded-full border border-monk-border bg-monk-soft px-2 py-0.5 font-mono text-xs tabular-nums">
+                      <motion.span
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        transition={{ delay: 0.18, duration: 0.3 }}
+                        className="rounded-full border border-monk-border bg-monk-soft px-2 py-0.5 font-mono text-xs tabular-nums"
+                      >
                         {t("today.learnCount", { n: learningSessions.length })}
-                      </span>
+                      </motion.span>
                     ) : null}
                   </div>
 
@@ -1393,7 +1447,7 @@ export function TodayScreen() {
                   </p>
                 ) : null}
               </div>
-            </div>
+            </motion.div>
 
             {/* Primary zone — one CTA by day-part / state */}
             <div className="space-y-3">
@@ -1793,7 +1847,7 @@ export function DefenseChips({ compact = false, bare = false }: { compact?: bool
   if (!anti.length && !obs.length) return null;
   const body = (
     <>
-      <p className="text-[10px] font-bold uppercase tracking-widest text-monk-muted">
+      <p className="text-[11px] font-bold uppercase tracking-widest text-monk-muted">
         {compact ? t("today.guardrails") : t("today.avoidWatch")}
       </p>
       {anti.length ? (
@@ -1907,7 +1961,7 @@ function FlowPickToday({
       <div className="flex items-center justify-between gap-2">
         <p className="font-semibold">{t("today.pickHeading")}</p>
         {tracks.length > 0 ? (
-          <span className="text-[10px] font-medium text-monk-muted">
+          <span className="text-[11px] font-medium text-monk-muted">
             {t("today.trackCount", { n: tracks.length })}
           </span>
         ) : null}
@@ -1979,17 +2033,17 @@ function FlowPickToday({
                   <div className="flex flex-wrap items-center gap-2">
                     <p className="font-semibold">{goal?.title ?? t("today.goalFallback")}</p>
                     {goal?.track ? (
-                      <span className="rounded-md border border-monk-border/60 bg-monk-soft px-1.5 py-0.5 text-[9px] font-bold text-monk-muted">
+                      <span className="rounded-md border border-monk-border/60 bg-monk-soft px-1.5 py-0.5 text-[10px] font-bold text-monk-muted">
                         {goal.track}
                       </span>
                     ) : null}
                     {recommend ? (
-                      <span className="rounded-full border border-monk-accent/40 bg-monk-accent-soft px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-monk-accent">
+                      <span className="rounded-full border border-monk-accent/40 bg-monk-accent-soft px-2 py-0.5 text-[11px] font-bold uppercase tracking-wide text-monk-accent">
                         {t("today.suggested")}
                       </span>
                     ) : null}
                     {done ? (
-                      <span className="rounded-full border border-monk-success/30 bg-monk-success-soft px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-monk-success">
+                      <span className="rounded-full border border-monk-success/30 bg-monk-success-soft px-2 py-0.5 text-[11px] font-bold uppercase tracking-wide text-monk-success">
                         {t("today.targetMet")}
                       </span>
                     ) : null}
@@ -1998,7 +2052,7 @@ function FlowPickToday({
                     {goal?.keystoneAction?.trim() || (remaining === 1 ? t("today.daysLeftWeek", { n: remaining }) : t("today.daysLeftWeekPlural", { n: remaining }))}
                   </p>
                   {totalSubtasks > 0 ? (
-                    <p className="mt-1 text-[10px] font-medium text-monk-accent/80 flex items-center gap-1">
+                    <p className="mt-1 text-[11px] font-medium text-monk-accent flex items-center gap-1">
                       <span>{completedSubtasks}/{totalSubtasks} langkah selesai</span>
                     </p>
                   ) : null}
@@ -2011,7 +2065,7 @@ function FlowPickToday({
                       e.stopPropagation();
                       onOpenBlueprint?.(allocation.goalId);
                     }}
-                    className="flex items-center gap-1 rounded-md border border-monk-border bg-monk-soft px-2 py-1 text-[10px] font-semibold text-monk-muted transition hover:border-monk-accent hover:text-monk-accent active:scale-95"
+                    className="flex items-center gap-1 rounded-md border border-monk-border bg-monk-soft px-2 py-1 text-[11px] font-semibold text-monk-muted transition hover:border-monk-accent hover:text-monk-accent active:scale-95"
                   >
                     <Sparkles size={11} className="text-monk-accent" />
                     <span>{t("blueprint.openButton")}</span>

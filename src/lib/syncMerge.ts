@@ -132,6 +132,33 @@ export function mergeRemoteState(local: MonkMVPState, remote: Partial<MonkMVPSta
   // the newer updatedAt, so both devices resolve the same record.
   out.dayPlans = dedupeDayPlans(out.dayPlans) ?? [];
 
+  // A "paused" session must not be resurrected as "running" by a record whose
+  // clock predates the pause. A second browser context that never saw the pause
+  // (tabs/PWA don't share memory) keeps ticking its RUNNING copy — a fresh
+  // updatedAt every second — so plain last-write-wins let that pre-pause record
+  // overwrite the paused one, and the countdown resumed from the old wall-clock
+  // startTime as if the pause never happened. A GENUINE resume elsewhere
+  // re-anchors startTime to the resume moment (resumeFocusSession), which is
+  // strictly after pausedAt, so comparing startTime against pausedAt separates
+  // "stale pre-pause copy" from "real resume" cleanly.
+  if (Array.isArray(out.focusSessions)) {
+    const pausedById = new Map(
+      (local.focusSessions ?? [])
+        .filter((s) => s.status === "paused" && s.pausedAt)
+        .map((s) => [s.id, s])
+    );
+    if (pausedById.size > 0) {
+      out.focusSessions = out.focusSessions.map((session) => {
+        const paused = pausedById.get(session.id);
+        if (!paused || session.status !== "running") return session;
+        const resumedAtMs = Date.parse(session.startTime ?? "");
+        const pausedAtMs = Date.parse(paused.pausedAt ?? "");
+        if (!Number.isFinite(resumedAtMs) || !Number.isFinite(pausedAtMs)) return session;
+        return resumedAtMs <= pausedAtMs ? paused : session;
+      });
+    }
+  }
+
   for (const key of SCALAR_KEYS) {
     const l = local[key];
     const r = remote[key];
