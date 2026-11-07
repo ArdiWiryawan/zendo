@@ -10,6 +10,7 @@ import { ScheduleAdjustments } from "./ScheduleAdjustments";
 import { GhostButton } from "./ui";
 import type { IdealBlock, TimeBlock, TimeBlockCategory } from "../types/app";
 import { clock, minutes } from "../lib/weeklyPlanning";
+import { calendarSegments, timeLabel } from "../lib/idealWeekCalendar";
 
 interface DayTimeBlockVisualizerProps {
   date?: string;
@@ -123,8 +124,13 @@ export function DayTimeBlockVisualizer({
     const actual = new Set(
       timeBlocks.map((block) => `${block.startTime}|${block.title.trim().toLocaleLowerCase()}`),
     );
-    return (store.appSettings.idealWeek ?? [])
-      .filter((block) => block.days.includes(weekday))
+    return calendarSegments(store.appSettings.idealWeek ?? [], weekday)
+      .map((part) => ({
+        ...part.block,
+        id: part.continuation ? `${part.block.id}:tail` : part.block.id,
+        startTime: timeLabel(part.start),
+        duration: part.end - part.start,
+      }))
       .filter((block) => !actual.has(`${block.startTime}|${block.title.trim().toLocaleLowerCase()}`))
       .sort((a, b) => a.startTime.localeCompare(b.startTime));
   }, [activeDate, store.appSettings.idealWeek, timeBlocks]);

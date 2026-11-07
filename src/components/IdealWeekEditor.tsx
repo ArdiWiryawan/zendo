@@ -1,46 +1,62 @@
 import { useEffect, useRef, useState } from "react";
-import { CalendarDays, X } from "lucide-react";
+import { createPortal } from "react-dom";
+import { CalendarDays, Plus, X } from "lucide-react";
 import { useMonkStore } from "../store/useMonkStore";
 import type { IdealBlock, TimeBlockCategory } from "../types/app";
 import { getTodayDateString, parseLocalDateKey } from "../lib/date";
 import { saveIdealWeek } from "../lib/weeklyPlanningStore";
+import {
+  calendarSegments,
+  timeDuration,
+  timeLabel,
+  timeMinutes,
+  WEEKDAYS,
+} from "../lib/idealWeekCalendar";
 import { TextInput, PrimaryButton, GhostButton } from "./ui";
-import { planningField, usePlanningCopy } from "./PlanningControls";
+import { usePlanningCopy } from "./PlanningControls";
 
-const WEEK_ORDER = [1, 2, 3, 4, 5, 6, 0];
-const CALENDAR_START = 6;
-const CALENDAR_END = 24;
-const HOUR_HEIGHT = 32;
-const CALENDAR_HEIGHT = (CALENDAR_END - CALENDAR_START) * HOUR_HEIGHT;
-
-const EVENT_STYLES: Record<TimeBlockCategory, string> = {
-  deep_work: "border-monk-cat-deep/40 bg-monk-cat-deep/15 text-monk-cat-deep",
-  shallow: "border-monk-cat-shallow/40 bg-monk-cat-shallow/15 text-monk-cat-shallow",
-  learning: "border-monk-cat-learning/40 bg-monk-cat-learning/15 text-monk-cat-learning",
-  rest: "border-monk-cat-rest/40 bg-monk-cat-rest/15 text-monk-cat-rest",
-  personal: "border-monk-cat-personal/40 bg-monk-cat-personal/15 text-monk-cat-personal",
+const HOUR = 48;
+const ALL_DAYS = [1, 2, 3, 4, 5, 6, 0];
+const EMPTY_BLOCKS: IdealBlock[] = [];
+const STYLES: Record<TimeBlockCategory, string> = {
+  deep_work: "border-monk-cat-deep bg-monk-surface-raised text-monk-cat-deep",
+  shallow:
+    "border-monk-cat-shallow bg-monk-surface-raised text-monk-cat-shallow",
+  learning:
+    "border-monk-cat-learning bg-monk-surface-raised text-monk-cat-learning",
+  rest: "border-monk-cat-rest bg-monk-surface-raised text-monk-cat-rest",
+  personal:
+    "border-monk-cat-personal bg-monk-surface-raised text-monk-cat-personal",
 };
-
-function endTime(block: IdealBlock) {
-  const [hours, minutes] = block.startTime.split(":").map(Number);
-  const end = Math.min(24 * 60, hours * 60 + minutes + block.duration);
-  return `${String(Math.floor(end / 60)).padStart(2, "0")}:${String(end % 60).padStart(2, "0")}`;
-}
+const control =
+  "min-h-11 rounded-xl border px-3 text-sm transition active:scale-[0.98] motion-reduce:transform-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-monk-accent";
 
 export function IdealWeekEditor({
-  initiallyOpen = false,
+  initiallyOpen = true,
+  onClose,
 }: {
   initiallyOpen?: boolean;
+  onClose?: () => void;
 }) {
   const c = usePlanningCopy();
-  const store = useMonkStore();
-  const refs = store.appSettings.idealWeek ?? [];
+  const refs = useMonkStore((s) => s.appSettings.idealWeek ?? EMPTY_BLOCKS);
+  const dialog = useRef<HTMLDialogElement>(null);
+  const scroll = useRef<HTMLDivElement>(null);
+  const formRef = useRef<HTMLFormElement>(null);
   const [editing, setEditing] = useState<IdealBlock | null>(null);
+  const [baseline, setBaseline] = useState("");
+  const [finish, setFinish] = useState("10:00");
+  const [weekend, setWeekend] = useState(false);
+  const [weekendStart, setWeekendStart] = useState("23:00");
+  const [weekendEnd, setWeekendEnd] = useState("08:00");
   const [error, setError] = useState("");
   const [status, setStatus] = useState("");
-  const [calendarOpen, setCalendarOpen] = useState(false);
-  const [expanded, setExpanded] = useState(initiallyOpen);
-  const calendarRef = useRef<HTMLDialogElement>(null);
+  const [selectedDay, setSelectedDay] = useState(() =>
+    parseLocalDateKey(getTodayDateString()).getDay(),
+  );
+  const [view, setView] = useState<"week" | "day">(() =>
+    window.matchMedia("(min-width: 768px)").matches ? "week" : "day",
+  );
   const days = [
     c("Min", "Sun"),
     c("Sen", "Mon"),
@@ -50,348 +66,717 @@ export function IdealWeekEditor({
     c("Jum", "Fri"),
     c("Sab", "Sat"),
   ];
-  const todayIndex = parseLocalDateKey(getTodayDateString()).getDay();
-  const previewRefs = editing
-    ? [...refs.filter((ref) => ref.id !== editing.id), ...(editing.title.trim() ? [editing] : [])]
-    : refs;
+  const draftKey = JSON.stringify({
+    editing,
+    finish,
+    weekend,
+    weekendStart,
+    weekendEnd,
+  });
+  const dirty = editing !== null && draftKey !== baseline;
+  const duration = editing ? timeDuration(editing.startTime, finish) : 0;
+  const canVaryWeekend =
+    !!editing?.days.some((d) => d >= 1 && d <= 5) &&
+    !!editing?.days.some((d) => d === 0 || d === 6);
 
   useEffect(() => {
-    const dialog = calendarRef.current;
-    if (!dialog) return;
-    if (calendarOpen && !dialog.open) dialog.showModal();
-    if (!calendarOpen && dialog.open) dialog.close();
-  }, [calendarOpen]);
+    if (initiallyOpen && !dialog.current?.open) dialog.current?.showModal();
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = previous;
+    };
+  }, [initiallyOpen]);
+  useEffect(() => {
+    if (scroll.current)
+      scroll.current.scrollTop = editing
+        ? Math.max(0, (timeMinutes(editing.startTime) / 60) * HOUR - HOUR)
+        : 6 * HOUR;
+  }, [view, editing?.startTime]);
+  useEffect(() => {
+    if (!dirty) return;
+    const warn = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+    };
+    window.addEventListener("beforeunload", warn);
+    return () => window.removeEventListener("beforeunload", warn);
+  }, [dirty]);
 
-  function save(next: IdealBlock[]) {
+  function discard() {
+    return (
+      !dirty ||
+      window.confirm(
+        c(
+          "Buang perubahan aktivitas yang belum disimpan?",
+          "Discard unsaved activity changes?",
+        ),
+      )
+    );
+  }
+  function close() {
+    if (!discard()) return;
+    dialog.current?.close();
+    onClose?.();
+  }
+  function start(block?: IdealBlock, day?: number, hour = 9) {
+    if (!discard()) return;
+    const next: IdealBlock = block
+      ? { ...block, days: [...block.days] }
+      : {
+          id: crypto.randomUUID(),
+          title: "",
+          days: day === undefined ? [...ALL_DAYS] : [day],
+          startTime: timeLabel(hour * 60),
+          duration: 60,
+          category: "personal",
+          flexible: true,
+        };
+    const end = timeLabel(timeMinutes(next.startTime) + next.duration);
+    setEditing(next);
+    setFinish(end);
+    setWeekend(false);
+    setWeekendStart("23:00");
+    setWeekendEnd("08:00");
+    setBaseline(
+      JSON.stringify({
+        editing: refs.some((block) => block.id === next.id)
+          ? next
+          : { ...next, title: "" },
+        finish: end,
+        weekend: false,
+        weekendStart: "23:00",
+        weekendEnd: "08:00",
+      }),
+    );
+    setError("");
+    setStatus("");
+    requestAnimationFrame(() => {
+      formRef.current?.querySelector("input")?.focus({ preventScroll: true });
+      if (scroll.current)
+        scroll.current.scrollTop = Math.max(
+          0,
+          (timeMinutes(next.startTime) / 60) * HOUR - HOUR,
+        );
+    });
+  }
+  const candidates: IdealBlock[] =
+    editing && duration > 0 && editing.title.trim()
+      ? [
+          {
+            ...editing,
+            title: editing.title.trim(),
+            duration,
+            days:
+              weekend && canVaryWeekend
+                ? editing.days.filter((d) => d !== 0 && d !== 6)
+                : editing.days,
+          },
+          ...(weekend &&
+          canVaryWeekend &&
+          timeDuration(weekendStart, weekendEnd) > 0
+            ? [
+                {
+                  ...editing,
+                  id: `${editing.id}:weekend`,
+                  title: editing.title.trim(),
+                  days: editing.days.filter((d) => d === 0 || d === 6),
+                  startTime: weekendStart,
+                  duration: timeDuration(weekendStart, weekendEnd),
+                },
+              ]
+            : []),
+        ]
+      : [];
+  const preview = editing
+    ? [
+        ...refs.filter(
+          (b) =>
+            b.id !== editing.id &&
+            !candidates.some((candidate) => candidate.id === b.id),
+        ),
+        ...candidates,
+      ]
+    : refs;
+  const previewIds = new Set(candidates.map((b) => b.id));
+
+  function save() {
+    if (!editing) return;
+    if (
+      !editing.title.trim() ||
+      !editing.days.length ||
+      !duration ||
+      (weekend && canVaryWeekend && !timeDuration(weekendStart, weekendEnd))
+    ) {
+      setError(
+        c(
+          "Isi nama aktivitas, pilih minimal satu hari, dan gunakan jam mulai serta selesai yang berbeda.",
+          "Enter an activity, choose at least one day, and use different start and end times.",
+        ),
+      );
+      return;
+    }
     try {
-      saveIdealWeek(next);
-      setError("");
+      const latest = useMonkStore.getState().appSettings.idealWeek ?? [];
+      saveIdealWeek([
+        ...latest.filter(
+          (b) =>
+            b.id !== editing.id &&
+            !candidates.some((candidate) => candidate.id === b.id),
+        ),
+        ...candidates,
+      ]);
       setEditing(null);
-      setStatus(c("Ideal Week tersimpan.", "Ideal Week saved."));
+      setError("");
+      setStatus(
+        c(
+          "Aktivitas tersimpan. Tambahkan rutinitas berikutnya saat siap.",
+          "Activity saved. Add another routine when ready.",
+        ),
+      );
     } catch {
       setError(
         c(
-          "Belum tersimpan. Cek aktivitas, hari, waktu, dan durasi, lalu coba lagi.",
-          "Not saved. Check activity, days, time and duration, then retry.",
+          "Belum tersimpan. Periksa waktunya dan coba simpan lagi; isianmu tetap di sini.",
+          "Not saved. Check the times and retry; your entries are still here.",
         ),
       );
     }
   }
 
-  function startNew() {
-    setEditing({
-      id: crypto.randomUUID(),
-      title: "",
-      days: [todayIndex, (todayIndex + 1) % 7],
-      startTime: "09:00",
-      duration: 60,
-      category: "deep_work",
-      flexible: true,
-    });
-    setError("");
-    setStatus("");
-  }
-
-  return (
-    <details
-      className="space-y-4"
-      id="ideal-week-editor"
-      open={expanded}
-      onToggle={(event) => setExpanded(event.currentTarget.open)}
+  return createPortal(
+    <dialog
+      ref={dialog}
+      aria-labelledby="ideal-week-title"
+      onCancel={(e) => {
+        e.preventDefault();
+        close();
+      }}
+      className="fixed inset-0 m-0 h-[100dvh] max-h-none w-full max-w-none overflow-hidden border-0 bg-monk-bg p-0 text-monk-text backdrop:bg-black/70"
     >
-      <summary className="cursor-pointer py-3 text-sm font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-monk-accent">
-        {c("Aktivitas mingguan", "Weekly activities")}
-      </summary>
-      <p className="text-sm text-monk-muted">
-        {c(
-          "Blok pilihan muncul sebagai saran di Agenda. Jadwal aktual hanya berubah saat kamu menambahkannya.",
-          "Selected blocks appear as Agenda suggestions. Your actual schedule changes only when you add them.",
-        )}
-      </p>
-
-      <div className="flex items-center justify-between gap-3">
-        <button
-          type="button"
-          onClick={() => setCalendarOpen(true)}
-          className="flex min-h-11 items-center gap-2 rounded-xl border border-monk-border bg-monk-surface px-3 text-sm font-medium text-monk-text transition hover:bg-monk-soft focus-visible:outline focus-visible:outline-2 focus-visible:outline-monk-accent"
-        >
-          <CalendarDays size={16} />
-          {c("Preview kalender", "Calendar preview")}
-        </button>
-        {!editing && (
-          <button
-            type="button"
-            onClick={startNew}
-            className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-monk-accent text-xl font-medium text-monk-bg transition active:scale-95 focus-visible:outline focus-visible:outline-2 focus-visible:outline-monk-accent focus-visible:outline-offset-2"
-            aria-label={c("Tambah aktivitas", "Add activity")}
-            title={c("Tambah aktivitas", "Add activity")}
-          >
-            +
-          </button>
-        )}
-      </div>
-
-      <div className="space-y-2">
-        {WEEK_ORDER.map((dayIndex) => {
-          const dayBlocks = previewRefs
-            .filter((block) => block.days.includes(dayIndex))
-            .sort((a, b) => a.startTime.localeCompare(b.startTime));
-          return (
-            <section key={dayIndex} aria-label={days[dayIndex]} className="border-b border-monk-border/70 pb-2 last:border-0">
-              <h3 className="mb-1 text-sm font-semibold">{days[dayIndex]}</h3>
-              {dayBlocks.length ? (
-                <ul className="space-y-1">
-                  {dayBlocks.map((block) => (
-                    <li key={block.id} className="flex items-center justify-between gap-3 rounded-lg px-2 py-2 hover:bg-monk-soft/40">
-                      <div className="min-w-0">
-                        <p className="break-words text-sm font-medium">{block.title}</p>
-                        <p className="text-xs text-monk-muted">
-                          {block.startTime} · {block.duration} {c("menit", "min")}
-                          {block.flexible ? ` · ${c("fleksibel", "flexible")}` : ""}
-                        </p>
-                      </div>
-                      <GhostButton
-                        aria-label={`${c("Edit", "Edit")} ${block.title}`}
-                        onClick={() => { setEditing({ ...block }); setError(""); setStatus(""); }}
-                      >
-                        {c("Edit", "Edit")}
-                      </GhostButton>
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <p className="px-2 py-1 text-xs text-monk-muted">—</p>
-              )}
-            </section>
-          );
-        })}
-      </div>
-
-      <dialog
-        ref={calendarRef}
-        aria-labelledby="ideal-week-calendar-title"
-        onCancel={(event) => { event.preventDefault(); setCalendarOpen(false); }}
-        onClose={() => setCalendarOpen(false)}
-        className="m-auto max-h-[88dvh] w-[min(96vw,72rem)] max-w-none overflow-hidden rounded-2xl border border-monk-border bg-monk-surface p-0 text-monk-text shadow-xl backdrop:bg-black/70"
-      >
-        <div className="flex items-center justify-between gap-4 border-b border-monk-border px-4 py-3 sm:px-6">
+      <div className="flex h-full flex-col">
+        <header className="flex shrink-0 items-center justify-between gap-3 border-b border-monk-border px-4 py-3 sm:px-6">
           <div>
-            <h2 id="ideal-week-calendar-title" className="text-base font-semibold">{c("Preview kalender", "Calendar preview")}</h2>
-            <p className="text-xs text-monk-muted">{c("Mingguan · Senin sampai Minggu", "Weekly · Monday through Sunday")}</p>
+            <h2
+              id="ideal-week-title"
+              className="flex items-center gap-2 text-xl font-semibold"
+            >
+              <CalendarDays size={20} className="text-monk-accent" />
+              Ideal Week
+            </h2>
+            <p className="mt-1 text-sm text-monk-muted">
+              {c(
+                "Susun rutinitas untuk minggu biasa.",
+                "Build a rhythm for an ordinary week.",
+              )}
+            </p>
           </div>
           <button
             type="button"
-            onClick={() => setCalendarOpen(false)}
-            aria-label={c("Tutup preview kalender", "Close calendar preview")}
-            className="grid h-11 w-11 shrink-0 place-items-center rounded-full text-monk-muted transition hover:bg-monk-soft hover:text-monk-text focus-visible:outline focus-visible:outline-2 focus-visible:outline-monk-accent"
+            onClick={close}
+            aria-label={c("Tutup Ideal Week", "Close Ideal Week")}
+            className={`${control} border-monk-border hover:bg-monk-soft`}
           >
-            <X size={18} />
+            <X size={20} />
           </button>
-        </div>
-        <div className="max-h-[calc(88dvh-4.5rem)] overflow-auto overscroll-contain p-3 sm:p-5" role="region" aria-label={c("Jadwal Ideal Week", "Ideal Week schedule")} tabIndex={0}>
-          <div className="min-w-[48rem] overflow-hidden rounded-xl border border-monk-border bg-monk-surface">
-            <div className="sticky top-0 z-10 grid grid-cols-[3.25rem_repeat(7,minmax(0,1fr))] border-b border-monk-border bg-monk-surface-raised text-center text-xs font-semibold">
-              <span className="py-3" aria-hidden />
-              {WEEK_ORDER.map((dayIndex) => (
-                <span key={dayIndex} className="py-3 text-monk-muted">{days[dayIndex]}</span>
-              ))}
+        </header>
+
+        <div className="min-h-0 flex-1 overflow-y-auto lg:grid lg:grid-cols-[minmax(0,1fr)_22rem] lg:overflow-hidden">
+          <section
+            className="sticky top-0 z-10 border-b border-monk-border bg-monk-bg lg:static lg:flex lg:min-h-0 lg:flex-col lg:border-b-0 lg:border-r"
+            aria-label={c(
+              "Preview kalender mingguan",
+              "Weekly calendar preview",
+            )}
+          >
+            <div className="flex flex-wrap items-center justify-between gap-2 px-3 py-3 sm:px-5">
+              <div
+                className="flex rounded-xl border border-monk-border p-1"
+                aria-label={c("Tampilan kalender", "Calendar view")}
+              >
+                {(["week", "day"] as const).map((mode) => (
+                  <button
+                    key={mode}
+                    type="button"
+                    aria-pressed={view === mode}
+                    onClick={() => setView(mode)}
+                    className={`min-h-9 rounded-lg px-3 text-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-monk-accent ${view === mode ? "bg-monk-soft text-monk-text" : "text-monk-muted"}`}
+                  >
+                    {mode === "week"
+                      ? c("Seminggu", "Week")
+                      : c("Sehari", "Day")}
+                  </button>
+                ))}
+              </div>
+              <button
+                type="button"
+                onClick={() => start()}
+                className={`${control} flex items-center gap-1 border-monk-accent text-monk-accent hover:bg-monk-accent/10`}
+              >
+                <Plus size={16} />
+                {c("Aktivitas", "Activity")}
+              </button>
             </div>
-            <div className="relative grid grid-cols-[3.25rem_repeat(7,minmax(0,1fr))]" style={{ height: CALENDAR_HEIGHT }}>
-              {Array.from({ length: CALENDAR_END - CALENDAR_START + 1 }, (_, index) => {
-                const hour = CALENDAR_START + index;
-                const top = index * HOUR_HEIGHT;
-                return (
-                  <div key={hour} className="pointer-events-none absolute inset-x-0 z-0 flex items-start" style={{ top }}>
-                    <span className="w-[3.25rem] -translate-y-1/2 pr-2 text-right font-mono text-[11px] tabular-nums text-monk-muted">
-                      {String(hour).padStart(2, "0")}:00
+            {view === "day" && (
+              <div className="grid grid-cols-7 gap-1 px-3 pb-2">
+                {WEEKDAYS.map((day) => (
+                  <button
+                    key={day}
+                    type="button"
+                    aria-pressed={selectedDay === day}
+                    onClick={() => setSelectedDay(day)}
+                    className={`min-h-11 rounded-lg text-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-monk-accent ${selectedDay === day ? "bg-monk-accent text-monk-bg" : "text-monk-muted hover:bg-monk-soft"}`}
+                  >
+                    {days[day]}
+                  </button>
+                ))}
+              </div>
+            )}
+            <p className="px-4 pb-2 text-xs text-monk-muted">
+              {view === "week"
+                ? c(
+                    "Pilih jam kosong. Geser kalender untuk melihat hari lainnya.",
+                    "Choose an empty hour. Scroll to see other days.",
+                  )
+                : c(
+                    "Pilih jam kosong untuk menambah aktivitas.",
+                    "Choose an empty hour to add an activity.",
+                  )}
+            </p>
+            <div
+              ref={scroll}
+              className="h-[35dvh] overflow-auto overscroll-contain lg:h-auto lg:min-h-0 lg:flex-1"
+              tabIndex={0}
+              aria-label={c(
+                "Jam dan aktivitas kalender",
+                "Calendar hours and activities",
+              )}
+            >
+              <div className={view === "week" ? "min-w-[48rem]" : "min-w-0"}>
+                <div
+                  className="sticky top-0 z-20 grid border-y border-monk-border bg-monk-surface text-center text-sm"
+                  style={{
+                    gridTemplateColumns: `3rem repeat(${view === "week" ? 7 : 1}, minmax(0,1fr))`,
+                  }}
+                >
+                  <span aria-hidden />
+                  {(view === "week" ? WEEKDAYS : [selectedDay]).map((day) => (
+                    <span key={day} className="py-2 font-medium">
+                      {days[day]}
                     </span>
-                    <span className="flex-1 border-t border-monk-border/60" />
+                  ))}
+                </div>
+                <div
+                  className="grid"
+                  style={{
+                    gridTemplateColumns: `3rem repeat(${view === "week" ? 7 : 1}, minmax(0,1fr))`,
+                  }}
+                >
+                  <div aria-hidden>
+                    {Array.from({ length: 24 }, (_, hour) => (
+                      <div
+                        key={hour}
+                        className="pr-1 pt-1 text-right font-mono text-xs tabular-nums text-monk-muted"
+                        style={{ height: HOUR }}
+                      >
+                        {timeLabel(hour * 60)}
+                      </div>
+                    ))}
                   </div>
-                );
-              })}
-              {WEEK_ORDER.map((dayIndex) => {
-                const blocks = previewRefs
-                  .filter((block) => block.days.includes(dayIndex))
-                  .sort((a, b) => a.startTime.localeCompare(b.startTime));
-                return (
-                  <div key={dayIndex} className="relative col-span-1 border-l border-monk-border/50 first:border-l-0" style={{ gridColumn: WEEK_ORDER.indexOf(dayIndex) + 2 }}>
-                    {blocks.map((block) => {
-                      const [hours, minute] = block.startTime.split(":").map(Number);
-                      const start = hours * 60 + minute;
-                      const end = start + block.duration;
-                      const top = Math.max(0, (start - CALENDAR_START * 60) * HOUR_HEIGHT / 60);
-                      const bottom = Math.min(CALENDAR_END * 60, end);
-                      const height = Math.max(24, (bottom - Math.max(start, CALENDAR_START * 60)) * HOUR_HEIGHT / 60 - 2);
+                  {(view === "week" ? WEEKDAYS : [selectedDay]).map((day) => (
+                    <div
+                      key={day}
+                      className="relative border-l border-monk-border"
+                      style={{ height: 24 * HOUR }}
+                    >
+                      {Array.from({ length: 24 }, (_, hour) => (
+                        <button
+                          key={hour}
+                          type="button"
+                          data-slot={`${day}:${hour}`}
+                          tabIndex={day === selectedDay && hour === 9 ? 0 : -1}
+                          onKeyDown={(event) => {
+                            const index = WEEKDAYS.indexOf(day);
+                            const moves: Record<string, [number, number]> = {
+                              ArrowUp: [day, Math.max(0, hour - 1)],
+                              ArrowDown: [day, Math.min(23, hour + 1)],
+                              ArrowLeft: [
+                                WEEKDAYS[Math.max(0, index - 1)],
+                                hour,
+                              ],
+                              ArrowRight: [
+                                WEEKDAYS[Math.min(6, index + 1)],
+                                hour,
+                              ],
+                            };
+                            const target = moves[event.key];
+                            if (!target) return;
+                            event.preventDefault();
+                            dialog.current
+                              ?.querySelector<HTMLButtonElement>(
+                                `[data-slot="${target[0]}:${target[1]}"]`,
+                              )
+                              ?.focus();
+                          }}
+                          aria-label={`${c("Tambah aktivitas", "Add activity")}, ${days[day]}, ${timeLabel(hour * 60)}`}
+                          onClick={() => {
+                            setSelectedDay(day);
+                            start(undefined, day, hour);
+                          }}
+                          className="block w-full border-t border-monk-border/60 hover:bg-monk-accent/10 focus-visible:relative focus-visible:z-10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-monk-accent"
+                          style={{ height: HOUR }}
+                        />
+                      ))}
+                      {calendarSegments(preview, day).map((part) => (
+                        <button
+                          key={`${part.block.id}:${part.continuation}`}
+                          type="button"
+                          onClick={() => {
+                            if (previewIds.has(part.block.id)) {
+                              formRef.current?.querySelector("input")?.focus();
+                              return;
+                            }
+                            start(part.block);
+                          }}
+                          aria-label={`${part.block.title}, ${days[day]}, ${timeLabel(part.start)}–${part.end === 1440 ? "24:00" : timeLabel(part.end)}${previewIds.has(part.block.id) ? c(", pratinjau", ", preview") : ""}`}
+                          className={`absolute z-10 overflow-hidden rounded-lg border-l-4 px-1.5 py-1 text-left text-xs leading-tight shadow-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-monk-accent ${STYLES[part.block.category]} ${previewIds.has(part.block.id) ? "border-y border-r border-dashed" : "border-y border-r border-monk-border"}`}
+                          style={{
+                            top: (part.start / 60) * HOUR,
+                            height: Math.max(
+                              24,
+                              ((part.end - part.start) / 60) * HOUR - 2,
+                            ),
+                            left: `calc(${(part.lane / part.lanes) * 100}% + 2px)`,
+                            width: `calc(${100 / part.lanes}% - 4px)`,
+                          }}
+                        >
+                          <span className="block font-semibold">
+                            {previewIds.has(part.block.id) &&
+                              `${c("Pratinjau", "Preview")} · `}
+                            {part.block.title}
+                          </span>
+                          <span>
+                            {timeLabel(part.start)}–
+                            {part.end === 1440 ? "24:00" : timeLabel(part.end)}
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <aside
+            className="bg-monk-surface p-4 pb-[max(1.5rem,env(safe-area-inset-bottom))] lg:overflow-y-auto lg:p-5"
+            aria-label={c("Form aktivitas", "Activity form")}
+          >
+            {editing ? (
+              <form
+                ref={formRef}
+                className="space-y-5"
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  save();
+                }}
+              >
+                <div>
+                  <h3 className="text-lg font-semibold">
+                    {refs.some((b) => b.id === editing.id)
+                      ? c("Edit aktivitas", "Edit activity")
+                      : c("Tambah aktivitas", "Add activity")}
+                  </h3>
+                  <p className="mt-1 text-sm text-monk-muted">
+                    {c(
+                      "Preview berubah saat kamu mengisi.",
+                      "The preview updates as you fill this in.",
+                    )}
+                  </p>
+                </div>
+                <TextInput
+                  label={c("Aktivitas", "Activity")}
+                  required
+                  maxLength={120}
+                  placeholder={c("Contoh: Tidur", "For example: Sleep")}
+                  value={editing.title}
+                  onChange={(e) => {
+                    setEditing({ ...editing, title: e.target.value });
+                    setError("");
+                  }}
+                />
+                <div className="grid grid-cols-2 gap-3">
+                  <TextInput
+                    required
+                    type="time"
+                    label={c("Mulai", "Start")}
+                    value={editing.startTime}
+                    onChange={(e) =>
+                      setEditing({ ...editing, startTime: e.target.value })
+                    }
+                  />
+                  <TextInput
+                    required
+                    type="time"
+                    label={c("Selesai", "End")}
+                    value={finish}
+                    onChange={(e) => setFinish(e.target.value)}
+                  />
+                </div>
+                <p className="text-sm text-monk-muted">
+                  {duration ? (
+                    <>
+                      {finish < editing.startTime &&
+                        `${c("Selesai hari berikutnya", "Ends the next day")} · `}
+                      {Math.floor(duration / 60) > 0 &&
+                        `${Math.floor(duration / 60)} ${c("jam", "hr")} `}
+                      {duration % 60 > 0 &&
+                        `${duration % 60} ${c("menit", "min")}`}
+                    </>
+                  ) : (
+                    c(
+                      "Pilih jam mulai dan selesai yang berbeda.",
+                      "Choose different start and end times.",
+                    )
+                  )}
+                </p>
+                <fieldset className="space-y-3">
+                  <legend className="mb-2 text-sm font-medium">
+                    {c("Ulangi", "Repeat")}
+                  </legend>
+                  <div className="flex flex-wrap gap-2">
+                    {[
+                      { name: c("Setiap hari", "Every day"), days: ALL_DAYS },
+                      {
+                        name: c("Hari kerja", "Weekdays"),
+                        days: [1, 2, 3, 4, 5],
+                      },
+                      { name: c("Akhir pekan", "Weekends"), days: [6, 0] },
+                    ].map((preset) => {
+                      const selected =
+                        editing.days.length === preset.days.length &&
+                        preset.days.every((d) => editing.days.includes(d));
                       return (
                         <button
-                          key={block.id}
+                          key={preset.name}
                           type="button"
-                          title={`${block.title} · ${block.startTime}–${endTime(block)}`}
-                          aria-label={`${block.title}, ${days[dayIndex]}, ${block.startTime}–${endTime(block)}`}
-                          onClick={() => { setEditing({ ...block }); setError(""); setStatus(""); setCalendarOpen(false); }}
-                          className={`absolute inset-x-1 z-[1] overflow-hidden rounded-md border px-1.5 py-0.5 text-left text-[11px] leading-tight focus-visible:outline focus-visible:outline-2 focus-visible:outline-monk-accent ${EVENT_STYLES[block.category]}`}
-                          style={{ top, height }}
+                          aria-pressed={selected}
+                          onClick={() =>
+                            setEditing({ ...editing, days: [...preset.days] })
+                          }
+                          className={`${control} ${selected ? "border-monk-accent bg-monk-accent/10 text-monk-accent" : "border-monk-border text-monk-muted"}`}
                         >
-                          <span className="block font-semibold">{block.startTime}</span>
-                          <span className="line-clamp-2 block">{block.title}</span>
+                          {preset.name}
                         </button>
                       );
                     })}
                   </div>
-                );
-              })}
-              {previewRefs.length === 0 && (
-                <p className="absolute inset-0 z-[2] grid place-items-center px-6 text-center text-sm text-monk-muted">
-                  {c("Tambah aktivitas untuk melihat preview minggu.", "Add an activity to preview your week.")}
-                </p>
-              )}
-            </div>
-          </div>
-        </div>
-      </dialog>
-
-      {editing && (
-        <form
-          className="space-y-4 rounded-xl border border-monk-border p-4"
-          onSubmit={(e) => {
-            e.preventDefault();
-            if (!editing.days.length) {
-              setError(c("Pilih minimal satu hari.", "Choose at least one day."));
-              return;
-            }
-            save([...refs.filter((ref) => ref.id !== editing.id), editing]);
-          }}
-        >
-          <TextInput
-            required
-            label={c("Aktivitas", "Activity")}
-            value={editing.title}
-            onChange={(e) => setEditing({ ...editing, title: e.target.value })}
-          />
-          <fieldset>
-            <legend className="mb-2 text-sm">{c("Ulangi di", "Repeat on")}</legend>
-            <div className="mb-3 flex flex-wrap gap-2">
-              {[
-                { label: c("Hari ini", "Today"), value: [todayIndex] },
-                { label: c("Hari ini + besok", "Today + tomorrow"), value: [todayIndex, (todayIndex + 1) % 7] },
-                { label: c("Hari kerja", "Weekdays"), value: [1, 2, 3, 4, 5] },
-              ].map((preset) => {
-                const selected = preset.value.length === editing.days.length && preset.value.every((day) => editing.days.includes(day));
-                return (
-                  <button
-                    key={preset.label}
-                    type="button"
-                    aria-pressed={selected}
-                    onClick={() => setEditing({ ...editing, days: preset.value })}
-                    className={`min-h-10 rounded-full border px-3 text-xs font-medium transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-monk-accent ${selected ? "border-monk-accent bg-monk-accent/15 text-monk-accent" : "border-monk-border text-monk-muted hover:text-monk-text"}`}
+                  <div className="grid grid-cols-7 gap-1">
+                    {WEEKDAYS.map((day) => (
+                      <button
+                        key={day}
+                        type="button"
+                        aria-pressed={editing.days.includes(day)}
+                        aria-label={`${c("Ulangi", "Repeat")}: ${days[day]}`}
+                        onClick={() =>
+                          setEditing({
+                            ...editing,
+                            days: editing.days.includes(day)
+                              ? editing.days.filter((d) => d !== day)
+                              : [...editing.days, day],
+                          })
+                        }
+                        className={`min-h-11 rounded-lg text-xs focus-visible:outline focus-visible:outline-2 focus-visible:outline-monk-accent ${editing.days.includes(day) ? "bg-monk-accent text-monk-bg" : "bg-monk-soft text-monk-muted"}`}
+                      >
+                        {days[day]}
+                      </button>
+                    ))}
+                  </div>
+                </fieldset>
+                {canVaryWeekend && (
+                  <div className="space-y-3 border-t border-monk-border pt-4">
+                    <label className="flex min-h-11 items-center gap-3 text-sm">
+                      <input
+                        type="checkbox"
+                        checked={weekend}
+                        onChange={(e) => setWeekend(e.target.checked)}
+                      />
+                      {c(
+                        "Jam berbeda di akhir pekan",
+                        "Different weekend hours",
+                      )}
+                    </label>
+                    {weekend && (
+                      <>
+                        <div className="grid grid-cols-2 gap-3">
+                          <TextInput
+                            type="time"
+                            required
+                            label={c("Mulai akhir pekan", "Weekend start")}
+                            value={weekendStart}
+                            onChange={(e) => setWeekendStart(e.target.value)}
+                          />
+                          <TextInput
+                            type="time"
+                            required
+                            label={c("Selesai akhir pekan", "Weekend end")}
+                            value={weekendEnd}
+                            onChange={(e) => setWeekendEnd(e.target.value)}
+                          />
+                        </div>
+                        <p className="text-xs text-monk-muted">
+                          {c(
+                            "Tersimpan sebagai dua pola waktu yang bisa diedit terpisah.",
+                            "Saved as two time patterns you can edit separately.",
+                          )}
+                        </p>
+                      </>
+                    )}
+                  </div>
+                )}
+                {error && (
+                  <p role="alert" className="text-sm text-monk-danger">
+                    {error}
+                  </p>
+                )}
+                <PrimaryButton type="submit">
+                  {c(
+                    `Simpan ke ${editing.days.length} hari`,
+                    `Save to ${editing.days.length} days`,
+                  )}
+                </PrimaryButton>
+                <div className="flex flex-wrap justify-between gap-2">
+                  <GhostButton
+                    onClick={() => {
+                      if (discard()) {
+                        setEditing(null);
+                        setError("");
+                      }
+                    }}
                   >
-                    {preset.label}
-                  </button>
-                );
-              })}
-            </div>
-            <div className="flex flex-wrap gap-2">
-              {days.map((day, index) => (
-                <label key={day} className="flex min-h-11 items-center gap-2 rounded-xl border border-monk-border px-3 text-sm has-[:checked]:border-monk-accent has-[:checked]:bg-monk-accent/10">
-                  <input
-                    type="checkbox"
-                    checked={editing.days.includes(index)}
-                    onChange={(e) => setEditing({
-                      ...editing,
-                      days: e.target.checked
-                        ? [...editing.days, index].sort((a, b) => a - b)
-                        : editing.days.filter((value) => value !== index),
-                    })}
-                  />
-                  {day}
-                </label>
-              ))}
-            </div>
-            <p className="mt-2 text-xs text-monk-muted">
-              {c("Muncul otomatis di Agenda pada hari terpilih.", "Appears in Agenda on selected days.")}
-            </p>
-          </fieldset>
-          <div className="grid grid-cols-2 gap-3">
-            <TextInput
-              required
-              type="time"
-              label={c("Mulai", "Start")}
-              value={editing.startTime}
-              onChange={(e) => setEditing({ ...editing, startTime: e.target.value })}
-            />
-            <TextInput
-              required
-              type="number"
-              min={1}
-              max={1440}
-              label={c("Durasi (menit)", "Duration (min)")}
-              value={String(editing.duration)}
-              onChange={(e) => setEditing({ ...editing, duration: Number(e.target.value) })}
-            />
-          </div>
-          <details className="text-sm">
-            <summary className="cursor-pointer py-2 text-monk-muted">{c("Opsi tambahan", "More options")}</summary>
-            <div className="space-y-3 pt-3">
-              <label className="block space-y-2">
-                <span>{c("Goal (opsional)", "Goal (optional)")}</span>
-                <select
-                  className={planningField}
-                  value={editing.goalId ?? ""}
-                  onChange={(e) => setEditing({ ...editing, goalId: e.target.value || undefined })}
-                >
-                  <option value="">{c("Tanpa tautan", "No link")}</option>
-                  {store.goals.filter((goal) => goal.status === "active" && goal.seasonId === store.activeSeason?.id).map((goal) => (
-                    <option key={goal.id} value={goal.id}>{goal.title}</option>
+                    {c("Batal", "Cancel")}
+                  </GhostButton>
+                  {refs.some((b) => b.id === editing.id) && (
+                    <GhostButton
+                      onClick={() => {
+                        if (
+                          !window.confirm(
+                            c(
+                              "Hapus aktivitas berulang ini?",
+                              "Delete this repeating activity?",
+                            ),
+                          )
+                        )
+                          return;
+                        try {
+                          saveIdealWeek(
+                            (
+                              useMonkStore.getState().appSettings.idealWeek ??
+                              []
+                            ).filter((b) => b.id !== editing.id),
+                          );
+                          setEditing(null);
+                          setStatus(
+                            c("Aktivitas dihapus.", "Activity deleted."),
+                          );
+                          setError("");
+                        } catch {
+                          setError(
+                            c(
+                              "Belum terhapus. Coba lagi.",
+                              "Not deleted. Try again.",
+                            ),
+                          );
+                        }
+                      }}
+                    >
+                      {c("Hapus aktivitas", "Delete activity")}
+                    </GhostButton>
+                  )}
+                </div>
+              </form>
+            ) : (
+              <div className="space-y-5">
+                <div>
+                  <h3 className="text-lg font-semibold">
+                    {c(
+                      "Mulai dari rutinitas yang pasti.",
+                      "Start with a familiar routine.",
+                    )}
+                  </h3>
+                  <p className="mt-2 text-sm leading-relaxed text-monk-muted">
+                    {c(
+                      "Pilih aktivitas, tentukan jamnya, lalu ulangi pada hari pilihanmu.",
+                      "Choose an activity, set its hours, then repeat it on selected days.",
+                    )}
+                  </p>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  {[
+                    {
+                      title: c("Tidur", "Sleep"),
+                      start: "22:00",
+                      duration: 480,
+                      category: "rest",
+                    },
+                    {
+                      title: c("Kerja / kuliah", "Work / study"),
+                      start: "08:00",
+                      duration: 540,
+                      category: "deep_work",
+                    },
+                    {
+                      title: c("Makan", "Meal"),
+                      start: "12:00",
+                      duration: 60,
+                      category: "personal",
+                    },
+                    {
+                      title: c("Olahraga", "Exercise"),
+                      start: "17:30",
+                      duration: 60,
+                      category: "personal",
+                    },
+                  ].map((preset) => (
+                    <button
+                      key={preset.title}
+                      type="button"
+                      className={`${control} border-monk-border bg-monk-bg text-left hover:border-monk-accent`}
+                      onClick={() =>
+                        start({
+                          id: crypto.randomUUID(),
+                          title: preset.title,
+                          days: [...ALL_DAYS],
+                          startTime: preset.start,
+                          duration: preset.duration,
+                          category: preset.category as TimeBlockCategory,
+                          flexible: true,
+                        })
+                      }
+                    >
+                      {preset.title}
+                    </button>
                   ))}
-                </select>
-              </label>
-              <label className="block space-y-2">
-                <span>{c("Practice (opsional)", "Practice (optional)")}</span>
-                <select
-                  className={planningField}
-                  value={editing.practiceId ?? ""}
-                  onChange={(e) => setEditing({ ...editing, practiceId: e.target.value || undefined })}
-                >
-                  <option value="">{c("Tanpa tautan", "No link")}</option>
-                  {store.practices.filter((practice) => practice.status === "active").map((practice) => (
-                    <option key={practice.id} value={practice.id}>{practice.name}</option>
-                  ))}
-                </select>
-              </label>
-              <label className="flex min-h-11 items-center gap-3">
-                <input
-                  type="checkbox"
-                  checked={editing.flexible}
-                  onChange={(e) => setEditing({ ...editing, flexible: e.target.checked })}
-                />
-                {c("Waktu fleksibel", "Flexible time")}
-              </label>
-            </div>
-          </details>
-          <p className="text-xs text-monk-muted">
-            {c("Template hanya memberi saran. Jadwal aktual berubah setelah kamu menambahkannya dari Agenda.", "Template only suggests blocks. Actual schedule changes when you add one from Agenda.")}
-          </p>
-          <div className="flex flex-wrap gap-2">
-            <PrimaryButton type="submit">{c("Simpan", "Save")}</PrimaryButton>
-            <GhostButton onClick={() => { setEditing(null); setError(""); }}>
-              {c("Batal", "Cancel")}
-            </GhostButton>
-            {refs.some((ref) => ref.id === editing.id) && (
-              <GhostButton
-                onClick={() => {
-                  if (window.confirm(c("Hapus aktivitas berulang ini? Jadwal aktual tetap.", "Remove this repeating activity? Actual schedule stays."))) {
-                    save(refs.filter((ref) => ref.id !== editing.id));
-                  }
-                }}
-              >
-                {c("Hapus", "Remove")}
-              </GhostButton>
+                </div>
+                <PrimaryButton onClick={() => start()}>
+                  {c("Aktivitas sendiri", "Custom activity")}
+                </PrimaryButton>
+                <p className="text-xs leading-relaxed text-monk-muted">
+                  {c(
+                    "Kalender ini pola mingguan. Bloknya muncul sebagai saran di Agenda; tambahkan ke jadwal saat cocok.",
+                    "This calendar is a weekly pattern. Blocks appear as Agenda suggestions; add them when they fit.",
+                  )}
+                </p>
+                {status && (
+                  <p role="status" className="text-sm text-monk-success">
+                    {status}
+                  </p>
+                )}
+              </div>
             )}
-          </div>
-        </form>
-      )}
-      {error && <p role="alert" className="text-sm text-monk-danger">{error}</p>}
-      {status && <p role="status" className="text-sm text-monk-muted">{status}</p>}
-    </details>
+          </aside>
+        </div>
+      </div>
+    </dialog>,
+    document.body,
   );
 }

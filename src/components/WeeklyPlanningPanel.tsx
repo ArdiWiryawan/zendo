@@ -195,7 +195,7 @@ export function WeeklyPlanningPanel({ week }: { week: WeeklyPlan }) {
               className="border-t border-monk-border pt-4"
               aria-label={c("Editor Ideal Week", "Ideal Week editor")}
             >
-              <IdealWeekEditor initiallyOpen />
+              <IdealWeekEditor initiallyOpen onClose={() => setIdealOpen(false)} />
             </section>
           )}
           <details className="space-y-4 border-t border-monk-border pt-3">
