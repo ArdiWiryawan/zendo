@@ -1,6 +1,7 @@
 import { Suspense, lazy, useEffect, useMemo, useRef, useState } from "react";
 import { Navigate, Route, Routes, useLocation, useNavigate } from "react-router-dom";
 import LoginScreen from "../components/LoginScreen";
+import { GuestToday } from "../components/GuestToday";
 import SignupScreen from "../components/SignupScreen";
 import PwaInstallBanner from "../components/PwaInstallBanner";
 import { startEveningNudgeWatcher } from "../lib/eveningNudge";
@@ -409,6 +410,9 @@ function ProtectedMain({ children, allowEnded = false, showNav = true }: { child
   }, [location.pathname]);
 
   if (!userProfile?.onboardingCompleted || !activeSeason) {
+    if (location.pathname === routes.today && !activeSeason) {
+      return <AppShell showBottomNav={false}><GuestToday /></AppShell>;
+    }
     return <Navigate to={routes.onboardingWelcome} replace />;
   }
   if (!allowEnded && (activeSeason.status === "ended" || activeSeason.status === "archived")) {

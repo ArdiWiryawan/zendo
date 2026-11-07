@@ -4,7 +4,7 @@ import { motion, useReducedMotion } from "framer-motion";
 import { CalmAlert, PrimaryButton } from "../components/ui";
 import { routes } from "../constants/routes";
 import { useMonkStore } from "../store/useMonkStore";
-import { useT } from "../i18n";
+import { useLanguage, useT } from "../i18n";
 import type { MonkMVPState } from "../types/app";
 
 interface WelcomeScreenProps {
@@ -17,6 +17,7 @@ export function WelcomeScreen({ onNext }: WelcomeScreenProps) {
   const importState = useMonkStore((state) => state.importState);
   const [restoreError, setRestoreError] = useState<string | null>(null);
   const t = useT();
+  const lang = useLanguage();
 
   // Onboarding is reachable with data still available elsewhere (cloud row or
   // a JSON export) — e.g. this browser's storage was cleared. Both recovery
@@ -91,6 +92,9 @@ export function WelcomeScreen({ onNext }: WelcomeScreenProps) {
         >
           {t("welcome.begin")}
         </PrimaryButton>
+        <Link to={routes.today} className="mt-2 inline-flex min-h-11 items-center rounded-full px-4 text-sm font-medium text-monk-muted hover:text-monk-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-monk-accent focus-visible:ring-offset-2 focus-visible:ring-offset-monk-bg">
+          {lang === "id" ? "Langsung ke Hari ini" : "Go to Today"}
+        </Link>
         <p className="mt-2.5 text-xs text-monk-text-soft">
           {t("welcome.autosave")}
         </p>

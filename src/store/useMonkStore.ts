@@ -873,7 +873,7 @@ export const useMonkStore = create<MonkStore>()(
       // 3. Sync Weekly Plans allocation counts
       const provisionalBase: MonkMVPState = { ...stored, focusSessions, dayPlans, timelineEvents };
       const weeklyPlans = (stored.weeklyPlans || []).map((wp) => {
-        return updateAllocationCounts(provisionalBase, wp.id)[0] || wp;
+        return updateAllocationCounts(provisionalBase, wp.id).find((plan) => plan.id === wp.id) || wp;
       });
 
       // 4. Sync Timeline Days

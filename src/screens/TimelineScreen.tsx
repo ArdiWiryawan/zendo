@@ -48,6 +48,7 @@ import {
   addDaysToDate,
   datesInRange,
   formatHumanDate,
+  formatShortDate,
   getDaysPassed,
   getTodayDateString,
   getCurrentWeekNumber,
@@ -359,6 +360,7 @@ export default function TimelineScreen() {
   const reduceMotion = useReducedMotion();
 
   const [viewMode, setViewMode] = useState<TimelineViewMode>("daily");
+  const [selectedDailyDate, setSelectedDailyDate] = useState(today);
   const [retroDate, setRetroDate] = useState<string | null>(null);
   const [planningModalOpen, setPlanningModalOpen] = useState<boolean>(false);
   const [proModalOpen, setProModalOpen] = useState(false);
@@ -760,43 +762,50 @@ export default function TimelineScreen() {
           >
             {/* Detailed time block visualizer with live NOW line & agenda mode */}
             <DayTimeBlockVisualizer
-              date={today}
+              date={selectedDailyDate}
+              onDateChange={setSelectedDailyDate}
               onOpenPlanning={() => setPlanningModalOpen(true)}
             />
 
-            {/* Today Activity Log */}
+            {/* Selected day activity log */}
             <div className="min-w-0 space-y-3 pt-2">
               <SectionHeader
-                title={t("timeline.todayLogTitle")}
-                subtitle={t("timeline.todayLogSubtitle", { date: today })}
+                title={selectedDailyDate === today
+                  ? t("timeline.todayLogTitle")
+                  : `${lang === "id" ? "Aktivitas" : "Activity"} · ${formatShortDate(selectedDailyDate, lang)}`}
+                subtitle={t("timeline.todayLogSubtitle", { date: selectedDailyDate })}
               />
 
               {(() => {
-                const todayEvents = groupedEvents.find((g) => g.date === today)?.events ?? [];
-                if (todayEvents.length === 0) {
+                const dailyEvents = groupedEvents.find((g) => g.date === selectedDailyDate)?.events ?? [];
+                if (dailyEvents.length === 0) {
                   return (
                     <Card className="p-6 text-center text-xs text-monk-muted border border-monk-border/70">
                       <div className="grid h-10 w-10 mx-auto place-items-center rounded-xl bg-monk-soft/80 text-monk-muted border border-monk-border/40">
                         <Sparkles size={16} />
                       </div>
                       <p className="mt-3 font-medium text-monk-text">
-                        {t("timeline.todayLogEmpty")}
+                        {selectedDailyDate === today
+                          ? t("timeline.todayLogEmpty")
+                          : lang === "id" ? "Belum ada aktivitas tercatat pada tanggal ini." : "No activity logged for this date yet."}
                       </p>
-                      <button
-                        type="button"
-                        onClick={() => navigate(routes.today)}
-                        className="mt-3.5 inline-flex items-center gap-1.5 rounded-xl bg-monk-accent px-3 py-1.5 text-xs font-bold text-monk-bg transition-all hover:bg-monk-accent/90 active:scale-95 shadow-xs"
-                      >
-                        <span>{t("timeline.emptyAction")}</span>
-                        <ArrowRight size={12} />
-                      </button>
+                      {selectedDailyDate === today && (
+                        <button
+                          type="button"
+                          onClick={() => navigate(routes.today)}
+                          className="mt-3.5 inline-flex items-center gap-1.5 rounded-xl bg-monk-accent px-3 py-1.5 text-xs font-bold text-monk-bg transition-all hover:bg-monk-accent/90 active:scale-95 shadow-xs"
+                        >
+                          <span>{t("timeline.emptyAction")}</span>
+                          <ArrowRight size={12} />
+                        </button>
+                      )}
                     </Card>
                   );
                 }
 
                 return (
                   <div className="space-y-0">
-                    {todayEvents.map((event) => (
+                    {dailyEvents.map((event) => (
                       <TimelineEventRow key={event.id} event={event} />
                     ))}
                   </div>
@@ -1379,7 +1388,7 @@ export default function TimelineScreen() {
       </div>
 
       <RetroLogModal open={!!retroDate} date={retroDate} onClose={() => setRetroDate(null)} />
-      <MorningPlanningModal isOpen={planningModalOpen} onClose={() => setPlanningModalOpen(false)} date={today} />
+      <MorningPlanningModal isOpen={planningModalOpen} onClose={() => setPlanningModalOpen(false)} date={selectedDailyDate} />
       <ZendoProModal isOpen={proModalOpen} onClose={() => setProModalOpen(false)} />
       <GoalBlueprintModal
         goalId={blueprintGoalId}

@@ -44,6 +44,8 @@ export type AppTheme =
   | "temple_gold";
 
 export type AppSettings = {
+  idealWeek?: IdealBlock[];
+  guestToday?: { date: string; highlight: string; mainAction: string };
   id: string;
   theme: AppTheme;
   language: AppLanguage;
@@ -325,6 +327,7 @@ export type ReleasedSeasonGoal = {
 };
 
 export type WeeklyPlan = {
+  ritual?: WeeklyRitual;
   id: string;
   seasonId: string;
   weekNumber: number;
@@ -346,6 +349,10 @@ export type TimeBlockCategory =
   | "personal";
 
 export type TimeBlock = {
+  practiceId?: string;
+  outcomeId?: string;
+  occurrenceKey?: string;
+  occurrenceGroup?: string;
   id: string;
   startTime: string; // "HH:mm" e.g. "08:00"
   endTime: string;   // "HH:mm" e.g. "10:00"
@@ -355,6 +362,13 @@ export type TimeBlock = {
   goalId?: string;
   completed?: boolean;
 };
+
+export type WeeklyOutcome = { id: string; title: string; doneWhen?: string; goalId?: string; status: "open" | "done"; sourceId?: string };
+export type IdealBlock = { id: string; title: string; days: number[]; startTime: string; duration: number; category: TimeBlockCategory; flexible: boolean; goalId?: string; practiceId?: string };
+export type WeekProposal = { id: string; date: string; title: string; startTime: string; duration: number; category: TimeBlockCategory; goalId?: string; practiceId?: string; outcomeId?: string; occurrenceKey?: string };
+export type WeeklyDraft = { outcomes: WeeklyOutcome[]; proposals: WeekProposal[]; reflection: string };
+export type HeldOccurrence = { id: string; date: string; block: TimeBlock; duration?: number; status: "later" | "skipped" };
+export type WeeklyRitual = { outcomes: WeeklyOutcome[]; draft?: WeeklyDraft; confirmedAt?: string; reflection: string; appliedKeys: string[]; held: HeldOccurrence[] };
 
 export type DayPlan = {
   id: string;

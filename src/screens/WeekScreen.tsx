@@ -26,6 +26,7 @@ import { ZendoProModal } from "../components/ZendoProModal";
 import { WeeklyReviewModal } from "../components/WeeklyReviewModal";
 import { RestGlyph } from "../components/RestGlyph";
 import { FreeDayDialog } from "../components/FreeDayDialog";
+import { WeeklyPlanningPanel } from "../components/WeeklyPlanningPanel";
 import { GoalWhySheet } from "../components/GoalWhySheet";
 import { goalWhys, primaryGoalWhy } from "../lib/goalWhy";
 import type { EnergyLevel, TimelineStatus } from "../types/app";
@@ -166,6 +167,7 @@ export function WeekScreen() {
         rightSlot={<SettingsLink onOpenPro={() => setProModalOpen(true)} />}
       />
       <div className="space-y-5">
+        {weeklyPlan && <WeeklyPlanningPanel key={weeklyPlan.id} week={weeklyPlan} />}
         {!weeklyPlan || !stats ? (
           <EmptyState
             title={t("week.emptyTitle")}
@@ -275,7 +277,7 @@ export function WeekScreen() {
               {/* Mobile: 7×44px + ring-offset overflows card; shrink + inset ring */}
               <div
                 className="flex min-w-0 items-stretch justify-between gap-0.5 sm:gap-1.5 px-0.5"
-                role="list"
+                role="group"
                 aria-label={t("week.daysAria")}
               >
                 {weekDates.map((date) => {
@@ -404,7 +406,7 @@ export function WeekScreen() {
                   }
 
                   return (
-                    <div key={date} role="listitem" aria-label={label} className="flex min-w-0 flex-1 flex-col items-center gap-1 py-1">
+                    <div key={date} role="group" aria-label={label} className="flex min-w-0 flex-1 flex-col items-center gap-1 py-1">
                       {DayInner}
                     </div>
                   );

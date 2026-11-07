@@ -1,15 +1,19 @@
 import { useState, useEffect, useRef, useMemo } from "react";
-import { Clock, Calendar, Download, Edit3, Check, Zap, Coffee, BookOpen, Briefcase, User, List, BarChart2 } from "lucide-react";
+import { Clock, Calendar, Download, Edit3, Check, Zap, Coffee, BookOpen, Briefcase, User, List, BarChart2, ChevronLeft, ChevronRight } from "lucide-react";
 import { useMonkStore } from "../store/useMonkStore";
 import { useT, useLanguage, type MessageKey } from "../i18n";
-import { getTodayDateString, formatHumanDate } from "../lib/date";
+import { getTodayDateString, formatHumanDate, parseLocalDateKey, addDaysToDate } from "../lib/date";
 import { hapticPress } from "../lib/haptics";
 import { resolveActivityCategory } from "../lib/activityCategory";
 import { CalendarExportModal } from "./CalendarExportModal";
-import type { TimeBlock, TimeBlockCategory } from "../types/app";
+import { ScheduleAdjustments } from "./ScheduleAdjustments";
+import { GhostButton } from "./ui";
+import type { IdealBlock, TimeBlock, TimeBlockCategory } from "../types/app";
+import { clock, minutes } from "../lib/weeklyPlanning";
 
 interface DayTimeBlockVisualizerProps {
   date?: string;
+  onDateChange?: (date: string) => void;
   onOpenPlanning?: () => void;
   compact?: boolean;
 }
@@ -91,6 +95,7 @@ function parseTimeToMinutes(timeStr: string): number {
 
 export function DayTimeBlockVisualizer({
   date,
+  onDateChange,
   onOpenPlanning,
   compact = false
 }: DayTimeBlockVisualizerProps) {
@@ -112,6 +117,17 @@ export function DayTimeBlockVisualizer({
       a.startTime.localeCompare(b.startTime)
     );
   }, [dayPlan?.timeBlocks]);
+  const idealBlocks = useMemo(() => {
+    if (activeDate < getTodayDateString()) return [];
+    const weekday = parseLocalDateKey(activeDate).getDay();
+    const actual = new Set(
+      timeBlocks.map((block) => `${block.startTime}|${block.title.trim().toLocaleLowerCase()}`),
+    );
+    return (store.appSettings.idealWeek ?? [])
+      .filter((block) => block.days.includes(weekday))
+      .filter((block) => !actual.has(`${block.startTime}|${block.title.trim().toLocaleLowerCase()}`))
+      .sort((a, b) => a.startTime.localeCompare(b.startTime));
+  }, [activeDate, store.appSettings.idealWeek, timeBlocks]);
 
   // Live "Now" Line
   const [nowMinutes, setNowMinutes] = useState(() => {
@@ -155,6 +171,29 @@ export function DayTimeBlockVisualizer({
       b.id === blockId ? { ...b, completed: !b.completed } : b
     );
     store.saveDayTimeBlocks(activeDate, updated, dayPlan?.planningCompleted);
+  };
+
+  const addIdealBlock = (ideal: IdealBlock) => {
+    const start = minutes(ideal.startTime);
+    const end = start + ideal.duration;
+    if (end > 24 * 60) return;
+    const occurrenceKey = `${ideal.id}:${activeDate}`;
+    const block: TimeBlock = {
+      id: `ideal:${occurrenceKey}`,
+      occurrenceKey,
+      occurrenceGroup: `ideal:${ideal.id}`,
+      title: ideal.title.trim(),
+      startTime: ideal.startTime,
+      endTime: clock(end),
+      category: ideal.category,
+      goalId: ideal.goalId,
+      practiceId: ideal.practiceId,
+    };
+    store.saveDayTimeBlocks(
+      activeDate,
+      [...timeBlocks, block],
+      dayPlan?.planningCompleted ?? false,
+    );
   };
 
   const handleExportIcs = () => {
@@ -206,7 +245,9 @@ export function DayTimeBlockVisualizer({
             <p className="text-[11px] text-monk-muted">
               {timeBlocks.length > 0
                 ? t("timeline.daily.blocksPlanned", { n: timeBlocks.length })
-                : t("timeline.daily.noBlocks")}
+                : idealBlocks.length > 0
+                  ? cIdealWeek(lang, idealBlocks.length)
+                  : t("timeline.daily.noBlocks")}
               {timeBlocks.length > 0 ? ` (${totalPlannedHours} ${lang === "id" ? "jam" : "h"})` : ""}
             </p>
           </div>
@@ -276,8 +317,34 @@ export function DayTimeBlockVisualizer({
         </div>
       </div>
 
+      {onDateChange && season && (
+        <div className="flex items-center justify-between gap-2 border-b border-monk-border/60 px-3 py-2 sm:px-4">
+          <button
+            type="button"
+            disabled={activeDate <= season.startDate}
+            aria-label={lang === "id" ? "Agenda hari sebelumnya" : "Previous day agenda"}
+            onClick={() => { hapticPress("light"); onDateChange(addDaysToDate(activeDate, -1)); }}
+            className="inline-flex min-h-11 items-center gap-1.5 rounded-lg px-2 text-xs font-medium text-monk-muted transition hover:bg-monk-soft hover:text-monk-text disabled:cursor-not-allowed disabled:opacity-40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-monk-accent"
+          >
+            <ChevronLeft size={16} />
+            {lang === "id" ? "Sebelumnya" : "Previous"}
+          </button>
+          <button
+            type="button"
+            disabled={activeDate >= season.endDate}
+            aria-label={lang === "id" ? "Agenda hari berikutnya" : "Next day agenda"}
+            onClick={() => { hapticPress("light"); onDateChange(addDaysToDate(activeDate, 1)); }}
+            className="inline-flex min-h-11 items-center gap-1.5 rounded-lg px-2 text-xs font-medium text-monk-muted transition hover:bg-monk-soft hover:text-monk-text disabled:cursor-not-allowed disabled:opacity-40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-monk-accent"
+          >
+            {lang === "id" ? "Berikutnya" : "Next"}
+            <ChevronRight size={16} />
+          </button>
+        </div>
+      )}
+
       {/* Empty State */}
-      {timeBlocks.length === 0 ? (
+      <details className="mb-4 space-y-3 rounded-xl border border-monk-border p-3"><summary className="cursor-pointer py-2 text-sm font-medium">{lang === 'id' ? 'Sesuaikan jadwal · pratinjau dulu' : 'Adjust schedule · preview first'}</summary><ScheduleAdjustments date={activeDate} /></details>
+      {timeBlocks.length === 0 && idealBlocks.length === 0 ? (
         <div className="p-8 text-center">
           <div className="grid h-12 w-12 mx-auto place-items-center rounded-2xl bg-monk-soft text-monk-muted border border-monk-border/60">
             <Calendar size={22} />
@@ -286,7 +353,7 @@ export function DayTimeBlockVisualizer({
             {t("timeline.daily.emptyHint")}
           </p>
         </div>
-      ) : viewMode === "agenda" ? (
+      ) : timeBlocks.length > 0 && viewMode === "agenda" ? (
         /* Agenda List Mode: Clear, readable cards with no truncation */
         <div className="p-3 sm:p-4 space-y-2.5">
           {timeBlocks.map((block) => {
@@ -352,7 +419,7 @@ export function DayTimeBlockVisualizer({
             );
           })}
         </div>
-      ) : (
+      ) : timeBlocks.length > 0 ? (
         /* Hourly Ruler Mode with Sleek Zen Scrollbar and auto-scroll */
         <div
           ref={canvasScrollRef}
@@ -454,6 +521,62 @@ export function DayTimeBlockVisualizer({
             ) : null}
           </div>
         </div>
+      ) : null}
+
+      {idealBlocks.length > 0 && (
+        <section className="border-t border-dashed border-monk-border px-3 py-4 sm:px-4" aria-label={lang === "id" ? "Saran Ideal Week" : "Ideal Week suggestions"}>
+          <div className="mb-3 flex items-center gap-2">
+            <Calendar size={15} className="text-monk-accent" />
+            <h4 className="text-sm font-semibold text-monk-text">{lang === "id" ? "Dari Ideal Week" : "From Ideal Week"}</h4>
+            <span className="rounded-full border border-monk-border px-2 py-0.5 text-[11px] text-monk-muted">
+              {lang === "id" ? "Saran" : "Suggestion"}
+            </span>
+          </div>
+          <p className="mb-3 text-xs text-monk-muted">
+            {lang === "id" ? "Muncul otomatis dari template. Tambahkan ke jadwal tanggal ini bila cocok." : "Shown automatically from your template. Add to this date’s schedule when it fits."}
+          </p>
+          <ul className="space-y-2">
+            {idealBlocks.map((block) => {
+              const start = parseTimeToMinutes(block.startTime);
+              const end = start + block.duration;
+              const conflict = timeBlocks.some((actual) =>
+                parseTimeToMinutes(actual.startTime) < end &&
+                parseTimeToMinutes(actual.endTime) > start,
+              );
+              const invalidEnd = end > 24 * 60;
+              const style = CATEGORY_STYLES[resolveActivityCategory(block.category)];
+              const Icon = style.icon;
+              return (
+                <li key={block.id} className="flex items-center justify-between gap-3 rounded-xl border border-monk-border/70 bg-monk-surface p-3">
+                  <div className="flex min-w-0 items-start gap-2.5">
+                    <Icon size={16} className={`${style.text} mt-0.5 shrink-0`} />
+                    <div className="min-w-0">
+                      <p className="break-words text-sm font-medium">{block.title}</p>
+                      <p className="text-xs text-monk-muted">{block.startTime}–{clock(Math.min(end, 24 * 60))} · {block.duration} {lang === "id" ? "menit" : "min"}</p>
+                      {conflict && <p className="mt-1 text-xs text-monk-warning">{lang === "id" ? "Bentrok dengan jadwal aktual" : "Overlaps an actual block"}</p>}
+                      {invalidEnd && <p className="mt-1 text-xs text-monk-muted">{lang === "id" ? "Blok melewati tengah malam" : "Block crosses midnight"}</p>}
+                    </div>
+                  </div>
+                  <GhostButton
+                    disabled={conflict || invalidEnd}
+                    aria-label={`${lang === "id" ? "Tambahkan" : "Add"} ${block.title} ${lang === "id" ? "ke Agenda" : "to Agenda"}`}
+                    title={conflict
+                      ? (lang === "id" ? "Bentrok dengan jadwal aktual" : "Overlaps an actual block")
+                      : invalidEnd
+                        ? (lang === "id" ? "Blok melewati tengah malam" : "Block crosses midnight")
+                        : undefined}
+                    onClick={() => addIdealBlock(block)}
+                    className="shrink-0"
+                  >
+                    {conflict || invalidEnd
+                      ? (conflict ? (lang === "id" ? "Bentrok" : "Conflict") : (lang === "id" ? "Lewat tengah malam" : "Overnight"))
+                      : (lang === "id" ? "Tambahkan" : "Add")}
+                  </GhostButton>
+                </li>
+              );
+            })}
+          </ul>
+        </section>
       )}
 
       <CalendarExportModal
@@ -465,4 +588,10 @@ export function DayTimeBlockVisualizer({
       />
     </div>
   );
+}
+
+function cIdealWeek(lang: string, count: number) {
+  return lang === "id"
+    ? `${count} saran Ideal Week`
+    : `${count} Ideal Week ${count === 1 ? "suggestion" : "suggestions"}`;
 }

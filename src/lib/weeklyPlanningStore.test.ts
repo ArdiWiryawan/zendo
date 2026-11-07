@@ -1,0 +1,153 @@
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { createInitialState } from "../constants/defaultData";
+import { useMonkStore } from "../store/useMonkStore";
+import { STORAGE_KEY, loadState } from "./storage";
+import { mergeRemoteState } from "./syncMerge";
+import {
+  persistPlanningChange,
+  saveIdealWeek,
+  saveWeekDraft,
+} from "./weeklyPlanningStore";
+import { emptyRitual } from "./weeklyPlanning";
+import type { IdealBlock, WeeklyDraft } from "../types/app";
+
+const stamp = "2026-11-07T08:00:00.000Z";
+const draft: WeeklyDraft = {
+  outcomes: [{ id: "o", title: "Read chapter", status: "open" }],
+  proposals: [],
+  reflection: "Protect mornings",
+};
+const reference: IdealBlock = {
+  id: "r",
+  title: "Read",
+  days: [1],
+  startTime: "09:00",
+  duration: 60,
+  category: "learning",
+  flexible: true,
+};
+let records: Map<string, string>;
+beforeEach(() => {
+  records = new Map();
+  vi.stubGlobal("localStorage", {
+    getItem: (key: string) => records.get(key) ?? null,
+    setItem: (key: string, value: string) => {
+      records.set(key, value);
+    },
+    removeItem: (key: string) => {
+      records.delete(key);
+    },
+  });
+  const state = createInitialState();
+  state.weeklyPlans = [
+    {
+      id: "w",
+      seasonId: "s",
+      weekNumber: 1,
+      startDate: "2026-11-07",
+      endDate: "2026-11-13",
+      mode: "flow",
+      goalAllocations: [],
+      restDayTarget: 1,
+      status: "active",
+      createdAt: stamp,
+      updatedAt: stamp,
+    },
+  ];
+  useMonkStore.setState(state);
+});
+afterEach(() => vi.unstubAllGlobals());
+
+describe("durable weekly planning writes", () => {
+  it("hydrates each week's own ritual instead of copying the first week", () => {
+    const state = useMonkStore.getState();
+    const first = state.weeklyPlans[0];
+    useMonkStore.setState({
+      weeklyPlans: [
+        first,
+        {
+          ...first,
+          id: "week-two",
+          weekNumber: 2,
+          startDate: "2026-11-14",
+          endDate: "2026-11-20",
+          ritual: {
+            ...emptyRitual(),
+            outcomes: [
+              { id: "second", title: "Second week result", status: "open" },
+            ],
+          },
+        },
+      ],
+    });
+    useMonkStore.getState().hydrate();
+    expect(useMonkStore.getState().weeklyPlans.map((w) => w.id)).toEqual([
+      first.id,
+      "week-two",
+    ]);
+    expect(
+      useMonkStore.getState().weeklyPlans[1].ritual?.outcomes[0].title,
+    ).toBe("Second week result");
+  });
+  it("does not publish live changes if canonical persistence fails", () => {
+    const before = useMonkStore.getState();
+    vi.stubGlobal("localStorage", {
+      setItem: () => {
+        throw new Error("quota");
+      },
+    });
+    expect(() =>
+      persistPlanningChange((s) => ({ ...s, weeklyPlans: [] })),
+    ).toThrow();
+    expect(useMonkStore.getState()).toBe(before);
+  });
+  it("saves draft without confirming it, and reloads through existing storage", () => {
+    saveWeekDraft("w", draft);
+    expect(useMonkStore.getState().weeklyPlans[0].ritual?.draft).toEqual(draft);
+    expect(
+      useMonkStore.getState().weeklyPlans[0].ritual?.confirmedAt,
+    ).toBeUndefined();
+    expect(loadState()?.weeklyPlans[0].ritual?.draft).toEqual(draft);
+    expect(
+      JSON.parse(records.get(STORAGE_KEY)!).weeklyPlans[0].ritual.draft,
+    ).toEqual(draft);
+  });
+  it("preserves confirmed outcomes and occurrence history while editing a draft", () => {
+    const state = useMonkStore.getState();
+    const confirmed = {
+      ...emptyRitual(),
+      outcomes: [
+        { id: "old", title: "Confirmed result", status: "done" as const },
+      ],
+      confirmedAt: stamp,
+      appliedKeys: ["r:2026-11-07"],
+    };
+    useMonkStore.setState({
+      weeklyPlans: state.weeklyPlans.map((week) => ({
+        ...week,
+        ritual: confirmed,
+      })),
+    });
+    saveWeekDraft("w", draft);
+    const ritual = useMonkStore.getState().weeklyPlans[0].ritual;
+    expect(ritual).toEqual({ ...confirmed, draft });
+  });
+  it("retains confirmed outcome and reference fields during draft edits and cloud merge", () => {
+    saveIdealWeek([reference]);
+    saveWeekDraft("w", draft);
+    const saved = useMonkStore.getState();
+    const legacy = createInitialState();
+    legacy.appSettings.updatedAt = "2000-01-01T00:00:00.000Z";
+    const merged = mergeRemoteState(legacy, saved);
+    expect(merged.appSettings.idealWeek).toEqual([reference]);
+    expect(merged.weeklyPlans[0].ritual?.draft).toEqual(draft);
+    expect(saved.dayPlans).toEqual([]);
+    expect(typeof useMonkStore.getState().hydrate).toBe("function");
+  });
+  it("rejects invalid references and missing weeks before publishing", () => {
+    const before = useMonkStore.getState();
+    expect(() => saveIdealWeek([{ ...reference, duration: 0 }])).toThrow();
+    expect(() => saveWeekDraft("missing", draft)).toThrow();
+    expect(useMonkStore.getState()).toBe(before);
+  });
+});

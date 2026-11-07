@@ -43,6 +43,7 @@ import { PracticesCard } from "../components/PracticesCard";
 import { WeeklyReviewModal } from "../components/WeeklyReviewModal";
 import { MorningPlanningModal } from "../components/MorningPlanningModal";
 import { DayTimeBlockVisualizer } from "../components/DayTimeBlockVisualizer";
+import { TodayOutcomeContext } from "../components/TodayOutcomeContext";
 import { ZendoProModal } from "../components/ZendoProModal";
 import { FeelGoodRestCanvas } from "../components/FeelGoodRestCanvas";
 import type { EnergyLevel, TimeBlock } from "../types/app";
@@ -709,6 +710,7 @@ export function TodayScreen() {
         rightSlot={<SettingsLink onOpenPro={() => setProModalOpen(true)} />}
       />
       <div className="space-y-5">
+        <TodayOutcomeContext />
         <WhyStrip compact={activeBanner !== null} />
         {activeBanner === "nmt2" ? (
           <Nmt2Banner
