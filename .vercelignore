@@ -1,3 +1,6 @@
 **/*.test.ts
 **/*.test.tsx
 **/*.spec.ts
+.claude/
+artifacts/
+Zendo-Product-Knowledge-Base-PRD.md
