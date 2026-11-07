@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
 import { useMonkStore } from "../store/useMonkStore";
 import type { WeeklyDraft, WeeklyPlan, WeekProposal } from "../types/app";
 import {
@@ -32,6 +31,7 @@ export function WeeklyPlanningPanel({ week }: { week: WeeklyPlan }) {
     };
   const [draft, setDraft] = useState<WeeklyDraft>(initial);
   const [open, setOpen] = useState(false);
+  const [idealOpen, setIdealOpen] = useState(false);
   const [preview, setPreview] = useState(false);
   const [previewRevision, setPreviewRevision] = useState("");
   const [error, setError] = useState("");
@@ -40,6 +40,7 @@ export function WeeklyPlanningPanel({ week }: { week: WeeklyPlan }) {
     setDraft(initial());
     setPreview(false);
     setOpen(false);
+    setIdealOpen(false);
     setError("");
   }, [week.id]);
   const dates = datesInRange(week.startDate, 7);
@@ -57,6 +58,8 @@ export function WeeklyPlanningPanel({ week }: { week: WeeklyPlan }) {
     (n, d) => n + (d.timeBlocks?.length ?? 0),
     0,
   );
+  const idealBlocks = store.appSettings.idealWeek ?? [];
+  const idealDayCount = new Set(idealBlocks.flatMap((block) => block.days)).size;
   function change(next: WeeklyDraft) {
     setDraft(next);
     setPreview(false);
@@ -148,87 +151,211 @@ export function WeeklyPlanningPanel({ week }: { week: WeeklyPlan }) {
   ).length;
   return (
     <Card className="mb-5 space-y-5 p-5 sm:p-6">
-      <div className="space-y-2">
-        <p className="text-xs font-semibold uppercase tracking-wide text-monk-accent">
-          {c("ARAH MINGGU INI", "THIS WEEK’S DIRECTION")}
-        </p>
-        <h2 className="text-xl font-semibold">
-          {c("Beri ruang untuk yang penting.", "Make room for what matters.")}
-        </h2>
-        <p className="text-sm leading-relaxed text-monk-muted">
-          {c(
-            "Weekly Planning opsional. Mulai dari satu hasil, atau langsung jalani hari ini.",
-            "Weekly Planning is optional. Start with one outcome, or go straight to Today.",
-          )}
-        </p>
-      </div>
       {!open && (
         <>
-          {ritual.outcomes.length ? (
-            <ul className="space-y-3">
-              {ritual.outcomes.map((outcome) => (
-                <li
-                  key={outcome.id}
-                  className="border-b border-monk-border pb-3"
-                >
-                  <p className="break-words text-sm font-medium">
-                    {outcome.status === "done"
-                      ? c("Selesai", "Done")
-                      : c("Terbuka", "Open")}{" "}
-                    · {outcome.title}
-                  </p>
-                  {outcome.doneWhen && (
-                    <p className="mt-1 text-sm text-monk-muted">
-                      {c("Selesai ketika: ", "Done when: ")}
-                      {outcome.doneWhen}
-                    </p>
-                  )}
-                  <GhostButton onClick={() => toggleOutcome(outcome.id)}>
-                    {outcome.status === "done"
-                      ? c("Buka kembali", "Reopen")
-                      : c("Tandai selesai", "Mark done")}
-                  </GhostButton>
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <p className="text-sm text-monk-muted">
+          <div className="space-y-2">
+            <p className="text-xs font-semibold uppercase tracking-wide text-monk-accent">
+              {c("IDEAL WEEK", "IDEAL WEEK")}
+            </p>
+            <h2 className="text-xl font-semibold">
+              {c("Rancang minggu idealmu.", "Shape your ideal week.")}
+            </h2>
+            <p className="text-sm leading-relaxed text-monk-muted">
               {c(
-                "Belum ada Weekly Outcome. Hasil mingguan berbeda dari Goal dan blok waktu.",
-                "No Weekly Outcomes yet. Weekly results differ from Goals and time blocks.",
+                "Pilih aktivitas dan hari. Zendo menampilkannya sebagai saran di Agenda.",
+                "Choose activities and days. Zendo shows them as suggestions in Agenda.",
               )}
             </p>
-          )}
+          </div>
           <p className="text-sm text-monk-muted">
-            {knownCount}{" "}
-            {c("blok aktual dikenal Zendo", "actual blocks known to Zendo")} ·{" "}
-            {(store.appSettings.idealWeek ?? []).length}{" "}
-            {c("referensi Ideal Week", "Ideal Week references")}
+            {idealBlocks.length
+              ? (
+                  <>
+                    {idealBlocks.length} {c("aktivitas tersimpan", "activities saved")} ·{" "}
+                    {idealDayCount}/7 {c("hari terisi", "days planned")}
+                  </>
+                )
+              : c(
+                  "Belum ada aktivitas berulang. Mulai dari satu blok yang paling penting.",
+                  "No repeating activities yet. Start with one block that matters most.",
+                )}
           </p>
           <PrimaryButton
-            onClick={() => {
-              setDraft(initial());
-              setOpen(true);
-              setPreview(false);
-              setStatus("");
-            }}
+            onClick={() => setIdealOpen((value) => !value)}
+            aria-expanded={idealOpen}
           >
-            {ritual.draft
-              ? c("Lanjutkan draft", "Resume draft")
-              : ritual.confirmedAt
-                ? c("Tinjau minggu ini", "Review this week")
-                : c("Rencanakan minggu ini", "Plan this week")}
+            {idealOpen
+              ? c("Tutup editor", "Close editor")
+              : idealBlocks.length
+                ? c("Atur Ideal Week", "Edit Ideal Week")
+                : c("Buat Ideal Week", "Create Ideal Week")}
           </PrimaryButton>
+          {idealOpen && (
+            <section
+              className="border-t border-monk-border pt-4"
+              aria-label={c("Editor Ideal Week", "Ideal Week editor")}
+            >
+              <IdealWeekEditor initiallyOpen />
+            </section>
+          )}
+          <details className="space-y-4 border-t border-monk-border pt-3">
+            <summary className="cursor-pointer py-2 text-sm font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-monk-accent">
+              {c("Rencana tambahan", "Other weekly planning")}
+            </summary>
+            <p className="text-sm text-monk-muted">
+              {c(
+                "Tambahkan hasil minggu ini atau pilih blok untuk dimasukkan ke jadwal aktual.",
+                "Add weekly outcomes or choose blocks to place in your actual schedule.",
+              )}
+            </p>
+            {ritual.outcomes.length > 0 && (
+              <section
+                className="space-y-3"
+                aria-label={c("Hasil minggu ini", "This week's outcomes")}
+              >
+                <h3 className="text-sm font-semibold">
+                  {c("Hasil minggu ini", "This week's outcomes")}
+                </h3>
+                <ul className="space-y-3">
+                  {ritual.outcomes.map((outcome) => (
+                    <li key={outcome.id} className="border-b border-monk-border pb-3">
+                      <p className="break-words text-sm font-medium">
+                      {outcome.status === "done"
+                        ? c("Selesai", "Done")
+                        : c("Terbuka", "Open")} · {outcome.title}
+                      </p>
+                      {outcome.doneWhen && (
+                        <p className="mt-1 text-sm text-monk-muted">
+                          {c("Selesai ketika: ", "Done when: ")}
+                          {outcome.doneWhen}
+                        </p>
+                      )}
+                      <GhostButton onClick={() => toggleOutcome(outcome.id)}>
+                        {outcome.status === "done"
+                          ? c("Buka kembali", "Reopen")
+                          : c("Tandai selesai", "Mark done")}
+                      </GhostButton>
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            )}
+            <p className="text-xs text-monk-muted">
+              {knownCount} {c("blok aktual dikenal", "known actual blocks")} ·{" "}
+              {ritual.outcomes.length} {c("hasil mingguan", "weekly outcomes")}
+            </p>
+            <PrimaryButton
+              onClick={() => {
+                setIdealOpen(false);
+                setDraft(initial());
+                setOpen(true);
+                setPreview(false);
+                setStatus("");
+              }}
+            >
+              {ritual.draft
+                ? c("Lanjutkan perencanaan lengkap", "Resume full plan")
+                : ritual.confirmedAt
+                  ? c("Tinjau rencana lengkap", "Review full plan")
+                  : c("Buka perencanaan lengkap", "Open full planning")}
+            </PrimaryButton>
+            <details className="space-y-3">
+              <summary className="cursor-pointer py-3 text-sm font-semibold">
+                {c(
+                  "Jadwal aktual",
+                  "Current schedule",
+                )}{" "}
+                ({knownCount})
+              </summary>
+              <p className="text-sm text-monk-muted">
+                {c(
+                  "Hanya komitmen di Zendo. Waktu lain belum tentu kosong.",
+                  "Only commitments in Zendo. Other time is not necessarily free.",
+                )}
+              </p>
+              {!knownCount && (
+                <p className="text-sm">
+                  {c("Belum ada blok aktual.", "No actual blocks yet.")}
+                </p>
+              )}
+              {actual
+                .filter(
+                  (d) =>
+                    (d.timeBlocks?.length ?? 0) > 0 ||
+                    ritual.held.some((h) => h.date === d.date),
+                )
+                .sort((a, b) => a.date.localeCompare(b.date))
+                .map((d) => (
+                  <section key={d.id}>
+                    <h4 className="text-sm font-medium">
+                      {formatShortDate(d.date, lang)} · {c("Aktual", "Actual")}
+                    </h4>
+                    <ScheduleAdjustments date={d.date} />
+                  </section>
+                ))}
+            </details>
+            {ritual.held.length > 0 && (
+              <details className="space-y-3">
+                <summary className="cursor-pointer py-3 text-sm font-semibold">
+                  {c("Untuk nanti / dilewati", "For later / skipped")} (
+                  {ritual.held.length})
+                </summary>
+                {ritual.held.map((h) => (
+                  <div
+                    key={h.id}
+                    className="border-b border-monk-border py-3 text-sm"
+                  >
+                    <p className="break-words">
+                      {h.block.title} ·{" "}
+                      {h.status === "later"
+                        ? c("Untuk nanti", "For later")
+                        : c("Dilewati", "Skipped")}
+                    </p>
+                    <GhostButton
+                      disabled={draft.proposals.some(
+                        (p) => p.id === `recover:${h.id}`,
+                      )}
+                      onClick={() => {
+                        change({
+                          ...draft,
+                          proposals: [
+                            ...draft.proposals,
+                            {
+                              id: `recover:${h.id}`,
+                              title: h.block.title,
+                              date: week.startDate,
+                              startTime: h.block.startTime,
+                              duration:
+                                h.duration ??
+                                Math.max(
+                                  1,
+                                  Number(h.block.endTime.slice(0, 2)) * 60 +
+                                    Number(h.block.endTime.slice(3)) -
+                                    Number(h.block.startTime.slice(0, 2)) * 60 -
+                                    Number(h.block.startTime.slice(3)),
+                                ),
+                              category: h.block.category,
+                              goalId: h.block.goalId,
+                              practiceId: h.block.practiceId,
+                              outcomeId: h.block.outcomeId,
+                            },
+                          ],
+                        });
+                        setOpen(true);
+                      }}
+                    >
+                      {c("Pulihkan lewat draft", "Restore through draft")}
+                    </GhostButton>
+                  </div>
+                ))}
+              </details>
+            )}
+          </details>
         </>
       )}
-      <Link
-        to="/today"
-        className="inline-flex min-h-11 items-center text-sm font-medium text-monk-accent underline underline-offset-4"
-      >
-        {c("Langsung ke Today", "Go to Today")}
-      </Link>
       {open && !preview && (
         <div className="space-y-6">
+          <h3 className="font-semibold">{c("Perencanaan lengkap", "Full weekly planning")}</h3>
           <section className="space-y-4" aria-label="Weekly Outcomes">
             <h3 className="font-semibold">Weekly Outcomes</h3>
             <p className="text-sm text-monk-muted">
@@ -417,10 +544,9 @@ export function WeeklyPlanningPanel({ week }: { week: WeeklyPlan }) {
             ))}
             <GhostButton
               onClick={() => {
-                document
-                  .getElementById("ideal-week-editor")
-                  ?.setAttribute("open", "");
-                document.getElementById("ideal-week-editor")?.scrollIntoView();
+                setOpen(false);
+                setPreview(false);
+                setIdealOpen(true);
               }}
             >
               {c("Usulkan perubahan referensi", "Suggest a reference change")}
@@ -759,98 +885,6 @@ export function WeeklyPlanningPanel({ week }: { week: WeeklyPlan }) {
           </GhostButton>
         </section>
       )}
-      <details className="space-y-3">
-        <summary className="cursor-pointer py-3 text-sm font-semibold">
-          {c(
-            "Actual Week · jadwal yang dikenal",
-            "Actual Week · known schedule",
-          )}{" "}
-          ({knownCount})
-        </summary>
-        <p className="text-sm text-monk-muted">
-          {c(
-            "Hanya komitmen di Zendo. Waktu lain belum tentu kosong.",
-            "Only commitments in Zendo. Other time is not necessarily free.",
-          )}
-        </p>
-        {!knownCount && (
-          <p className="text-sm">
-            {c("Belum ada blok aktual.", "No actual blocks yet.")}
-          </p>
-        )}
-        {actual
-          .filter(
-            (d) =>
-              (d.timeBlocks?.length ?? 0) > 0 ||
-              ritual.held.some((h) => h.date === d.date),
-          )
-          .sort((a, b) => a.date.localeCompare(b.date))
-          .map((d) => (
-            <section key={d.id}>
-              <h4 className="text-sm font-medium">
-                {formatShortDate(d.date, lang)} · {c("Aktual", "Actual")}
-              </h4>
-              <ScheduleAdjustments date={d.date} />
-            </section>
-          ))}
-      </details>
-      {ritual.held.length > 0 && (
-        <details className="space-y-3">
-          <summary className="cursor-pointer py-3 text-sm font-semibold">
-            {c("Untuk nanti / dilewati", "For later / skipped")} (
-            {ritual.held.length})
-          </summary>
-          {ritual.held.map((h) => (
-            <div
-              key={h.id}
-              className="border-b border-monk-border py-3 text-sm"
-            >
-              <p className="break-words">
-                {h.block.title} ·{" "}
-                {h.status === "later"
-                  ? c("Untuk nanti", "For later")
-                  : c("Dilewati", "Skipped")}
-              </p>
-              <GhostButton
-                disabled={draft.proposals.some(
-                  (p) => p.id === `recover:${h.id}`,
-                )}
-                onClick={() => {
-                  change({
-                    ...draft,
-                    proposals: [
-                      ...draft.proposals,
-                      {
-                        id: `recover:${h.id}`,
-                        title: h.block.title,
-                        date: week.startDate,
-                        startTime: h.block.startTime,
-                        duration:
-                          h.duration ??
-                          Math.max(
-                            1,
-                            Number(h.block.endTime.slice(0, 2)) * 60 +
-                              Number(h.block.endTime.slice(3)) -
-                              Number(h.block.startTime.slice(0, 2)) * 60 -
-                              Number(h.block.startTime.slice(3)),
-                          ),
-                        category: h.block.category,
-                        goalId: h.block.goalId,
-                        practiceId: h.block.practiceId,
-                        outcomeId: h.block.outcomeId,
-                      },
-                    ],
-                  });
-                  setOpen(true);
-                }}
-              >
-                {c("Pulihkan lewat draft", "Restore through draft")}
-              </GhostButton>
-            </div>
-          ))}
-        </details>
-      )}
-      <IdealWeekEditor />
       {error && (
         <p role="alert" className="text-sm text-monk-danger">
           {error}

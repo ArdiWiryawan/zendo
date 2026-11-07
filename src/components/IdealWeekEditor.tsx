@@ -27,7 +27,11 @@ function endTime(block: IdealBlock) {
   return `${String(Math.floor(end / 60)).padStart(2, "0")}:${String(end % 60).padStart(2, "0")}`;
 }
 
-export function IdealWeekEditor() {
+export function IdealWeekEditor({
+  initiallyOpen = false,
+}: {
+  initiallyOpen?: boolean;
+}) {
   const c = usePlanningCopy();
   const store = useMonkStore();
   const refs = store.appSettings.idealWeek ?? [];
@@ -35,6 +39,7 @@ export function IdealWeekEditor() {
   const [error, setError] = useState("");
   const [status, setStatus] = useState("");
   const [calendarOpen, setCalendarOpen] = useState(false);
+  const [expanded, setExpanded] = useState(initiallyOpen);
   const calendarRef = useRef<HTMLDialogElement>(null);
   const days = [
     c("Min", "Sun"),
@@ -88,14 +93,19 @@ export function IdealWeekEditor() {
   }
 
   return (
-    <details className="space-y-4" id="ideal-week-editor">
+    <details
+      className="space-y-4"
+      id="ideal-week-editor"
+      open={expanded}
+      onToggle={(event) => setExpanded(event.currentTarget.open)}
+    >
       <summary className="cursor-pointer py-3 text-sm font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-monk-accent">
-        {c("Ideal Week", "Ideal Week")}
+        {c("Aktivitas mingguan", "Weekly activities")}
       </summary>
       <p className="text-sm text-monk-muted">
         {c(
-          "Template mingguan fleksibel. Hari yang dipilih otomatis muncul sebagai saran di Agenda.",
-          "A flexible weekly template. Selected days appear as suggestions in Agenda.",
+          "Blok pilihan muncul sebagai saran di Agenda. Jadwal aktual hanya berubah saat kamu menambahkannya.",
+          "Selected blocks appear as Agenda suggestions. Your actual schedule changes only when you add them.",
         )}
       </p>
 
