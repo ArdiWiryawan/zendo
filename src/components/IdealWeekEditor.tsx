@@ -7,6 +7,7 @@ import { getTodayDateString, parseLocalDateKey } from "../lib/date";
 import { deleteIdealWeek, upsertIdealWeek } from "../lib/weeklyPlanningStore";
 import {
   calendarSegments,
+  idealWeekColorStyle,
   timeDuration,
   timeLabel,
   timeMinutes,
@@ -15,6 +16,7 @@ import {
 import { TextInput, PrimaryButton, GhostButton } from "./ui";
 import { usePlanningCopy } from "./PlanningControls";
 import { IdealWeekActivities, IdealWeekDeleteControl } from "./IdealWeekActivities";
+import { IdealWeekColorPicker } from "./IdealWeekColorPicker";
 
 const HOUR = 48;
 const ALL_DAYS = [1, 2, 3, 4, 5, 6, 0];
@@ -44,6 +46,8 @@ export function IdealWeekEditor({
   const dialog = useRef<HTMLDialogElement>(null);
   const scroll = useRef<HTMLDivElement>(null);
   const formRef = useRef<HTMLFormElement>(null);
+  const detailRef = useRef<HTMLDivElement>(null);
+  const [inspected, setInspected] = useState<{ id: string; day: number; continuation: boolean } | null>(null);
   const [editing, setEditing] = useState<IdealBlock | null>(null);
   const [baseline, setBaseline] = useState("");
   const [finish, setFinish] = useState("10:00");
@@ -124,6 +128,7 @@ export function IdealWeekEditor({
   }
   function start(block?: IdealBlock, day?: number, hour = 9) {
     if (!discard()) return;
+    setInspected(null);
     setMobileCalendarOpen(false);
     const next: IdealBlock = block
       ? { ...block, days: [...block.days] }
@@ -210,6 +215,17 @@ export function IdealWeekEditor({
     `minmax(${Math.max(view === "week" ? 120 : 0, ...parts.map(part => part.lanes * 96))}px,1fr)`,
   ).join(" ")}`;
   const hasOverlaps = segments.some(({ parts }) => parts.some(part => part.lanes > 1));
+  const inspectedPart = inspected ? calendarSegments(preview, inspected.day).find(part =>
+    part.block.id === inspected.id && part.continuation === inspected.continuation,
+  ) : undefined;
+
+  function editCalendarBlock(block: IdealBlock) {
+    if (previewIds.has(block.id)) {
+      formRef.current?.querySelector("input")?.focus();
+      return;
+    }
+    start(block);
+  }
 
   function cancelEdit() {
     if (!discard()) return;
@@ -266,6 +282,13 @@ export function IdealWeekEditor({
     <dialog
       ref={dialog}
       aria-labelledby="ideal-week-title"
+      onKeyDown={event => {
+        if (event.key === "Escape" && inspected) {
+          event.preventDefault();
+          event.stopPropagation();
+          setInspected(null);
+        }
+      }}
       onCancel={(e) => {
         e.preventDefault();
         close();
@@ -360,8 +383,8 @@ export function IdealWeekEditor({
             <p className="px-4 pb-2 text-xs text-monk-muted">
               {view === "week"
                 ? c(
-                    "Klik blok untuk edit. Pilih jam kosong untuk menambah. Geser untuk melihat hari lain.",
-                    "Click a block to edit. Choose an empty hour to add. Scroll to see other days.",
+                    "Pilih blok untuk detail atau edit. Pilih jam kosong untuk menambah. Geser untuk melihat hari lain.",
+                    "Choose a block for details or editing. Choose an empty hour to add. Scroll to see other days.",
                   )
                 : c(
                     "Pilih jam kosong untuk menambah aktivitas.",
@@ -461,18 +484,23 @@ export function IdealWeekEditor({
                         <button
                           key={`${part.block.id}:${part.continuation}`}
                           type="button"
+                          onMouseEnter={() => setInspected({ id: part.block.id, day, continuation: part.continuation })}
+                          onFocus={() => setInspected({ id: part.block.id, day, continuation: part.continuation })}
                           onClick={() => {
                             setSelectedDay(day);
-                            if (previewIds.has(part.block.id)) {
-                              formRef.current?.querySelector("input")?.focus();
+                            if (part.end - part.start < 60) {
+                              setInspected({ id: part.block.id, day, continuation: part.continuation });
+                              requestAnimationFrame(() => detailRef.current?.scrollIntoView({ block: "nearest" }));
                               return;
                             }
-                            start(part.block);
+                            editCalendarBlock(part.block);
                           }}
                           aria-label={`${part.block.title}, ${days[day]}, ${timeLabel(part.start)}–${part.end === 1440 ? "24:00" : timeLabel(part.end)}${previewIds.has(part.block.id) ? c(", pratinjau", ", preview") : ""}`}
-                          title={`${part.block.title} · ${timeLabel(part.start)}–${part.end === 1440 ? "24:00" : timeLabel(part.end)} · ${c("Klik untuk edit", "Click to edit")}`}
-                          className={`absolute z-10 flex flex-col items-start justify-start overflow-hidden rounded-lg border-l-2 px-2 py-2 text-left text-xs leading-tight transition-colors hover:brightness-125 focus-visible:outline focus-visible:outline-2 focus-visible:outline-monk-accent ${STYLES[part.block.category]} ${previewIds.has(part.block.id) ? "border-y border-r border-dashed" : "border-y border-r border-monk-border"}`}
+                          title={`${part.block.title} · ${timeLabel(part.start)}–${part.end === 1440 ? "24:00" : timeLabel(part.end)} · ${part.end - part.start < 60 ? c("Ketuk untuk detail", "Tap for details") : c("Klik untuk edit", "Click to edit")}`}
+                          aria-describedby={inspected?.id === part.block.id && inspected.day === day && inspected.continuation === part.continuation ? "ideal-week-detail-text" : undefined}
+                          className={`absolute z-10 flex flex-col items-start overflow-hidden rounded-lg border-l-2 px-2 ${part.end - part.start < 60 ? "justify-center py-0" : "justify-start py-2"} text-left text-xs leading-tight transition-colors hover:brightness-125 focus-visible:outline focus-visible:outline-2 focus-visible:outline-monk-accent ${idealWeekColorStyle(part.block.color) ? "bg-monk-surface-raised text-monk-text" : STYLES[part.block.category]} ${previewIds.has(part.block.id) ? "border-y border-r border-dashed" : "border-y border-r border-monk-border"}`}
                           style={{
+                            ...idealWeekColorStyle(part.block.color),
                             top: (part.start / 60) * HOUR,
                             height: Math.max(
                               24,
@@ -482,13 +510,13 @@ export function IdealWeekEditor({
                             width: `calc(${100 / part.lanes}% - 4px)`,
                           }}
                         >
-                          <span className="block w-full truncate font-semibold">
+                          <span className="block w-full shrink-0 truncate font-semibold">
                             {part.block.title}
                           </span>
-                          <span className="mt-1 block w-full truncate tabular-nums">
+                          {part.end - part.start >= 60 && <span className="mt-1 block w-full shrink-0 truncate tabular-nums">
                             {timeLabel(part.start)}–
                             {part.end === 1440 ? "24:00" : timeLabel(part.end)}
-                          </span>
+                          </span>}
                           {previewIds.has(part.block.id) && part.end - part.start >= 90 && (
                             <span className="mt-2 text-xs font-medium">{c("Pratinjau", "Preview")}</span>
                           )}
@@ -498,6 +526,18 @@ export function IdealWeekEditor({
                   ))}
                 </div>
               </div>
+            </div>
+            <div ref={detailRef} className="flex h-24 shrink-0 items-center gap-3 border-t border-monk-border bg-monk-surface px-4 py-3" aria-label={c("Detail aktivitas kalender", "Calendar activity details")}>
+              {inspectedPart && inspected ? (
+                <>
+                  <div id="ideal-week-detail-text" tabIndex={0} className="max-h-full min-w-0 flex-1 overflow-y-auto rounded focus-visible:outline focus-visible:outline-2 focus-visible:outline-monk-accent">
+                    <p className="break-words text-sm font-semibold text-monk-text">{inspectedPart.block.title}</p>
+                    <p className="mt-1 text-xs tabular-nums text-monk-muted">{days[inspected.day]} · {timeLabel(inspectedPart.start)}–{inspectedPart.end === 1440 ? "24:00" : timeLabel(inspectedPart.end)} · {inspectedPart.end - inspectedPart.start} {c("menit", "min")}</p>
+                  </div>
+                  <button type="button" className={`${control} shrink-0 border-monk-border text-monk-accent hover:bg-monk-soft`} onClick={() => editCalendarBlock(inspectedPart.block)}>{c("Edit", "Edit")}</button>
+                  <button type="button" aria-label={c("Tutup detail aktivitas", "Close activity details")} className={`${control} shrink-0 border-transparent px-2 text-monk-muted hover:bg-monk-soft`} onClick={() => setInspected(null)}><X size={16} aria-hidden /></button>
+                </>
+              ) : <p className="text-sm text-monk-muted">{c("Sorot, fokuskan, atau ketuk blok kecil untuk melihat nama dan waktu lengkap.", "Hover, focus, or tap a small block to see its full name and time.")}</p>}
             </div>
           </section>
 
@@ -543,6 +583,7 @@ export function IdealWeekEditor({
                       setError("");
                     }}
                   />
+                  <IdealWeekColorPicker color={editing.color} onChange={color => setEditing({ ...editing, color })} />
                   <div className="grid grid-cols-2 gap-3">
                     <TextInput
                       required

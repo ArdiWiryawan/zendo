@@ -7,6 +7,7 @@ import type {
   IdealBlock,
   TimeBlock,
 } from "../types/app";
+import { isIdealWeekColor } from "./idealWeekCalendar";
 import {
   addDaysToDate,
   datesInRange,
@@ -102,7 +103,8 @@ export function validateReference(block: IdealBlock) {
     minutes(block.startTime) >= 1440 ||
     !Number.isInteger(block.duration) ||
     block.duration < 1 ||
-    block.duration > 1440
+    block.duration > 1440 ||
+    (block.color !== undefined && !isIdealWeekColor(block.color))
   )
     throw new Error("invalid");
 }

@@ -61,6 +61,15 @@ beforeEach(() => {
 afterEach(() => vi.unstubAllGlobals());
 
 describe("durable weekly planning writes", () => {
+  it("persists custom colors through updates/reload and rejects invalid CSS values", () => {
+    upsertIdealWeek(reference.id, [{ ...reference, color: "#d65a84" }]);
+    expect(loadState()?.appSettings.idealWeek?.[0].color).toBe("#d65a84");
+    const before = useMonkStore.getState();
+    expect(() => upsertIdealWeek(reference.id, [{ ...reference, color: "red;display:none" }])).toThrow();
+    expect(useMonkStore.getState()).toBe(before);
+    upsertIdealWeek(reference.id, [reference]);
+    expect(loadState()?.appSettings.idealWeek?.[0].color).toBeUndefined();
+  });
   it("creates, edits duration/repeat days, and deletes only the chosen activity durably", () => {
     upsertIdealWeek(reference.id, [reference]);
     const other = { ...reference, id: "other", title: "Walk" };

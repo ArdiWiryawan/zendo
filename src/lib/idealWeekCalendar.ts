@@ -1,6 +1,11 @@
 import type { IdealBlock } from "../types/app";
 
 export const WEEKDAYS = [1, 2, 3, 4, 5, 6, 0];
+export const isIdealWeekColor = (color: unknown): color is string =>
+  typeof color === "string" && /^#[0-9a-f]{6}$/i.test(color);
+export const idealWeekColorStyle = (color?: string) => isIdealWeekColor(color)
+  ? { borderColor: color, backgroundColor: `${color}18` }
+  : undefined;
 export const timeMinutes = (time: string) => {
   if (!/^(?:[01]\d|2[0-3]):[0-5]\d$/.test(time)) return NaN;
   const [h, m] = time.split(":").map(Number);

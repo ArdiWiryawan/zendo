@@ -364,7 +364,7 @@ export type TimeBlock = {
 };
 
 export type WeeklyOutcome = { id: string; title: string; doneWhen?: string; goalId?: string; status: "open" | "done"; sourceId?: string };
-export type IdealBlock = { id: string; title: string; days: number[]; startTime: string; duration: number; category: TimeBlockCategory; flexible: boolean; goalId?: string; practiceId?: string };
+export type IdealBlock = { id: string; title: string; days: number[]; startTime: string; duration: number; category: TimeBlockCategory; flexible: boolean; color?: string; goalId?: string; practiceId?: string };
 export type WeekProposal = { id: string; date: string; title: string; startTime: string; duration: number; category: TimeBlockCategory; goalId?: string; practiceId?: string; outcomeId?: string; occurrenceKey?: string };
 export type WeeklyDraft = { outcomes: WeeklyOutcome[]; proposals: WeekProposal[]; reflection: string };
 export type HeldOccurrence = { id: string; date: string; block: TimeBlock; duration?: number; status: "later" | "skipped" };
