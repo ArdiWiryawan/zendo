@@ -1,4 +1,5 @@
 import type { TimeBlock } from "../types/app";
+import { addDaysToDate } from "./date";
 import {
   TIME_BLOCK_CATEGORIES,
   activityCategoryColorName,
@@ -169,10 +170,11 @@ function buildIcsContent(
   // client is in" — so an exporter in Jakarta and a client in UTC silently
   // disagree by seven hours. Falls back to floating only if the zone is unknown,
   // which is no worse than the previous behaviour.
-  const dateLine = (name: "DTSTART" | "DTEND", time: string) =>
-    tzid
-      ? `${name};TZID=${tzid}:${icsDate}T${toIcsTime(time)}`
-      : `${name}:${icsDate}T${toIcsTime(time)}`;
+  const dateLine = (name: "DTSTART" | "DTEND", time: string) => {
+    const midnight = name === "DTEND" && time === "24:00";
+    const value = `${midnight ? toIcsDate(addDaysToDate(date, 1)) : icsDate}T${toIcsTime(midnight ? "00:00" : time)}`;
+    return tzid ? `${name};TZID=${tzid}:${value}` : `${name}:${value}`;
+  };
 
   const blocksForCalendar = options.category
     ? (timeBlocks || []).filter(
@@ -285,7 +287,7 @@ export type CategoryExportLabels = Partial<
 >;
 
 /** Browser download for one already-serialized calendar. */
-function downloadIcsText(fileName: string, content: string): void {
+export function downloadIcsText(fileName: string, content: string): void {
   const blob = new Blob([content], { type: "text/calendar;charset=utf-8" });
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");

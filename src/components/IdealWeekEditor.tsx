@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { ArrowLeft, CalendarDays, Plus, X } from "lucide-react";
+import { ArrowLeft, CalendarDays, Download, Plus, X } from "lucide-react";
 import { useMonkStore } from "../store/useMonkStore";
 import type { IdealBlock, TimeBlockCategory } from "../types/app";
 import { getTodayDateString, parseLocalDateKey } from "../lib/date";
@@ -17,6 +17,7 @@ import { TextInput, PrimaryButton, GhostButton } from "./ui";
 import { usePlanningCopy } from "./PlanningControls";
 import { IdealWeekActivities, IdealWeekDeleteControl } from "./IdealWeekActivities";
 import { IdealWeekColorPicker } from "./IdealWeekColorPicker";
+import { IdealWeekExport } from "./IdealWeekExport";
 
 const HOUR = 48;
 const ALL_DAYS = [1, 2, 3, 4, 5, 6, 0];
@@ -49,6 +50,7 @@ export function IdealWeekEditor({
   const detailRef = useRef<HTMLDivElement>(null);
   const [inspected, setInspected] = useState<{ id: string; day: number; continuation: boolean } | null>(null);
   const [editing, setEditing] = useState<IdealBlock | null>(null);
+  const [exportOpen, setExportOpen] = useState(false);
   const [splitId, setSplitId] = useState("");
   const [baseline, setBaseline] = useState("");
   const [finish, setFinish] = useState("10:00");
@@ -129,6 +131,7 @@ export function IdealWeekEditor({
   }
   function start(block?: IdealBlock, day?: number, hour = 9) {
     if (!discard()) return;
+    setExportOpen(false);
     setInspected(null);
     setMobileCalendarOpen(false);
     const next: IdealBlock = block
@@ -364,6 +367,8 @@ export function IdealWeekEditor({
                   </button>
                 ))}
               </div>
+              <div className="flex flex-wrap gap-2">
+              <button type="button" onClick={() => {if(!discard()) return;setEditing(null);setExportOpen(true);}} className={`${control} flex items-center gap-2 border-monk-border text-monk-text hover:bg-monk-soft`}><Download size={16} aria-hidden />{c("Ekspor kalender", "Export calendar")}</button>
               <button
                 type="button"
                 onClick={() => start()}
@@ -372,6 +377,7 @@ export function IdealWeekEditor({
                 <Plus size={16} />
                 {c("Tambah aktivitas", "Add activity")}
               </button>
+              </div>
             </div>
             {view === "day" && (
               <div className="grid grid-cols-7 gap-1 px-3 pb-2">
@@ -553,7 +559,7 @@ export function IdealWeekEditor({
             className="min-w-0 bg-monk-surface p-4 pb-[max(1.5rem,env(safe-area-inset-bottom))] lg:min-h-0 lg:overflow-hidden lg:p-5"
             aria-label={c("Form aktivitas", "Activity form")}
           >
-            {editing ? (
+            {exportOpen ? <IdealWeekExport blocks={refs} onClose={()=>setExportOpen(false)} /> : editing ? (
               <form
                 ref={formRef}
                 className="flex flex-col lg:h-full lg:min-h-0"
