@@ -54,11 +54,14 @@ export function saveIdealWeek(refs: IdealBlock[]): void {
 }
 
 /** Replace by identity so editing never appends another copy of a routine. */
-export function upsertIdealWeek(id: string, replacements: IdealBlock[]): void {
+export function upsertIdealWeek(id: string, replacements: IdealBlock[], scopeDays?: number[]): void {
   const latest = useMonkStore.getState().appSettings.idealWeek ?? [];
   const remaining = latest.filter((block) =>
     block.id !== id && !replacements.some((next) => next.id === block.id),
   );
+  const original = latest.find(block => block.id === id);
+  const untouchedDays = original?.days.filter(day => !scopeDays?.includes(day)) ?? [];
+  if (scopeDays && original && untouchedDays.length) remaining.push({ ...original, days: untouchedDays });
   for (const next of replacements) {
     if (remaining.some((block) =>
       block.title.trim().toLocaleLowerCase() === next.title.trim().toLocaleLowerCase() &&
@@ -69,7 +72,11 @@ export function upsertIdealWeek(id: string, replacements: IdealBlock[]): void {
   saveIdealWeek([...remaining, ...replacements]);
 }
 
-export function deleteIdealWeek(id: string): void {
+export function deleteIdealWeek(id: string, scopeDays?: number[]): void {
   saveIdealWeek((useMonkStore.getState().appSettings.idealWeek ?? [])
-    .filter((block) => block.id !== id));
+    .flatMap(block => {
+      if (block.id !== id) return [block];
+      const days = block.days.filter(day => !scopeDays?.includes(day));
+      return scopeDays && days.length ? [{ ...block, days }] : [];
+    }));
 }

@@ -49,6 +49,7 @@ export function IdealWeekEditor({
   const detailRef = useRef<HTMLDivElement>(null);
   const [inspected, setInspected] = useState<{ id: string; day: number; continuation: boolean } | null>(null);
   const [editing, setEditing] = useState<IdealBlock | null>(null);
+  const [splitId, setSplitId] = useState("");
   const [baseline, setBaseline] = useState("");
   const [finish, setFinish] = useState("10:00");
   const [weekend, setWeekend] = useState(false);
@@ -131,7 +132,7 @@ export function IdealWeekEditor({
     setInspected(null);
     setMobileCalendarOpen(false);
     const next: IdealBlock = block
-      ? { ...block, days: [...block.days] }
+      ? { ...block, days: day === undefined ? [...block.days] : [day] }
       : {
           id: crypto.randomUUID(),
           title: "",
@@ -143,6 +144,7 @@ export function IdealWeekEditor({
         };
     const end = timeLabel(timeMinutes(next.startTime) + next.duration);
     setEditing(next);
+    setSplitId(crypto.randomUUID());
     setFinish(end);
     setWeekend(false);
     setWeekendStart("23:00");
@@ -169,11 +171,15 @@ export function IdealWeekEditor({
         );
     });
   }
+  const original = refs.find(block => block.id === editing?.id);
+  const untouchedDays = original?.days.filter(day => !editing?.days.includes(day)) ?? [];
+  const candidateId = untouchedDays.length ? splitId : editing?.id;
   const candidates: IdealBlock[] =
     editing && duration > 0 && editing.title.trim()
       ? [
           {
             ...editing,
+            id: candidateId!,
             title: editing.title.trim(),
             duration,
             days:
@@ -187,7 +193,7 @@ export function IdealWeekEditor({
             ? [
                 {
                   ...editing,
-                  id: `${editing.id}:weekend`,
+                  id: `${candidateId}:weekend`,
                   title: editing.title.trim(),
                   days: editing.days.filter((d) => d === 0 || d === 6),
                   startTime: weekendStart,
@@ -204,6 +210,7 @@ export function IdealWeekEditor({
             b.id !== editing.id &&
             !candidates.some((candidate) => candidate.id === b.id),
         ),
+        ...(original && untouchedDays.length ? [{ ...original, days: untouchedDays }] : []),
         ...candidates,
       ]
     : refs;
@@ -219,12 +226,13 @@ export function IdealWeekEditor({
     part.block.id === inspected.id && part.continuation === inspected.continuation,
   ) : undefined;
 
-  function editCalendarBlock(block: IdealBlock) {
+  function editCalendarBlock(block: IdealBlock, day?: number) {
     if (previewIds.has(block.id)) {
+      if (day !== undefined) setEditing(current => current ? { ...current, days: [day] } : current);
       formRef.current?.querySelector("input")?.focus();
       return;
     }
-    start(block);
+    start(block, day);
   }
 
   function cancelEdit() {
@@ -233,7 +241,7 @@ export function IdealWeekEditor({
     setError("");
   }
   function remove(block: IdealBlock) {
-    deleteIdealWeek(block.id);
+    deleteIdealWeek(block.id, block.days);
     if (editing?.id === block.id) setEditing(null);
     setError("");
     setStatus(c(`“${block.title}” dihapus.`, `“${block.title}” deleted.`));
@@ -256,7 +264,7 @@ export function IdealWeekEditor({
       return;
     }
     try {
-      upsertIdealWeek(editing.id, candidates);
+      upsertIdealWeek(editing.id, candidates, original ? editing.days : undefined);
       setEditing(null);
       setError("");
       setStatus(
@@ -493,7 +501,7 @@ export function IdealWeekEditor({
                               requestAnimationFrame(() => detailRef.current?.scrollIntoView({ block: "nearest" }));
                               return;
                             }
-                            editCalendarBlock(part.block);
+                            editCalendarBlock(part.block, day);
                           }}
                           aria-label={`${part.block.title}, ${days[day]}, ${timeLabel(part.start)}–${part.end === 1440 ? "24:00" : timeLabel(part.end)}${previewIds.has(part.block.id) ? c(", pratinjau", ", preview") : ""}`}
                           title={`${part.block.title} · ${timeLabel(part.start)}–${part.end === 1440 ? "24:00" : timeLabel(part.end)} · ${part.end - part.start < 60 ? c("Ketuk untuk detail", "Tap for details") : c("Klik untuk edit", "Click to edit")}`}
@@ -534,7 +542,7 @@ export function IdealWeekEditor({
                     <p className="break-words text-sm font-semibold text-monk-text">{inspectedPart.block.title}</p>
                     <p className="mt-1 text-xs tabular-nums text-monk-muted">{days[inspected.day]} · {timeLabel(inspectedPart.start)}–{inspectedPart.end === 1440 ? "24:00" : timeLabel(inspectedPart.end)} · {inspectedPart.end - inspectedPart.start} {c("menit", "min")}</p>
                   </div>
-                  <button type="button" className={`${control} shrink-0 border-monk-border text-monk-accent hover:bg-monk-soft`} onClick={() => editCalendarBlock(inspectedPart.block)}>{c("Edit", "Edit")}</button>
+                  <button type="button" className={`${control} shrink-0 border-monk-border text-monk-accent hover:bg-monk-soft`} onClick={() => editCalendarBlock(inspectedPart.block, inspected.day)}>{c("Edit", "Edit")}</button>
                   <button type="button" aria-label={c("Tutup detail aktivitas", "Close activity details")} className={`${control} shrink-0 border-transparent px-2 text-monk-muted hover:bg-monk-soft`} onClick={() => setInspected(null)}><X size={16} aria-hidden /></button>
                 </>
               ) : <p className="text-sm text-monk-muted">{c("Sorot, fokuskan, atau ketuk blok kecil untuk melihat nama dan waktu lengkap.", "Hover, focus, or tap a small block to see its full name and time.")}</p>}
@@ -567,11 +575,29 @@ export function IdealWeekEditor({
                     </h3>
                     <p className="mt-1 text-sm text-monk-muted">
                       {c(
-                        "Ubah jam untuk menyesuaikan durasi. Nonaktifkan hari untuk mengurangi pengulangan.",
-                        "Change times to adjust duration. Deselect days to reduce repeats.",
+                        "Sesuaikan nama, jam, dan warna untuk hari pilihanmu. Hari lain tetap seperti semula.",
+                        "Customize the name, time, and color for selected days. Other days stay as they are.",
                       )}
                     </p>
                   </div>
+                  {original && (
+                    <fieldset className="space-y-3 rounded-xl border border-monk-border bg-monk-bg p-3">
+                      <legend className="px-1 text-sm font-medium text-monk-text">{c("Terapkan perubahan ke", "Apply changes to")}</legend>
+                      <div className="flex flex-wrap gap-2">
+                        {[
+                          { name: c(`${days[selectedDay]} saja`, `${days[selectedDay]} only`), days: [selectedDay] },
+                          { name: c("Hari kerja", "Weekdays"), days: [1, 2, 3, 4, 5] },
+                          { name: c("Akhir pekan", "Weekends"), days: [6, 0] },
+                          { name: c("Semua hari", "All days"), days: original.days },
+                        ].map(scope => {
+                          const target = scope.days.filter(day => original.days.includes(day));
+                          const active = target.length === editing.days.length && target.every(day => editing.days.includes(day));
+                          return <button key={scope.name} type="button" disabled={!target.length} aria-pressed={active} onClick={() => setEditing({ ...editing, days: target })} className={`${control} disabled:cursor-not-allowed disabled:opacity-40 ${active ? "border-monk-accent bg-monk-accent/10 text-monk-accent" : "border-monk-border text-monk-muted hover:bg-monk-soft"}`}>{scope.name}</button>;
+                        })}
+                      </div>
+                      <p className="text-xs leading-relaxed text-monk-muted">{c("Nama, jam, dan warna hanya berubah pada hari yang dipilih.", "Name, time, and color change only on the selected days.")}</p>
+                    </fieldset>
+                  )}
                   <TextInput
                     label={c("Aktivitas", "Activity")}
                     required
@@ -621,7 +647,7 @@ export function IdealWeekEditor({
                   </p>
                   <fieldset className="space-y-3">
                     <legend className="mb-2 text-sm font-medium">
-                      {c("Ulangi", "Repeat")}
+                      {original ? c("Hari yang diubah", "Days to change") : c("Ulangi", "Repeat")}
                     </legend>
                     {finish < editing.startTime && duration > 0 && (
                       <p className="text-xs text-monk-muted">
@@ -631,7 +657,7 @@ export function IdealWeekEditor({
                         )}
                       </p>
                     )}
-                    <div className="flex flex-wrap gap-2">
+                    {!original && <div className="flex flex-wrap gap-2">
                       {[
                         { name: c("Setiap hari", "Every day"), days: ALL_DAYS },
                         {
@@ -657,7 +683,7 @@ export function IdealWeekEditor({
                           </button>
                         );
                       })}
-                    </div>
+                    </div>}
                     <div className="grid grid-cols-7 gap-1">
                       {WEEKDAYS.map((day) => (
                         <button
@@ -729,7 +755,7 @@ export function IdealWeekEditor({
                   </p>
                 )}
                 <PrimaryButton type="submit">
-                  {refs.some(b => b.id === editing.id) ? c("Simpan perubahan", "Save changes") : c(
+                    {original ? c(`Simpan untuk ${editing.days.length} hari`, `Save for ${editing.days.length} days`) : c(
                     `Simpan ke ${editing.days.length} hari`,
                     `Save to ${editing.days.length} days`,
                   )}

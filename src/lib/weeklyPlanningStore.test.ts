@@ -61,6 +61,20 @@ beforeEach(() => {
 afterEach(() => vi.unstubAllGlobals());
 
 describe("durable weekly planning writes", () => {
+  it("customizes selected weekdays while preserving the original routine on other days", () => {
+    const original = { ...reference, days: [0, 1, 2, 3, 4, 5, 6], color: "#86afd9" };
+    saveIdealWeek([original]);
+    const monday = { ...original, id: "monday", title: "Design", days: [1], duration: 90 };
+    upsertIdealWeek(original.id, [monday], [1]);
+    expect(loadState()?.appSettings.idealWeek).toEqual([
+      { ...original, days: [0, 2, 3, 4, 5, 6] }, monday,
+    ]);
+    const weekend = { ...original, id: "weekend", title: "Learn", days: [0, 6] };
+    upsertIdealWeek(original.id, [weekend], [0, 6]);
+    expect(loadState()?.appSettings.idealWeek).toContainEqual({ ...original, days: [2, 3, 4, 5] });
+    deleteIdealWeek(original.id, [2]);
+    expect(loadState()?.appSettings.idealWeek).toContainEqual({ ...original, days: [3, 4, 5] });
+  });
   it("persists custom colors through updates/reload and rejects invalid CSS values", () => {
     upsertIdealWeek(reference.id, [{ ...reference, color: "#d65a84" }]);
     expect(loadState()?.appSettings.idealWeek?.[0].color).toBe("#d65a84");
