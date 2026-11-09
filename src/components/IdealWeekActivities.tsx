@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Pencil, Trash2 } from "lucide-react";
+import { Pencil, Star, Trash2 } from "lucide-react";
 import type { IdealBlock } from "../types/app";
 import { isIdealWeekColor, timeLabel, timeMinutes, WEEKDAYS } from "../lib/idealWeekCalendar";
 import { usePlanningCopy } from "./PlanningControls";
@@ -35,11 +35,12 @@ export function IdealWeekDeleteControl({ block, onDelete }: {
   );
 }
 
-export function IdealWeekActivities({ blocks, days, onEdit, onDelete }: {
+export function IdealWeekActivities({ blocks, days, onEdit, onDelete, onHighlight }: {
   blocks: IdealBlock[];
   days: string[];
   onEdit: (block: IdealBlock) => void;
   onDelete: (block: IdealBlock) => void;
+  onHighlight: (block: IdealBlock) => void;
 }) {
   const c = usePlanningCopy();
   return (
@@ -57,6 +58,7 @@ export function IdealWeekActivities({ blocks, days, onEdit, onDelete }: {
               <span className="mt-1 block text-sm tabular-nums text-monk-muted">{block.startTime}–{timeLabel(timeMinutes(block.startTime) + block.duration)}</span>
               <span className="mt-1 block text-xs leading-relaxed text-monk-muted">{WEEKDAYS.filter(day => block.days.includes(day)).map(day => days[day]).join(" · ")}</span>
             </button>
+            <button type="button" aria-label={c(`Jadikan ${block.title} Highlight`, `Set ${block.title} as Highlight`)} title={c("Jadikan Highlight pada tanggal pilihan", "Set as Highlight on a chosen date")} onClick={()=>onHighlight(block)} className={`${action} shrink-0 text-monk-accent hover:bg-monk-soft`}><Star size={16} aria-hidden /></button>
             <IdealWeekDeleteControl block={block} onDelete={() => onDelete(block)} />
           </li>
         ))}

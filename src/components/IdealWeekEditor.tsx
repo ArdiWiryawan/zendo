@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { ArrowLeft, CalendarDays, Download, Plus, X } from "lucide-react";
+import { ArrowLeft, CalendarDays, Download, Plus, Star, X } from "lucide-react";
 import { useMonkStore } from "../store/useMonkStore";
 import type { IdealBlock, TimeBlockCategory } from "../types/app";
-import { getTodayDateString, parseLocalDateKey } from "../lib/date";
+import { addDaysToDate, getTodayDateString, parseLocalDateKey } from "../lib/date";
 import { deleteIdealWeek, upsertIdealWeek } from "../lib/weeklyPlanningStore";
 import {
   calendarSegments,
@@ -18,6 +18,7 @@ import { usePlanningCopy } from "./PlanningControls";
 import { IdealWeekActivities, IdealWeekDeleteControl } from "./IdealWeekActivities";
 import { IdealWeekColorPicker } from "./IdealWeekColorPicker";
 import { IdealWeekExport } from "./IdealWeekExport";
+import { IdealWeekHighlightDialog } from "./IdealWeekHighlightDialog";
 
 const HOUR = 48;
 const ALL_DAYS = [1, 2, 3, 4, 5, 6, 0];
@@ -51,6 +52,7 @@ export function IdealWeekEditor({
   const [inspected, setInspected] = useState<{ id: string; day: number; continuation: boolean } | null>(null);
   const [editing, setEditing] = useState<IdealBlock | null>(null);
   const [exportOpen, setExportOpen] = useState(false);
+  const [highlightTarget, setHighlightTarget] = useState<{id:string;date:string}|null>(null);
   const [splitId, setSplitId] = useState("");
   const [baseline, setBaseline] = useState("");
   const [finish, setFinish] = useState("10:00");
@@ -228,6 +230,15 @@ export function IdealWeekEditor({
   const inspectedPart = inspected ? calendarSegments(preview, inspected.day).find(part =>
     part.block.id === inspected.id && part.continuation === inspected.continuation,
   ) : undefined;
+  const inspectedSavedBlock = refs.find(block => block.id === inspectedPart?.block.id)
+    ?? (inspectedPart && previewIds.has(inspectedPart.block.id) ? original : undefined);
+  const highlightBlock = refs.find(block => block.id === highlightTarget?.id);
+  function chooseHighlight(block: IdealBlock, day?: number) {
+    const today = getTodayDateString();
+    const weekday = parseLocalDateKey(today).getDay();
+    const offset = Math.min(...(day === undefined ? block.days : [day]).map(day => (day - weekday + 7) % 7));
+    setHighlightTarget({ id: block.id, date: addDaysToDate(today, offset) });
+  }
 
   function editCalendarBlock(block: IdealBlock, day?: number) {
     if (previewIds.has(block.id)) {
@@ -549,6 +560,7 @@ export function IdealWeekEditor({
                     <p className="mt-1 text-xs tabular-nums text-monk-muted">{days[inspected.day]} · {timeLabel(inspectedPart.start)}–{inspectedPart.end === 1440 ? "24:00" : timeLabel(inspectedPart.end)} · {inspectedPart.end - inspectedPart.start} {c("menit", "min")}</p>
                   </div>
                   <button type="button" className={`${control} shrink-0 border-monk-border text-monk-accent hover:bg-monk-soft`} onClick={() => editCalendarBlock(inspectedPart.block, inspected.day)}>{c("Edit", "Edit")}</button>
+                  <button type="button" aria-label={c("Jadikan aktivitas ini Highlight", "Set this activity as Highlight")} title={dirty || !inspectedSavedBlock ? c("Simpan aktivitas terlebih dahulu", "Save the activity first") : c("Jadikan Highlight pada tanggal pilihan", "Set as Highlight on a chosen date")} disabled={dirty || !inspectedSavedBlock} className={`${control} flex shrink-0 items-center justify-center border-monk-border text-monk-accent hover:bg-monk-soft disabled:cursor-not-allowed disabled:opacity-40`} onClick={()=>{if(inspectedSavedBlock)chooseHighlight(inspectedSavedBlock,inspected.day);}}><Star size={16} aria-hidden /></button>
                   <button type="button" aria-label={c("Tutup detail aktivitas", "Close activity details")} className={`${control} shrink-0 border-transparent px-2 text-monk-muted hover:bg-monk-soft`} onClick={() => setInspected(null)}><X size={16} aria-hidden /></button>
                 </>
               ) : <p className="text-sm text-monk-muted">{c("Sorot, fokuskan, atau ketuk blok kecil untuk melihat nama dan waktu lengkap.", "Hover, focus, or tap a small block to see its full name and time.")}</p>}
@@ -781,7 +793,7 @@ export function IdealWeekEditor({
             ) : (
               <div className="space-y-5 lg:h-full lg:overflow-y-auto lg:pr-1">
                 {status && <p role="status" className="text-sm text-monk-success">{status}</p>}
-                {refs.length > 0 && <IdealWeekActivities blocks={refs} days={days} onEdit={block => start(block)} onDelete={remove} />}
+                {refs.length > 0 && <IdealWeekActivities blocks={refs} days={days} onEdit={block => start(block)} onDelete={remove} onHighlight={chooseHighlight} />}
                 <PrimaryButton onClick={() => start()} className="inline-flex items-center justify-center gap-2">
                   <Plus size={18} aria-hidden />{c("Tambah aktivitas", "Add activity")}
                 </PrimaryButton>
@@ -863,6 +875,7 @@ export function IdealWeekEditor({
           </aside>
         </div>
       </div>
+      {highlightBlock && highlightTarget && <IdealWeekHighlightDialog block={highlightBlock} initialDate={highlightTarget.date} onClose={()=>setHighlightTarget(null)} onSaved={(title,date)=>{setHighlightTarget(null);setEditing(null);setStatus(c(`Highlight ${date}: ${title}`,`Highlight ${date}: ${title}`));}} />}
     </dialog>,
     document.body,
   );
