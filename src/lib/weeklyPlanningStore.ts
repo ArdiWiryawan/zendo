@@ -52,3 +52,24 @@ export function saveIdealWeek(refs: IdealBlock[]): void {
     },
   }));
 }
+
+/** Replace by identity so editing never appends another copy of a routine. */
+export function upsertIdealWeek(id: string, replacements: IdealBlock[]): void {
+  const latest = useMonkStore.getState().appSettings.idealWeek ?? [];
+  const remaining = latest.filter((block) =>
+    block.id !== id && !replacements.some((next) => next.id === block.id),
+  );
+  for (const next of replacements) {
+    if (remaining.some((block) =>
+      block.title.trim().toLocaleLowerCase() === next.title.trim().toLocaleLowerCase() &&
+      block.startTime === next.startTime && block.duration === next.duration &&
+      block.days.some((day) => next.days.includes(day)),
+    )) throw new Error("duplicate");
+  }
+  saveIdealWeek([...remaining, ...replacements]);
+}
+
+export function deleteIdealWeek(id: string): void {
+  saveIdealWeek((useMonkStore.getState().appSettings.idealWeek ?? [])
+    .filter((block) => block.id !== id));
+}

@@ -1,10 +1,10 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { CalendarDays, Plus, X } from "lucide-react";
+import { ArrowLeft, CalendarDays, Plus, X } from "lucide-react";
 import { useMonkStore } from "../store/useMonkStore";
 import type { IdealBlock, TimeBlockCategory } from "../types/app";
 import { getTodayDateString, parseLocalDateKey } from "../lib/date";
-import { saveIdealWeek } from "../lib/weeklyPlanningStore";
+import { deleteIdealWeek, upsertIdealWeek } from "../lib/weeklyPlanningStore";
 import {
   calendarSegments,
   timeDuration,
@@ -14,6 +14,7 @@ import {
 } from "../lib/idealWeekCalendar";
 import { TextInput, PrimaryButton, GhostButton } from "./ui";
 import { usePlanningCopy } from "./PlanningControls";
+import { IdealWeekActivities, IdealWeekDeleteControl } from "./IdealWeekActivities";
 
 const HOUR = 48;
 const ALL_DAYS = [1, 2, 3, 4, 5, 6, 0];
@@ -51,6 +52,7 @@ export function IdealWeekEditor({
   const [weekendEnd, setWeekendEnd] = useState("08:00");
   const [error, setError] = useState("");
   const [status, setStatus] = useState("");
+  const [mobileCalendarOpen, setMobileCalendarOpen] = useState(false);
   const [selectedDay, setSelectedDay] = useState(() =>
     parseLocalDateKey(getTodayDateString()).getDay(),
   );
@@ -91,7 +93,9 @@ export function IdealWeekEditor({
     if (scroll.current)
       scroll.current.scrollTop = editing
         ? Math.max(0, (timeMinutes(editing.startTime) / 60) * HOUR - HOUR)
-        : 6 * HOUR;
+        : Math.max(0, Math.min(6 * 60, ...WEEKDAYS.flatMap(day =>
+            calendarSegments(refs, day).map(part => part.start),
+          )) / 60 * HOUR - HOUR);
   }, [view, editing?.startTime]);
   useEffect(() => {
     if (!dirty) return;
@@ -120,6 +124,7 @@ export function IdealWeekEditor({
   }
   function start(block?: IdealBlock, day?: number, hour = 9) {
     if (!discard()) return;
+    setMobileCalendarOpen(false);
     const next: IdealBlock = block
       ? { ...block, days: [...block.days] }
       : {
@@ -198,6 +203,25 @@ export function IdealWeekEditor({
       ]
     : refs;
   const previewIds = new Set(candidates.map((b) => b.id));
+  const visibleDays = view === "week" ? WEEKDAYS : [selectedDay];
+  const segments = visibleDays.map(day => ({ day, parts: calendarSegments(preview, day) }));
+  // Each overlap lane keeps enough space for a title instead of wrapping every word.
+  const gridColumns = `3rem ${segments.map(({ parts }) =>
+    `minmax(${Math.max(view === "week" ? 120 : 0, ...parts.map(part => part.lanes * 96))}px,1fr)`,
+  ).join(" ")}`;
+  const hasOverlaps = segments.some(({ parts }) => parts.some(part => part.lanes > 1));
+
+  function cancelEdit() {
+    if (!discard()) return;
+    setEditing(null);
+    setError("");
+  }
+  function remove(block: IdealBlock) {
+    deleteIdealWeek(block.id);
+    if (editing?.id === block.id) setEditing(null);
+    setError("");
+    setStatus(c(`“${block.title}” dihapus.`, `“${block.title}” deleted.`));
+  }
 
   function save() {
     if (!editing) return;
@@ -216,15 +240,7 @@ export function IdealWeekEditor({
       return;
     }
     try {
-      const latest = useMonkStore.getState().appSettings.idealWeek ?? [];
-      saveIdealWeek([
-        ...latest.filter(
-          (b) =>
-            b.id !== editing.id &&
-            !candidates.some((candidate) => candidate.id === b.id),
-        ),
-        ...candidates,
-      ]);
+      upsertIdealWeek(editing.id, candidates);
       setEditing(null);
       setError("");
       setStatus(
@@ -233,9 +249,12 @@ export function IdealWeekEditor({
           "Activity saved. Add another routine when ready.",
         ),
       );
-    } catch {
+    } catch (cause) {
       setError(
-        c(
+        cause instanceof Error && cause.message === "duplicate" ? c(
+          "Aktivitas dengan nama dan jam yang sama sudah ada pada hari pilihanmu. Kembali ke daftar untuk mengedit aktivitas tersebut.",
+          "An activity with this name and time already exists on the selected days. Return to the list to edit it.",
+        ) : c(
           "Belum tersimpan. Periksa waktunya dan coba simpan lagi; isianmu tetap di sini.",
           "Not saved. Check the times and retry; your entries are still here.",
         ),
@@ -281,8 +300,15 @@ export function IdealWeekEditor({
         </header>
 
         <div className="min-h-0 flex-1 overflow-y-auto lg:grid lg:grid-cols-[minmax(0,1fr)_22rem] lg:overflow-hidden">
+          {editing && (
+            <button type="button" aria-expanded={mobileCalendarOpen} aria-controls="ideal-week-calendar" onClick={() => setMobileCalendarOpen(open => !open)} className="flex min-h-11 w-full items-center justify-center gap-2 border-b border-monk-border text-sm text-monk-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-monk-accent lg:hidden">
+              <CalendarDays size={16} aria-hidden />
+              {mobileCalendarOpen ? c("Sembunyikan kalender", "Hide calendar") : c("Tampilkan kalender", "Show calendar")}
+            </button>
+          )}
           <section
-            className="sticky top-0 z-10 border-b border-monk-border bg-monk-bg lg:static lg:flex lg:min-h-0 lg:flex-col lg:border-b-0 lg:border-r"
+            id="ideal-week-calendar"
+            className={`${editing && !mobileCalendarOpen ? "hidden lg:flex" : ""} border-b border-monk-border bg-monk-bg lg:flex lg:min-h-0 lg:flex-col lg:border-b-0 lg:border-r`}
             aria-label={c(
               "Preview kalender mingguan",
               "Weekly calendar preview",
@@ -313,7 +339,7 @@ export function IdealWeekEditor({
                 className={`${control} flex items-center gap-1 border-monk-accent text-monk-accent hover:bg-monk-accent/10`}
               >
                 <Plus size={16} />
-                {c("Aktivitas", "Activity")}
+                {c("Tambah aktivitas", "Add activity")}
               </button>
             </div>
             {view === "day" && (
@@ -334,14 +360,19 @@ export function IdealWeekEditor({
             <p className="px-4 pb-2 text-xs text-monk-muted">
               {view === "week"
                 ? c(
-                    "Pilih jam kosong. Geser kalender untuk melihat hari lainnya.",
-                    "Choose an empty hour. Scroll to see other days.",
+                    "Klik blok untuk edit. Pilih jam kosong untuk menambah. Geser untuk melihat hari lain.",
+                    "Click a block to edit. Choose an empty hour to add. Scroll to see other days.",
                   )
                 : c(
                     "Pilih jam kosong untuk menambah aktivitas.",
                     "Choose an empty hour to add an activity.",
                   )}
             </p>
+            {hasOverlaps && (
+              <p className="px-4 pb-2 text-xs text-monk-warning">
+                {c("Ada aktivitas bersamaan. Edit jam atau hapus melalui daftar aktivitas.", "Some activities overlap. Edit their times or delete them from the activity list.")}
+              </p>
+            )}
             <div
               ref={scroll}
               className="h-[35dvh] overflow-auto overscroll-contain lg:h-auto lg:min-h-0 lg:flex-1"
@@ -351,15 +382,15 @@ export function IdealWeekEditor({
                 "Calendar hours and activities",
               )}
             >
-              <div className={view === "week" ? "min-w-[48rem]" : "min-w-0"}>
+              <div className="min-w-full w-max">
                 <div
                   className="sticky top-0 z-20 grid border-y border-monk-border bg-monk-surface text-center text-sm"
                   style={{
-                    gridTemplateColumns: `3rem repeat(${view === "week" ? 7 : 1}, minmax(0,1fr))`,
+                    gridTemplateColumns: gridColumns,
                   }}
                 >
                   <span aria-hidden />
-                  {(view === "week" ? WEEKDAYS : [selectedDay]).map((day) => (
+                  {visibleDays.map((day) => (
                     <span key={day} className="py-2 font-medium">
                       {days[day]}
                     </span>
@@ -368,7 +399,7 @@ export function IdealWeekEditor({
                 <div
                   className="grid py-2"
                   style={{
-                    gridTemplateColumns: `3rem repeat(${view === "week" ? 7 : 1}, minmax(0,1fr))`,
+                    gridTemplateColumns: gridColumns,
                   }}
                 >
                   <div aria-hidden className="relative">
@@ -382,7 +413,7 @@ export function IdealWeekEditor({
                       </span>
                     ))}
                   </div>
-                  {(view === "week" ? WEEKDAYS : [selectedDay]).map((day) => (
+                  {segments.map(({ day, parts }) => (
                     <div
                       key={day}
                       className="relative border-l border-monk-border after:pointer-events-none after:absolute after:inset-x-0 after:bottom-0 after:border-t after:border-monk-border/60"
@@ -426,11 +457,12 @@ export function IdealWeekEditor({
                           style={{ height: HOUR }}
                         />
                       ))}
-                      {calendarSegments(preview, day).map((part) => (
+                      {parts.map((part) => (
                         <button
                           key={`${part.block.id}:${part.continuation}`}
                           type="button"
                           onClick={() => {
+                            setSelectedDay(day);
                             if (previewIds.has(part.block.id)) {
                               formRef.current?.querySelector("input")?.focus();
                               return;
@@ -438,7 +470,8 @@ export function IdealWeekEditor({
                             start(part.block);
                           }}
                           aria-label={`${part.block.title}, ${days[day]}, ${timeLabel(part.start)}–${part.end === 1440 ? "24:00" : timeLabel(part.end)}${previewIds.has(part.block.id) ? c(", pratinjau", ", preview") : ""}`}
-                          className={`absolute z-10 overflow-hidden rounded-lg border-l-4 px-1.5 py-1 text-left text-xs leading-tight shadow-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-monk-accent ${STYLES[part.block.category]} ${previewIds.has(part.block.id) ? "border-y border-r border-dashed" : "border-y border-r border-monk-border"}`}
+                          title={`${part.block.title} · ${timeLabel(part.start)}–${part.end === 1440 ? "24:00" : timeLabel(part.end)} · ${c("Klik untuk edit", "Click to edit")}`}
+                          className={`absolute z-10 flex flex-col items-start justify-start overflow-hidden rounded-lg border-l-2 px-2 py-2 text-left text-xs leading-tight transition-colors hover:brightness-125 focus-visible:outline focus-visible:outline-2 focus-visible:outline-monk-accent ${STYLES[part.block.category]} ${previewIds.has(part.block.id) ? "border-y border-r border-dashed" : "border-y border-r border-monk-border"}`}
                           style={{
                             top: (part.start / 60) * HOUR,
                             height: Math.max(
@@ -449,15 +482,16 @@ export function IdealWeekEditor({
                             width: `calc(${100 / part.lanes}% - 4px)`,
                           }}
                         >
-                          <span className="block font-semibold">
-                            {previewIds.has(part.block.id) &&
-                              `${c("Pratinjau", "Preview")} · `}
+                          <span className="block w-full truncate font-semibold">
                             {part.block.title}
                           </span>
-                          <span>
+                          <span className="mt-1 block w-full truncate tabular-nums">
                             {timeLabel(part.start)}–
                             {part.end === 1440 ? "24:00" : timeLabel(part.end)}
                           </span>
+                          {previewIds.has(part.block.id) && part.end - part.start >= 90 && (
+                            <span className="mt-2 text-xs font-medium">{c("Pratinjau", "Preview")}</span>
+                          )}
                         </button>
                       ))}
                     </div>
@@ -468,242 +502,219 @@ export function IdealWeekEditor({
           </section>
 
           <aside
-            className="bg-monk-surface p-4 pb-[max(1.5rem,env(safe-area-inset-bottom))] lg:overflow-y-auto lg:p-5"
+            className="min-w-0 bg-monk-surface p-4 pb-[max(1.5rem,env(safe-area-inset-bottom))] lg:min-h-0 lg:overflow-hidden lg:p-5"
             aria-label={c("Form aktivitas", "Activity form")}
           >
             {editing ? (
               <form
                 ref={formRef}
-                className="space-y-5"
+                className="flex flex-col lg:h-full lg:min-h-0"
+                aria-describedby={error ? "ideal-week-error" : undefined}
                 onSubmit={(e) => {
                   e.preventDefault();
                   save();
                 }}
               >
-                <div>
-                  <h3 className="text-lg font-semibold">
-                    {refs.some((b) => b.id === editing.id)
-                      ? c("Edit aktivitas", "Edit activity")
-                      : c("Tambah aktivitas", "Add activity")}
-                  </h3>
-                  <p className="mt-1 text-sm text-monk-muted">
-                    {c(
-                      "Preview berubah saat kamu mengisi.",
-                      "The preview updates as you fill this in.",
-                    )}
-                  </p>
-                </div>
-                <TextInput
-                  label={c("Aktivitas", "Activity")}
-                  required
-                  maxLength={120}
-                  placeholder={c("Contoh: Tidur", "For example: Sleep")}
-                  value={editing.title}
-                  onChange={(e) => {
-                    setEditing({ ...editing, title: e.target.value });
-                    setError("");
-                  }}
-                />
-                <div className="grid grid-cols-2 gap-3">
-                  <TextInput
-                    required
-                    type="time"
-                    label={c("Mulai", "Start")}
-                    value={editing.startTime}
-                    onChange={(e) =>
-                      setEditing({ ...editing, startTime: e.target.value })
-                    }
-                  />
-                  <TextInput
-                    required
-                    type="time"
-                    label={c("Selesai", "End")}
-                    value={finish}
-                    onChange={(e) => setFinish(e.target.value)}
-                  />
-                </div>
-                <p className="text-sm text-monk-muted">
-                  {duration ? (
-                    <>
-                      {finish < editing.startTime &&
-                        `${c("Melewati tengah malam", "Crosses midnight")} · `}
-                      {Math.floor(duration / 60) > 0 &&
-                        `${Math.floor(duration / 60)} ${c("jam", "hr")} `}
-                      {duration % 60 > 0 &&
-                        `${duration % 60} ${c("menit", "min")}`}
-                    </>
-                  ) : (
-                    c(
-                      "Pilih jam mulai dan selesai yang berbeda.",
-                      "Choose different start and end times.",
-                    )
-                  )}
-                </p>
-                <fieldset className="space-y-3">
-                  <legend className="mb-2 text-sm font-medium">
-                    {c("Ulangi", "Repeat")}
-                  </legend>
-                  {finish < editing.startTime && duration > 0 && (
-                    <p className="text-xs text-monk-muted">
+                <div className="min-h-0 space-y-4 lg:flex-1 lg:overflow-y-auto lg:pr-1">
+                  <button type="button" onClick={cancelEdit} className="flex min-h-11 items-center gap-2 rounded-lg text-sm text-monk-muted hover:text-monk-text focus-visible:outline focus-visible:outline-2 focus-visible:outline-monk-accent">
+                    <ArrowLeft size={16} aria-hidden />{c("Daftar aktivitas", "Activity list")}
+                  </button>
+                  <div>
+                    <h3 className="text-lg font-semibold">
+                      {refs.some((b) => b.id === editing.id)
+                        ? c("Edit aktivitas", "Edit activity")
+                        : c("Tambah aktivitas", "Add activity")}
+                    </h3>
+                    <p className="mt-1 text-sm text-monk-muted">
                       {c(
-                        "Bagian dini hari dan malam tampil pada hari yang dipilih.",
-                        "Early-morning and evening portions appear on the selected days.",
+                        "Ubah jam untuk menyesuaikan durasi. Nonaktifkan hari untuk mengurangi pengulangan.",
+                        "Change times to adjust duration. Deselect days to reduce repeats.",
                       )}
                     </p>
-                  )}
-                  <div className="flex flex-wrap gap-2">
-                    {[
-                      { name: c("Setiap hari", "Every day"), days: ALL_DAYS },
-                      {
-                        name: c("Hari kerja", "Weekdays"),
-                        days: [1, 2, 3, 4, 5],
-                      },
-                      { name: c("Akhir pekan", "Weekends"), days: [6, 0] },
-                    ].map((preset) => {
-                      const selected =
-                        editing.days.length === preset.days.length &&
-                        preset.days.every((d) => editing.days.includes(d));
-                      return (
-                        <button
-                          key={preset.name}
-                          type="button"
-                          aria-pressed={selected}
-                          onClick={() =>
-                            setEditing({ ...editing, days: [...preset.days] })
-                          }
-                          className={`${control} ${selected ? "border-monk-accent bg-monk-accent/10 text-monk-accent" : "border-monk-border text-monk-muted"}`}
-                        >
-                          {preset.name}
-                        </button>
-                      );
-                    })}
                   </div>
-                  <div className="grid grid-cols-7 gap-1">
-                    {WEEKDAYS.map((day) => (
-                      <button
-                        key={day}
-                        type="button"
-                        aria-pressed={editing.days.includes(day)}
-                        aria-label={`${c("Ulangi", "Repeat")}: ${days[day]}`}
-                        onClick={() =>
-                          setEditing({
-                            ...editing,
-                            days: editing.days.includes(day)
-                              ? editing.days.filter((d) => d !== day)
-                              : [...editing.days, day],
-                          })
-                        }
-                        className={`min-h-11 rounded-lg text-xs focus-visible:outline focus-visible:outline-2 focus-visible:outline-monk-accent ${editing.days.includes(day) ? "bg-monk-accent text-monk-bg" : "bg-monk-soft text-monk-muted"}`}
-                      >
-                        {days[day]}
-                      </button>
-                    ))}
+                  <TextInput
+                    label={c("Aktivitas", "Activity")}
+                    required
+                    maxLength={120}
+                    placeholder={c("Contoh: Tidur", "For example: Sleep")}
+                    value={editing.title}
+                    onChange={(e) => {
+                      setEditing({ ...editing, title: e.target.value });
+                      setError("");
+                    }}
+                  />
+                  <div className="grid grid-cols-2 gap-3">
+                    <TextInput
+                      required
+                      type="time"
+                      label={c("Mulai", "Start")}
+                      value={editing.startTime}
+                      onChange={(e) =>
+                        setEditing({ ...editing, startTime: e.target.value })
+                      }
+                    />
+                    <TextInput
+                      required
+                      type="time"
+                      label={c("Selesai", "End")}
+                      value={finish}
+                      onChange={(e) => setFinish(e.target.value)}
+                    />
                   </div>
-                </fieldset>
-                {canVaryWeekend && (
-                  <div className="space-y-3 border-t border-monk-border pt-4">
-                    <label className="flex min-h-11 items-center gap-3 text-sm">
-                      <input
-                        type="checkbox"
-                        checked={weekend}
-                        onChange={(e) => setWeekend(e.target.checked)}
-                      />
-                      {c(
-                        "Jam berbeda di akhir pekan",
-                        "Different weekend hours",
-                      )}
-                    </label>
-                    {weekend && (
+                  <p className="text-sm text-monk-muted">
+                    {duration ? (
                       <>
-                        <div className="grid grid-cols-2 gap-3">
-                          <TextInput
-                            type="time"
-                            required
-                            label={c("Mulai akhir pekan", "Weekend start")}
-                            value={weekendStart}
-                            onChange={(e) => setWeekendStart(e.target.value)}
-                          />
-                          <TextInput
-                            type="time"
-                            required
-                            label={c("Selesai akhir pekan", "Weekend end")}
-                            value={weekendEnd}
-                            onChange={(e) => setWeekendEnd(e.target.value)}
-                          />
-                        </div>
-                        <p className="text-xs text-monk-muted">
-                          {c(
-                            "Tersimpan sebagai dua pola waktu yang bisa diedit terpisah.",
-                            "Saved as two time patterns you can edit separately.",
-                          )}
-                        </p>
+                        {finish < editing.startTime &&
+                          `${c("Melewati tengah malam", "Crosses midnight")} · `}
+                        {Math.floor(duration / 60) > 0 &&
+                          `${Math.floor(duration / 60)} ${c("jam", "hr")} `}
+                        {duration % 60 > 0 &&
+                          `${duration % 60} ${c("menit", "min")}`}
                       </>
+                    ) : (
+                      c(
+                        "Pilih jam mulai dan selesai yang berbeda.",
+                        "Choose different start and end times.",
+                      )
                     )}
-                  </div>
-                )}
+                  </p>
+                  <fieldset className="space-y-3">
+                    <legend className="mb-2 text-sm font-medium">
+                      {c("Ulangi", "Repeat")}
+                    </legend>
+                    {finish < editing.startTime && duration > 0 && (
+                      <p className="text-xs text-monk-muted">
+                        {c(
+                          "Bagian dini hari dan malam tampil pada hari yang dipilih.",
+                          "Early-morning and evening portions appear on the selected days.",
+                        )}
+                      </p>
+                    )}
+                    <div className="flex flex-wrap gap-2">
+                      {[
+                        { name: c("Setiap hari", "Every day"), days: ALL_DAYS },
+                        {
+                          name: c("Hari kerja", "Weekdays"),
+                          days: [1, 2, 3, 4, 5],
+                        },
+                        { name: c("Akhir pekan", "Weekends"), days: [6, 0] },
+                      ].map((preset) => {
+                        const selected =
+                          editing.days.length === preset.days.length &&
+                          preset.days.every((d) => editing.days.includes(d));
+                        return (
+                          <button
+                            key={preset.name}
+                            type="button"
+                            aria-pressed={selected}
+                            onClick={() =>
+                              setEditing({ ...editing, days: [...preset.days] })
+                            }
+                            className={`${control} ${selected ? "border-monk-accent bg-monk-accent/10 text-monk-accent" : "border-monk-border text-monk-muted"}`}
+                          >
+                            {preset.name}
+                          </button>
+                        );
+                      })}
+                    </div>
+                    <div className="grid grid-cols-7 gap-1">
+                      {WEEKDAYS.map((day) => (
+                        <button
+                          key={day}
+                          type="button"
+                          aria-pressed={editing.days.includes(day)}
+                          aria-label={`${c("Ulangi", "Repeat")}: ${days[day]}`}
+                          onClick={() =>
+                            setEditing({
+                              ...editing,
+                              days: editing.days.includes(day)
+                                ? editing.days.filter((d) => d !== day)
+                                : [...editing.days, day],
+                            })
+                          }
+                          className={`min-h-11 rounded-lg text-xs focus-visible:outline focus-visible:outline-2 focus-visible:outline-monk-accent ${editing.days.includes(day) ? "bg-monk-accent text-monk-bg" : "bg-monk-soft text-monk-muted"}`}
+                        >
+                          {days[day]}
+                        </button>
+                      ))}
+                    </div>
+                  </fieldset>
+                  {canVaryWeekend && (
+                    <div className="space-y-3 border-t border-monk-border pt-4">
+                      <label className="flex min-h-11 items-center gap-3 text-sm">
+                        <input
+                          type="checkbox"
+                          checked={weekend}
+                          onChange={(e) => setWeekend(e.target.checked)}
+                        />
+                        {c(
+                          "Jam berbeda di akhir pekan",
+                          "Different weekend hours",
+                        )}
+                      </label>
+                      {weekend && (
+                        <>
+                          <div className="grid grid-cols-2 gap-3">
+                            <TextInput
+                              type="time"
+                              required
+                              label={c("Mulai akhir pekan", "Weekend start")}
+                              value={weekendStart}
+                              onChange={(e) => setWeekendStart(e.target.value)}
+                            />
+                            <TextInput
+                              type="time"
+                              required
+                              label={c("Selesai akhir pekan", "Weekend end")}
+                              value={weekendEnd}
+                              onChange={(e) => setWeekendEnd(e.target.value)}
+                            />
+                          </div>
+                          <p className="text-xs text-monk-muted">
+                            {c(
+                              "Tersimpan sebagai dua pola waktu yang bisa diedit terpisah.",
+                              "Saved as two time patterns you can edit separately.",
+                            )}
+                          </p>
+                        </>
+                      )}
+                    </div>
+                  )}
+                </div>
+                <div className="sticky bottom-0 z-20 -mx-4 mt-4 shrink-0 space-y-3 border-t border-monk-border bg-monk-surface px-4 pt-4 pb-[max(1rem,env(safe-area-inset-bottom))] lg:static lg:mx-0 lg:px-0 lg:pb-0">
                 {error && (
-                  <p role="alert" className="text-sm text-monk-danger">
+                  <p id="ideal-week-error" role="alert" className="text-sm text-monk-danger">
                     {error}
                   </p>
                 )}
                 <PrimaryButton type="submit">
-                  {c(
+                  {refs.some(b => b.id === editing.id) ? c("Simpan perubahan", "Save changes") : c(
                     `Simpan ke ${editing.days.length} hari`,
                     `Save to ${editing.days.length} days`,
                   )}
                 </PrimaryButton>
                 <div className="flex flex-wrap justify-between gap-2">
                   <GhostButton
-                    onClick={() => {
-                      if (discard()) {
-                        setEditing(null);
-                        setError("");
-                      }
-                    }}
+                    onClick={cancelEdit}
                   >
                     {c("Batal", "Cancel")}
                   </GhostButton>
                   {refs.some((b) => b.id === editing.id) && (
-                    <GhostButton
-                      onClick={() => {
-                        if (
-                          !window.confirm(
-                            c(
-                              "Hapus aktivitas berulang ini?",
-                              "Delete this repeating activity?",
-                            ),
-                          )
-                        )
-                          return;
-                        try {
-                          saveIdealWeek(
-                            (
-                              useMonkStore.getState().appSettings.idealWeek ??
-                              []
-                            ).filter((b) => b.id !== editing.id),
-                          );
-                          setEditing(null);
-                          setStatus(
-                            c("Aktivitas dihapus.", "Activity deleted."),
-                          );
-                          setError("");
-                        } catch {
-                          setError(
-                            c(
-                              "Belum terhapus. Coba lagi.",
-                              "Not deleted. Try again.",
-                            ),
-                          );
-                        }
-                      }}
-                    >
-                      {c("Hapus aktivitas", "Delete activity")}
-                    </GhostButton>
+                    <IdealWeekDeleteControl key={editing.id} block={editing} onDelete={() => remove(editing)} />
                   )}
+                </div>
                 </div>
               </form>
             ) : (
-              <div className="space-y-5">
+              <div className="space-y-5 lg:h-full lg:overflow-y-auto lg:pr-1">
+                {status && <p role="status" className="text-sm text-monk-success">{status}</p>}
+                {refs.length > 0 && <IdealWeekActivities blocks={refs} days={days} onEdit={block => start(block)} onDelete={remove} />}
+                <PrimaryButton onClick={() => start()} className="inline-flex items-center justify-center gap-2">
+                  <Plus size={18} aria-hidden />{c("Tambah aktivitas", "Add activity")}
+                </PrimaryButton>
+                <details open={refs.length === 0} className="border-t border-monk-border pt-4">
+                <summary className="cursor-pointer rounded-lg py-2 text-sm font-medium text-monk-muted focus-visible:outline focus-visible:outline-2 focus-visible:outline-monk-accent">{c("Mulai dari template", "Start from a template")}</summary>
+                <div className="mt-3 space-y-4">
                 <div>
                   <h3 className="text-lg font-semibold">
                     {c(
@@ -749,8 +760,9 @@ export function IdealWeekEditor({
                       key={preset.title}
                       type="button"
                       className={`${control} border-monk-border bg-monk-bg text-left hover:border-monk-accent`}
-                      onClick={() =>
-                        start({
+                      onClick={() => {
+                        const existing = refs.find(block => block.title.trim().toLocaleLowerCase() === preset.title.toLocaleLowerCase());
+                        start(existing ?? {
                           id: crypto.randomUUID(),
                           title: preset.title,
                           days: [...ALL_DAYS],
@@ -758,27 +770,21 @@ export function IdealWeekEditor({
                           duration: preset.duration,
                           category: preset.category as TimeBlockCategory,
                           flexible: true,
-                        })
-                      }
+                        });
+                      }}
                     >
                       {preset.title}
                     </button>
                   ))}
                 </div>
-                <PrimaryButton onClick={() => start()}>
-                  {c("Aktivitas sendiri", "Custom activity")}
-                </PrimaryButton>
+                </div>
+                </details>
                 <p className="text-xs leading-relaxed text-monk-muted">
                   {c(
                     "Kalender ini pola mingguan. Bloknya muncul sebagai saran di Agenda; tambahkan ke jadwal saat cocok.",
                     "This calendar is a weekly pattern. Blocks appear as Agenda suggestions; add them when they fit.",
                   )}
                 </p>
-                {status && (
-                  <p role="status" className="text-sm text-monk-success">
-                    {status}
-                  </p>
-                )}
               </div>
             )}
           </aside>

@@ -7,6 +7,8 @@ import {
   persistPlanningChange,
   saveIdealWeek,
   saveWeekDraft,
+  upsertIdealWeek,
+  deleteIdealWeek,
 } from "./weeklyPlanningStore";
 import { emptyRitual } from "./weeklyPlanning";
 import type { IdealBlock, WeeklyDraft } from "../types/app";
@@ -59,6 +61,30 @@ beforeEach(() => {
 afterEach(() => vi.unstubAllGlobals());
 
 describe("durable weekly planning writes", () => {
+  it("creates, edits duration/repeat days, and deletes only the chosen activity durably", () => {
+    upsertIdealWeek(reference.id, [reference]);
+    const other = { ...reference, id: "other", title: "Walk" };
+    upsertIdealWeek(other.id, [other]);
+    const edited = { ...reference, duration: 30, days: [2, 3] };
+    upsertIdealWeek(reference.id, [edited]);
+    expect(loadState()?.appSettings.idealWeek).toEqual([other, edited]);
+    deleteIdealWeek(reference.id);
+    expect(useMonkStore.getState().appSettings.idealWeek).toEqual([other]);
+    expect(loadState()?.appSettings.idealWeek).toEqual([other]);
+  });
+  it("rejects identical routines on shared days without changing saved activities", () => {
+    upsertIdealWeek(reference.id, [reference]);
+    expect(() => upsertIdealWeek("duplicate", [{ ...reference, id: "duplicate", title: " read " }])).toThrow("duplicate");
+    expect(loadState()?.appSettings.idealWeek).toEqual([reference]);
+    upsertIdealWeek("different-day", [{ ...reference, id: "different-day", days: [2] }]);
+    expect(loadState()?.appSettings.idealWeek).toHaveLength(2);
+  });
+  it("leaves saved activities intact when deleting fails to persist", () => {
+    saveIdealWeek([reference]);
+    vi.stubGlobal("localStorage", { setItem: () => { throw new Error("quota"); } });
+    expect(() => deleteIdealWeek(reference.id)).toThrow("quota");
+    expect(useMonkStore.getState().appSettings.idealWeek).toEqual([reference]);
+  });
   it("hydrates each week's own ritual instead of copying the first week", () => {
     const state = useMonkStore.getState();
     const first = state.weeklyPlans[0];
