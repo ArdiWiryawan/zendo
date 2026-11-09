@@ -366,26 +366,26 @@ export function IdealWeekEditor({
                   ))}
                 </div>
                 <div
-                  className="grid"
+                  className="grid py-2"
                   style={{
                     gridTemplateColumns: `3rem repeat(${view === "week" ? 7 : 1}, minmax(0,1fr))`,
                   }}
                 >
-                  <div aria-hidden>
-                    {Array.from({ length: 24 }, (_, hour) => (
-                      <div
+                  <div aria-hidden className="relative">
+                    {Array.from({ length: 25 }, (_, hour) => (
+                      <span
                         key={hour}
-                        className="pr-1 pt-1 text-right font-mono text-xs tabular-nums text-monk-muted"
-                        style={{ height: HOUR }}
+                        className="absolute inset-x-0 -translate-y-1/2 pr-1 text-right font-mono text-xs tabular-nums text-monk-muted"
+                        style={{ top: hour * HOUR }}
                       >
-                        {timeLabel(hour * 60)}
-                      </div>
+                        {hour === 24 ? "24:00" : timeLabel(hour * 60)}
+                      </span>
                     ))}
                   </div>
                   {(view === "week" ? WEEKDAYS : [selectedDay]).map((day) => (
                     <div
                       key={day}
-                      className="relative border-l border-monk-border"
+                      className="relative border-l border-monk-border after:pointer-events-none after:absolute after:inset-x-0 after:bottom-0 after:border-t after:border-monk-border/60"
                       style={{ height: 24 * HOUR }}
                     >
                       {Array.from({ length: 24 }, (_, hour) => (
@@ -443,7 +443,7 @@ export function IdealWeekEditor({
                             top: (part.start / 60) * HOUR,
                             height: Math.max(
                               24,
-                              ((part.end - part.start) / 60) * HOUR - 2,
+                              ((part.end - part.start) / 60) * HOUR,
                             ),
                             left: `calc(${(part.lane / part.lanes) * 100}% + 2px)`,
                             width: `calc(${100 / part.lanes}% - 4px)`,
@@ -526,7 +526,7 @@ export function IdealWeekEditor({
                   {duration ? (
                     <>
                       {finish < editing.startTime &&
-                        `${c("Selesai hari berikutnya", "Ends the next day")} · `}
+                        `${c("Melewati tengah malam", "Crosses midnight")} · `}
                       {Math.floor(duration / 60) > 0 &&
                         `${Math.floor(duration / 60)} ${c("jam", "hr")} `}
                       {duration % 60 > 0 &&
@@ -543,6 +543,14 @@ export function IdealWeekEditor({
                   <legend className="mb-2 text-sm font-medium">
                     {c("Ulangi", "Repeat")}
                   </legend>
+                  {finish < editing.startTime && duration > 0 && (
+                    <p className="text-xs text-monk-muted">
+                      {c(
+                        "Bagian dini hari dan malam tampil pada hari yang dipilih.",
+                        "Early-morning and evening portions appear on the selected days.",
+                      )}
+                    </p>
+                  )}
                   <div className="flex flex-wrap gap-2">
                     {[
                       { name: c("Setiap hari", "Every day"), days: ALL_DAYS },

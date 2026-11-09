@@ -25,7 +25,7 @@ export type CalendarSegment = {
   lanes: number;
 };
 
-/** Include yesterday's overnight tail, including Sunday -> Monday. */
+/** Selected days describe the calendar pattern, including both overnight portions. */
 export function calendarSegments(
   blocks: IdealBlock[],
   day: number,
@@ -44,7 +44,7 @@ export function calendarSegments(
         lane: 0,
         lanes: 1,
       });
-    if (end > 1440 && block.days.includes((day + 6) % 7))
+    if (end > 1440 && block.days.includes(day))
       parts.push({
         block,
         start: 0,

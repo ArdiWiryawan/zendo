@@ -21,17 +21,28 @@ describe("Ideal Week calendar times", () => {
     expect(timeDuration("25:00", "06:00")).toBe(0);
     expect(timeLabel(1800)).toBe("06:00");
   });
-  it("carries Sunday night into Monday morning", () => {
+  it("keeps both overnight portions on the selected calendar day", () => {
     expect(calendarSegments([sleep], 0)).toMatchObject([
+      { start: 0, end: 360, continuation: true },
       { start: 1320, end: 1440, continuation: false },
     ]);
-    expect(calendarSegments([sleep], 1)).toMatchObject([
-      { start: 0, end: 360, continuation: true },
-    ]);
+    expect(calendarSegments([sleep], 1)).toEqual([]);
     expect(calendarSegments([sleep], 2)).toEqual([]);
   });
+  it.each([
+    ["weekdays", [1, 2, 3, 4, 5]],
+    ["weekends", [6, 0]],
+  ])("shows 22:00–05:00 only on selected %s", (_, days) => {
+    const block = { ...sleep, duration: timeDuration("22:00", "05:00"), days };
+    for (let day = 0; day < 7; day++) {
+      expect(calendarSegments([block], day).map(({ start, end }) => [start, end]))
+        .toEqual(days.includes(day) ? [[0, 300], [1320, 1440]] : []);
+    }
+  });
   it("does not create a zero-length tail at midnight", () => {
-    expect(calendarSegments([{ ...sleep, duration: 120 }], 1)).toEqual([]);
+    expect(calendarSegments([{ ...sleep, duration: 120 }], 0)).toMatchObject([
+      { start: 1320, end: 1440, continuation: false },
+    ]);
   });
   it("keeps every repeated overnight tail and start in its own day", () => {
     const parts = calendarSegments(
